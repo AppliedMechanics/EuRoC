@@ -13,7 +13,7 @@ QWidget(parent)
 
 	// layouts
 	QHBoxLayout* mainLayout = new QHBoxLayout();
-	QGroupBox* measuredBox = new QGroupBox("Measured");
+	QGroupBox* measuredBox = new QGroupBox("Telemetry");
 	QGridLayout* measuredGrid = new QGridLayout();
 
 
