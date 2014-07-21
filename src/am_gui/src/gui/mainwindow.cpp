@@ -19,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
 	//the central widget of the main window should have tabs
 	QTabWidget* tabWidget = new QTabWidget(this);
 	QVBoxLayout* mainLayout = new QVBoxLayout();
+	QHBoxLayout* splitLayout = new QHBoxLayout();
 	QWidget* mainWidget = new QWidget();
 
 	stateMachine = new ManipulatorStatusWidget;
@@ -34,13 +35,15 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 	//tabWidget->addTab(onlinecontrol, "Online Control");
-	tabWidget->addTab(telemetry, "Telemetry");
+	//tabWidget->addTab(telemetry, "Telemetry");
 	tabWidget->addTab(simplecontrol, "Simple Control");
 
 
 	mainLayout->setSpacing(5);
 	mainLayout->addWidget(stateMachine);
-	mainLayout->addWidget(tabWidget);
+	mainLayout->addLayout(splitLayout);
+	splitLayout->addWidget(telemetry);
+	splitLayout->addWidget(tabWidget);
 
 	mainLayout->addStretch(1);
 

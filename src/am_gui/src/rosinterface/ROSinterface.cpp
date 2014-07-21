@@ -15,7 +15,7 @@
 ROSinterface* ROSinterface::m_ROSinterface = 0;
 
 ROSinterface::ROSinterface(QObject *parent) :
-		  QObject(parent)
+				  QObject(parent)
 {
 	//Wait for the simulator services and wait for them to be available:
 	//  const std::string task_selector("/euroc_c2_task_selector");
@@ -76,11 +76,34 @@ int ROSinterface::sgn(double x)
 		return 0.0L;
 }
 
-void ROSinterface::callStartSimulator()
+void ROSinterface::callStartSimulator(int task)
 {
 	euroc_c2_msgs::StartSimulator start_simulator_srv;
-	start_simulator_srv.request.user_id = "demo user";
-	start_simulator_srv.request.scene_name = "task1_v1";
+	start_simulator_srv.request.user_id = "AM-Robotics";
+	switch(task){
+	case 0:
+		start_simulator_srv.request.scene_name = "task1_v1";
+		break;
+	case 1:
+		start_simulator_srv.request.scene_name = "task2_v1_1";
+		break;
+	case 2:
+		start_simulator_srv.request.scene_name = "task3_v1";
+		break;
+	case 3:
+		start_simulator_srv.request.scene_name = "task4_v1_1";
+		break;
+	case 4:
+		start_simulator_srv.request.scene_name = "task5_v1";
+		break;
+	case 5:
+		start_simulator_srv.request.scene_name = "task6_v1";
+		break;
+	default:
+		start_simulator_srv.request.scene_name = "task1_v1";
+		break;
+
+	}
 	start_simulator_client.call(start_simulator_srv);
 
 	// Check the response for errors
@@ -172,20 +195,20 @@ void ROSinterface::callMoveToTargetPose(double* target_pose_)
 	// Call the move request and check for errors
 	std::cout << "calling move_along_joint_path towards next target_zone" << std::endl;
 	move_along_joint_path_client.call(move_along_joint_path_srv);
-//	std::string &move_error_message = move_along_joint_path_srv.response.error_message;
-//	if(!move_error_message.empty()){
-//		std::cout << "Move failed: " + move_error_message << std::endl;
-//	}
+	//	std::string &move_error_message = move_along_joint_path_srv.response.error_message;
+	//	if(!move_error_message.empty()){
+	//		std::cout << "Move failed: " + move_error_message << std::endl;
+	//	}
 }
 
 // ROS Callback for the telemetry topic
 void ROSinterface::on_telemetry(const euroc_c2_msgs::Telemetry &telemetry){
 	_telemetry = telemetry;
 	for (int i=0;i<12;i++){
-	jointNames[i] = QString::fromStdString(_telemetry.joint_names[i]);
-	measuredPositions[i] = _telemetry.measured.position[i];
-	measuredForces[i] = _telemetry.measured.torque[i];
-	measuredExternalForces[i] = _telemetry.measured.external_torque[i];
+		jointNames[i] = QString::fromStdString(_telemetry.joint_names[i]);
+		measuredPositions[i] = _telemetry.measured.position[i];
+		measuredForces[i] = _telemetry.measured.torque[i];
+		measuredExternalForces[i] = _telemetry.measured.external_torque[i];
 	}
 
 	emit emitMeasuredValues(jointNames,measuredPositions,measuredForces,measuredExternalForces);

@@ -75,7 +75,7 @@ public:
 
 public slots:
 
-void callStartSimulator();
+void callStartSimulator(int);
 void callStopSimulator();
 void callMoveToTargetPose(double*);
 
