@@ -1,0 +1,11 @@
+# Searches for an inverse kinematic solution of the LWR for the specified tool center point (TCP) frame (see T_LWR from user manual). Note that the table axis joints are not included in the solution.
+
+# A starting joint configuration. The solution is determined to be close to this configuration. 'lwr_joint_1' - 'lwr_joint_7' in ascending order.
+Configuration start
+# The desired tcp frame.
+geometry_msgs/Pose tcp_frame
+---
+# An error message. Empty string indicates success.
+string error_message
+# The computed joint configuration of the LWR: 'lwr_joint_1' - 'lwr_joint_7' in ascending order.
+Configuration solution

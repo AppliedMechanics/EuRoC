@@ -1,0 +1,9 @@
+# En-/Disables the servo mode which allows to specify subsequent goal configurations
+# with SetServoTarget. While the servo mode is active the system cannot be moved with
+# MoveAlongJointPath.
+
+# Indicates whether to enable or disable the servo mode.
+bool servo_mode_active
+---
+# An error message. Empty string indicates success.
+string error_message

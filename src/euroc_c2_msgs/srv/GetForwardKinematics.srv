@@ -1,0 +1,9 @@
+# Computes the forward kinematics of the LWR given a joint configuration.
+
+# The specified configuration of the LWR: ascending from 'lwr_joint_1' to 'lwr_joint_7'.
+Configuration configuration
+---
+# An error message. Empty string indicates success.
+string error_message
+# The resulting pose of the lwr end-effector (see T_LWR from user manual). Does not include the table axis joints.
+geometry_msgs/Pose ee_frame

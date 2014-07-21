@@ -1,0 +1,5 @@
+# Manually request the simulation to eject the next object on the conveyor belt. Only for scenes containing a conveyor belt.
+
+---
+#An error message. Empty string indicates success.
+string error_message

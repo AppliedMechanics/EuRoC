@@ -1,0 +1,41 @@
+
+<package>
+  <name>am_gui</name>
+  <version>1.0.0</version>
+  <description>This node is a GUI for the control of the manipulator.</description>
+  <maintainer email="christoph.schuetz@tum.de">C. Schuetz</maintainer>
+
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/am_gui</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author>J. Baur</author>
+  <author>C. Schuetz</author>
+  <author>TUM</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>euroc_c2_msgs</build_depend>
+  <build_depend>crops_manipulator_utils</build_depend>
+
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>euroc_c2_msgs</run_depend>
+  <run_depend>crops_manipulator_utils</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>std_msgs</test_depend> -->
+  <!-- <test_depend>crops_manipulator_utils</test_depend> -->
+
+
+</package>

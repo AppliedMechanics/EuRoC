@@ -1,0 +1,31 @@
+<package>
+  <name>crops_manipulator_utils</name>
+  <version>1.0.0</version>
+  <description>utils</description>
+  <maintainer email="j.baur@tum.de">J. Baur</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/utils</url>
+
+  <author>tum</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>tf</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>std_msgs</test_depend> -->
+
+</package>

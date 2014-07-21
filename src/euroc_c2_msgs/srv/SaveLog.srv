@@ -1,0 +1,5 @@
+# Finalizes and saves the current log. This service needs to be called before the simulator is stopped in order to successfully record the log.
+
+---
+# An error message. Empty string indicates success.
+string error_message
