@@ -26,6 +26,12 @@ class TelemetryWidget : public QWidget
   QLabel* jointForceMeasure[12];
   QLabel* jointExternalForceMeasure[12];
 
+  QLabel* description[4];
+
+  bool isRevolute[12];
+  QString posUnit[2];
+  QString forceUnit[2];
+
   public:
 
   explicit TelemetryWidget(QWidget *parent = 0);
