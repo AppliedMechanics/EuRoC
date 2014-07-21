@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "am_gui");
   //ros::NodeHandle n;
   
+
   MainWindow w;
   w.RosInit();
   w.show();
