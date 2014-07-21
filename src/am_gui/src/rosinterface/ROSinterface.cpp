@@ -172,10 +172,10 @@ void ROSinterface::callMoveToTargetPose(double* target_pose_)
 	// Call the move request and check for errors
 	std::cout << "calling move_along_joint_path towards next target_zone" << std::endl;
 	move_along_joint_path_client.call(move_along_joint_path_srv);
-	std::string &move_error_message = move_along_joint_path_srv.response.error_message;
-	if(!move_error_message.empty()){
-		std::cout << "Move failed: " + move_error_message << std::endl;
-	}
+//	std::string &move_error_message = move_along_joint_path_srv.response.error_message;
+//	if(!move_error_message.empty()){
+//		std::cout << "Move failed: " + move_error_message << std::endl;
+//	}
 }
 
 // ROS Callback for the telemetry topic

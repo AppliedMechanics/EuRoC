@@ -20,7 +20,8 @@ QWidget(parent)
 	for (int i=0;i<4;i++){
 		description[i] = new QLabel("");
 		measuredGrid->addWidget(description[i],0,i);
-		description[i]->setStyleSheet("QLabel { background-color : white;}");
+
+		description[i]->setStyleSheet("QLabel { background-color : white; font-weight : bold;}");
 		if (i)
 			description[i]->setAlignment(Qt::AlignRight);
 	}
