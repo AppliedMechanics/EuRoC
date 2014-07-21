@@ -27,6 +27,9 @@
 #include <euroc_c2_msgs/Telemetry.h>
 #include <euroc_c2_msgs/GetForwardKinematics.h>
 
+
+#include <boost/thread.hpp>
+
 class ROSinterface : public QObject
 {
 	Q_OBJECT
@@ -69,6 +72,14 @@ private:
 	double  measuredPositions[12];
 	double  measuredForces[12];
 	double  measuredExternalForces[12];
+
+	boost::thread moveToTarget;
+
+	geometry_msgs::Pose pose;
+	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv;
+	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv;
+
+	void moveToTargetCB();
 public:
 
 	static ROSinterface* getInstance();

@@ -26,6 +26,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	//  const std::string telemetry = euroc_c2_interface + "/telemetry";
 	//  const std::string move_along_joint_path = euroc_c2_interface + "/move_along_joint_path";
 	//  const std::string search_ik_solution = euroc_c2_interface + "/search_ik_solution";
+
 	task_selector = "/euroc_c2_task_selector";
 	start_simulator= (task_selector + "/start_simulator");
 	stop_simulator= (task_selector + "/stop_simulator");
@@ -126,9 +127,10 @@ void ROSinterface::callMoveToTargetPose(double* target_pose_)
 	ros::service::waitForService(move_along_joint_path);
 	ros::service::waitForService(search_ik_solution);
 
-	geometry_msgs::Pose pose;
-	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv;
-	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv;
+
+//	geometry_msgs::Pose pose;
+//	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv;
+//	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv;
 
 	pose.position.x = target_pose_[0];
 	pose.position.y = target_pose_[1];
@@ -138,6 +140,12 @@ void ROSinterface::callMoveToTargetPose(double* target_pose_)
 	pose.orientation.y = target_pose_[5];
 	pose.orientation.z = target_pose_[6];
 
+
+	moveToTarget = boost::thread(&ROSinterface::moveToTargetCB,this);
+}
+
+void ROSinterface::moveToTargetCB()
+{
 	// Populate a vector with all the lwr joint names
 	const unsigned int nr_lwr_joints = 7;
 	std::vector<std::string> lwr_joints(nr_lwr_joints);
@@ -199,6 +207,7 @@ void ROSinterface::callMoveToTargetPose(double* target_pose_)
 	//	if(!move_error_message.empty()){
 	//		std::cout << "Move failed: " + move_error_message << std::endl;
 	//	}
+
 }
 
 // ROS Callback for the telemetry topic

@@ -57,7 +57,6 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(timer, SIGNAL(timeout()), this, SLOT(RosSpin()));
 	timer->start(1000);
 
-
 }
 
 

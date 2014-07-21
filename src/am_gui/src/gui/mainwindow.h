@@ -18,6 +18,9 @@
 #include "ROSinterface.hpp"
 #include "ros/ros.h"
 
+
+#include <boost/thread.hpp>
+
 #define DOFS 9
 
 class MainWindow : public QMainWindow
@@ -38,7 +41,6 @@ class MainWindow : public QMainWindow
 
   TelemetryWidget *telemetry;
   SimpleControlWidget *simplecontrol;
-
 
  public:
   //ros
