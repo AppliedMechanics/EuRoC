@@ -1,6 +1,13 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <sstream>
+
+void listenerCallback(const std_msgs::String::ConstPtr& msg)
+{
+	ROS_INFO("I got: [%s]",msg->data.c_str());
+}
 
 int main(int argc, char **argv)
 {
@@ -24,9 +31,22 @@ int main(int argc, char **argv)
 
   int64_t count=0;
 
+  boost::thread listen(listenerCallback&);
+
   //main loop
   while(ros::ok())
   {
+	  std_msgs::String msg;
+
+	  msg.data = "Hello World";
+
+	  ROS_INFO("%s",msg.data.c_str());
+
+	  //send a message
+	  sm_pub.publish(msg);
+
+	  //"tick"
+	  ros::spinOnce();
 
 	  //sleep for the remaining time
 	  loop_rate.sleep();
