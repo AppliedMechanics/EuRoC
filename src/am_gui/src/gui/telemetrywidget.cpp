@@ -24,6 +24,7 @@ QWidget(parent)
 		description[i]->setStyleSheet("QLabel { background-color : white; font-weight : bold;}");
 		if (i)
 			description[i]->setAlignment(Qt::AlignRight);
+			description[i]->setAlignment(Qt::AlignVCenter);
 	}
 	description[0]->setText("Joint Name");
 	description[1]->setText("Position");
@@ -37,16 +38,16 @@ QWidget(parent)
 		jointForceMeasure[i]				= new QLabel("0.0 Nm");
 		jointExternalForceMeasure[i]		= new QLabel("0.0 Nm");
 
-		jointLabels[i]->setAlignment(Qt::AlignLeft);
-		jointPositionMeasure[i]->setAlignment(Qt::AlignRight);
-		jointForceMeasure[i]->setAlignment(Qt::AlignRight);
-		jointExternalForceMeasure[i]->setAlignment(Qt::AlignRight);
+		jointLabels[i]->setStyleSheet("QLabel { qproperty-alignment: 'AlignVCenter | AlignLeft';}");
+		jointPositionMeasure[i]->setStyleSheet("QLabel { qproperty-alignment: 'AlignVCenter | AlignRight';}");
+		jointForceMeasure[i]->setStyleSheet("QLabel { qproperty-alignment: 'AlignVCenter | AlignRight';}");
+		jointExternalForceMeasure[i]->setStyleSheet("QLabel { qproperty-alignment: 'AlignVCenter | AlignRight';}");
 
 		if (i%2){
-			jointLabels[i]->setStyleSheet("QLabel { background-color : white;}");
-			jointPositionMeasure[i]->setStyleSheet("QLabel { background-color : white;}");
-			jointForceMeasure[i]->setStyleSheet("QLabel { background-color : white;}");
-			jointExternalForceMeasure[i]->setStyleSheet("QLabel { background-color : white;}");
+			jointLabels[i]->setStyleSheet("QLabel { background-color : white; qproperty-alignment: 'AlignVCenter | AlignLeft';}");
+			jointPositionMeasure[i]->setStyleSheet("QLabel { background-color : white; qproperty-alignment: 'AlignVCenter | AlignRight';}");
+			jointForceMeasure[i]->setStyleSheet("QLabel { background-color : white; qproperty-alignment: 'AlignVCenter | AlignRight';}");
+			jointExternalForceMeasure[i]->setStyleSheet("QLabel { background-color : white; qproperty-alignment: 'AlignVCenter | AlignRight';}");
 		}
 		measuredGrid->addWidget(jointLabels[i],i+1,0);
 		measuredGrid->addWidget(jointPositionMeasure[i],i+1,1);
@@ -70,15 +71,15 @@ QWidget(parent)
 
 	//! Connect with ROSinterface
 	ROSinterface* rosinterface = ROSinterface::getInstance();
-	connect(rosinterface,SIGNAL(emitMeasuredValues(QString*, double*, double*, double*)),this,SLOT(showMeasure(QString*,double*, double*, double*)));
+	connect(rosinterface,SIGNAL(emitMeasuredValues(std::vector<std::string>, double*, double*, double*)),this,SLOT(showMeasure(std::vector<std::string>,double*, double*, double*)));
 }
 
-void TelemetryWidget::showMeasure(QString* jointNames,double* position, double* force, double* extforce )
+void TelemetryWidget::showMeasure(std::vector<std::string> jointNames,double* position, double* force, double* extforce )
 {
 
 	for (int i=0;i<12;i++)
 	{
-		jointLabels[i]->setText(jointNames[i]);
+		jointLabels[i]->setText(QString::fromStdString(jointNames[i]));
 		jointPositionMeasure[i]->setText(QString::number(position[i],'f',3)+posUnit[isRevolute[i]]);
 		jointForceMeasure[i]->setText(QString::number(force[i],'f',2)+forceUnit[isRevolute[i]]);
 		jointExternalForceMeasure[i]->setText(QString::number(extforce[i],'f',2)+forceUnit[isRevolute[i]]);

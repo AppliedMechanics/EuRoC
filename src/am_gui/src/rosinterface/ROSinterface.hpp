@@ -68,16 +68,17 @@ private:
 	std::string move_along_joint_path;
 	std::string search_ik_solution;
 
-	QString jointNames[12];
-	double  measuredPositions[12];
-	double  measuredForces[12];
-	double  measuredExternalForces[12];
+	std::vector<std::string> joint_names_;
+	double  measured_positions_[12];
+	double  measured_forces_[12];
+	double  measured_external_forces_[12];
 
+	bool getIKSolution7DOF();
 	boost::thread moveToTarget;
 
-	geometry_msgs::Pose pose;
-	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv;
-	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv;
+	geometry_msgs::Pose pose_;
+	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
+	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 
 	void moveToTargetCB();
 public:
@@ -88,15 +89,18 @@ public slots:
 
 void callStartSimulator(int);
 void callStopSimulator();
+void callSetCustomGoalConfiguration(double*);
 void callMoveToTargetPose(double*);
+
+void sendCurrentCfgOnce();
 
 void on_telemetry(const euroc_c2_msgs::Telemetry &telemetry);
 private slots:
 
 
 signals:
-	void emitMeasuredValues(QString*, double*, double*, double*);
-
+void emitMeasuredValues(std::vector<std::string>, double*, double*, double*);
+void emitCurrentCfgOnce(std::vector<std::string>,double*);
 
 };
 

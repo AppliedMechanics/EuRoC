@@ -41,7 +41,7 @@ class TelemetryWidget : public QWidget
 
    public slots:
 
-   void showMeasure(QString* jointNames,double* position, double* force, double* extforce );
+   void showMeasure(std::vector<std::string> jointNames,double* position, double* force, double* extforce );
 
     private slots:
 

@@ -26,9 +26,13 @@ class SimpleControlWidget : public QWidget
   double kardan[3];
 
   double pose[7]; //Format: x,y,z,w,x,y,z
+  double cfg_[12]; //Format: x,y,q1,q2,....,q7,gripper,cam pan,cam tilt
 
   QDoubleSpinBox* trans_input[3];
   QDoubleSpinBox* kardan_input[3];
+
+  QDoubleSpinBox* cfg_input_[12];
+  QLabel* joint_names_[12];
 
   public:
 
@@ -37,12 +41,17 @@ class SimpleControlWidget : public QWidget
   signals:
 
   void moveToTargetPose(double*);
+  void moveToTargetCfg(double*);
+
 
    public slots:
+
+   void updateCfg(std::vector<std::string>,double*);
 
     private slots:
 
     void moveToTargetPoseCallback();
+    void moveToTargetCfgCallback();
 
 };
 
