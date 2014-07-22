@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(am_gui)
 # Load catkin and all dependencies required for this package
-find_package(catkin REQUIRED COMPONENTS roscpp roslib std_msgs crops_manipulator_utils)
+find_package(catkin REQUIRED COMPONENTS roscpp roslib std_msgs crops_manipulator_utils urdf)
 
 # qt compatibility added by J. Baur
 find_package(Qt4 REQUIRED COMPONENTS QtCore QtGui Qtnetwork)
@@ -25,7 +25,6 @@ set(QT_MY_INCLUDES
   src
   src/rosinterface
   src/gui
-  src/gui/components
   )
 
 # #set the default path for built executables to the "bin" directory

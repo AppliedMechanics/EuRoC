@@ -7,6 +7,7 @@
 #include <QTextStream>
 #include <QString>
 #include <vector>
+#include <urdf/model.h>
 #include <ros/package.h> 
 
 #include <ros/ros.h>
@@ -17,6 +18,7 @@
 #include <std_msgs/Float64.h>
 
 #include <tf_rot.hpp>
+#include <joint_info.hpp>
 
 // EUROC 
 #include <euroc_c2_msgs/StartSimulator.h>
@@ -80,7 +82,15 @@ private:
 	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
 	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 
+	urdf::Model model_robot_;
+	urdf::Model model_gripper_;
+
+	std::vector<jointinfo> system_limits_;
+
 	void moveToTargetCB();
+
+	void getUrdfConf();
+
 public:
 
 	static ROSinterface* getInstance();

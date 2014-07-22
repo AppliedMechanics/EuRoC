@@ -16,6 +16,7 @@ ROSinterface* ROSinterface::m_ROSinterface = 0;
 
 ROSinterface::ROSinterface(QObject *parent) :
 				  joint_names_(12),
+				  system_limits_(12),
 						  QObject(parent)
 {
 	//Wait for the simulator services and wait for them to be available:
@@ -139,12 +140,13 @@ void ROSinterface::callSetCustomGoalConfiguration(double* commanded_joint_positi
 		move_along_joint_path_srv_.request.joint_names = joint_names_; // Select all lwr joints
 		move_along_joint_path_srv_.request.path.resize(1); // Our path has only one waypoint
 
+		getUrdfConf();
 		// Initialize the velocity and acceleration limits of the joints
 		move_along_joint_path_srv_.request.joint_limits.resize(12);
 		for(unsigned int i = 0; i < 12; ++i){
 			euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
-			limits.max_velocity = 20 * M_PI / 180.0; // 20 degrees per second
-			limits.max_acceleration = 400 * M_PI / 180.0;
+			limits.max_velocity = system_limits_[i].vel_limit; // 20 degrees per second
+			limits.max_acceleration = system_limits_[i].acc_limit;
 		}
 		// current_configuration will hold our current joint position data extracted from the measured telemetry
 		euroc_c2_msgs::Configuration commanded_configuration;
@@ -256,6 +258,59 @@ void ROSinterface::on_telemetry(const euroc_c2_msgs::Telemetry &telemetry){
 	}
 
 	emit emitMeasuredValues(joint_names_,measured_positions_,measured_forces_,measured_external_forces_);
+}
+
+void ROSinterface::getUrdfConf()
+{
+
+  std::string robotType;
+  std::string urdf_robot = ros::package::getPath("am_robot_model");
+  std::string gripper_urdf = urdf_robot;
+  std::stringstream joint_name;
+
+  urdf_robot.append("/kuka_lwr/kuka_lwr_mod.urdf");
+  gripper_urdf.append("/pg70_gripper/pg70_gripper_mod.urdf");
+
+
+  system_limits_[0].pos_limit_0 =  -1.84;
+  system_limits_[0].pos_limit_1 =   1.84;
+  system_limits_[0].vel_limit   =   0.5;
+  system_limits_[0].acc_limit   =   0.5*(120.0/17.6);  // mass LWR + gripper = 17.6kg
+  system_limits_[1] = system_limits_[0];
+
+  if (!model_robot_.initFile(urdf_robot)){
+	  ROS_WARN("Failed to parse KUKA lwr urdf file.");
+  }
+  else{
+	  for (int i=2;i<9;i++){
+		  joint_name.str("joint");
+		  joint_name.seekp(0, std::ios_base::end);
+		  joint_name << (i-1);
+		  system_limits_[i].pos_limit_0 = (model_robot_.getJoint(joint_name.str()))->limits->lower;
+		  system_limits_[i].pos_limit_1 = (model_robot_.getJoint(joint_name.str()))->limits->upper;
+		  system_limits_[i].vel_limit   = (model_robot_.getJoint(joint_name.str()))->limits->velocity;
+		  system_limits_[i].acc_limit   = (model_robot_.getJoint(joint_name.str()))->limits->effort;
+	  }
+  }
+  if (!model_gripper_.initFile(gripper_urdf)){
+	  ROS_WARN("Failed to parse gripper urdf file.");
+  }
+  else{
+		  joint_name.str("joint_before_finger2");
+		  system_limits_[9].pos_limit_0 = (model_gripper_.getJoint(joint_name.str()))->limits->lower;
+		  system_limits_[9].pos_limit_1 = (model_gripper_.getJoint(joint_name.str()))->limits->upper * 2.0;
+		  system_limits_[9].vel_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->velocity;
+		  system_limits_[9].acc_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->effort;
+  }
+
+  for (int i=10;i<12;i++)
+  {
+	  system_limits_[i].pos_limit_0 = -M_PI;
+	  system_limits_[i].pos_limit_1 = M_PI;
+	  system_limits_[i].vel_limit   = 1.7453; // 20 degrees per second
+	  system_limits_[i].acc_limit   = 400 * M_PI / 180.0;
+  }
+
 }
 
 
