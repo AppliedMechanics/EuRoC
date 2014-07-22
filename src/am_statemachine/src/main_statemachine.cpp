@@ -4,10 +4,6 @@
 #include <boost/thread/mutex.hpp>
 #include <sstream>
 
-void listenerCallback(const std_msgs::String::ConstPtr& msg)
-{
-	ROS_INFO("I got: [%s]",msg->data.c_str());
-}
 
 int main(int argc, char **argv)
 {
@@ -26,12 +22,11 @@ int main(int argc, char **argv)
   //second argument: message queue
   ros::Publisher sm_pub = sm_node.advertise<std_msgs::String>("sm_pub",1000);
 
+
   //update rate
   ros::Rate loop_rate(100);
 
   int64_t count=0;
-
-  boost::thread listen(listenerCallback&);
 
   //main loop
   while(ros::ok())
