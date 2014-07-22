@@ -257,3 +257,5 @@ void ROSinterface::on_telemetry(const euroc_c2_msgs::Telemetry &telemetry){
 
 	emit emitMeasuredValues(joint_names_,measured_positions_,measured_forces_,measured_external_forces_);
 }
+
+
