@@ -21,6 +21,7 @@ QWidget(parent)
 	//Buttons
 	QPushButton* startButton = new QPushButton("&Start Simulator");
 	QPushButton* stopButton = new QPushButton("&Stop Simulator");
+	callNextObjectButton_ = new QPushButton("&Next Object on belt");
 
 	//Dropdown List
 	taskSelection = new QComboBox(this);
@@ -28,8 +29,10 @@ QWidget(parent)
 	//add Widgets to layouts
 	buttonLayout->addWidget(startButton);
 	buttonLayout->addWidget(stopButton);
+	buttonLayout->addWidget(callNextObjectButton_);
 	mainLayout->addWidget(taskSelection);
 	mainLayout->addLayout(buttonLayout);
+
 
 	//  connect(stopButton, SIGNAL(clicked()), this, SLOT(stopPressed()));
 	//  connect(resetButton, SIGNAL(clicked()), this, SLOT(resetPressed()));
@@ -41,6 +44,9 @@ QWidget(parent)
 
 	connect(this,SIGNAL(callStartSimulator(std::string)),rosinterface,SLOT(callStartSimulator(std::string)));
 	connect(stopButton, SIGNAL(clicked()),rosinterface,SLOT(callStopSimulator()));
+	connect(callNextObjectButton_,SIGNAL(clicked()),rosinterface,SLOT(callNextObject()));
+
+	connect(taskSelection,SIGNAL(currentIndexChanged(QString)),this,SLOT(taskSelectionChanged(QString)));
 
 	updateTasks();
 
@@ -57,4 +63,9 @@ void ManipulatorStatusWidget::updateTasks()
 void ManipulatorStatusWidget::startSimulatorWithTask()
 {
 	emit callStartSimulator(taskSelection->currentText().toStdString());
+}
+
+void ManipulatorStatusWidget::taskSelectionChanged(QString curr_selection)
+{
+	callNextObjectButton_->setEnabled(curr_selection.startsWith("task6"));
 }

@@ -20,7 +20,7 @@ class ManipulatorStatusWidget : public QWidget
 
   ROSinterface  *rosinterface;
   QComboBox* taskSelection;
-
+  QPushButton* callNextObjectButton_;
 public:
   
   explicit ManipulatorStatusWidget(QWidget *parent = 0);
@@ -34,7 +34,7 @@ void updateTasks();
 
 private slots:
 void startSimulatorWithTask();
-
+void taskSelectionChanged(QString);
 };
 
 #endif // MANIPULATORSTATUSWIDGET_H

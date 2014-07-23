@@ -2,7 +2,7 @@
 #define ROSINTERFACE_H
 
 #include <QObject>
-//#include <QUdpSocket>
+
 #include <QFile>
 #include <QTextStream>
 #include <QString>
@@ -24,7 +24,9 @@
 #include <euroc_c2_msgs/ListScenes.h>
 #include <euroc_c2_msgs/StartSimulator.h>
 #include <euroc_c2_msgs/StopSimulator.h>
+#include <euroc_c2_msgs/RequestNextObject.h>
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
+#include <euroc_c2_msgs/GetTimingAlongJointPath.h>
 #include <euroc_c2_msgs/SearchIkSolution.h>
 
 #include <euroc_c2_msgs/Telemetry.h>
@@ -47,31 +49,34 @@ private:
 	static ROSinterface* m_ROSinterface;
 	int sgn(double);
 
-
 	ros::NodeHandle nh;
 
-	ros::ServiceClient start_simulator_client;
-	ros::ServiceClient stop_simulator_client;
-	ros::ServiceClient list_scenes_client;
+	ros::ServiceClient start_simulator_client_;
+	ros::ServiceClient stop_simulator_client_;
+	ros::ServiceClient list_scenes_client_;
+	ros::ServiceClient next_object_client_;
 
-	ros::ServiceClient move_along_joint_path_client;
-	ros::ServiceClient search_ik_solution_client;
+	ros::ServiceClient move_along_joint_path_client_;
+	ros::ServiceClient timing_along_joint_path_client_;
+	ros::ServiceClient search_ik_solution_client_;
 
-	ros::Subscriber telemetry_subscriber;
+	ros::Subscriber telemetry_subscriber_;
 
 	euroc_c2_msgs::Telemetry _telemetry;
 
 
 	//Wait for the simulator services and wait for them to be available:
-	std::string task_selector;
-	std::string start_simulator;
-	std::string stop_simulator;
-	std::string list_scenes;
+	std::string task_selector_;
+	std::string start_simulator_;
+	std::string stop_simulator_;
+	std::string list_scenes_;
+	std::string next_object_;
 
-	std::string euroc_c2_interface;
-	std::string telemetry;
-	std::string move_along_joint_path;
-	std::string search_ik_solution;
+	std::string euroc_c2_interface_;
+	std::string telemetry_;
+	std::string move_along_joint_path_;
+	std::string timing_along_joint_path_;
+	std::string search_ik_solution_;
 
 	std::vector<std::string> joint_names_;
 	double  measured_positions_[12];
@@ -84,7 +89,9 @@ private:
 	geometry_msgs::Pose pose_;
 	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
 	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
+	euroc_c2_msgs::GetTimingAlongJointPath timing_along_joint_path_srv_;
 	euroc_c2_msgs::ListScenes list_scenes_srv_;
+	euroc_c2_msgs::RequestNextObject next_object_srv_;
 
 	urdf::Model model_robot_;
 	urdf::Model model_gripper_;
@@ -107,12 +114,14 @@ void callStartSimulator(std::string);
 void callStopSimulator();
 void callSetCustomGoalConfiguration(double*);
 void callMoveToTargetPose(double*);
+void callNextObject();
 
 void sendCurrentCfgOnce();
 
 void on_telemetry(const euroc_c2_msgs::Telemetry &telemetry);
 private slots:
 
+void getTimingAlongJointPath();
 
 signals:
 void emitMeasuredValues(std::vector<std::string>, double*, double*, double*);
