@@ -1,9 +1,0 @@
-# Sets the next goal configuration while in servo mode. The servo mode needs to be activated with EnableServoMode.
-
-# The selected joints for the movement. Defines a mapping for the target configuration.
-string[] joint_names
-# The desired joint configuration.
-Configuration target
----
-# An error message. Empty string indicates success.
-string error_message

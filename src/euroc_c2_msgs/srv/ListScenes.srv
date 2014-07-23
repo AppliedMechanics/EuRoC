@@ -1,7 +1,0 @@
-# Lists the availabe scenes / tasks for the EuRoC Challenge 2 Simulation.
-
----
-# An error message: Empty string indicates success.
-string error_message
-# The list of availabe scenes.
-Scene[] scenes

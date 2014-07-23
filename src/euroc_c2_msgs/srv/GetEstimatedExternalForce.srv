@@ -1,7 +1,0 @@
-# Estimates the external forces applied to the tool center point (TCP).
-
----
-# An error message. Empty string indicates success.
-string error_message
-# The estimated external forces applied to the TCP.
-geometry_msgs/Wrench external_force

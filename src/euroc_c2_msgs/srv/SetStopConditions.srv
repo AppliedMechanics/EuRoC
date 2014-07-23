@@ -1,7 +1,0 @@
-# Sets the specified stop conditions on which to stop during movement.
-
-#The array of desired stop conditions. See StopCondition.msg for details.
-StopCondition[] conditions
----
-#An error message. Empty string indicates success.
-string error_message

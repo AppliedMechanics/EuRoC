@@ -1,9 +1,0 @@
-# Sets the object load at the tool center point (TCP). This allows the internal movement generation and force estimation algorithms to include the forces resulting from the object load as internal forces.
-
-# The mass of the object in [kg].
-float64 mass
-# The center of gravity relative to the TCP.
-geometry_msgs/Vector3 center_of_gravity
----
-# An optional error message. Empty string indicates success.
-string error_message
