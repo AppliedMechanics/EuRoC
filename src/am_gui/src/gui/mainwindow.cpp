@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
 	//generate timer to call ros::spin() for callback functions
 	QTimer *timer = new QTimer(this);
 	connect(timer, SIGNAL(timeout()), this, SLOT(RosSpin()));
-	timer->start(1000);
+	timer->start(500);
 
 }
 

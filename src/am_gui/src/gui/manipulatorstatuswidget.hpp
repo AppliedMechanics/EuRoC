@@ -26,10 +26,11 @@ public:
   explicit ManipulatorStatusWidget(QWidget *parent = 0);
 
 signals:
-void callStartSimulator(int task);
+void callStartSimulator(std::string);
 
 public slots:
 
+void updateTasks();
 
 private slots:
 void startSimulatorWithTask();

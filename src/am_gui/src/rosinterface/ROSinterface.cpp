@@ -15,33 +15,42 @@
 ROSinterface* ROSinterface::m_ROSinterface = 0;
 
 ROSinterface::ROSinterface(QObject *parent) :
-				  joint_names_(12),
-				  system_limits_(12),
+						  joint_names_(12),
+						  system_limits_(12),
+						  scenes_(1),
 						  QObject(parent)
 {
 	//Wait for the simulator services and wait for them to be available:
 	task_selector = "/euroc_c2_task_selector";
 	start_simulator= (task_selector + "/start_simulator");
 	stop_simulator= (task_selector + "/stop_simulator");
+	list_scenes = (task_selector + "/list_scenes");
 
 	euroc_c2_interface = "/euroc_interface_node";
 	telemetry = euroc_c2_interface + "/telemetry";
 	move_along_joint_path = euroc_c2_interface + "/move_along_joint_path";
 	search_ik_solution = euroc_c2_interface + "/search_ik_solution";
 
+	ros::service::waitForService(list_scenes);
 	ros::service::waitForService(start_simulator);
 	ros::service::waitForService(stop_simulator);
 
 	move_along_joint_path_client = nh.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path);
 	search_ik_solution_client = nh.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution);
 
+	list_scenes_client     = nh.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes);
 	start_simulator_client = nh.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator);
 	stop_simulator_client  = nh.serviceClient<euroc_c2_msgs::StopSimulator>(stop_simulator);
 
-
 	telemetry_subscriber = nh.subscribe(telemetry, 1, &ROSinterface::on_telemetry,this);
 
+	if (!getSceneList())
+		ROS_WARN("No scenes found.");
+
+
+
 }
+
 
 ROSinterface::~ROSinterface()
 {
@@ -51,7 +60,7 @@ ROSinterface::~ROSinterface()
 ROSinterface* ROSinterface::getInstance()
 {
 
-	if (m_ROSinterface == NULL)euroc_c2_msgs::SearchIkSolution search_ik_solution_srv;
+	if (m_ROSinterface == NULL)
 	{
 		m_ROSinterface = new ROSinterface();
 	}
@@ -70,34 +79,41 @@ int ROSinterface::sgn(double x)
 		return 0.0L;
 }
 
-void ROSinterface::callStartSimulator(int task)
+bool ROSinterface::getSceneList()
+{
+	/* The list scenes service returns all available scenes / tasks in the EuRoC C2 Simulation Challenge.
+	     Each scene has a name and a description specified in yaml format.  */
+	list_scenes_client.call(list_scenes_srv_);
+
+	// The error_message field of each service response indicates whether an error occured. An empty string indicates success
+	std::string &ls_error_message = list_scenes_srv_.response.error_message;
+	if(!ls_error_message.empty()){
+		ROS_ERROR("List scenes failed: %s", ls_error_message.c_str());
+		return false;
+	}
+	else
+	{
+		// Let's print the names of the received scenes
+//		std::cout << "[AM] Found the following scenes for the EuRoC C2 Simulation:" << std::endl;
+
+		scenes_.resize(list_scenes_srv_.response.scenes.size());
+		scenes_ = list_scenes_srv_.response.scenes;
+//		for(unsigned int i = 0; i < scenes_.size(); ++i){
+//			euroc_c2_msgs::Scene &scene = scenes_[i];
+//			std::cout << " - " << scene.name << std::endl;
+//		}
+		return true;
+	}
+
+}
+
+void ROSinterface::callStartSimulator(std::string task)
 {
 	euroc_c2_msgs::StartSimulator start_simulator_srv;
 	start_simulator_srv.request.user_id = "AM-Robotics";
-	switch(task){
-	case 0:
-		start_simulator_srv.request.scene_name = "task1_v1";
-		break;
-	case 1:
-		start_simulator_srv.request.scene_name = "task2_v1_1";
-		break;
-	case 2:
-		start_simulator_srv.request.scene_name = "task3_v1";
-		break;
-	case 3:
-		start_simulator_srv.request.scene_name = "task4_v1_1";
-		break;
-	case 4:
-		start_simulator_srv.request.scene_name = "task5_v1";
-		break;
-	case 5:
-		start_simulator_srv.request.scene_name = "task6_v1";
-		break;
-	default:
-		start_simulator_srv.request.scene_name = "task1_v1";
-		break;
 
-	}
+	start_simulator_srv.request.scene_name = task;
+
 	start_simulator_client.call(start_simulator_srv);
 
 	// Check the response for errors
@@ -137,31 +153,31 @@ void ROSinterface::callMoveToTargetPose(double* target_pose)
 
 void ROSinterface::callSetCustomGoalConfiguration(double* commanded_joint_positions)
 {
-		move_along_joint_path_srv_.request.joint_names = joint_names_; // Select all lwr joints
-		move_along_joint_path_srv_.request.path.resize(1); // Our path has only one waypoint
+	move_along_joint_path_srv_.request.joint_names = joint_names_; // Select all lwr joints
+	move_along_joint_path_srv_.request.path.resize(1); // Our path has only one waypoint
 
-		getUrdfConf();
-		// Initialize the velocity and acceleration limits of the joints
-		move_along_joint_path_srv_.request.joint_limits.resize(12);
-		for(unsigned int i = 0; i < 12; ++i){
-			euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
-			limits.max_velocity = system_limits_[i].vel_limit; // 20 degrees per second
-			limits.max_acceleration = system_limits_[i].acc_limit;
-		}
-		// current_configuration will hold our current joint position data extracted from the measured telemetry
-		euroc_c2_msgs::Configuration commanded_configuration;
-		commanded_configuration.q.resize(12);
+	getUrdfConf();
+	// Initialize the velocity and acceleration limits of the joints
+	move_along_joint_path_srv_.request.joint_limits.resize(12);
+	for(unsigned int i = 0; i < 12; ++i){
+		euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
+		limits.max_velocity = system_limits_[i].vel_limit; // 20 degrees per second
+		limits.max_acceleration = system_limits_[i].acc_limit;
+	}
+	// current_configuration will hold our current joint position data extracted from the measured telemetry
+	euroc_c2_msgs::Configuration commanded_configuration;
+	commanded_configuration.q.resize(12);
 
-		// Get the current configuration from the telemetry message
-		for(unsigned int i = 0; i < 12; ++i){
-			commanded_configuration.q[i] = commanded_joint_positions[i];
-		}
+	// Get the current configuration from the telemetry message
+	for(unsigned int i = 0; i < 12; ++i){
+		commanded_configuration.q[i] = commanded_joint_positions[i];
+	}
 
-		// Extract the solution configuration from the response and fill it into the path of the move request
-		std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
-		path[0] = commanded_configuration;
+	// Extract the solution configuration from the response and fill it into the path of the move request
+	std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
+	path[0] = commanded_configuration;
 
-		moveToTarget = boost::thread(&ROSinterface::moveToTargetCB,this);
+	moveToTarget = boost::thread(&ROSinterface::moveToTargetCB,this);
 }
 
 
@@ -263,53 +279,53 @@ void ROSinterface::on_telemetry(const euroc_c2_msgs::Telemetry &telemetry){
 void ROSinterface::getUrdfConf()
 {
 
-  std::string robotType;
-  std::string urdf_robot = ros::package::getPath("am_robot_model");
-  std::string gripper_urdf = urdf_robot;
-  std::stringstream joint_name;
+	std::string robotType;
+	std::string urdf_robot = ros::package::getPath("am_robot_model");
+	std::string gripper_urdf = urdf_robot;
+	std::stringstream joint_name;
 
-  urdf_robot.append("/kuka_lwr/kuka_lwr_mod.urdf");
-  gripper_urdf.append("/pg70_gripper/pg70_gripper_mod.urdf");
+	urdf_robot.append("/kuka_lwr/kuka_lwr_mod.urdf");
+	gripper_urdf.append("/pg70_gripper/pg70_gripper_mod.urdf");
 
 
-  system_limits_[0].pos_limit_0 =  -1.84;
-  system_limits_[0].pos_limit_1 =   1.84;
-  system_limits_[0].vel_limit   =   0.5;
-  system_limits_[0].acc_limit   =   0.5*(120.0/17.6);  // mass LWR + gripper = 17.6kg
-  system_limits_[1] = system_limits_[0];
+	system_limits_[0].pos_limit_0 =  -1.84;
+	system_limits_[0].pos_limit_1 =   1.84;
+	system_limits_[0].vel_limit   =   0.5;
+	system_limits_[0].acc_limit   =   0.5*(120.0/17.6);  // mass LWR + gripper = 17.6kg
+	system_limits_[1] = system_limits_[0];
 
-  if (!model_robot_.initFile(urdf_robot)){
-	  ROS_WARN("Failed to parse KUKA lwr urdf file.");
-  }
-  else{
-	  for (int i=2;i<9;i++){
-		  joint_name.str("joint");
-		  joint_name.seekp(0, std::ios_base::end);
-		  joint_name << (i-1);
-		  system_limits_[i].pos_limit_0 = (model_robot_.getJoint(joint_name.str()))->limits->lower;
-		  system_limits_[i].pos_limit_1 = (model_robot_.getJoint(joint_name.str()))->limits->upper;
-		  system_limits_[i].vel_limit   = (model_robot_.getJoint(joint_name.str()))->limits->velocity;
-		  system_limits_[i].acc_limit   = (model_robot_.getJoint(joint_name.str()))->limits->effort;
-	  }
-  }
-  if (!model_gripper_.initFile(gripper_urdf)){
-	  ROS_WARN("Failed to parse gripper urdf file.");
-  }
-  else{
-		  joint_name.str("joint_before_finger2");
-		  system_limits_[9].pos_limit_0 = (model_gripper_.getJoint(joint_name.str()))->limits->lower;
-		  system_limits_[9].pos_limit_1 = (model_gripper_.getJoint(joint_name.str()))->limits->upper * 2.0;
-		  system_limits_[9].vel_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->velocity;
-		  system_limits_[9].acc_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->effort;
-  }
+	if (!model_robot_.initFile(urdf_robot)){
+		ROS_WARN("Failed to parse KUKA lwr urdf file.");
+	}
+	else{
+		for (int i=2;i<9;i++){
+			joint_name.str("joint");
+			joint_name.seekp(0, std::ios_base::end);
+			joint_name << (i-1);
+			system_limits_[i].pos_limit_0 = (model_robot_.getJoint(joint_name.str()))->limits->lower;
+			system_limits_[i].pos_limit_1 = (model_robot_.getJoint(joint_name.str()))->limits->upper;
+			system_limits_[i].vel_limit   = (model_robot_.getJoint(joint_name.str()))->limits->velocity;
+			system_limits_[i].acc_limit   = (model_robot_.getJoint(joint_name.str()))->limits->effort;
+		}
+	}
+	if (!model_gripper_.initFile(gripper_urdf)){
+		ROS_WARN("Failed to parse gripper urdf file.");
+	}
+	else{
+		joint_name.str("joint_before_finger2");
+		system_limits_[9].pos_limit_0 = (model_gripper_.getJoint(joint_name.str()))->limits->lower;
+		system_limits_[9].pos_limit_1 = (model_gripper_.getJoint(joint_name.str()))->limits->upper * 2.0;
+		system_limits_[9].vel_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->velocity;
+		system_limits_[9].acc_limit   = (model_gripper_.getJoint(joint_name.str()))->limits->effort;
+	}
 
-  for (int i=10;i<12;i++)
-  {
-	  system_limits_[i].pos_limit_0 = -M_PI;
-	  system_limits_[i].pos_limit_1 = M_PI;
-	  system_limits_[i].vel_limit   = 1.7453; // 20 degrees per second
-	  system_limits_[i].acc_limit   = 400 * M_PI / 180.0;
-  }
+	for (int i=10;i<12;i++)
+	{
+		system_limits_[i].pos_limit_0 = -M_PI;
+		system_limits_[i].pos_limit_1 = M_PI;
+		system_limits_[i].vel_limit   = 1.7453; // 20 degrees per second
+		system_limits_[i].acc_limit   = 400 * M_PI / 180.0;
+	}
 
 }
 

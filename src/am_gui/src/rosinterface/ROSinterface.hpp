@@ -21,6 +21,7 @@
 #include <joint_info.hpp>
 
 // EUROC 
+#include <euroc_c2_msgs/ListScenes.h>
 #include <euroc_c2_msgs/StartSimulator.h>
 #include <euroc_c2_msgs/StopSimulator.h>
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
@@ -51,6 +52,7 @@ private:
 
 	ros::ServiceClient start_simulator_client;
 	ros::ServiceClient stop_simulator_client;
+	ros::ServiceClient list_scenes_client;
 
 	ros::ServiceClient move_along_joint_path_client;
 	ros::ServiceClient search_ik_solution_client;
@@ -64,6 +66,7 @@ private:
 	std::string task_selector;
 	std::string start_simulator;
 	std::string stop_simulator;
+	std::string list_scenes;
 
 	std::string euroc_c2_interface;
 	std::string telemetry;
@@ -81,6 +84,7 @@ private:
 	geometry_msgs::Pose pose_;
 	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
 	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
+	euroc_c2_msgs::ListScenes list_scenes_srv_;
 
 	urdf::Model model_robot_;
 	urdf::Model model_gripper_;
@@ -90,14 +94,16 @@ private:
 	void moveToTargetCB();
 
 	void getUrdfConf();
+	bool getSceneList();
 
 public:
 
 	static ROSinterface* getInstance();
+	std::vector<euroc_c2_msgs::Scene> scenes_;
 
 public slots:
 
-void callStartSimulator(int);
+void callStartSimulator(std::string);
 void callStopSimulator();
 void callSetCustomGoalConfiguration(double*);
 void callMoveToTargetPose(double*);
@@ -111,6 +117,7 @@ private slots:
 signals:
 void emitMeasuredValues(std::vector<std::string>, double*, double*, double*);
 void emitCurrentCfgOnce(std::vector<std::string>,double*);
+
 
 };
 

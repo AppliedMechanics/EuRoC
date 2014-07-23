@@ -31,10 +31,6 @@ QWidget(parent)
 	mainLayout->addWidget(taskSelection);
 	mainLayout->addLayout(buttonLayout);
 
-	for (int i=1;i<=6;i++)
-	{
-		taskSelection->addItem("Task "+QString::number(i));
-	}
 	//  connect(stopButton, SIGNAL(clicked()), this, SLOT(stopPressed()));
 	//  connect(resetButton, SIGNAL(clicked()), this, SLOT(resetPressed()));
 	setLayout(mainLayout);
@@ -43,16 +39,22 @@ QWidget(parent)
 	// Qt Connections
 	connect(startButton, SIGNAL(clicked()),this,SLOT(startSimulatorWithTask()));
 
-	connect(this,SIGNAL(callStartSimulator(int)),rosinterface,SLOT(callStartSimulator(int)));
+	connect(this,SIGNAL(callStartSimulator(std::string)),rosinterface,SLOT(callStartSimulator(std::string)));
 	connect(stopButton, SIGNAL(clicked()),rosinterface,SLOT(callStopSimulator()));
 
-
+	updateTasks();
 
 }
 
-
+void ManipulatorStatusWidget::updateTasks()
+{
+	for (int i=0;i<rosinterface->scenes_.size();i++)
+	{
+		taskSelection->addItem(QString::fromStdString(rosinterface->scenes_[i].name));
+	}
+}
 
 void ManipulatorStatusWidget::startSimulatorWithTask()
 {
-	emit callStartSimulator(taskSelection->currentIndex());
+	emit callStartSimulator(taskSelection->currentText().toStdString());
 }
