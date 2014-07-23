@@ -6,7 +6,7 @@
 
 #include <ros/ros.h>
 #include <QtGui/QApplication>
-#include "mainwindow.h"
+#include "MainWindow.h"
 #include <QIcon>
 
 int main(int argc, char** argv) {

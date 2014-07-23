@@ -35,19 +35,19 @@ set(QT_MY_INCLUDES
 #qt
 #define qt sources
 set(QT_SOURCES
-  src/gui/mainwindow.cpp
-  src/gui/manipulatorstatuswidget.cpp
-  src/gui/simplecontrolwidget.cpp
-  src/gui/telemetrywidget.cpp
+  src/gui/MainWindow.cpp
+  src/gui/ManipulatorStatusWidget.cpp
+  src/gui/SimpleControlWidget.cpp
+  src/gui/TelemetryWidget.cpp
   src/rosinterface/ROSinterface.cpp
 )
 
 #define qt headers
 set(QT_HEADERS
-  src/gui/mainwindow.h
-  src/gui/manipulatorstatuswidget.hpp
-  src/gui/simplecontrolwidget.hpp
-  src/gui/telemetrywidget.hpp
+  src/gui/MainWindow.h
+  src/gui/ManipulatorStatusWidget.hpp
+  src/gui/SimpleControlWidget.hpp
+  src/gui/TelemetryWidget.hpp
   src/rosinterface/ROSinterface.hpp
 )
 
