@@ -11,9 +11,9 @@
 #include "std_msgs/String.h"
 #include <sstream>
 #include <string>
-#include "manipulatorstatuswidget.hpp" 
-#include "telemetrywidget.hpp"
-#include "simplecontrolwidget.hpp"
+#include "ManipulatorStatusWidget.hpp"
+#include "TelemetryWidget.hpp"
+#include "SimpleControlWidget.hpp"
 
 #include "ROSinterface.hpp"
 #include "ros/ros.h"
