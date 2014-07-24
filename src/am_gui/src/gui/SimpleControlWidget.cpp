@@ -13,8 +13,6 @@ SimpleControlWidget::SimpleControlWidget(QWidget *parent):
 {
 
   // layouts
-
-
   QVBoxLayout* mainLayout = new QVBoxLayout();
 
   QGroupBox* targetPoseGroupBox = new QGroupBox("Workspace Control");

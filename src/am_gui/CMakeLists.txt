@@ -39,6 +39,8 @@ set(QT_SOURCES
   src/gui/ManipulatorStatusWidget.cpp
   src/gui/SimpleControlWidget.cpp
   src/gui/TelemetryWidget.cpp
+  src/gui/ServoControlWidget.cpp
+  src/gui/StopConditionWidget.cpp
   src/rosinterface/ROSinterface.cpp
 )
 
@@ -48,6 +50,8 @@ set(QT_HEADERS
   src/gui/ManipulatorStatusWidget.hpp
   src/gui/SimpleControlWidget.hpp
   src/gui/TelemetryWidget.hpp
+  src/gui/ServoControlWidget.h
+  src/gui/StopConditionWidget.h
   src/rosinterface/ROSinterface.hpp
 )
 

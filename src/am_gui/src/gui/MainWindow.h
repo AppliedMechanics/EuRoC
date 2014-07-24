@@ -14,6 +14,8 @@
 #include "ManipulatorStatusWidget.hpp"
 #include "TelemetryWidget.hpp"
 #include "SimpleControlWidget.hpp"
+#include "ServoControlWidget.h"
+#include "StopConditionWidget.h"
 
 #include "ROSinterface.hpp"
 #include "ros/ros.h"
@@ -41,6 +43,8 @@ class MainWindow : public QMainWindow
 
   TelemetryWidget *telemetry;
   SimpleControlWidget *simplecontrol;
+  ServoControlWidget* servocontrol;
+  StopConditionWidget* stopcondition;
 
  public:
   //ros

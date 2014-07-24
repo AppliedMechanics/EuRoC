@@ -22,11 +22,13 @@ MainWindow::MainWindow(QWidget *parent)
 	QHBoxLayout* splitLayout = new QHBoxLayout();
 	QWidget* mainWidget = new QWidget();
 
-	stateMachine = new ManipulatorStatusWidget;
+	stateMachine 	= new ManipulatorStatusWidget;
 //
 //	onlinecontrol = new OnlineControlWidget;
-	telemetry     = new TelemetryWidget;
-	simplecontrol = new SimpleControlWidget;
+	telemetry     	= new TelemetryWidget;
+	simplecontrol 	= new SimpleControlWidget;
+	servocontrol	= new ServoControlWidget;
+	stopcondition 	= new StopConditionWidget;
 
 
 	QCoreApplication::setOrganizationName("AMM");
@@ -37,6 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
 	//tabWidget->addTab(onlinecontrol, "Online Control");
 	//tabWidget->addTab(telemetry, "Telemetry");
 	tabWidget->addTab(simplecontrol, "Simple Control");
+	tabWidget->addTab(servocontrol, "Servo Control");
+	tabWidget->addTab(stopcondition, "Stop Condition");
 
 
 	mainLayout->setSpacing(5);
