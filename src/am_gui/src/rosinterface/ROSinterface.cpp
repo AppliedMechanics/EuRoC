@@ -430,12 +430,6 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 
 		set_stop_conditions_srv_.request.conditions = stop_conditions;
 
-//		for (int i=0;i<stop_conditions.size();i++){
-//			std::cout<<"stopcondition: "<<stop_conditions[i].joint_name<<std::endl;
-//			std::cout<<"stopcondition: "<<stop_conditions[i].condition_type<<std::endl;
-//			std::cout<<"stopcondition: "<<stop_conditions[i].condition_operator<<std::endl;
-//			std::cout<<"stopcondition: "<<stop_conditions[i].threshold<<std::endl;
-//		}
 
 		if (set_stop_conditions_client_.call(set_stop_conditions_srv_))
 			ROS_INFO("Set Stop successfully condition called");
