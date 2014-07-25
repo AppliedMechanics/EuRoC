@@ -75,6 +75,7 @@ void StopConditionWidget::updateJointNames()
 	double force_limits[10];
 	double security = 2.0;
 
+
 	force_limits[0] = 120;
 	force_limits[1] = 120;
 	force_limits[2] = 176;

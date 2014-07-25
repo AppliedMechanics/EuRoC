@@ -30,6 +30,9 @@
 #include <euroc_c2_msgs/SearchIkSolution.h>
 #include <euroc_c2_msgs/SetStopConditions.h>
 
+#include <euroc_c2_msgs/EnableServoMode.h>
+#include <euroc_c2_msgs/SetServoTarget.h>
+
 
 #include <euroc_c2_msgs/Telemetry.h>
 #include <euroc_c2_msgs/GetForwardKinematics.h>
@@ -63,6 +66,8 @@ private:
 	ros::ServiceClient timing_along_joint_path_client_;
 	ros::ServiceClient search_ik_solution_client_;
 
+	ros::ServiceClient enable_servo_mode_client_;
+	ros::ServiceClient set_servo_target_client_;
 
 	ros::Subscriber telemetry_subscriber_;
 
@@ -74,6 +79,9 @@ private:
 	std::string list_scenes_;
 	std::string next_object_;
 	std::string set_stop_conditions_;
+
+	std::string enable_servo_mode_;
+	std::string set_servo_target_;
 
 	std::string euroc_c2_interface_;
 	std::string telemetry_;
@@ -96,6 +104,8 @@ private:
 	euroc_c2_msgs::ListScenes list_scenes_srv_;
 	euroc_c2_msgs::RequestNextObject next_object_srv_;
 	euroc_c2_msgs::SetStopConditions set_stop_conditions_srv_;
+	euroc_c2_msgs::EnableServoMode enable_servo_mode_srv_;
+	euroc_c2_msgs::SetServoTarget set_servo_target_srv_;
 
 	urdf::Model model_robot_;
 	urdf::Model model_gripper_;

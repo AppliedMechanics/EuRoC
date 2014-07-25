@@ -423,6 +423,7 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 			stop_conditions[i].threshold = values[i];
 		}
 
+
 		set_stop_conditions_srv_.request.conditions = stop_conditions;
 		set_stop_conditions_client_.call(set_stop_conditions_srv_);
 

@@ -9,8 +9,6 @@
 
 ServoControlWidget::ServoControlWidget(QWidget *parent) {
 
-
-
 }
 
 ServoControlWidget::~ServoControlWidget() {
