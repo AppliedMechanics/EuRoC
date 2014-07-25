@@ -1,0 +1,11 @@
+# A service call that returns a suitable grasping pose
+# 
+
+string object_type
+float64[] object_dimensions
+geometry_msgs/Pose object_pose
+
+---
+# An error message. An empty string indicates success.
+string error_message
+geometry_msgs/Pose grasp_pose
