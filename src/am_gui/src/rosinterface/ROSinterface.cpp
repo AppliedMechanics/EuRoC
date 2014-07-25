@@ -426,10 +426,7 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 			stop_conditions[i].joint_name = names[i];
 			stop_conditions[i].threshold = values[i];
 		}
-
-
 		set_stop_conditions_srv_.request.conditions = stop_conditions;
-
 
 		if (set_stop_conditions_client_.call(set_stop_conditions_srv_))
 			ROS_INFO("Set Stop successfully condition called");
@@ -442,8 +439,6 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 		}
 		else
 			ROS_INFO("Stop condition has been set.");
-
-
 	}
 	else
 		ROS_WARN("Set stop conditions service has not been advertised yet.");
