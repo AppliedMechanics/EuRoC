@@ -33,6 +33,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	search_ik_solution_ = euroc_c2_interface_ + "/search_ik_solution";
 
 	next_object_ = (euroc_c2_interface_ + "/request_next_object");
+	set_stop_conditions_ = (euroc_c2_interface_ + "/set_stop_conditions");
 
 	ros::service::waitForService(list_scenes_,ros::Duration(3.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(3.0));
@@ -403,3 +404,40 @@ void ROSinterface::getTimingAlongJointPath()
 	else
 		ROS_WARN("Timing service has not been advertised.");
 }
+
+void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vector<std::string> operators,std::vector<double> values)
+{
+	if (ros::service::waitForService(set_stop_conditions_,ros::Duration(1.0)))
+	{
+		std::cout<<"Setting Stop Conditions ...."<<std::endl;
+		std::vector<euroc_c2_msgs::StopCondition> stop_conditions;
+		stop_conditions.resize(names.size());
+		for (int i=0;i<values.size();i++)
+		{
+			if (names[i].compare("gripper") == 0)
+				stop_conditions[i].condition_type = "tool_force_threshhold";
+			else
+				stop_conditions[i].condition_type = "joint_ext_torque_threshhold";
+			stop_conditions[i].condition_operator = operators[i];
+			stop_conditions[i].joint_name = names[i];
+			stop_conditions[i].threshold = values[i];
+		}
+
+		set_stop_conditions_srv_.request.conditions = stop_conditions;
+		set_stop_conditions_client_.call(set_stop_conditions_srv_);
+
+		std::cout<< "Set Stop condition called"<<std::endl;
+		std::string &sc_error_message = set_stop_conditions_srv_.response.error_message;
+		if(!sc_error_message.empty()){
+			std::cout << "Setting Stop Conditions failed: " + sc_error_message << std::endl;
+		}
+		else
+			ROS_INFO("Stop condition has been set.");
+
+
+	}
+	else
+		ROS_WARN("Set stop conditions service has not been advertised yet.");
+
+}
+

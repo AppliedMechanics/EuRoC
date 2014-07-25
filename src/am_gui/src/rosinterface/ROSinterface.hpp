@@ -28,6 +28,8 @@
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
 #include <euroc_c2_msgs/GetTimingAlongJointPath.h>
 #include <euroc_c2_msgs/SearchIkSolution.h>
+#include <euroc_c2_msgs/SetStopConditions.h>
+
 
 #include <euroc_c2_msgs/Telemetry.h>
 #include <euroc_c2_msgs/GetForwardKinematics.h>
@@ -55,14 +57,14 @@ private:
 	ros::ServiceClient stop_simulator_client_;
 	ros::ServiceClient list_scenes_client_;
 	ros::ServiceClient next_object_client_;
+	ros::ServiceClient set_stop_conditions_client_;
 
 	ros::ServiceClient move_along_joint_path_client_;
 	ros::ServiceClient timing_along_joint_path_client_;
 	ros::ServiceClient search_ik_solution_client_;
 
-	ros::Subscriber telemetry_subscriber_;
 
-	euroc_c2_msgs::Telemetry _telemetry;
+	ros::Subscriber telemetry_subscriber_;
 
 
 	//Wait for the simulator services and wait for them to be available:
@@ -71,6 +73,7 @@ private:
 	std::string stop_simulator_;
 	std::string list_scenes_;
 	std::string next_object_;
+	std::string set_stop_conditions_;
 
 	std::string euroc_c2_interface_;
 	std::string telemetry_;
@@ -92,6 +95,7 @@ private:
 	euroc_c2_msgs::GetTimingAlongJointPath timing_along_joint_path_srv_;
 	euroc_c2_msgs::ListScenes list_scenes_srv_;
 	euroc_c2_msgs::RequestNextObject next_object_srv_;
+	euroc_c2_msgs::SetStopConditions set_stop_conditions_srv_;
 
 	urdf::Model model_robot_;
 	urdf::Model model_gripper_;
@@ -107,7 +111,7 @@ public:
 
 	static ROSinterface* getInstance();
 	std::vector<euroc_c2_msgs::Scene> scenes_;
-
+	euroc_c2_msgs::Telemetry _telemetry;
 public slots:
 
 void callStartSimulator(std::string);
@@ -115,6 +119,7 @@ void callStopSimulator();
 void callSetCustomGoalConfiguration(double*);
 void callMoveToTargetPose(double*);
 void callNextObject();
+void callSetStopConditions(std::vector<std::string>,std::vector<std::string>,std::vector<double>);
 
 void sendCurrentCfgOnce();
 

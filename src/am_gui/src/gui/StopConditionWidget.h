@@ -24,7 +24,7 @@ public:
 	virtual ~StopConditionWidget();
 
 	public slots:
-	void updateJointNames(std::vector<std::string> joint_names, double* trash);
+	void updateJointNames();
 
 private:
 
@@ -32,8 +32,20 @@ private:
 	QLabel* joint_name_[10];
 	QComboBox* operator_[10];
 	QDoubleSpinBox* value_[10];
+	ROSinterface* rosinterface;
+
+	std::vector<std::string> vec_joint_names_;
+	std::vector<std::string> vec_operator_;
+	std::vector<double> vec_values_;
+
+	int num_active_;
+
+	private slots:
+	void callSetStopCondition();
 
 	signals:
+
+	void emitSetStopCondition(std::vector<std::string>, std::vector<std::string>,std::vector<double>);
 
 };
 
