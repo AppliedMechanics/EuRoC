@@ -33,10 +33,11 @@ QWidget(parent)
 	gridLayout->addWidget(title_2,0,1);
 	gridLayout->addWidget(title_3,0,2);
 
-	for (int i=0;i<10;i++)
+	for (int i=0;i<8;i++)
 	{
 		active_[i] = new QCheckBox;
 		gridLayout->addWidget(active_[i],i+1,0);
+		active_[i]->setChecked(true);
 
 		joint_name_[i] = new QLabel("none");
 		gridLayout->addWidget(joint_name_[i],i+1,1);
@@ -48,6 +49,7 @@ QWidget(parent)
 		operator_[i]->addItem("|<");
 		operator_[i]->addItem("|>");
 		gridLayout->addWidget(operator_[i],i+1,2);
+		operator_[i]->setCurrentIndex(3);
 
 		value_[i] = new QDoubleSpinBox;
 		value_[i]->setDecimals(0);
@@ -72,25 +74,26 @@ StopConditionWidget::~StopConditionWidget() {
 void StopConditionWidget::updateJointNames()
 {
 	// TODO Limits from real task description
-	double force_limits[10];
-	double security = 2.0;
+	double force_limits[8];
+	double security = 1.5;
 
 
-	force_limits[0] = 120;
-	force_limits[1] = 120;
-	force_limits[2] = 176;
-	force_limits[3] = 176;
+	force_limits[0] = 176;
+	force_limits[1] = 176;
+	force_limits[2] = 100;
+	force_limits[3] = 100;
 	force_limits[4] = 100;
-	force_limits[5] = 100;
-	force_limits[6] = 100;
-	force_limits[7] = 30;
-	force_limits[8] = 30;
-	force_limits[9] = 200;
+	force_limits[5] = 30;
+	force_limits[6] = 30;
+	force_limits[7] = 200;
 
-	for (int i=0;i<10;i++)
+	active_[7]->setChecked(false);
+
+
+	for (int i=0;i<8;i++)
 	{
-		joint_name_[i]->setText(QString::fromStdString(rosinterface->_telemetry.joint_names[i]));
-		value_[i]->setValue(1.0/security*abs(rosinterface->_telemetry.measured.torque[i]-force_limits[i]));
+		joint_name_[i]->setText(QString::fromStdString(rosinterface->_telemetry.joint_names[i+2]));
+		value_[i]->setValue(1.0/security*abs(rosinterface->_telemetry.measured.torque[i+2]-force_limits[i]));
 	}
 
 }
@@ -100,7 +103,7 @@ void StopConditionWidget::callSetStopCondition()
 	num_active_ = 0;
 
 
-	for (int i=0;i<10;i++)
+	for (int i=0;i<8;i++)
 		if (active_[i]->isChecked())
 			num_active_++;
 
@@ -110,7 +113,7 @@ void StopConditionWidget::callSetStopCondition()
 
 	int ii=0;
 
-	for (int i=0;i<10;i++)
+	for (int i=0;i<8;i++)
 	{
 		if (active_[i]->isChecked())
 		{

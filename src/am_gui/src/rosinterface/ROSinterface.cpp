@@ -44,6 +44,8 @@ ROSinterface::ROSinterface(QObject *parent) :
 	timing_along_joint_path_client_ = nh.serviceClient<euroc_c2_msgs::GetTimingAlongJointPath>(timing_along_joint_path_);
 	search_ik_solution_client_ = nh.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 	next_object_client_ = nh.serviceClient<euroc_c2_msgs::RequestNextObject>(next_object_);
+	set_stop_conditions_client_ = nh.serviceClient<euroc_c2_msgs::SetStopConditions>(set_stop_conditions_);
+
 
 	list_scenes_client_     = nh.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes_);
 	start_simulator_client_ = nh.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator_);
@@ -283,6 +285,8 @@ void ROSinterface::moveToTargetCB()
 
 	// Call the move request and check for errors
 	move_along_joint_path_client_.call(move_along_joint_path_srv_);
+
+
 	std::string &move_error_message = move_along_joint_path_srv_.response.error_message;
 	if(!move_error_message.empty()){
 		std::cout << "Move failed: " + move_error_message << std::endl;
@@ -415,9 +419,9 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 		for (int i=0;i<values.size();i++)
 		{
 			if (names[i].compare("gripper") == 0)
-				stop_conditions[i].condition_type = "tool_force_threshhold";
+				stop_conditions[i].condition_type = "tool_force_threshold";
 			else
-				stop_conditions[i].condition_type = "joint_ext_torque_threshhold";
+				stop_conditions[i].condition_type = "joint_ext_torque_threshold";
 			stop_conditions[i].condition_operator = operators[i];
 			stop_conditions[i].joint_name = names[i];
 			stop_conditions[i].threshold = values[i];
@@ -425,9 +429,19 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 
 
 		set_stop_conditions_srv_.request.conditions = stop_conditions;
-		set_stop_conditions_client_.call(set_stop_conditions_srv_);
 
-		std::cout<< "Set Stop condition called"<<std::endl;
+//		for (int i=0;i<stop_conditions.size();i++){
+//			std::cout<<"stopcondition: "<<stop_conditions[i].joint_name<<std::endl;
+//			std::cout<<"stopcondition: "<<stop_conditions[i].condition_type<<std::endl;
+//			std::cout<<"stopcondition: "<<stop_conditions[i].condition_operator<<std::endl;
+//			std::cout<<"stopcondition: "<<stop_conditions[i].threshold<<std::endl;
+//		}
+
+		if (set_stop_conditions_client_.call(set_stop_conditions_srv_))
+			ROS_INFO("Set Stop successfully condition called");
+		else
+			ROS_WARN("Setting stop condition not successful");
+
 		std::string &sc_error_message = set_stop_conditions_srv_.response.error_message;
 		if(!sc_error_message.empty()){
 			std::cout << "Setting Stop Conditions failed: " + sc_error_message << std::endl;
