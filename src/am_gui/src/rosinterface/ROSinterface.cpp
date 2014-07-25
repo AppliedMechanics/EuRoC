@@ -34,6 +34,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 
 	next_object_ = (euroc_c2_interface_ + "/request_next_object");
 	set_stop_conditions_ = (euroc_c2_interface_ + "/set_stop_conditions");
+	enable_servo_mode_ = (euroc_c2_interface_ + "/enable_servo_mode");
 
 	ros::service::waitForService(list_scenes_,ros::Duration(3.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(3.0));
@@ -45,7 +46,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	search_ik_solution_client_ = nh.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 	next_object_client_ = nh.serviceClient<euroc_c2_msgs::RequestNextObject>(next_object_);
 	set_stop_conditions_client_ = nh.serviceClient<euroc_c2_msgs::SetStopConditions>(set_stop_conditions_);
-
+	enable_servo_mode_client_ = nh.serviceClient<euroc_c2_msgs::EnableServoMode>(enable_servo_mode_);
 
 	list_scenes_client_     = nh.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes_);
 	start_simulator_client_ = nh.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator_);
@@ -69,13 +70,11 @@ ROSinterface::~ROSinterface()
 
 ROSinterface* ROSinterface::getInstance()
 {
-
 	if (m_ROSinterface == NULL)
 	{
 		m_ROSinterface = new ROSinterface();
 	}
 	return m_ROSinterface;
-
 }
 
 
@@ -413,7 +412,6 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 {
 	if (ros::service::waitForService(set_stop_conditions_,ros::Duration(1.0)))
 	{
-		std::cout<<"Setting Stop Conditions ...."<<std::endl;
 		std::vector<euroc_c2_msgs::StopCondition> stop_conditions;
 		stop_conditions.resize(names.size());
 		for (int i=0;i<values.size();i++)
@@ -445,3 +443,26 @@ void ROSinterface::callSetStopConditions(std::vector<std::string> names,std::vec
 
 }
 
+void ROSinterface::callEnableServoMode(bool enable)
+{
+	if (ros::service::waitForService(enable_servo_mode_,ros::Duration(1.0)))
+	{
+		enable_servo_mode_srv_.request.servo_mode_active = enable;
+
+		if (enable_servo_mode_client_.call(enable_servo_mode_srv_))
+			ROS_INFO("Servo Mode Service successfully called.");
+		else
+			ROS_WARN("Setting enable servo mode not successful");
+
+		std::string &servo_error_message = enable_servo_mode_srv_.response.error_message;
+		if(!servo_error_message.empty()){
+			std::cout << "Servo Mode Service failed: " + servo_error_message << std::endl;
+		}
+		else
+			ROS_INFO("Servo Mode set.");
+	}
+	else
+		ROS_WARN("[Service] enable servo mode has not been advertised.");
+
+
+}

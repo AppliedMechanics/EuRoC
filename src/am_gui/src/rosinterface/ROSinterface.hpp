@@ -130,7 +130,7 @@ void callSetCustomGoalConfiguration(double*);
 void callMoveToTargetPose(double*);
 void callNextObject();
 void callSetStopConditions(std::vector<std::string>,std::vector<std::string>,std::vector<double>);
-
+void callEnableServoMode(bool);
 void sendCurrentCfgOnce();
 
 void on_telemetry(const euroc_c2_msgs::Telemetry &telemetry);
