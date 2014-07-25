@@ -53,8 +53,11 @@ public:
 		  }
 
 		  counter++;
+		  //double test=1/(goal->blub-2*counter);
+
 		  feedback_.sequence.push_back(counter);
 		  as_.publishFeedback(feedback_);
+
 
 		  ROS_INFO("FEEDBACK: %i",counter);
 

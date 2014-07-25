@@ -27,7 +27,6 @@ int main(int argc, char **argv)
   //second argument: message queue
   ros::Publisher sm_pub = sm_node.advertise<std_msgs::String>("sm_pub",1000);
 
-
   //update rate
   ros::Rate loop_rate(100);
 
@@ -63,7 +62,7 @@ int main(int argc, char **argv)
 			  finished=true;
 			  break;
 		  case actionlib::SimpleClientGoalState::ABORTED:
-			  ROS_INFO("action aborted!");
+			  ROS_ERROR("action aborted!");
 			  break;
 		  default:
 			  ROS_INFO("something wrong happened");
