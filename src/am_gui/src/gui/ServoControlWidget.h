@@ -30,6 +30,8 @@ private:
 	QLabel*    joint_names_[12];
 	QSignalMapper *signalMapperPressed_;
 
+	int active_slider_;
+
 	bool signal_active_;
 
 	ROSinterface* rosinterface;
@@ -46,6 +48,7 @@ private:
 	signals:
 	void emitEnableServoMode(bool);
 	void sliderPressed(const int);
+	void emitSendServoCommand(int*,int*);
 
 };
 

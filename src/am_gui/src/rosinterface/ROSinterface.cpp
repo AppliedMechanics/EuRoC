@@ -35,6 +35,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	next_object_ = (euroc_c2_interface_ + "/request_next_object");
 	set_stop_conditions_ = (euroc_c2_interface_ + "/set_stop_conditions");
 	enable_servo_mode_ = (euroc_c2_interface_ + "/enable_servo_mode");
+	set_servo_target_ = (euroc_c2_interface_ + "/set_servo_target");
 
 	ros::service::waitForService(list_scenes_,ros::Duration(3.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(3.0));
@@ -47,6 +48,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	next_object_client_ = nh.serviceClient<euroc_c2_msgs::RequestNextObject>(next_object_);
 	set_stop_conditions_client_ = nh.serviceClient<euroc_c2_msgs::SetStopConditions>(set_stop_conditions_);
 	enable_servo_mode_client_ = nh.serviceClient<euroc_c2_msgs::EnableServoMode>(enable_servo_mode_);
+	set_servo_target_client_ =  nh.serviceClient<euroc_c2_msgs::SetServoTarget>(set_servo_target_);
 
 	list_scenes_client_     = nh.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes_);
 	start_simulator_client_ = nh.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator_);
@@ -54,6 +56,8 @@ ROSinterface::ROSinterface(QObject *parent) :
 
 
 	telemetry_subscriber_ = nh.subscribe(telemetry_, 1, &ROSinterface::on_telemetry,this);
+
+	commanded_configuration_.q.resize(12);
 
 	if (!getSceneList())
 		ROS_WARN("No scenes found.");
@@ -460,9 +464,46 @@ void ROSinterface::callEnableServoMode(bool enable)
 		}
 		else
 			ROS_INFO("Servo Mode set.");
+
+		if (ros::service::waitForService(set_servo_target_,ros::Duration(1.0)) && enable)
+		{
+			getUrdfConf();
+			setServoTarget = boost::thread(&ROSinterface::sendServoTargetCB,this);
+		}
+		else if (!enable && ros::service::waitForService(set_servo_target_,ros::Duration(1.0)))
+		{			setServoTarget.interrupt();
+			std::cout << "end servo mode"<<std::endl;
+		}
+		else
+			ROS_WARN("Send servo target service not applicable.");
+
 	}
 	else
 		ROS_WARN("[Service] enable servo mode has not been advertised.");
 
+}
 
+void ROSinterface::sendServoTargetCB()
+{
+	while(true)
+	{
+		commanded_configuration_.q = _telemetry.measured.position;
+		commanded_configuration_.q[servoing_joint_no_] += servoing_value_*0.001*system_limits_[servoing_joint_no_].vel_limit;
+
+		set_servo_target_srv_.request.joint_names = _telemetry.joint_names;
+		set_servo_target_srv_.request.target      = commanded_configuration_;
+		set_servo_target_client_.call(set_servo_target_srv_);
+		std::string &sm_error_message = set_servo_target_srv_.response.error_message;
+		if(!sm_error_message.empty()){
+			ROS_WARN("Setting Stop Conditions failed: %s", sm_error_message.c_str());
+			break;
+		}
+		//ros::Duration(0.05).sleep();
+	}
+}
+
+void ROSinterface::callSetCommandedConfiguration(int* joint_no,int* value)
+{
+	servoing_joint_no_ = joint_no[0];
+	servoing_value_    = value[0];
 }

@@ -17,8 +17,6 @@ ServoControlWidget::ServoControlWidget(QWidget *parent) {
 
 	signalMapperPressed_ = new QSignalMapper(this);
 
-
-
 	signal_active_ = false;
 
 	for (int i=0;i<12;i++)
@@ -34,7 +32,7 @@ ServoControlWidget::ServoControlWidget(QWidget *parent) {
 
 		connect(joint_servo_offsets_[i],SIGNAL(sliderPressed()),signalMapperPressed_,SLOT(map()));
 		connect(joint_servo_offsets_[i],SIGNAL(sliderReleased()),this,SLOT(sendZero()));
-		//connect(joint_servo_offsets_[i],SIGNAL(valueChanged(int)),this,SLOT(sendServoCommand(int)));
+	    connect(joint_servo_offsets_[i],SIGNAL(valueChanged(int)),this,SLOT(sendServoCommand(int)));
 
 		signalMapperPressed_->setMapping(joint_servo_offsets_[i],i);
 
@@ -43,8 +41,8 @@ ServoControlWidget::ServoControlWidget(QWidget *parent) {
 	}
 
     connect(signalMapperPressed_, SIGNAL(mapped(const int)), this, SIGNAL(sliderPressed(const int)));
-    connect(this,SIGNAL(sliderPressed(const int)),this,SLOT(activateSignal(const int)));
 
+    connect(this,SIGNAL(sliderPressed(const int)),this,SLOT(activateSignal(const int)));
 
 	mainLayout->addWidget(enable_servo_mode_,0,2);
 	mainLayout->addWidget(enable_label,0,3);
@@ -54,6 +52,7 @@ ServoControlWidget::ServoControlWidget(QWidget *parent) {
 	connect(enable_servo_mode_,SIGNAL(stateChanged(int)),this, SLOT(enableServoModeChanged(int)));
 
 	connect(this,SIGNAL(emitEnableServoMode(bool)),rosinterface,SLOT(callEnableServoMode(bool)));
+	connect(this,SIGNAL(emitSendServoCommand(int*,int*)),rosinterface,SLOT(callSetCommandedConfiguration(int*,int*)));
 
 }
 
@@ -78,23 +77,27 @@ void ServoControlWidget::enableServoModeChanged(int state)
 void ServoControlWidget::activateSignal(const int slider_no)
 {
 	signal_active_ = true;
-	while (joint_servo_offsets_[slider_no]->isSliderDown())
-	{
-		std::cout<< "Joint "<<slider_no<<"  value: "<<joint_servo_offsets_[slider_no]->value()<<std::endl;
-	}
+
+	active_slider_ = slider_no;
+	std::cout<< "Joint "<<slider_no<<"  value: "<<joint_servo_offsets_[slider_no]->value()<<std::endl;
 
 }
 
 void ServoControlWidget::sendZero()
 {
 	for (int i=0;i<12;i++)
-	{	joint_servo_offsets_[i]->setValue(0);
+	{
+		joint_servo_offsets_[i]->setValue(0);
+		active_slider_ = i;
+		sendServoCommand(0);
 	}
 	signal_active_ = false;
 }
 
 void ServoControlWidget::sendServoCommand(int value)
 {
-
-	std::cout << value << std::endl;
+	emit emitSendServoCommand(&active_slider_,&value);
+	// std::cout << "Joint "<< active_slider_<<" value: "<<value << std::endl;
 }
+
+

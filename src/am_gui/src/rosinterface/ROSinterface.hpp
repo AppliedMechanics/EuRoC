@@ -96,6 +96,7 @@ private:
 
 	bool getIKSolution7DOF();
 	boost::thread moveToTarget;
+	boost::thread setServoTarget;
 
 	geometry_msgs::Pose pose_;
 	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
@@ -107,12 +108,18 @@ private:
 	euroc_c2_msgs::EnableServoMode enable_servo_mode_srv_;
 	euroc_c2_msgs::SetServoTarget set_servo_target_srv_;
 
+	euroc_c2_msgs::Configuration commanded_configuration_;
+
+	int servoing_joint_no_;
+	int servoing_value_ ;
+
 	urdf::Model model_robot_;
 	urdf::Model model_gripper_;
 
 	std::vector<jointinfo> system_limits_;
 
 	void moveToTargetCB();
+	void sendServoTargetCB();
 
 	void getUrdfConf();
 	bool getSceneList();
@@ -132,6 +139,8 @@ void callNextObject();
 void callSetStopConditions(std::vector<std::string>,std::vector<std::string>,std::vector<double>);
 void callEnableServoMode(bool);
 void sendCurrentCfgOnce();
+
+void callSetCommandedConfiguration(int*,int*);
 
 void on_telemetry(const euroc_c2_msgs::Telemetry &telemetry);
 private slots:
