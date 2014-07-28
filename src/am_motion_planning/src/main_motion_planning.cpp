@@ -13,7 +13,15 @@ int main(int argc, char** argv) {
 
 	ros::NodeHandle nh;
 
-	ros::spin();
+
+	ros::Rate r(10); // 10 hz
+	while (ros::ok())
+	{
+
+
+		ros::spinOnce();
+		r.sleep();
+	}
 
 	return 0;
 

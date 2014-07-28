@@ -162,9 +162,9 @@ void ROSinterface::callStopSimulator()
 
 void ROSinterface::callMoveToTargetPose(double* target_pose)
 {
-	pose_.position.x = target_pose[0];
-	pose_.position.y = target_pose[1];
-	pose_.position.z = target_pose[2];
+	pose_.position.x 	= target_pose[0];
+	pose_.position.y 	= target_pose[1];
+	pose_.position.z 	= target_pose[2];
 	pose_.orientation.w = target_pose[3];
 	pose_.orientation.x = target_pose[4];
 	pose_.orientation.y = target_pose[5];
