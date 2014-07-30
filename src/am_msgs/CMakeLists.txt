@@ -55,6 +55,9 @@ add_message_files(
   Shape.msg
   Object.msg
   Robot.msg
+  TargetZone.msg
+  Camera.msg
+  Sensor.msg
 )
 
 ## Generate services in the 'srv' folder

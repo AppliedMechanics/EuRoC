@@ -16,7 +16,6 @@ Statemachine::Statemachine()
 	ros::service::waitForService(list_scenes,ros::Duration(3.0));
 	ros::service::waitForService(start_simulator,ros::Duration(3.0));
 	ros::service::waitForService(stop_simulator,ros::Duration(3.0));
-	ros::service::waitForService(save_log,ros::Duration(3.0));
 
 	list_scenes_client = node.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes);
 	start_simulator_client = node.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator);
@@ -46,7 +45,7 @@ int Statemachine::parse_yaml_file()
 int Statemachine::start_sim()
 {
 	start_simulator_srv.request.user_id = "am-robotics";
-	start_simulator_srv.request.scene_name = "task1_v1";
+	start_simulator_srv.request.scene_name = "task2_v1_1";
 	start_simulator_client.call(start_simulator_srv);
 
 	// Check the response for errors
@@ -55,8 +54,10 @@ int Statemachine::start_sim()
 		ROS_ERROR("Statemachine: Starting the simulator failed: %s", error_message.c_str());
 		return -1;
 	}
-	else
-		return 0;
+
+	ros::service::waitForService(save_log,ros::Duration(20.0));
+
+	return 0;
 }
 
 int Statemachine::stop_sim()

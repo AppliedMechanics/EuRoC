@@ -1,0 +1,4 @@
+string type
+float64 horizontal_fov
+uint32 image_width
+uint32 image_height

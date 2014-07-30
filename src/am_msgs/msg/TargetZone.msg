@@ -1,0 +1,3 @@
+geometry_msgs/Point position
+float64 max_distance
+string expected_object
