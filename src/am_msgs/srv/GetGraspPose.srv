@@ -7,3 +7,4 @@ am_msgs/Object object
 # An error message. An empty string indicates success.
 string error_message
 geometry_msgs/Pose grasp_pose
+float64 grasp_width
