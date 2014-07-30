@@ -1,11 +1,10 @@
 #include <euroc_input.hpp>
 #include <tf_rot.hpp>
+#include <utils.hpp>
 #include <iostream>
 
 #define DBG_OUT
 
-#define msg_error(format,...) \
-			ROS_ERROR("%s - %d: "format,__FUNCTION__,__LINE__,##__VA_ARGS__)
 
 EurocInput::EurocInput()
 {

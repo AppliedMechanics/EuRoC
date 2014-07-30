@@ -1,9 +1,7 @@
 # A service call that returns a suitable grasping pose
 # 
 
-string object_type
-float64[] object_dimensions
-geometry_msgs/Pose object_pose
+am_msgs/Object object
 
 ---
 # An error message. An empty string indicates success.
