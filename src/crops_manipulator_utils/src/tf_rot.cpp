@@ -107,7 +107,7 @@ void quat2dcm(double* q_tf, double* r_tf)
   r_tf[5] = 2*y*z+2*w*x;
   r_tf[6] = 2*x*z+2*w*y;
   r_tf[7] = 2*y*z-2*w*x;
-  r_tf[8] =  w*w-x*x-y*y+z*z;
+  r_tf[8] = w*w-x*x-y*y+z*z;
 
   //! Prevent Error in DCM
   for (int i=0;i<9;i++){

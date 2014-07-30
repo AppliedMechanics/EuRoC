@@ -1,0 +1,12 @@
+#goal definition
+geometry_msgs/Pose goal_pose
+int32 planning_algorithm
+---
+#result definition
+geometry_msgs/Pose reached_pose
+bool reached_goal
+---
+#feedback
+float64 execution_time
+float64 estimated_motion_time
+

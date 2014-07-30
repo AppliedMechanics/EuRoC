@@ -229,7 +229,7 @@ bool ROSinterface::getIKSolution7DOF()
 			lwr_joints[i] = name.str();
 		}
 		move_along_joint_path_srv_.request.joint_names = lwr_joints; // Select all lwr joints
-		move_along_joint_path_srv_.request.path.resize(1); // Our path has only one waypoint
+		move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
 		// Initialize the velocity and acceleration limits of the joints
 		move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
 		for(unsigned int i = 0; i < nr_lwr_joints; ++i){

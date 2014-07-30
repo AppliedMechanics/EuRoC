@@ -6,6 +6,7 @@ project(am_motion_planning)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   am_msgs
+  actionlib
   roscpp
 )
 
@@ -93,6 +94,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+	src
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -102,7 +104,7 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-add_executable(am_motion_planning src/main_motion_planning.cpp)
+add_executable(am_motion_planning src/MotionPlanning.cpp src/main_motion_planning.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
