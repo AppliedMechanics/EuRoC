@@ -152,12 +152,33 @@ void dcm2kardan(double* r_tf, double* a_tf)
 
 }
 
+void rpy2dcm(double* rpy,double* r_tf)
+{
+	ROS_WARN("test me!");
+
+	double sinalpha=sin(rpy[0]);
+	double sinbeta=sin(rpy[1]);
+	double singamma=sin(rpy[2]);
+	double cosalpha=cos(rpy[0]);
+	double cosbeta=cos(rpy[1]);
+	double cosgamma=cos(rpy[2]);
+
+	r_tf[0]=cosalpha*cosbeta;
+	r_tf[1]=cosalpha*sinbeta*singamma-sinalpha*cosgamma;
+	r_tf[2]=cosalpha*sinbeta*cosgamma+sinalpha*singamma;
+	r_tf[3]=sinalpha*cosbeta;
+	r_tf[4]=sinalpha*sinbeta*singamma+cosalpha*cosgamma;
+	r_tf[5]=sinalpha*sinbeta*cosgamma-cosalpha*singamma;
+	r_tf[6]=-sinbeta;
+	r_tf[7]=cosbeta*singamma;
+	r_tf[8]=cosbeta*cosgamma;
+}
+
 
 void quat2kardan(double* q_tf,double* a_tf,double* r_tf)
 {
   //!Only use UNIT QUATERNIONS
   quat2dcm(q_tf,r_tf);
-
   dcm2kardan(r_tf,a_tf);
 
 }
@@ -168,4 +189,11 @@ void kardan2quat(double* a_tf,double* q_tf,double* r_tf)
   kardan2dcm(a_tf,r_tf);
   dcm2quat(r_tf,q_tf);
 
+}
+
+void rpy2quat(double* a_tf,double* q_tf, double* r_tf)
+{
+	//!Only use UNIT QUATERNIONS
+	rpy2dcm(a_tf,r_tf);
+	dcm2quat(r_tf,q_tf);
 }

@@ -7,6 +7,8 @@
 #include <actionlib/client/terminal_state.h>
 #include <am_statemachine/testAction.h>
 
+#include "statemachine.hpp"
+
 
 int main(int argc, char **argv)
 {
@@ -20,7 +22,12 @@ int main(int argc, char **argv)
    */
   ros::NodeHandle sm_node;
 
-  actionlib::SimpleActionClient<am_statemachine::testAction> ac("test_node", true);
+  //statemachine class
+  Statemachine* sm = Statemachine::get_instance();
+
+  sm->start_sim();
+  sm->parse_yaml_file();
+
 
   //inform Master that program wants to publish on the topic "sm_pub"
   //->returns a publisher object
@@ -32,6 +39,7 @@ int main(int argc, char **argv)
 
   int64_t count=0;
 
+  actionlib::SimpleActionClient<am_statemachine::testAction> ac("test_node", true);
   ROS_INFO("Waiting for action server to start.");
   // wait for the action server to start
   ac.waitForServer(); //for infinite time
@@ -82,5 +90,9 @@ int main(int argc, char **argv)
   }
   ROS_INFO("ACTION succeeded!!!");
 
+  //save_log and stop simulation
+  sm->stop_sim();
+
   return 0;
 }
+

@@ -169,6 +169,7 @@ int main(int argc, char* argv[]){
       return -1;
     }
     i++;
+
   }
   
   // After a succesfull start simulator service call the simulation is

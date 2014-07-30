@@ -35,7 +35,6 @@ public:
 	  // push_back the seeds for the fibonacci sequence
 	  feedback_.sequence.clear();
 	  feedback_.sequence.push_back(0);
-	  feedback_.sequence.push_back(1);
 
 	  ROS_INFO("STARTING executeCB ...");
 

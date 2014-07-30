@@ -11,7 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp 
   roslib 
-  std_msgs)
+  std_msgs
+  am_msgs
+  crops_manipulator_utils)
 
 
 add_action_files(
@@ -24,14 +26,14 @@ generate_messages(
 )
 
 catkin_package(
-  CATKIN_DEPENDS actionlib_msgs
+  CATKIN_DEPENDS actionlib_msgs crops_manipulator_utils
 )
 
-##include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 
-add_executable(statemachine src/main_statemachine.cpp)
-target_link_libraries(statemachine ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_executable(statemachine src/euroc_input.cpp src/statemachine.cpp src/main_statemachine.cpp)
+target_link_libraries(statemachine ${catkin_LIBRARIES} ${Boost_LIBRARIES} yaml-cpp crops_manipulator_utils)
 add_dependencies(statemachine  ${am_statemachine_EXPORTED_TARGETS})
 
 add_executable(test_node src/main_testnode.cpp)
