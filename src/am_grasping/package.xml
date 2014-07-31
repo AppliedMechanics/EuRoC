@@ -42,8 +42,10 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>am_msgs</build_depend>
   <build_depend>am_statemachine</build_depend>
+  <build_depend>crops_manipulator_utils</build_depend>
   <run_depend>am_msgs</run_depend>
   <run_depend>am_statemachine</run_depend>
+  <run_depend>crops_manipulator_utils</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

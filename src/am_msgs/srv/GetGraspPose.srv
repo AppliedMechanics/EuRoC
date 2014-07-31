@@ -2,6 +2,8 @@
 # 
 
 am_msgs/Object object
+# geometry_msgs/Pose abs_pose
+
 
 ---
 # An error message. An empty string indicates success.
