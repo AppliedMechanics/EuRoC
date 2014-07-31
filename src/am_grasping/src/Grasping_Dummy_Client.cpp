@@ -28,14 +28,14 @@ int main(int argc, char **argv)
   am_msgs::GetGraspPose srv;
 
   //srv.request.object_type = "handle";
-  srv.request.object_type = "green_cylinder";
+//  srv.request.object_type = "green_cylinder";
+//
+//  srv.request.object_dimensions.resize(3);
+//  srv.request.object_dimensions[0] = 1.0;
+//  srv.request.object_dimensions[1] = 2.0;
+//  srv.request.object_dimensions[2] = 3.0;
 
-  srv.request.object_dimensions.resize(3);
-  srv.request.object_dimensions[0] = 1.0;
-  srv.request.object_dimensions[1] = 2.0;
-  srv.request.object_dimensions[2] = 3.0;
-
-  geometry_msgs::Pose &return_pose = srv.request.object_pose;
+  geometry_msgs::Pose &return_pose = srv.request.object.abs_pose;
   return_pose.position.x = 5.0;
   return_pose.position.y = 6.0;
   return_pose.position.z = 7.0;

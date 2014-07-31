@@ -116,14 +116,9 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 {
 	// Read Request variables: ...
 	//			... object type, ....
-	std::string obj_type = req.object_type;
-	//			... object dimensions, ...
-	double obj_dim [3];
-	obj_dim[0] = req.object_dimensions[0];
-	obj_dim[1] = req.object_dimensions[1];
-	obj_dim[2] = req.object_dimensions[2];
+	std::string obj_type = req.object.shape[0].type;
 	//			... object pose
-	geometry_msgs::Pose obj_pose = req.object_pose;
+	geometry_msgs::Pose obj_pose = req.object.abs_pose;
 
 	// Declare response variable (target pose)
 	geometry_msgs::Pose TCP_target_pose;
@@ -135,7 +130,7 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 	double density, mass;
 	ObjectProperties obj_props_temp;
 
-	if( !obj_type.compare("green_cylinder") )
+	if( !obj_type.compare("cylinder") )
 	{
 		density = 19302.0;     // Unit [kg/m^3]
 		double length = 0.1;   // Unit [m]
@@ -148,6 +143,13 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 	}
 	else
 	{
+		//			... object dimensions, ...
+		double obj_dim [3];
+		obj_dim[0] = req.object.shape[0].size[0];
+		obj_dim[1] = req.object.shape[0].size[1];
+		obj_dim[2] = req.object.shape[0].size[2];
+
+
 		ROS_INFO("Error somewhere");
 		ROS_INFO("obj_type is %s", obj_type.c_str() );
 	}
