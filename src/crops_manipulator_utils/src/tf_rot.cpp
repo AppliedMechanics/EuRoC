@@ -21,6 +21,7 @@ void kardan2dcm(double* kardan,double* r_tf)
   double cosbeta=cos(kardan[1]);
   double cosgamma=cos(kardan[2]);
 
+  //! DCM Definition
   r_tf[0] = cosbeta*cosgamma;
   r_tf[1] = cosalpha*singamma+cosgamma*sinalpha*sinbeta;
   r_tf[2] = sinalpha*singamma-cosalpha*cosgamma*sinbeta;
