@@ -3,6 +3,7 @@
 #include <actionlib/client/terminal_state.h>
 #include <am_msgs/goalPoseAction.h>
 
+
 int main (int argc, char **argv)
 {
   ros::init(argc, argv, "test_motionplanning");
@@ -20,12 +21,18 @@ int main (int argc, char **argv)
   am_msgs::goalPoseGoal goal;
   geometry_msgs::Pose example_pose;
   example_pose.orientation.w = 1.0;
+  example_pose.orientation.x = 0.0;
+  example_pose.orientation.y = 0.0;
+  example_pose.orientation.z = 0.0;
+
   example_pose.position.x = 0.5;
   example_pose.position.y = 0.5;
   example_pose.position.z = 0.3;
 
   goal.goal_pose = example_pose;
+  goal.planning_algorithm = 0;
   ac.sendGoal(goal);
+
 
   //wait for the action to return
   bool finished_before_timeout = ac.waitForResult(ros::Duration(300.0));
@@ -41,4 +48,6 @@ int main (int argc, char **argv)
   //exit
   return 0;
 }
+
+
 
