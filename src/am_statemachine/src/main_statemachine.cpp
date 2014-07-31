@@ -1,6 +1,8 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <sstream>
+#include <utils.hpp>
+#include <fsm_state.hpp>
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/simple_client_goal_state.h>
@@ -22,22 +24,52 @@ int main(int argc, char **argv)
    */
   ros::NodeHandle sm_node;
 
+
+  //update rate
+  ros::Rate loop_rate(10);
+  int64_t count=0;
+
   //statemachine class
   Statemachine* sm = Statemachine::get_instance();
 
-  sm->start_sim();
-  sm->parse_yaml_file();
+  if(-1 == sm->init_sm())
+  {
+	  msg_error("Error initializing Statemachine");
+  }
+//  sm->tick();
+//  sm->tick();
+//  sm->tick();
 
 
-  //inform Master that program wants to publish on the topic "sm_pub"
+  fsm_state_t cur_state;
+  while(ros::ok() && !(cur_state.sub.one == FINISHED))
+    {
+
+	  if(-1==sm->tick())
+	  {
+		  msg_error("Error in Statemachine::tick()");
+	  }
+
+	  cur_state=sm->get_state();
+
+  	  //"tick"
+  	  ros::spinOnce();
+
+  	  //sleep for the remaining time
+  	  loop_rate.sleep();
+  	  count++;
+    }
+
+
+  return 0;
+}
+
+#if 0 //Old:
+//inform Master that program wants to publish on the topic "sm_pub"
   //->returns a publisher object
   //second argument: message queue
   ros::Publisher sm_pub = sm_node.advertise<std_msgs::String>("sm_pub",1000);
 
-  //update rate
-  ros::Rate loop_rate(100);
-
-  int64_t count=0;
 
   actionlib::SimpleActionClient<am_statemachine::testAction> ac("test_node", true);
   ROS_INFO("Waiting for action server to start.");
@@ -89,10 +121,5 @@ int main(int argc, char **argv)
 	  count++;
   }
   ROS_INFO("ACTION succeeded!!!");
-
-  //save_log and stop simulation
-  sm->stop_sim();
-
-  return 0;
-}
+#endif
 

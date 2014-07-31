@@ -92,6 +92,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	  }
 
 	nr_objects = objects->size();
+	obj_finished_.resize(3,0);
 	unsigned int ii = 0;
 	am_msgs::Object tmp_obj;
 	//objects_.resize(nr_objects);
@@ -552,4 +553,22 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	//######################################################################################
 
 	return 0;
+}
+
+void EurocInput::get_object(am_msgs::Object* obj)
+{
+	for(uint32_t ii=0;ii<nr_objects;ii++)
+	{
+		if(obj_finished_[ii]==0)
+		{
+			obj=&objects_[ii];
+		}
+	}
+}
+void EurocInput::set_object_finished(uint32_t nr)
+{
+	if(nr>obj_finished_.size()-1)
+		ROS_ERROR("EurocInput: Setting object finished failed");
+	else
+		obj_finished_[nr]=1;
 }

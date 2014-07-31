@@ -20,6 +20,9 @@ public:
 
 	int parse_yaml_file(std::string task_yaml_description);
 
+	void get_object(am_msgs::Object* obj);
+	void set_object_finished(uint32_t nr);
+
 private:
 	//
 	std::string description_;
@@ -36,6 +39,7 @@ private:
 	//!Objects
 	std::vector<am_msgs::Object> objects_;
 	unsigned int nr_objects;
+	std::vector<uint32_t> obj_finished_;
 	//!Target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
 	unsigned int nr_zones;
