@@ -1,0 +1,12 @@
+# A service call that controls the gripper
+# 
+
+uint16 gripping_mode
+float64 object_width
+float64 gripping_force
+float64 gripper_position
+
+---
+# An error message. An empty string indicates success.
+string error_message
+float64 current_force
