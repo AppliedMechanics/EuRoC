@@ -20,9 +20,14 @@ public:
 
 	int parse_yaml_file(std::string task_yaml_description);
 
-	void get_object(am_msgs::Object* obj);
-	void set_object_finished(uint32_t nr);
+	am_msgs::Object get_object();
+	void print_object(am_msgs::Object*obj);
+	void set_object_finished();
 
+	void set_grasping_pose(geometry_msgs::Pose pose){grasping_pose_[active_object_]=pose;};
+	geometry_msgs::Pose get_grasping_pose(){return grasping_pose_[active_object_];};
+
+	am_msgs::TargetZone get_target_zone();
 private:
 	//
 	std::string description_;
@@ -38,11 +43,14 @@ private:
 
 	//!Objects
 	std::vector<am_msgs::Object> objects_;
-	unsigned int nr_objects;
+	uint8_t nr_objects_;
+	int8_t active_object_;
+	std::vector<geometry_msgs::Pose> grasping_pose_;
 	std::vector<uint32_t> obj_finished_;
 	//!Target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
-	unsigned int nr_zones;
+	uint8_t nr_zones_;
+	int8_t active_zone_;
 	//!Robot
 	am_msgs::Robot robot_;
 	//!Sensors

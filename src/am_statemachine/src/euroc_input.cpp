@@ -6,7 +6,11 @@
 #define DBG_OUT
 
 
-EurocInput::EurocInput()
+EurocInput::EurocInput():
+	nr_objects_(0),
+	active_object_(-1),
+	nr_zones_(0),
+	active_zone_(-1)
 {
 
 }
@@ -91,8 +95,9 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	    return -1;
 	  }
 
-	nr_objects = objects->size();
-	obj_finished_.resize(3,0);
+	nr_objects_ = objects->size();
+	obj_finished_.resize(nr_objects_,0);
+	grasping_pose_.resize(nr_objects_);
 	unsigned int ii = 0;
 	am_msgs::Object tmp_obj;
 	//objects_.resize(nr_objects);
@@ -226,35 +231,11 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	  } /*for(YAML::Iterator it = objects->begin(); it != objects->end(); ++it) */
 
 #ifdef DBG_OUT
-	  for(unsigned kk=0;kk<nr_objects;kk++)
+	  for(unsigned kk=0;kk<nr_objects_;kk++)
 	  {
 		  ROS_INFO("======================");
 		  ROS_INFO("Object %d:",kk);
-		  ROS_INFO("Name: %s",objects_[kk].name.c_str());
-		  ROS_INFO("description: %s",objects_[kk].description.c_str());
-		  ROS_INFO("color: %s",objects_[kk].color.c_str());
-		  ROS_INFO("Pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
-					  objects_[kk].abs_pose.position.x,objects_[kk].abs_pose.position.y,objects_[kk].abs_pose.position.z,
-					  objects_[kk].abs_pose.orientation.w,objects_[kk].abs_pose.orientation.x,objects_[kk].abs_pose.orientation.y,
-					  objects_[kk].abs_pose.orientation.z);
-		  ROS_INFO("Nr. of shapes: %d",objects_[kk].nr_shapes);
-		  for(unsigned zz=0;zz<objects_[kk].nr_shapes;zz++)
-		  {
-			  ROS_INFO("");
-			  ROS_INFO("shape %d: type: %s",zz,objects_[kk].shape[zz].type.c_str());
-			  if(objects_[kk].shape[zz].type == "cylinder")
-				  ROS_INFO("Length: %3.2f, Radius: %3.2f",objects_[kk].shape[zz].length,
-						  objects_[kk].shape[zz].radius);
-			  else if (objects_[kk].shape[zz].type == "box")
-				  ROS_INFO("Size: [%3.2f %3.2f %3.2f]",objects_[kk].shape[zz].size[0],objects_[kk].shape[zz].size[1]
-											 ,objects_[kk].shape[zz].size[2]);
-			  else
-				  ROS_INFO("Unknown!!!");
-			  ROS_INFO("Relative pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
-					  objects_[kk].shape[zz].pose.position.x,objects_[kk].shape[zz].pose.position.y,
-					  objects_[kk].shape[zz].pose.position.z,objects_[kk].shape[zz].pose.orientation.w,objects_[kk].shape[zz].pose.orientation.x,
-					  objects_[kk].shape[zz].pose.orientation.y,objects_[kk].shape[zz].pose.orientation.z);
-		  }
+		  print_object(&objects_[kk]);
 	  }
 #endif
 
@@ -268,7 +249,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	  }
 	  am_msgs::TargetZone tmp_zone;
 	  ii=0;
-	  nr_zones = target_zones->size();
+	  nr_zones_ = target_zones->size();
 	  for(YAML::Iterator it = target_zones->begin(); it != target_zones->end(); ++it) {
 
 	    const YAML::Node* zone;
@@ -322,7 +303,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	  }
 
 #ifdef DBG_OUT
-	  for(unsigned kk=0;kk<nr_zones;kk++)
+	  for(unsigned kk=0;kk<nr_zones_;kk++)
 	  {
 		  ROS_INFO("======================");
 		  ROS_INFO("Target zone %d:",kk);
@@ -555,20 +536,64 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	return 0;
 }
 
-void EurocInput::get_object(am_msgs::Object* obj)
+am_msgs::Object EurocInput::get_object()
 {
-	for(uint32_t ii=0;ii<nr_objects;ii++)
+	for(uint32_t ii=0;ii<nr_objects_;ii++)
 	{
 		if(obj_finished_[ii]==0)
 		{
-			obj=&objects_[ii];
+			active_object_=ii;
+			return objects_[ii];
 		}
 	}
 }
-void EurocInput::set_object_finished(uint32_t nr)
+am_msgs::TargetZone EurocInput::get_target_zone()
 {
-	if(nr>obj_finished_.size()-1)
+	std::string obj_name=objects_[active_object_].name;
+	for(uint16_t ii=0;ii<nr_zones_;ii++)
+	{
+		if(obj_name.compare(target_zones_[ii].expected_object.c_str()))
+		{
+			active_zone_=ii;
+			return target_zones_[ii];
+		}
+	}
+}
+void EurocInput::print_object(am_msgs::Object*obj)
+{
+	ROS_INFO("Name: %s",obj->name.c_str());
+	ROS_INFO("description: %s",obj->description.c_str());
+	ROS_INFO("color: %s",obj->color.c_str());
+	ROS_INFO("Pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
+			  obj->abs_pose.position.x,obj->abs_pose.position.y,obj->abs_pose.position.z,
+			  obj->abs_pose.orientation.w,obj->abs_pose.orientation.x,obj->abs_pose.orientation.y,
+			  obj->abs_pose.orientation.z);
+	ROS_INFO("Nr. of shapes: %d",obj->nr_shapes);
+	for(unsigned zz=0;zz<obj->nr_shapes;zz++)
+	{
+		ROS_INFO("");
+		ROS_INFO("shape %d: type: %s",zz,obj->shape[zz].type.c_str());
+		if(obj->shape[zz].type == "cylinder")
+			ROS_INFO("Length: %3.2f, Radius: %3.2f",obj->shape[zz].length,
+				  obj->shape[zz].radius);
+		else if (obj->shape[zz].type == "box")
+			ROS_INFO("Size: [%3.2f %3.2f %3.2f]",obj->shape[zz].size[0],obj->shape[zz].size[1]
+									 ,obj->shape[zz].size[2]);
+		else
+			ROS_INFO("Unknown!!!");
+		ROS_INFO("Relative pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
+				obj->shape[zz].pose.position.x,obj->shape[zz].pose.position.y,
+				obj->shape[zz].pose.position.z,obj->shape[zz].pose.orientation.w,obj->shape[zz].pose.orientation.x,
+				obj->shape[zz].pose.orientation.y,obj->shape[zz].pose.orientation.z);
+	}
+}
+void EurocInput::set_object_finished()
+{
+	if(active_object_==-1)
 		ROS_ERROR("EurocInput: Setting object finished failed");
 	else
-		obj_finished_[nr]=1;
+	{
+		obj_finished_[active_object_] = 1;
+		active_object_=-1;
+	}
 }

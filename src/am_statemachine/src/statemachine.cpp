@@ -7,7 +7,8 @@ Statemachine::Statemachine():
 		task_active_(false),
 		sim_running_(false),
 		nr_scenes_(0),
-		active_scene_(-1)
+		active_scene_(-1),
+		motion_planning_action_client_("goalPoseAction", true)
 {
 	ein_=new EurocInput();
 	//==============================================
@@ -43,7 +44,11 @@ int Statemachine::init_sm()
 	stop_simulator_client_ = node_.serviceClient<euroc_c2_msgs::StopSimulator>(stop_simulator_);
 	save_log_client_ = node_.serviceClient<euroc_c2_msgs::SaveLog>(save_log_);
 
-	get_grasp_pose_client_ = node_.serviceClient<am_msgs::GetGraspPose>("get_grasp_pose");
+	get_grasp_pose_client_ = node_.serviceClient<am_msgs::GetGraspPose>("GraspPose_srv");
+
+	ROS_INFO("Waiting for action server to start.");
+	motion_planning_action_client_.waitForServer(ros::Duration(5.0));
+	ROS_INFO("Action server started, sending goal.");
 
 	return 0;
 }
@@ -67,7 +72,9 @@ int Statemachine::tick()
 		case GET_GRASPING_POSE:
 			return get_grasping_pose();
 		case MOVE_TO_OBJECT:
+			return move_to_object();
 		case MOVE_TO_TARGET_ZONE:
+			return move_to_target_zone();
 		default:
 			return solve_task();
 		}
@@ -199,12 +206,17 @@ int Statemachine::stop_sim()
 
 int Statemachine::locate_object()
 {
-	ein_->get_object(&cur_obj_);
+	//hack: dont use blue handle!!
+	ein_->get_object();
+	ein_->set_object_finished();
+	cur_obj_ = ein_->get_object();
+
+	ein_->print_object(&cur_obj_);
 
 	//hier dann vision aufrufen
-	cur_obj_.abs_pose.position.x=0.3;
-	cur_obj_.abs_pose.position.y=0.3;
-	cur_obj_.abs_pose.position.z=0.1;
+	cur_obj_.abs_pose.position.x=-0.3;
+	cur_obj_.abs_pose.position.y=-0.4;
+	cur_obj_.abs_pose.position.z=0.24+0.1;
 
 	//==============================================
 	//state:
@@ -225,6 +237,8 @@ int Statemachine::get_grasping_pose()
 		ROS_INFO("received pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
 				pose->position.x,pose->position.y,pose->position.z,pose->orientation.w,
 				pose->orientation.x,pose->orientation.y,pose->orientation.z);
+
+		ein_->set_grasping_pose(get_grasp_pose_srv_.response.grasp_pose);
 	}
 	else
 	{
@@ -241,11 +255,59 @@ int Statemachine::get_grasping_pose()
 
 int Statemachine::move_to_object()
 {
+	am_msgs::goalPoseGoal goal;
+	goal.goal_pose = ein_->get_grasping_pose();
+	goal.planning_algorithm = 0;
+	motion_planning_action_client_.sendGoal(goal);
+
+	//wait for the action to return
+	bool finished_before_timeout = motion_planning_action_client_.waitForResult(ros::Duration(300.0));
+	if (finished_before_timeout)
+	{
+	    actionlib::SimpleClientGoalState state = motion_planning_action_client_.getState();
+	    ROS_INFO("Action finished: %s",state.toString().c_str());
+	}
+	else
+	    ROS_INFO("Action did not finish before the time out.");
+
 
 	//==============================================
 	//state:
 	state_.sub.one = SOLVE_TASK;
 	state_.sub.two = MOVE_TO_TARGET_ZONE;
 	//==============================================
+	return 0;
+}
+
+int Statemachine::move_to_target_zone()
+{
+	am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
+
+	am_msgs::goalPoseGoal goal;
+	goal.goal_pose.position = tmp_zone.position;
+	goal.goal_pose.position.z+=0.3;
+	goal.goal_pose.orientation.x=1;
+	goal.goal_pose.orientation.y=0;
+	goal.goal_pose.orientation.z=0;
+	goal.goal_pose.orientation.w=0;
+	motion_planning_action_client_.sendGoal(goal);
+
+	//wait for the action to return
+	bool finished_before_timeout = motion_planning_action_client_.waitForResult(ros::Duration(300.0));
+	if (finished_before_timeout)
+	{
+		actionlib::SimpleClientGoalState state = motion_planning_action_client_.getState();
+		ROS_INFO("Action finished: %s",state.toString().c_str());
+	}
+	else
+		ROS_INFO("Action did not finish before the time out.");
+
+
+	//==============================================
+	//state:
+	state_.sub.one = STOP_SIM;
+	state_.sub.two = 0;
+	//==============================================
+
 	return 0;
 }

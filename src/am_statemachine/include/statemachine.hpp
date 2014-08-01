@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <sstream>
+#include <actionlib/client/simple_action_client.h>
 
 //euroc includes
 #include <euroc_c2_msgs/SaveLog.h>
@@ -14,6 +15,7 @@
 #include <am_msgs/Object.h>
 #include <am_msgs/TargetZone.h>
 #include <am_msgs/GetGraspPose.h>
+#include <am_msgs/goalPoseAction.h>
 
 #include <utils.hpp>
 #include <fsm_state.hpp>
@@ -51,6 +53,7 @@ private:
 	ros::ServiceClient stop_simulator_client_;
 	ros::ServiceClient save_log_client_;
 
+	actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
 	ros::ServiceClient get_grasp_pose_client_;
 	am_msgs::GetGraspPose get_grasp_pose_srv_;
 

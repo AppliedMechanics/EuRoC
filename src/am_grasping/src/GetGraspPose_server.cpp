@@ -235,10 +235,11 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 	TCP_target_pose.orientation = towards_table;
 
 	// Add half of the gripper height in TCP_(z) direction
-
-	TCP_target_pose.position.x = CoG_position[0];
-	TCP_target_pose.position.y = CoG_position[1];
-	TCP_target_pose.position.z = CoG_position[2];
+//
+//	TCP_target_pose.position.x = CoG_position[0];
+//	TCP_target_pose.position.y = CoG_position[1];
+//	TCP_target_pose.position.z = CoG_position[2];
+	TCP_target_pose.position = req.object.abs_pose.position;
 
 	res.grasp_pose = TCP_target_pose;
 

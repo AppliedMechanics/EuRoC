@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp 
   roslib 
   std_msgs
+  actionlib
+  actionlib_msgs
   am_msgs
   crops_manipulator_utils)
 

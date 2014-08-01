@@ -32,6 +32,8 @@ MotionPlanning::~MotionPlanning() {}
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
+	ROS_INFO("In exection call");
+
 	goal_pose_goal_ = goal;
 
 	if (!getTelemetry()){
@@ -181,7 +183,7 @@ void MotionPlanning::getTimingAlongJointPath()
 
 bool MotionPlanning::getTelemetry()
 {
-	_telemetry = *(ros::topic::waitForMessage<euroc_c2_msgs::Telemetry>(telemetry_,ros::Duration(1.0)));
+	_telemetry = *(ros::topic::waitForMessage<euroc_c2_msgs::Telemetry>(telemetry_,ros::Duration(10.0)));
 	if (&_telemetry==NULL)
 	{
 		ROS_WARN("No telemetry message received.");
