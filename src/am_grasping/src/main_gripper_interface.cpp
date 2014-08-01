@@ -11,7 +11,6 @@
 #include <config.hpp>
 #include <utils.hpp>
 
-ros::NodeHandle nh_;
 
 //! Services
 std::string euroc_c2_interface_ = "/euroc_interface_node";
@@ -19,11 +18,12 @@ std::string move_along_joint_path_ = euroc_c2_interface_ + "/move_along_joint_pa
 euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 euroc_c2_msgs::Configuration commanded_configuration_;
 
-ros::ServiceClient move_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
 
 
 bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperControl::Response &res)
 {
+	ros::NodeHandle n;
+	ros::ServiceClient move_along_joint_path_client_ = n.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
 	// Read Request variables: ...
 	//			... object type, ....
 	gripping_mode_t gripping_mode = (gripping_mode_t)req.gripping_mode;
@@ -56,15 +56,15 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 		commanded_configuration_.q[0] = 0.07;
 		break;
 	default:
-
+		ROS_ERROR("Gripping Mode not matched.");
 		break;
 	}
 
 	move_along_joint_path_srv_.request.path[0] = commanded_configuration_;
 	move_along_joint_path_client_.call(move_along_joint_path_srv_);
 
-//
-//	res.grasp_pose = TCP_target_pose;
+	//
+	//	res.grasp_pose = TCP_target_pose;
 
 	if(true){
 		res.error_message = "";
@@ -80,15 +80,17 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 int main(int argc, char** argv) {
 
 	ros::init(argc, argv, "am_gripper_interface");
-//	ros::NodeHandle nh_;
-//
-//	//! Services
-//	std::string euroc_c2_interface_ = "/euroc_interface_node";
-//	std::string move_along_joint_path_ = euroc_c2_interface_ + "/move_along_joint_path";
-//	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
-//	euroc_c2_msgs::Configuration commanded_configuration_;
-//
-//	ros::ServiceClient move_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
+	ros::NodeHandle nh_;
+//	ros::init(argc, argv, "am_gripper_interface");
+	//	ros::NodeHandle nh_;
+	//
+	//	//! Services
+	//	std::string euroc_c2_interface_ = "/euroc_interface_node";
+	//	std::string move_along_joint_path_ = euroc_c2_interface_ + "/move_along_joint_path";
+	//	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
+	//	euroc_c2_msgs::Configuration commanded_configuration_;
+	//
+	//	ros::ServiceClient move_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
 
 	ros::ServiceServer service = nh_.advertiseService("GripperInterface", gripper_interface);
 
