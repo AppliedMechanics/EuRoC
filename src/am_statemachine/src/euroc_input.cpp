@@ -597,3 +597,16 @@ void EurocInput::set_object_finished()
 		active_object_=-1;
 	}
 }
+bool EurocInput::all_finished()
+{
+	uint16_t cnt=0;
+	for(uint16_t ii=0;ii<nr_objects_;ii++)
+	{
+		if(obj_finished_[ii]==1)
+			cnt++;
+	}
+	if(cnt==nr_objects_)
+		return true;
+	else
+		return false;
+}

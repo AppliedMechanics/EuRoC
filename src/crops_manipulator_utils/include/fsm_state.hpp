@@ -26,6 +26,7 @@ typedef enum {
 	LOCATE_OBJECT,
 	GET_GRASPING_POSE,
 	MOVE_TO_OBJECT,
+	GRIP,
 	MOVE_TO_TARGET_ZONE,
 	//sub-states for move_to_object
 	MOVE_WITH_METHOD_A,

@@ -88,16 +88,6 @@ int main(int argc, char** argv) {
 
 	ros::init(argc, argv, "am_gripper_interface");
 	ros::NodeHandle nh_;
-//	ros::init(argc, argv, "am_gripper_interface");
-	//	ros::NodeHandle nh_;
-	//
-	//	//! Services
-	//	std::string euroc_c2_interface_ = "/euroc_interface_node";
-	//	std::string move_along_joint_path_ = euroc_c2_interface_ + "/move_along_joint_path";
-	//	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
-	//	euroc_c2_msgs::Configuration commanded_configuration_;
-	//
-	//	ros::ServiceClient move_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
 
 	ros::ServiceServer service = nh_.advertiseService("GripperInterface", gripper_interface);
 

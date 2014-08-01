@@ -6,19 +6,18 @@
  */
 
 #include <ros/ros.h>
+#include <vision.hpp>
+
 
 int main(int argc, char** argv) {
 
 	ros::init(argc, argv, "am_vision");
 
-	ros::NodeHandle nh;
-
+	Vision vision;
 
 	ros::Rate r(10); // 10 hz
 	while (ros::ok())
 	{
-
-
 		ros::spinOnce();
 		r.sleep();
 	}

@@ -16,8 +16,11 @@
 #include <am_msgs/TargetZone.h>
 #include <am_msgs/GetGraspPose.h>
 #include <am_msgs/goalPoseAction.h>
+#include <am_msgs/GripperControl.h>
+#include <am_msgs/VisionAction.h>
 
 #include <utils.hpp>
+#include <config.hpp>
 #include <fsm_state.hpp>
 #include <euroc_input.hpp>
 
@@ -54,8 +57,11 @@ private:
 	ros::ServiceClient save_log_client_;
 
 	actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
+	actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
 	ros::ServiceClient get_grasp_pose_client_;
 	am_msgs::GetGraspPose get_grasp_pose_srv_;
+	ros::ServiceClient gripper_control_client_;
+	am_msgs::GripperControl gripper_control_srv_;
 
 	euroc_c2_msgs::StartSimulator start_simulator_srv_;
 	euroc_c2_msgs::StopSimulator stop_simulator_srv_;
@@ -94,6 +100,7 @@ private:
 	int locate_object();
 	int get_grasping_pose();
 	int move_to_object();
+	int grip_object();
 	int move_to_target_zone();
 };
 
