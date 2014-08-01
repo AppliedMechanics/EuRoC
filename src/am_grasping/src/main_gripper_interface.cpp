@@ -48,8 +48,15 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 		commanded_configuration_.q[0] = gripper_position;
 		break;
 	case FF_FORCE:
+		//! Assumption: "stiffness" of position control = 1500 . FORCE = 1500 (object_width - POSITION). POSITION=object_width - FORCE/1500
+		commanded_configuration_.q[0] = object_width - (gripping_force/1500.0);
+		if (commanded_configuration_.q[0]<0.0)
+			commanded_configuration_.q[0]=0.0;
+		else if (commanded_configuration_.q[0]>0.07)
+			commanded_configuration_.q[0]=0.07;
+		break;
 	case FB_FORCE:
-		ROS_ERROR("FF/FB FORCE not yet implemented");
+		ROS_ERROR("FB FORCE not yet implemented");
 		break;
 
 	case RELEASE:
