@@ -1,0 +1,28 @@
+controller_manager_ns: kuka_lwr_controller_manager
+controller_list:
+  - name: Arm_controller
+    joints:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+      - joint7
+  - name: Tisch_controller
+    joints:
+      - LinearTisch
+  - name: Gripper_controller
+    joints:
+      - joint_before_finger1
+      - joint_before_finger2
+  - name: TischArm_controller
+    joints:
+      - LinearTisch
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+      - joint7

@@ -1,0 +1,29 @@
+controller_manager_ns: kuka_lwr_controller_manager
+controller_list:
+  - name: Arm_controller
+    lwr_joint_s:
+      - lwr_joint_1
+      - lwr_joint_2
+      - lwr_joint_3
+      - lwr_joint_4
+      - lwr_joint_5
+      - lwr_joint_6
+      - lwr_joint_7
+  - name: Tisch_controller
+    lwr_joint_s:
+      - axis_x
+      - axis_y
+  - name: Gripper_controller
+    lwr_joint_s:
+      - gripper
+  - name: TischArm_controller
+    lwr_joint_s:
+      - axis_x
+      - axis_y
+      - lwr_joint_1
+      - lwr_joint_2
+      - lwr_joint_3
+      - lwr_joint_4
+      - lwr_joint_5
+      - lwr_joint_6
+      - lwr_joint_7

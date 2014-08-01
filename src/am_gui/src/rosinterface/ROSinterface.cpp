@@ -148,7 +148,7 @@ void ROSinterface::callStartSimulator(std::string task)
 	// Check the response for errors
 	std::string &error_message = start_simulator_srv.response.error_message;
 	if(!error_message.empty()){
-		ROS_ERROR("Starting the simulator failed failed: %s", error_message.c_str());
+		ROS_ERROR("Starting the simulator failed: %s", error_message.c_str());
 	}
 }
 

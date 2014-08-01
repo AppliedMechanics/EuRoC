@@ -1,0 +1,8 @@
+<launch>
+
+  <include file="$(find moveit_config_mit_gripper)/launch/demo.launch"/>
+
+  <node name="move_group_interface_kuka_lwr" pkg="kuka_lwr_motion" type="move_group_interface_kuka_lwr" respawn="false" output="screen">
+  </node>
+
+</launch>
