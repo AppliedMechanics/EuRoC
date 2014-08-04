@@ -403,7 +403,7 @@ int Statemachine::move_to_target_zone()
 
 	//==============================================
 	//state:
-	if(ein_->all_finished())
+	if(1)//ein_->all_finished())
 	{
 		state_.sub.one = STOP_SIM;
 		state_.sub.two = 0;

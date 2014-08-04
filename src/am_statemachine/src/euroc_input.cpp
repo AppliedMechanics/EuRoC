@@ -222,6 +222,14 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				ROS_ERROR("Pose not found in shape");
 				return -1;
 			}
+
+			try{
+				const YAML::Node* dens = (*it2).FindValue("density");
+				(*dens) >> tmp_obj.shape[jj].density;
+			}catch(YAML::Exception e) {
+				ROS_ERROR("dimensions not found in shape");
+				return -1;
+			}
 			jj++;
 
 		} /* for (YAML::Iterator it2 = shapes->begin(); it2 != shapes->end();++it2) */
@@ -552,9 +560,10 @@ am_msgs::TargetZone EurocInput::get_target_zone()
 	std::string obj_name=objects_[active_object_].name;
 	for(uint16_t ii=0;ii<nr_zones_;ii++)
 	{
-		if(obj_name.compare(target_zones_[ii].expected_object.c_str()))
+		if(!obj_name.compare(target_zones_[ii].expected_object.c_str()))
 		{
 			active_zone_=ii;
+			ROS_INFO("Obj: %s, Zone expected: %s",obj_name.c_str(),target_zones_[ii].expected_object.c_str());
 			return target_zones_[ii];
 		}
 	}
@@ -573,6 +582,7 @@ void EurocInput::print_object(am_msgs::Object*obj)
 	{
 		ROS_INFO("");
 		ROS_INFO("shape %d: type: %s",zz,obj->shape[zz].type.c_str());
+		ROS_INFO("density: %f",obj->shape[zz].density);
 		if(obj->shape[zz].type == "cylinder")
 			ROS_INFO("Length: %3.2f, Radius: %3.2f",obj->shape[zz].length,
 				  obj->shape[zz].radius);
