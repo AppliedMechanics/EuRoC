@@ -26,6 +26,13 @@ time_at_path_points_(1)
 	goalPose_server_.start();
 	ROS_INFO("goalPose action server started.");
 
+	feedback_frequency_ = 10;
+
+	//! Timer for feedback runs with 10 Hz
+	feedback_timer_ = nh_.createTimer(ros::Duration(1.0/feedback_frequency_),&MotionPlanning::while_motion,this,false,false);
+
+
+
 }
 
 MotionPlanning::~MotionPlanning() {}
@@ -36,6 +43,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 	goal_pose_goal_ = goal;
 
+	ros::Rate feedback_rate(feedback_frequency_);
+
 	if (!getTelemetry()){
 		ROS_ERROR("getTelemetry: An Error happened here.");
 		goalPose_result_.reached_goal = false;
@@ -43,7 +52,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	}
 	switch (goal->planning_algorithm)
 	{
-		case STANDARD_IK_7DOF:
+	case STANDARD_IK_7DOF:
 
 		ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
 
@@ -56,15 +65,33 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 
 		getTimingAlongJointPath();
+
+		starting_time_ = ros::Time::now().toSec();
 		getGoalPose_Feedback();
 
 		goalPose_server_.publishFeedback(goalPose_feedback_);
 
-		moveToTargetCB();
+		moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
 
-		goalPose_result_.reached_goal = true;
+		while (!goalPose_result_.reached_goal)
+		{
+			getGoalPose_Feedback();
+			goalPose_server_.publishFeedback(goalPose_feedback_);
 
-		goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			if (goalPose_feedback_.execution_time >= goalPose_feedback_.estimated_motion_time)
+			{
+				goalPose_result_.reached_goal = true;
+//				feedback_timer_.stop();
+				goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			}
+			else
+			{
+				goalPose_result_.reached_goal = false;
+			}
+			feedback_rate.sleep();
+
+		}
+		//		feedback_timer_.start();
 
 		break;
 	}
@@ -74,10 +101,27 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 void MotionPlanning::getGoalPose_Feedback()
 {
 	goalPose_feedback_.estimated_motion_time = estimated_motion_time_;
-	goalPose_feedback_.execution_time = ros::Time::now().sec;
+	goalPose_feedback_.execution_time = ros::Time::now().toSec() - starting_time_;
 
 }
 
+void MotionPlanning::while_motion(const ros::TimerEvent& event)
+{
+	getGoalPose_Feedback();
+	goalPose_server_.publishFeedback(goalPose_feedback_);
+
+	if (goalPose_feedback_.execution_time >= goalPose_feedback_.estimated_motion_time)
+	{
+		goalPose_result_.reached_goal = true;
+		feedback_timer_.stop();
+		goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+	}
+	else
+	{
+		goalPose_result_.reached_goal = false;
+	}
+
+}
 
 bool MotionPlanning::getIKSolution7DOF()
 {
@@ -148,6 +192,7 @@ bool MotionPlanning::getIKSolution7DOF()
 		ROS_ERROR("MotionPlanning::Error at searchforIK service.");
 		return false;
 	}
+	return true;
 }
 
 void MotionPlanning::getTimingAlongJointPath()

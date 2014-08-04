@@ -21,12 +21,14 @@
 
 #include <euroc_c2_msgs/Telemetry.h>
 
+#include <boost/thread.hpp>
+
 
 class MotionPlanning {
 public:
 	MotionPlanning();
 	virtual ~MotionPlanning();
-
+	void while_motion(const ros::TimerEvent& e);
 
 private:
 	ros::NodeHandle nh_;
@@ -51,6 +53,7 @@ private:
 
 	ros::Subscriber telemetry_subscriber_;
 
+	ros::Timer feedback_timer_;
 
 	std::string euroc_c2_interface_;
 	std::string move_along_joint_path_;
@@ -72,11 +75,18 @@ private:
 	//! Variables
 	std::vector<ros::Time> time_at_path_points_;
 	double estimated_motion_time_;
+	double starting_time_;
+
+	double feedback_frequency_;
 
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();
 	bool getTelemetry();
+
+	boost::thread moveToTarget;
 	void moveToTargetCB();
+
+
 };
 
 #endif /* MOTIONPLANNING_H_ */
