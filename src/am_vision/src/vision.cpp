@@ -14,6 +14,8 @@ Vision::Vision():
 void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
 
+	//detection code ...
+
 
 	//hier dann vision aufrufen
 	vision_result_.abs_object_pose.position.x=-0.3;

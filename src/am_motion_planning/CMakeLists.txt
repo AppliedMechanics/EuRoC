@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   am_msgs
   actionlib
   roscpp
+  crops_manipulator_utils
 )
 
 ## System dependencies are found with CMake's conventions
@@ -113,6 +114,7 @@ add_dependencies(am_motion_planning am_motion_planning_generate_messages_cpp)
 ## Specify libraries to link a library or executable target against
  target_link_libraries(am_motion_planning
    ${catkin_LIBRARIES}
+   crops_manipulator_utils
  )
 
 #############

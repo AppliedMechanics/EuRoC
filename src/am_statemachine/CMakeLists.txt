@@ -18,10 +18,10 @@ find_package(catkin REQUIRED COMPONENTS
   crops_manipulator_utils)
 
 
-add_action_files(
-  DIRECTORY action
-  FILES test.action
-)
+# add_action_files(
+#   DIRECTORY action
+#   FILES test.action
+# )
 
 generate_messages(
   DEPENDENCIES actionlib_msgs std_msgs  # Or other packages containing msgs

@@ -43,38 +43,52 @@ public:
 private:
 	//!task description
 	std::string description_;
+
 	//!filename for logger
 	std::string log_filename_;
+
 	//!time limit for the task
 	double time_limit_;
 
 	//!mast of cam: The TCM transformation
 	geometry_msgs::Pose base_pose_;
+
 	//!mast of cam: The TPT Base transformation
 	geometry_msgs::Pose pan_tilt_base_;
+
 	//!mast of cam: speed limit
 	double speed_limit_[2];
 
 	//!objects
 	std::vector<am_msgs::Object> objects_;
+
 	//!number of objects
 	uint8_t nr_objects_;
+
 	//!index for current active object
 	int8_t active_object_;
+
 	//!grasping pose for each object
 	std::vector<geometry_msgs::Pose> grasping_pose_;
+
 	//!vector with values 0/1 for not finished/finished
 	std::vector<uint32_t> obj_finished_;
+
 	//!target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
+
 	//!number of target_zones
 	uint8_t nr_zones_;
+
 	//!index for active zone (for active object)
 	int8_t active_zone_;
+
 	//!robot
 	am_msgs::Robot robot_;
+
 	//!sensors
 	std::vector<am_msgs::Sensor> sensors_;
+
 	//!number of sensors
 	uint16_t nr_sensors;
 };

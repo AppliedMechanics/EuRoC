@@ -1,10 +1,15 @@
 #ifndef __STATEMACHINE_HPP__
 #define __STATEMACHINE_HPP__
 
-#include "ros/ros.h"
+//ros includes
+#include <ros/ros.h>
+#include <ros/callback_queue.h>
+#include <ros/callback_queue_interface.h>
 #include "std_msgs/String.h"
-#include <sstream>
 #include <actionlib/client/simple_action_client.h>
+//general includes
+#include <sstream>
+#include <boost/thread.hpp>
 
 //euroc includes
 #include <euroc_c2_msgs/SaveLog.h>
@@ -12,6 +17,7 @@
 #include <euroc_c2_msgs/StartSimulator.h>
 #include <euroc_c2_msgs/StopSimulator.h>
 
+//am msgs
 #include <am_msgs/Object.h>
 #include <am_msgs/TargetZone.h>
 #include <am_msgs/GetGraspPose.h>
@@ -19,10 +25,13 @@
 #include <am_msgs/GripperControl.h>
 #include <am_msgs/VisionAction.h>
 
+//am includes
 #include <utils.hpp>
 #include <config.hpp>
 #include <fsm_state.hpp>
 #include <euroc_input.hpp>
+
+typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> Client;
 
 class Statemachine
 {
@@ -40,10 +49,12 @@ private:
 	EurocInput *ein_;
 
 	//!state variable
-	fsm_state_t state_;
+	fsm::fsm_state_t state_;
 
-	//Get the node handle for this node
+	//!node handle for this node
 	ros::NodeHandle node_;
+	//!callback queue
+	ros::CallbackQueue my_queue_;
 
 	std::string task_selector_;
 	std::string list_scenes_;
@@ -86,13 +97,19 @@ public:
 	static Statemachine* get_instance();
 
 	int init_sm();
+	void execute();
 	int tick();
 
-	fsm_state_t get_state()	{ return state_; };
+	fsm::fsm_state_t get_state()	{ return state_; };
 
 private:
 	int request_task();
+	void request_task_cb();
+	uint8_t request_task_;
+	boost::thread lsc_;
 	int start_sim();
+	void start_sim_cb();
+	uint8_t start_sim_;
 	int parse_yaml_file();
 	int solve_task();
 	int stop_sim();
@@ -102,6 +119,17 @@ private:
 	int move_to_object();
 	int grip_object();
 	int move_to_target_zone();
+
+	void mto1_done(const actionlib::SimpleClientGoalState& state,
+				  const am_msgs::goalPoseResultConstPtr& result);
+	void mto2_done(const actionlib::SimpleClientGoalState& state,
+				  const am_msgs::goalPoseResultConstPtr& result);
+	void mto_feedback(const am_msgs::goalPoseActionFeedbackConstPtr& feedback);
+	void mto_active();
+	void mttz_done(const actionlib::SimpleClientGoalState& state,
+				  const am_msgs::goalPoseResultConstPtr& result);
+	uint8_t mto1_,mto2_;
+	uint8_t mttz_;
 };
 
 inline Statemachine* Statemachine::get_instance()

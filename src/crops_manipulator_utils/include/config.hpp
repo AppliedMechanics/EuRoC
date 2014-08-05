@@ -16,4 +16,10 @@ typedef enum {
 	MOVE_IT
 } motion_planning_mode_t;
 
+typedef enum {
+	OPEN=0,
+	RUNNING,
+	FINISHED
+} thread_state_t;
+
 #endif

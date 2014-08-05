@@ -9,12 +9,16 @@ Statemachine::Statemachine():
 		nr_scenes_(0),
 		active_scene_(-1),
 		motion_planning_action_client_("goalPoseAction", true),
-		vision_action_client_("VisionAction", true)
+		vision_action_client_("VisionAction", true),
+		request_task_(OPEN),
+		mto1_(OPEN),
+		mto2_(OPEN),
+		mttz_(OPEN)
 {
 	ein_=new EurocInput();
 	//==============================================
 	//state:
-	state_.sub.one = REQUEST_TASK;
+	state_.sub.one = fsm::REQUEST_TASK;
 	//==============================================
 
 	task_selector_ = "/euroc_c2_task_selector";
@@ -36,6 +40,7 @@ Statemachine::~Statemachine()
 
 int Statemachine::init_sm()
 {
+
 	ros::service::waitForService(list_scenes_,ros::Duration(5.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(5.0));
 	ros::service::waitForService(stop_simulator_,ros::Duration(5.0));
@@ -51,9 +56,58 @@ int Statemachine::init_sm()
 	ROS_INFO("Waiting for action server to start.");
 	motion_planning_action_client_.waitForServer(ros::Duration(5.0));
 	vision_action_client_.waitForServer(ros::Duration(5.0));
-	ROS_INFO("Action server started, sending goal.");
+	ROS_INFO("Action server started.");
 
 	return 0;
+}
+
+void Statemachine::execute()
+{
+#if 0
+	ros::CallbackQueue my_queue_;
+	ros::AsyncSpinner spinner(2); // Use 4 threads
+
+	ROS_INFO("before spinner::start");
+	spinner.start();
+	ROS_INFO("before waitForShutdown");
+	//ros::waitForShutdown();
+
+	ROS_INFO("Entering while-loop");
+	while(ros::ok() && !(state_.sub.one==FINISHED))
+	{
+		 my_queue_.callAvailable(ros::WallDuration(0.01));
+		 tick();
+
+		 counter++;
+	}
+#else
+	//update rate
+	ros::Rate loop_rate(10);
+
+	double start=(double)ros::Time::now().toSec();
+	double t_act=0;
+	while(ros::ok() && !(state_.sub.one == fsm::FINISHED))
+	{
+
+	  if(-1==tick())
+	  {
+		  msg_error("Error in Statemachine::tick()");
+	  }
+
+	  //"tick"
+	  ros::spinOnce();
+
+	  //sleep for the remaining time
+	  loop_rate.sleep();
+
+	  counter++;
+	  t_act=(double)ros::Time::now().toSec()-start;
+
+//	  std::cout<<"time: "<<t_act<<" s, counter: "<<counter<<std::endl;
+	  printf("time= %f s \r",t_act);
+	  fflush(stdout);
+	}
+#endif
 }
 
 int Statemachine::tick()
@@ -61,37 +115,39 @@ int Statemachine::tick()
 
 	switch(state_.sub.one)
 	{
-	case REQUEST_TASK:
+	case fsm::REQUEST_TASK:
 		return request_task();
 
-	case START_SIM:
+	case fsm::START_SIM:
 		return start_sim();
 
-	case PARSE_YAML:
+	case fsm::PARSE_YAML:
 		return parse_yaml_file();
 
-	case SOLVE_TASK:
+	case fsm::SOLVE_TASK:
 		switch(state_.sub.two)
 		{
-		case LOCATE_OBJECT:
+		case fsm::LOCATE_OBJECT:
 			return locate_object();
 
-		case GET_GRASPING_POSE:
+		case fsm::GET_GRASPING_POSE:
 			return get_grasping_pose();
 
-		case MOVE_TO_OBJECT:
+		case fsm::MOVE_TO_OBJECT:
 			return move_to_object();
 
-		case GRIP:
+		case fsm::GRIP:
 			return grip_object();
 
-		case MOVE_TO_TARGET_ZONE:
+		case fsm::MOVE_TO_TARGET_ZONE:
 			return move_to_target_zone();
 
 		default:
 			return solve_task();
 		}
-	case STOP_SIM:
+		break; //should not happen ?!
+
+	case fsm::STOP_SIM:
 		return stop_sim();
 
 	default:
@@ -100,68 +156,105 @@ int Statemachine::tick()
 	}
 }
 
+void Statemachine::request_task_cb()
+{
+	//ROS_INFO("In request_task_cb");
+	request_task_=RUNNING;
+
+	if(list_scenes_client_.exists())
+		list_scenes_client_.call(list_scenes_srv_);
+
+	request_task_=FINISHED;
+	//ROS_INFO("Exiting request_task_cb");
+}
+
 int Statemachine::request_task()
 {
-	list_scenes_client_.call(list_scenes_srv_);
-
-	// The error_message field of each service response indicates whether an error occured. An empty string indicates success
-	std::string &ls_error_message = list_scenes_srv_.response.error_message;
-	if(!ls_error_message.empty()){
-		ROS_ERROR("List scenes failed: %s", ls_error_message.c_str());
-		return -1;
-	}
-	else
+	if(request_task_==OPEN)
 	{
-		// Let's print the names of the received scenes
-		ROS_INFO("[AM] Found the following scenes for the EuRoC C2 Simulation:");
-
-		scenes_.resize(list_scenes_srv_.response.scenes.size());
-		scenes_ = list_scenes_srv_.response.scenes;
-
-		nr_scenes_ = scenes_.size();
-		for(unsigned int ii = 0; ii < nr_scenes_; ++ii){
-			euroc_c2_msgs::Scene &scene = scenes_[ii];
-			ROS_INFO("[%2d] - %s", ii,scene.name.c_str());
-		}
+		lsc_ = boost::thread(&Statemachine::request_task_cb,this);
 	}
+	else if(request_task_==FINISHED)//lsc_.timed_join(boost::posix_time::seconds(0.0)))
+	{
+		// The error_message field of each service response indicates whether an error occured. An empty string indicates success
+		std::string &ls_error_message = list_scenes_srv_.response.error_message;
+		if(!ls_error_message.empty()){
+			ROS_ERROR("List scenes failed: %s", ls_error_message.c_str());
+			return -1;
+		}
+		else
+		{
+			// Let's print the names of the received scenes
+			ROS_INFO("[AM] Found the following scenes for the EuRoC C2 Simulation:");
 
-	std::cout<<"Choose task: ";
-	int blub;
-	std::cin>>blub;
-	active_scene_=blub;
+			scenes_.resize(list_scenes_srv_.response.scenes.size());
+			scenes_ = list_scenes_srv_.response.scenes;
 
-	//ROS_INFO("Your Choice: %d", active_scene_);
-	task_active_=true;
+			nr_scenes_ = scenes_.size();
+			for(unsigned int ii = 0; ii < nr_scenes_; ++ii){
+				euroc_c2_msgs::Scene &scene = scenes_[ii];
+				ROS_INFO("[%2d] - %s", ii,scene.name.c_str());
+			}
+		}
+		lsc_.detach();
 
-	//==============================================
-	//state:
-	state_.sub.one = START_SIM;
-	//==============================================
+
+		std::cout<<"Choose task: ";
+		int blub=8;
+		//std::cin>>blub;
+		active_scene_=blub;
+
+		//ROS_INFO("Your Choice: %d", active_scene_);
+		task_active_=true;
+
+		//==============================================
+		//state:
+		state_.sub.one = fsm::START_SIM;
+		//==============================================
+	}
 	return 0;
+}
+
+void Statemachine::start_sim_cb()
+{
+	start_sim_=RUNNING;
+
+	//if(start_simulator_client_.exists())
+		start_simulator_client_.call(start_simulator_srv_);
+
+	start_sim_=FINISHED;
 }
 
 int Statemachine::start_sim()
 {
-	ROS_INFO("Statemachine: Starting Server");
+	if(start_sim_==OPEN)
+	{
+		ROS_INFO("Statemachine: Starting Server");
 
-	start_simulator_srv_.request.user_id = "am-robotics";
-	start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
-	start_simulator_client_.call(start_simulator_srv_);
+		start_simulator_srv_.request.user_id = "am-robotics";
+		start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
 
-	// Check the response for errors
-	std::string &error_message = start_simulator_srv_.response.error_message;
-	if(!error_message.empty()){
-		ROS_ERROR("Statemachine: Starting the simulator failed: %s", error_message.c_str());
-		return -1;
+		lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
 	}
+	else if(start_sim_==FINISHED)
+	{
+		// Check the response for errors
+		std::string &error_message = start_simulator_srv_.response.error_message;
+		if(!error_message.empty()){
+			ROS_ERROR("Statemachine: Starting the simulator failed: %s", error_message.c_str());
+			return -1;
+		}
 
-	ros::service::waitForService(save_log_,ros::Duration(5.0));
+		//destroy thread
+		lsc_.detach();
+		ROS_INFO("Statemachine: Server started");
+		ros::service::waitForService(save_log_,ros::Duration(5.0));
 
-	//==============================================
-	//state:
-	state_.sub.one = PARSE_YAML;
-	//==============================================
-
+		//==============================================
+		//state:
+		state_.sub.one = fsm::PARSE_YAML;
+		//==============================================
+	}
 	return 0;
 }
 
@@ -178,11 +271,12 @@ int Statemachine::parse_yaml_file()
 		ROS_ERROR("Statemachine: Error in parse_yaml_file()");
 	}
 
+	ROS_INFO("Statemachine: Parsing YAML-file finished");
 
 	//==============================================
 	//state:
-	state_.sub.one = SOLVE_TASK;
-	state_.sub.two = LOCATE_OBJECT;
+	state_.sub.one = fsm::SOLVE_TASK;
+	state_.sub.two = fsm::LOCATE_OBJECT;
 	//==============================================
 
 	return 0;
@@ -194,7 +288,7 @@ int Statemachine::solve_task()
 
 	//==============================================
 	//state:
-	state_.sub.one = STOP_SIM;
+	state_.sub.one = fsm::STOP_SIM;
 	//==============================================
 	return 0;
 }
@@ -209,10 +303,14 @@ int Statemachine::stop_sim()
 	// The stop simulator callback ends the current simulation
 	stop_simulator_client_.call(stop_simulator_srv_);
 
+	request_task_=OPEN;
+	mto1_=OPEN;
+	mto2_=OPEN;
+	mttz_=OPEN;
 
 	//==============================================
 	//state:
-	state_.sub.one = FINISHED;
+	state_.sub.one = fsm::FINISHED;
 	//==============================================
 
 	return 0;
@@ -228,6 +326,8 @@ int Statemachine::locate_object()
 		ein_->set_object_finished();
 		first=false;
 	}
+	cur_obj_ = ein_->get_object();
+	ein_->set_object_finished();
 	cur_obj_ = ein_->get_object();
 
 	ein_->print_object(&cur_obj_);
@@ -261,8 +361,8 @@ int Statemachine::locate_object()
 
 	//==============================================
 	//state:
-	state_.sub.one = SOLVE_TASK;
-	state_.sub.two = GET_GRASPING_POSE;
+	state_.sub.one = fsm::SOLVE_TASK;
+	state_.sub.two = fsm::GET_GRASPING_POSE;
 	//==============================================
 
 	return 0;
@@ -288,14 +388,15 @@ int Statemachine::get_grasping_pose()
 
 	//==============================================
 	//state:
-	state_.sub.one = SOLVE_TASK;
-	state_.sub.two = MOVE_TO_OBJECT;
+	state_.sub.one = fsm::SOLVE_TASK;
+	state_.sub.two = fsm::MOVE_TO_OBJECT;
 	//==============================================
 	return 0;
 }
 
 int Statemachine::move_to_object()
 {
+#if 0
 	gripper_control_srv_.request.gripping_mode = RELEASE;
 
 	if(gripper_control_client_.call(gripper_control_srv_))
@@ -323,25 +424,87 @@ int Statemachine::move_to_object()
 	    ROS_INFO("Action did not finish before the time out.");
 
 	goal.goal_pose.position.z-=0.1;
-	motion_planning_action_client_.sendGoal(goal);
+		motion_planning_action_client_.sendGoal(goal);
 
-	//wait for the action to return
-	finished_before_timeout = motion_planning_action_client_.waitForResult(ros::Duration(300.0));
-	if (finished_before_timeout)
+		//wait for the action to return
+		finished_before_timeout = motion_planning_action_client_.waitForResult(ros::Duration(300.0));
+		if (finished_before_timeout)
+		{
+			actionlib::SimpleClientGoalState state = motion_planning_action_client_.getState();
+			ROS_INFO("Action finished: %s",state.toString().c_str());
+		}
+		else
+			ROS_INFO("Action did not finish before the time out.");
+
+
+		ros::Duration(1).sleep();
+
+		//==============================================
+		//state:
+		state_.sub.one = fsm::SOLVE_TASK;
+		state_.sub.two = fsm::GRIP;
+		//==============================================
+#else
+	if(mto1_==OPEN)
 	{
-		actionlib::SimpleClientGoalState state = motion_planning_action_client_.getState();
-		ROS_INFO("Action finished: %s",state.toString().c_str());
+		gripper_control_srv_.request.gripping_mode = RELEASE;
+
+		if(gripper_control_client_.call(gripper_control_srv_))
+		{
+			ROS_INFO("Gripper released");
+		}
+		else
+			ROS_ERROR("Failed to call gripper control client");
+
+
+		am_msgs::goalPoseGoal goal;
+		goal.goal_pose = ein_->get_grasping_pose();
+		goal.goal_pose.position.z+=0.1;
+		goal.planning_algorithm = 0;
+		motion_planning_action_client_.sendGoal(goal,
+												boost::bind(&Statemachine::mto1_done,this,_1,_2), //Client::SimpleDoneCallback(), //
+												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
+												Client::SimpleFeedbackCallback());
+
+		//setFeedbackCallback(boost::bind(&MoveToFruitState::feedbackCb, this, _1));
+
+		mto1_=RUNNING;
+//	}
+//	else if((mto1_==FINISHED)&&(mto2_==OPEN))
+//	{
+//		am_msgs::goalPoseGoal goal;
+		goal.goal_pose = ein_->get_grasping_pose();
+		motion_planning_action_client_.sendGoal(goal,
+												boost::bind(&Statemachine::mto2_done,this,_1,_2),
+												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
+												Client::SimpleFeedbackCallback());//boost::bind(&Statemachine::mto2_feedback,this,_1));
+
+		mto2_=RUNNING;
 	}
-	else
-		ROS_INFO("Action did not finish before the time out.");
+	else if(mto2_==FINISHED)
+	{
+		//actionlib::SimpleClientGoalState state = motion_planning_action_client_.getState();
+		//ROS_INFO("Action finished: %s",state.toString().c_str());
 
-	ros::Duration(1).sleep();
+//		am_msgs::goalPoseGoal goal;
+//		goal.goal_pose = ein_->get_grasping_pose();
+//		motion_planning_action_client_.sendGoal(goal,
+//												boost::bind(&Statemachine::mto_done,this,_1,_2),
+//												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
+//												Client::SimpleFeedbackCallback());
+//
+//		mto_=RUNNING;
 
-	//==============================================
-	//state:
-	state_.sub.one = SOLVE_TASK;
-	state_.sub.two = GRIP;
-	//==============================================
+
+		//ros::Duration(1).sleep();
+
+		//==============================================
+		//state:
+		state_.sub.one = fsm::SOLVE_TASK;
+		state_.sub.two = fsm::GRIP;
+		//==============================================
+	}
+#endif
 	return 0;
 }
 
@@ -361,19 +524,20 @@ int Statemachine::grip_object()
 
 	//==============================================
 	//state:
-	state_.sub.one = SOLVE_TASK;
-	state_.sub.two = MOVE_TO_TARGET_ZONE;
+	state_.sub.one = fsm::SOLVE_TASK;
+	state_.sub.two = fsm::MOVE_TO_TARGET_ZONE;
 	//==============================================
 	return 0;
 }
 
 int Statemachine::move_to_target_zone()
 {
+#if 0
 	am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
 
 	am_msgs::goalPoseGoal goal;
 	goal.goal_pose.position = tmp_zone.position;
-	goal.goal_pose.position.z+=0.3;
+	goal.goal_pose.position.z+=0.4;
 	goal.goal_pose.orientation.x=1;
 	goal.goal_pose.orientation.y=0;
 	goal.goal_pose.orientation.z=0;
@@ -405,16 +569,93 @@ int Statemachine::move_to_target_zone()
 	//state:
 	if(1)//ein_->all_finished())
 	{
-		state_.sub.one = STOP_SIM;
+		state_.sub.one = fsm::STOP_SIM;
 		state_.sub.two = 0;
 		task_active_=false;
 	}
 	else
 	{
-		state_.sub.one = SOLVE_TASK;
-		state_.sub.two = LOCATE_OBJECT;
+		state_.sub.one = fsm::SOLVE_TASK;
+		state_.sub.two = fsm::LOCATE_OBJECT;
 	}
 	//==============================================
+#else
+	if(mttz_==OPEN)
+	{
+		am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
 
+		am_msgs::goalPoseGoal goal;
+		goal.goal_pose.position = tmp_zone.position;
+		goal.goal_pose.position.z+=0.4;
+		goal.goal_pose.orientation.x=1;
+		goal.goal_pose.orientation.y=0;
+		goal.goal_pose.orientation.z=0;
+		goal.goal_pose.orientation.w=0;
+
+		motion_planning_action_client_.sendGoal(goal,
+												boost::bind(&Statemachine::mttz_done,this,_1,_2),
+												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
+												Client::SimpleFeedbackCallback());//boost::bind(&Statemachine::mto_feedback,this,_1,_2));
+		mttz_=RUNNING;
+	}
+	else if(mttz_==FINISHED)
+	{
+		gripper_control_srv_.request.gripping_mode = RELEASE;
+
+		if(gripper_control_client_.call(gripper_control_srv_))
+		{
+			ROS_INFO("Gripper released");
+		}
+		else
+			ROS_ERROR("Failed to call gripper control client");
+
+		ein_->set_object_finished();
+
+		//==============================================
+		//state:
+		if(1)//ein_->all_finished())
+		{
+			state_.sub.one = fsm::STOP_SIM;
+			state_.sub.two = 0;
+			task_active_=false;
+		}
+		else
+		{
+			state_.sub.one = fsm::SOLVE_TASK;
+			state_.sub.two = fsm::LOCATE_OBJECT;
+		}
+		//==============================================
+	}
+#endif
 	return 0;
+}
+
+void Statemachine::mto_feedback(const am_msgs::goalPoseActionFeedbackConstPtr& feedback)
+{
+	ROS_INFO("got feedback");
+}
+void Statemachine::mto1_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
+{
+	//state = motion_planning_action_client_.getState();
+	ROS_INFO("Action finished: %s",state.toString().c_str());
+	mto1_=FINISHED;
+}
+void Statemachine::mto2_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
+{
+	//state = motion_planning_action_client_.getState();
+	ROS_INFO("Action finished: %s",state.toString().c_str());
+	mto2_=FINISHED;
+}
+void Statemachine::mto_active()
+{
+	ROS_INFO("Goal now active!");
+}
+void Statemachine::mttz_done(const actionlib::SimpleClientGoalState& state,
+							const am_msgs::goalPoseResultConstPtr& result)
+{
+	//state = motion_planning_action_client_.getState();
+	ROS_INFO("Action finished: %s",state.toString().c_str());
+	mttz_=FINISHED;
 }

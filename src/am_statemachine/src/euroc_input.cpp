@@ -3,7 +3,7 @@
 #include <utils.hpp>
 #include <iostream>
 
-#define DBG_OUT
+#undef DBG_OUT
 
 
 EurocInput::EurocInput():
@@ -184,6 +184,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 					ROS_ERROR("dimensions not found in shape");
 					return -1;
 				}
+				tmp_obj.shape[jj].size.resize(3,0);
 			}
 			else if(tmp_obj.shape[jj].type == "box")
 			{
@@ -197,6 +198,8 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 					ROS_ERROR("dimensions not found in shape");
 					return -1;
 				}
+				tmp_obj.shape[jj].length=0;
+				tmp_obj.shape[jj].radius=0;
 			}
 			else
 			{
@@ -245,6 +248,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		  ROS_INFO("Object %d:",kk);
 		  print_object(&objects_[kk]);
 	  }
+	  ROS_INFO("");
 #endif
 
 	//######################################################################################
@@ -320,6 +324,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				  target_zones_[kk].position.y,target_zones_[kk].position.z);
 		  ROS_INFO("Max distance: %f",target_zones_[kk].max_distance);
 	  }
+	  ROS_INFO("");
 #endif
 
 	//######################################################################################
@@ -384,6 +389,24 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		robot_.gripper_pose.orientation.z = q_tf[3];
 	} catch (YAML::Exception e) {
 		ROS_ERROR("EurocInput: YAML Error in gripper pose");
+		return -1;
+	}
+
+	const YAML::Node* tcp_pose = robot->FindValue("gripper_tcp");
+	try {
+		(*tcp_pose)[0] >> robot_.gripper_tcp.position.x;
+		(*tcp_pose)[1] >> robot_.gripper_tcp.position.y;
+		(*tcp_pose)[2] >> robot_.gripper_tcp.position.z;
+		(*tcp_pose)[3] >> rpy[0];
+		(*tcp_pose)[4] >> rpy[1];
+		(*tcp_pose)[5] >> rpy[2];
+		rpy2quat(rpy, a_tf, q_tf);
+		robot_.gripper_tcp.orientation.w = q_tf[0];
+		robot_.gripper_tcp.orientation.x = q_tf[1];
+		robot_.gripper_tcp.orientation.y = q_tf[2];
+		robot_.gripper_tcp.orientation.z = q_tf[3];
+	} catch (YAML::Exception e) {
+		ROS_ERROR("EurocInput: YAML Error in gripper tcp pose");
 		return -1;
 	}
 
@@ -580,7 +603,7 @@ void EurocInput::print_object(am_msgs::Object*obj)
 	ROS_INFO("Nr. of shapes: %d",obj->nr_shapes);
 	for(unsigned zz=0;zz<obj->nr_shapes;zz++)
 	{
-		ROS_INFO("");
+		ROS_INFO("------------------------");
 		ROS_INFO("shape %d: type: %s",zz,obj->shape[zz].type.c_str());
 		ROS_INFO("density: %f",obj->shape[zz].density);
 		if(obj->shape[zz].type == "cylinder")

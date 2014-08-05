@@ -13,6 +13,7 @@
 // AM
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/goalPoseAction.h>
+#include <config.hpp>
 
 // EUROC
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
@@ -83,8 +84,9 @@ private:
 	void getTimingAlongJointPath();
 	bool getTelemetry();
 
-	boost::thread moveToTarget;
 	void moveToTargetCB();
+	boost::thread moveToTarget;
+	uint8_t mtt_;
 
 
 };

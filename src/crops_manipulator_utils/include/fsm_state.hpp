@@ -2,7 +2,7 @@
 #define _FSM_STATE_
 
 #include <stdint.h>
-
+namespace fsm{
 typedef union {
 	uint64_t all;
 	struct {
@@ -38,5 +38,5 @@ typedef enum {
 	MOTION_PLANNING_ERROR,
 	OBJECT_LOST
 } fsm_t;
-
+}
 #endif
