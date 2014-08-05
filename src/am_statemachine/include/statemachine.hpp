@@ -105,30 +105,32 @@ public:
 private:
 	int request_task();
 	void request_task_cb();
-	uint8_t request_task_;
+	uint8_t request_task_state_;
 	boost::thread lsc_;
 	int start_sim();
 	void start_sim_cb();
-	uint8_t start_sim_;
+	uint8_t start_sim_state_;
 	int parse_yaml_file();
 	int solve_task();
 	int stop_sim();
+	void stop_sim_cb();
+	uint8_t stop_sim_state_;
 
+	void grip_cb();
+	uint8_t grip_state_;
 	int locate_object();
 	int get_grasping_pose();
 	int move_to_object();
 	int grip_object();
 	int move_to_target_zone();
 
-	void mto1_done(const actionlib::SimpleClientGoalState& state,
-				  const am_msgs::goalPoseResultConstPtr& result);
-	void mto2_done(const actionlib::SimpleClientGoalState& state,
+	void mto_done(const actionlib::SimpleClientGoalState& state,
 				  const am_msgs::goalPoseResultConstPtr& result);
 	void mto_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 	void mto_active();
 	void mttz_done(const actionlib::SimpleClientGoalState& state,
 				  const am_msgs::goalPoseResultConstPtr& result);
-	uint8_t mto1_,mto2_;
+	uint8_t mto_;
 	uint8_t mttz_;
 };
 
