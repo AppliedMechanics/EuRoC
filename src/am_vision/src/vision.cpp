@@ -16,11 +16,24 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
 	//detection code ...
 
-
-	//hier dann vision aufrufen
-	vision_result_.abs_object_pose.position.x=-0.3;
-	vision_result_.abs_object_pose.position.y=-0.4;
-	vision_result_.abs_object_pose.position.z=0.24;
+	if(!goal->object.name.compare("red_cube"))
+	{
+		vision_result_.abs_object_pose.position.x=-0.3;
+		vision_result_.abs_object_pose.position.y=-0.4;
+		vision_result_.abs_object_pose.position.z=0.025;
+	}
+	else if(!goal->object.name.compare("green_cylinder"))
+	{
+		vision_result_.abs_object_pose.position.x=-0.5;
+		vision_result_.abs_object_pose.position.y=0.1;
+		vision_result_.abs_object_pose.position.z=0.15;
+	}
+	else if(!goal->object.name.compare("blue_handle"))
+	{
+		vision_result_.abs_object_pose.position.x=-0.07;
+		vision_result_.abs_object_pose.position.y=-0.65;
+		vision_result_.abs_object_pose.position.z=0.02;
+	}
 	//do something...
 
 	vision_feedback_.execution_time = ros::Time::now().sec;

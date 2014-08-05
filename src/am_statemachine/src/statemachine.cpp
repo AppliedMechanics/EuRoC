@@ -507,7 +507,8 @@ int Statemachine::move_to_object()
 		motion_planning_action_client_.sendGoal(goal,
 												boost::bind(&Statemachine::mto_done,this,_1,_2),
 												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
-												Client::SimpleFeedbackCallback());//boost::bind(&Statemachine::mto2_feedback,this,_1));
+												Client::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
+												);
 
 		mto_=RUNNING;
 	}
