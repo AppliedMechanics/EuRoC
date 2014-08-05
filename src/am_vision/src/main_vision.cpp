@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
 	ros::Rate r(10); // 10 hz
 	while (ros::ok())
 	{
+	// Subscribe to ROS topics
 		ros::spinOnce();
 		r.sleep();
 	}
@@ -25,5 +26,3 @@ int main(int argc, char** argv) {
 	return 0;
 
 }
-
-

@@ -1,4 +1,5 @@
 #include <statemachine.hpp>
+#include <cmath>
 
 Statemachine* Statemachine::instance_ = 0x0;
 
@@ -320,13 +321,6 @@ int Statemachine::stop_sim()
 	{
 		lsc_.detach();
 
-		request_task_state_=OPEN;
-		start_sim_state_=OPEN;
-		stop_sim_state_=OPEN;
-		grip_state_=OPEN;
-		mto_=OPEN;
-		mttz_=OPEN;
-
 		//==============================================
 		//state:
 		state_.sub.one = fsm::FINISHED;
@@ -343,11 +337,11 @@ int Statemachine::locate_object()
 	if(first)
 	{
 		ein_->get_object();
-		ein_->set_object_finished();
+		ein_->set_object_finished(); // jump to green cylinder
 		first=false;
 	}
-	cur_obj_ = ein_->get_object();
-	ein_->set_object_finished();
+	//ein_->get_object();
+	//ein_->set_object_finished(); // jump to red cube
 	cur_obj_ = ein_->get_object();
 
 	ein_->print_object(&cur_obj_);
@@ -360,6 +354,18 @@ int Statemachine::locate_object()
 		goal.sensors[ii]=ein_->get_sensors(ii);
 	}
 	goal.target_zone=ein_->get_target_zone();
+//	double rot_angle = M_PI/2.0;
+//	double cos_th = cos(rot_angle);
+//	double sin_th = sin(rot_angle);
+//	double xq = 1.0 * sin_th;
+//	double yq = 0.0 * sin_th;
+//	double zq = 0.0 * sin_th;
+//	double wq = cos_th;
+//	double norm = sqrt( xq*xq + yq*yq + zq*zq + wq*wq );
+//	cur_obj_.abs_pose.orientation.x=xq / norm;
+//	cur_obj_.abs_pose.orientation.y=yq / norm;
+//	cur_obj_.abs_pose.orientation.z=zq / norm;
+//	cur_obj_.abs_pose.orientation.w=wq / norm;
 
 	vision_action_client_.sendGoal(goal);
 
@@ -495,7 +501,7 @@ int Statemachine::move_to_object()
 		//send goals to motion-planning
 		am_msgs::goalPoseGoal goal;
 		goal.goal_pose = ein_->get_grasping_pose();
-		goal.goal_pose.position.z+=0.1;
+		goal.goal_pose.position.z+=0.15;
 		goal.planning_algorithm = 0;
 		motion_planning_action_client_.sendGoal(goal,
 												Client::SimpleDoneCallback(), //boost::bind(&Statemachine::mto1_done,this,_1,_2), //
@@ -503,7 +509,7 @@ int Statemachine::move_to_object()
 												boost::bind(&Statemachine::mto_feedback,this,_1) // Client::SimpleFeedbackCallback());
 												);
 
-		goal.goal_pose.position.z-=0.1;
+		goal.goal_pose.position.z-=0.15;
 		motion_planning_action_client_.sendGoal(goal,
 												boost::bind(&Statemachine::mto_done,this,_1,_2),
 												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
@@ -604,11 +610,20 @@ int Statemachine::move_to_target_zone()
 #else
 	if(mttz_==OPEN)
 	{
-		am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
-
 		am_msgs::goalPoseGoal goal;
+
+		goal.goal_pose = ein_->get_grasping_pose();
+		goal.goal_pose.position.z+=0.2;
+		goal.planning_algorithm = 0;
+		motion_planning_action_client_.sendGoal(goal,
+												Client::SimpleDoneCallback(), //boost::bind(&Statemachine::mto1_done,this,_1,_2), //
+												Client::SimpleActiveCallback(),
+												boost::bind(&Statemachine::mto_feedback,this,_1) // Client::SimpleFeedbackCallback());
+												);
+
+		am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
 		goal.goal_pose.position = tmp_zone.position;
-		goal.goal_pose.position.z+=0.4;
+		goal.goal_pose.position.z=0.4;
 		goal.goal_pose.orientation.x=1;
 		goal.goal_pose.orientation.y=0;
 		goal.goal_pose.orientation.z=0;
@@ -634,9 +649,17 @@ int Statemachine::move_to_target_zone()
 
 		ein_->set_object_finished();
 
+		//reset states:
+		request_task_state_=OPEN;
+		start_sim_state_=OPEN;
+		stop_sim_state_=OPEN;
+		grip_state_=OPEN;
+		mto_=OPEN;
+		mttz_=OPEN;
+
 		//==============================================
 		//state:
-		if(1)//ein_->all_finished())
+		if(ein_->all_finished())
 		{
 			state_.sub.one = fsm::STOP_SIM;
 			state_.sub.two = 0;
