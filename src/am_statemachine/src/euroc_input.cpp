@@ -577,6 +577,10 @@ am_msgs::Object EurocInput::get_object()
 			return objects_[ii];
 		}
 	}
+
+	//should not happen
+//	am_msgs::Object empty_obj;
+//	return empty_obj;
 }
 am_msgs::TargetZone EurocInput::get_target_zone()
 {
@@ -590,6 +594,10 @@ am_msgs::TargetZone EurocInput::get_target_zone()
 			return target_zones_[ii];
 		}
 	}
+
+	//should not happen
+//	am_msgs::TargetZone empty_zone;
+//	return empty_zone;
 }
 void EurocInput::print_object(am_msgs::Object*obj)
 {

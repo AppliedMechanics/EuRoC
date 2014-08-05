@@ -161,14 +161,14 @@ int Statemachine::tick()
 
 void Statemachine::request_task_cb()
 {
-	//ROS_INFO("In request_task_cb");
+	ROS_INFO("In request_task_cb");
 	request_task_state_=RUNNING;
 
 	if(list_scenes_client_.exists())
 		list_scenes_client_.call(list_scenes_srv_);
 
 	request_task_state_=FINISHED;
-	//ROS_INFO("Exiting request_task_cb");
+	ROS_INFO("Exiting request_task_cb");
 }
 
 int Statemachine::request_task()
@@ -618,12 +618,12 @@ int Statemachine::move_to_target_zone()
 		motion_planning_action_client_.sendGoal(goal,
 												Client::SimpleDoneCallback(), //boost::bind(&Statemachine::mto1_done,this,_1,_2), //
 												Client::SimpleActiveCallback(),
-												boost::bind(&Statemachine::mto_feedback,this,_1) // Client::SimpleFeedbackCallback());
+												Client::SimpleFeedbackCallback()
 												);
 
 		am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
 		goal.goal_pose.position = tmp_zone.position;
-		goal.goal_pose.position.z=0.4;
+		goal.goal_pose.position.z=0.3;
 		goal.goal_pose.orientation.x=1;
 		goal.goal_pose.orientation.y=0;
 		goal.goal_pose.orientation.z=0;
