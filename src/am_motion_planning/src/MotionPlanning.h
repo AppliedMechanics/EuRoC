@@ -14,6 +14,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/goalPoseAction.h>
 #include <config.hpp>
+#include <utils.hpp>
 
 // EUROC
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
@@ -29,7 +30,6 @@ class MotionPlanning {
 public:
 	MotionPlanning();
 	virtual ~MotionPlanning();
-	void while_motion(const ros::TimerEvent& e);
 
 private:
 	ros::NodeHandle nh_;

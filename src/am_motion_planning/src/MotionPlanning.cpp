@@ -24,12 +24,9 @@ time_at_path_points_(1)
 	search_ik_solution_client_      = nh_.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 
 	goalPose_server_.start();
-	ROS_INFO("goalPose action server started.");
+	msg_info("goalPose action server started.");
 
 	feedback_frequency_ = 2;
-
-	//! Timer for feedback runs with 10 Hz
-	feedback_timer_ = nh_.createTimer(ros::Duration(1.0/feedback_frequency_),&MotionPlanning::while_motion,this,false,false);
 
 	mtt_=OPEN;
 
@@ -39,14 +36,14 @@ MotionPlanning::~MotionPlanning() {}
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
-	ROS_INFO("In execution call");
+	msg_info("In execution call");
 
 	goal_pose_goal_ = goal;
 
 	ros::Rate feedback_rate(feedback_frequency_);
 
 	if (!getTelemetry()){
-		ROS_ERROR("getTelemetry: An Error happened here.");
+		msg_error("getTelemetry: An Error happened here.");
 		goalPose_result_.reached_goal = false;
 		goalPose_server_.setPreempted(goalPose_result_,"Got no telemetry.");
 	}
@@ -58,7 +55,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 		if (!getIKSolution7DOF())
 		{
-			ROS_ERROR("No IK Solution found.");
+			msg_error("No IK Solution found.");
 			goalPose_result_.reached_goal = false;
 			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
 			break;
@@ -112,23 +109,7 @@ void MotionPlanning::getGoalPose_Feedback()
 
 }
 
-void MotionPlanning::while_motion(const ros::TimerEvent& event)
-{
-//	getGoalPose_Feedback();
-//	goalPose_server_.publishFeedback(goalPose_feedback_);
-//
-//	if (goalPose_feedback_.execution_time >= goalPose_feedback_.estimated_motion_time)
-//	{
-//		goalPose_result_.reached_goal = true;
-//		feedback_timer_.stop();
-//		goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-//	}
-//	else
-//	{
-//		goalPose_result_.reached_goal = false;
-//	}
 
-}
 
 bool MotionPlanning::getIKSolution7DOF()
 {
@@ -180,7 +161,7 @@ bool MotionPlanning::getIKSolution7DOF()
 			search_ik_solution_client_.call(search_ik_solution_srv_);
 			std::string &search_error_message = search_ik_solution_srv_.response.error_message;
 			if(!search_error_message.empty()){
-				ROS_ERROR("Search IK Solution failed: %s", search_error_message.c_str());
+				msg_error("Search IK Solution failed: %s", search_error_message.c_str());
 				return false;
 			}
 
@@ -196,7 +177,7 @@ bool MotionPlanning::getIKSolution7DOF()
 	}
 	catch (...)
 	{
-		ROS_ERROR("MotionPlanning::Error at searchforIK service.");
+		msg_error("MotionPlanning::Error at searchforIK service.");
 		return false;
 	}
 	return true;
@@ -230,7 +211,7 @@ void MotionPlanning::getTimingAlongJointPath()
 		}
 	}
 	else
-		ROS_WARN("Timing service has not been advertised.");
+		msg_warn("Timing service has not been advertised.");
 }
 
 bool MotionPlanning::getTelemetry()
@@ -238,7 +219,7 @@ bool MotionPlanning::getTelemetry()
 	_telemetry = *(ros::topic::waitForMessage<euroc_c2_msgs::Telemetry>(telemetry_,ros::Duration(10.0)));
 	if (&_telemetry==NULL)
 	{
-		ROS_WARN("No telemetry message received.");
+		msg_warn("No telemetry message received.");
 		return false;
 	}
 	else
@@ -252,6 +233,7 @@ void MotionPlanning::moveToTargetCB()
 
 	std::string &move_error_message = move_along_joint_path_srv_.response.error_message;
 	if(!move_error_message.empty()){
+		msg_error("Move failed.");
 		std::cout << "Move failed: " + move_error_message << std::endl;
 	}
 	mtt_=FINISHED;
