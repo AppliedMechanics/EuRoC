@@ -124,7 +124,7 @@ private:
 				  const am_msgs::goalPoseResultConstPtr& result);
 	void mto2_done(const actionlib::SimpleClientGoalState& state,
 				  const am_msgs::goalPoseResultConstPtr& result);
-	void mto_feedback(const am_msgs::goalPoseActionFeedbackConstPtr& feedback);
+	void mto_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 	void mto_active();
 	void mttz_done(const actionlib::SimpleClientGoalState& state,
 				  const am_msgs::goalPoseResultConstPtr& result);

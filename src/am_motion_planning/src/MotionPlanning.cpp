@@ -81,22 +81,21 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			getGoalPose_Feedback();
 			goalPose_server_.publishFeedback(goalPose_feedback_);
 
-			//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
-			if(mtt_==FINISHED)
-			{
-				goalPose_result_.reached_goal = true;
-//				feedback_timer_.stop();
-				goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-				moveToTarget.detach();
-			}
-			else
-			{
-				goalPose_result_.reached_goal = false;
-			}
 			feedback_rate.sleep();
-
 		}
-		//		feedback_timer_.start();
+
+		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
+		if(mtt_==FINISHED)
+		{
+			goalPose_result_.reached_goal = true;
+			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			moveToTarget.detach();
+		}
+		else
+		{
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Something strange happend");
+		}
 
 		break;
 

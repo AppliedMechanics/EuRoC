@@ -463,9 +463,9 @@ int Statemachine::move_to_object()
 		goal.planning_algorithm = 0;
 		motion_planning_action_client_.sendGoal(goal,
 												boost::bind(&Statemachine::mto1_done,this,_1,_2), //Client::SimpleDoneCallback(), //
-												Client::SimpleActiveCallback(), //Statemachine::mto_active(),
-												Client::SimpleFeedbackCallback());
-
+												Client::SimpleActiveCallback(),
+												boost::bind(&Statemachine::mto_feedback,this,_1) // Client::SimpleFeedbackCallback());
+												);
 		//setFeedbackCallback(boost::bind(&MoveToFruitState::feedbackCb, this, _1));
 
 		mto1_=RUNNING;
@@ -630,7 +630,7 @@ int Statemachine::move_to_target_zone()
 	return 0;
 }
 
-void Statemachine::mto_feedback(const am_msgs::goalPoseActionFeedbackConstPtr& feedback)
+void Statemachine::mto_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
 {
 	ROS_INFO("got feedback");
 }
