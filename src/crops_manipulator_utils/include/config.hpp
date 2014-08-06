@@ -13,7 +13,8 @@ typedef enum {
 
 typedef enum {
 	STANDARD_IK_7DOF = 0,
-	MOVE_IT
+	MOVE_IT,
+	HOMING_7DOF
 } motion_planning_mode_t;
 
 typedef enum {

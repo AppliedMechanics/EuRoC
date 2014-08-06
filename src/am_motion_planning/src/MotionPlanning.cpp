@@ -61,7 +61,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			break;
 		}
 
-
 		getTimingAlongJointPath();
 
 		starting_time_ = ros::Time::now().toSec();
@@ -93,6 +92,43 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			goalPose_result_.reached_goal = false;
 			goalPose_server_.setPreempted(goalPose_result_,"Something strange happend");
 		}
+
+		break;
+
+	case HOMING_7DOF:
+		if (!setReset7DOF())
+			msg_error("Problem at HOMING");
+		getTimingAlongJointPath();
+		starting_time_ = ros::Time::now().toSec();
+		getGoalPose_Feedback();
+
+		goalPose_server_.publishFeedback(goalPose_feedback_);
+
+		moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
+
+		mtt_=RUNNING;
+		//while (!goalPose_result_.reached_goal)
+		while(mtt_==RUNNING)
+		{
+			getGoalPose_Feedback();
+			goalPose_server_.publishFeedback(goalPose_feedback_);
+
+			feedback_rate.sleep();
+		}
+
+		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
+		if(mtt_==FINISHED)
+		{
+			goalPose_result_.reached_goal = true;
+			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			moveToTarget.detach();
+		}
+		else
+		{
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Something strange happend");
+		}
+
 
 		break;
 
@@ -178,6 +214,60 @@ bool MotionPlanning::getIKSolution7DOF()
 	catch (...)
 	{
 		msg_error("MotionPlanning::Error at searchforIK service.");
+		return false;
+	}
+	return true;
+}
+
+bool MotionPlanning::setReset7DOF()
+{
+	try
+	{
+		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+			// Populate a vector with all the lwr joint names
+			const unsigned int nr_lwr_joints = 7;
+			std::vector<std::string> lwr_joints(nr_lwr_joints);
+			std::stringstream name;
+			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
+				name.str("lwr_joint_");
+				name.seekp(0, std::ios_base::end);
+				name << (i + 1);
+				lwr_joints[i] = name.str();
+			}
+
+			// TODO: Read from telemetry data
+			move_along_joint_path_srv_.request.joint_names = lwr_joints; // Select all lwr joints
+			move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
+			// Initialize the velocity and acceleration limits of the joints
+			move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
+			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
+				euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
+				limits.max_velocity = 20 * M_PI / 180.0; // 20 degrees per second
+				limits.max_acceleration = 400 * M_PI / 180.0;
+			}
+
+			// current_configuration will hold our current joint position data extracted from the measured telemetry
+			euroc_c2_msgs::Configuration commanded_configuration;
+			commanded_configuration.q.resize(nr_lwr_joints);
+
+			// Get the current configuration from the telemetry message
+			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
+				commanded_configuration.q[i] = 0.0;
+			}
+
+			// Extract the solution configuration from the response and fill it into the path of the move request
+			std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
+			path[0] = commanded_configuration;
+
+			return true;
+		}
+		else
+			return false;
+	}
+	catch (...)
+	{
+		msg_error("MotionPlanning::Error at HOMING service.");
 		return false;
 	}
 	return true;

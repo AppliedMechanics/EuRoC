@@ -83,6 +83,7 @@ private:
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();
 	bool getTelemetry();
+	bool setReset7DOF();
 
 	void moveToTargetCB();
 	boost::thread moveToTarget;

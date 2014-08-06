@@ -36,7 +36,7 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 	move_along_joint_path_srv_.request.joint_names[0] = gripper_name;
 	move_along_joint_path_srv_.request.path.resize(1);
 	move_along_joint_path_srv_.request.joint_limits.resize(1);
-	move_along_joint_path_srv_.request.joint_limits[0].max_velocity = 0.5;
+	move_along_joint_path_srv_.request.joint_limits[0].max_velocity = 0.1; // max 0.5
 	move_along_joint_path_srv_.request.joint_limits[0].max_acceleration = 150;
 
 	commanded_configuration_.q.resize(1);
