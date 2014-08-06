@@ -51,7 +51,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	{
 	case STANDARD_IK_7DOF:
 
-		ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
+		ROS_WARN("STANDARD IK 7DOF planning mode chosen.");
 
 		if (!getIKSolution7DOF())
 		{
@@ -80,12 +80,12 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			feedback_rate.sleep();
 		}
 
+		moveToTarget.detach();
 		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
 		if(mtt_==FINISHED)
 		{
 			goalPose_result_.reached_goal = true;
 			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-			moveToTarget.detach();
 		}
 		else
 		{
@@ -96,6 +96,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		break;
 
 	case HOMING_7DOF:
+		ROS_WARN("HOMING 7DOF planning mode chosen.");
+
 		if (!setReset7DOF())
 			msg_error("Problem at HOMING");
 		getTimingAlongJointPath();
@@ -116,12 +118,12 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			feedback_rate.sleep();
 		}
 
+		moveToTarget.detach();
 		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
 		if(mtt_==FINISHED)
 		{
 			goalPose_result_.reached_goal = true;
 			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-			moveToTarget.detach();
 		}
 		else
 		{

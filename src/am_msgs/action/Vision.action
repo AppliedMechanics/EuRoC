@@ -7,6 +7,6 @@ am_msgs/Sensor[] sensors
 geometry_msgs/Pose abs_object_pose
 bool object_detected
 ---
-#feedback
+#feedback definition
 float64 execution_time
 float64 uncertainty

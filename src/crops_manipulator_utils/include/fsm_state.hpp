@@ -28,6 +28,7 @@ typedef enum {
 	MOVE_TO_OBJECT,
 	GRIP,
 	MOVE_TO_TARGET_ZONE,
+	HOMING,
 	//sub-states for move_to_object
 	MOVE_WITH_METHOD_A,
 	MOVE_WITH_METHOD_B,

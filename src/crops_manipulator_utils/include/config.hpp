@@ -23,4 +23,6 @@ typedef enum {
 	FINISHED
 } thread_state_t;
 
+#define FREQ 10 //rosnode frequency
+
 #endif

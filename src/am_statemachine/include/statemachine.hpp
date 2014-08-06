@@ -31,7 +31,8 @@
 #include <fsm_state.hpp>
 #include <euroc_input.hpp>
 
-typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> Client;
+typedef actionlib::SimpleActionClient<am_msgs::VisionAction> visionClient;
+typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> motionClient;
 
 class Statemachine
 {
@@ -92,6 +93,11 @@ private:
 	uint8_t cur_obj_index;
 	am_msgs::TargetZone cur_zone_;
 
+	boost::thread lsc_;
+
+	bool goal1_sent_,goal2_sent_,goal3_sent_;
+
+
 public:
 	//!singleton implementation
 	static Statemachine* get_instance();
@@ -106,12 +112,15 @@ private:
 	int request_task();
 	void request_task_cb();
 	uint8_t request_task_state_;
-	boost::thread lsc_;
+
 	int start_sim();
 	void start_sim_cb();
 	uint8_t start_sim_state_;
+
 	int parse_yaml_file();
+
 	int solve_task();
+
 	int stop_sim();
 	void stop_sim_cb();
 	uint8_t stop_sim_state_;
@@ -119,19 +128,21 @@ private:
 	void grip_cb();
 	uint8_t grip_state_;
 	int locate_object();
+	uint8_t vision_state_;
 	int get_grasping_pose();
 	int move_to_object();
+	uint8_t motion_state_;
 	int grip_object();
 	int move_to_target_zone();
+	int homing();
 
-	void mto_done(const actionlib::SimpleClientGoalState& state,
+	//!action-client callbacks:
+	void vision_done(const actionlib::SimpleClientGoalState& state,
+			  	  	 const am_msgs::VisionResultConstPtr& result);
+	void vision_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+	void motion_done(const actionlib::SimpleClientGoalState& state,
 				  const am_msgs::goalPoseResultConstPtr& result);
-	void mto_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
-	void mto_active();
-	void mttz_done(const actionlib::SimpleClientGoalState& state,
-				  const am_msgs::goalPoseResultConstPtr& result);
-	uint8_t mto_;
-	uint8_t mttz_;
+	void motion_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 };
 
 inline Statemachine* Statemachine::get_instance()

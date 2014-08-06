@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include "MotionPlanning.h"
+#include <config.hpp>
 
 int main(int argc, char** argv) {
 
@@ -14,7 +15,7 @@ int main(int argc, char** argv) {
 
 	MotionPlanning mp;
 
-	ros::Rate r(10); // 10 hz
+	ros::Rate r(FREQ*10); // 10 hz
 	while (ros::ok())
 	{
 		ros::spinOnce();

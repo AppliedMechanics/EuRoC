@@ -19,7 +19,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 	if(!goal->object.name.compare("red_cube"))
 	{
 		vision_result_.abs_object_pose.position.x=-0.3;
-		vision_result_.abs_object_pose.position.y=-0.4;
+		vision_result_.abs_object_pose.position.y=-0.39;
 		vision_result_.abs_object_pose.position.z=0.025;
 		vision_result_.abs_object_pose.orientation.w=0;
 		vision_result_.abs_object_pose.orientation.x=1;
