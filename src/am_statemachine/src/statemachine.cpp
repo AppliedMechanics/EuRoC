@@ -11,9 +11,8 @@ Statemachine::Statemachine():
 		active_scene_(-1),
 		motion_planning_action_client_("goalPoseAction", true),
 		vision_action_client_("VisionAction", true),
-		goal1_sent_(false),
-		goal2_sent_(false),
-		goal3_sent_(false),
+		active_goal_(0),
+		nr_goals_(0),
 		request_task_state_(OPEN),
 		start_sim_state_(OPEN),
 		stop_sim_state_(OPEN),
@@ -22,6 +21,7 @@ Statemachine::Statemachine():
 		motion_state_(OPEN)
 {
 	ein_=new EurocInput();
+
 	//==============================================
 	//state:
 	state_.sub.one = fsm::REQUEST_TASK;
@@ -46,7 +46,7 @@ Statemachine::~Statemachine()
 
 int Statemachine::init_sm()
 {
-
+	//wait for all services and servers
 	ros::service::waitForService(list_scenes_,ros::Duration(5.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(5.0));
 	ros::service::waitForService(stop_simulator_,ros::Duration(5.0));
@@ -72,11 +72,13 @@ void Statemachine::execute()
 	//update rate
 	ros::Rate loop_rate(FREQ);
 
+	//main loop:
 	double start=(double)ros::Time::now().toSec();
 	double t_act=0;
 	while(ros::ok() && !(state_.sub.one == fsm::FINISHED))
 	{
 
+	  //do state action ...
 	  if(-1==tick())
 	  {
 		  msg_error("Error in Statemachine::tick()");
@@ -149,20 +151,21 @@ int Statemachine::tick()
 
 void Statemachine::request_task_cb()
 {
-	ROS_INFO("In request_task_cb");
+	//ROS_INFO("In request_task_cb");
 	request_task_state_=RUNNING;
 
 	if(list_scenes_client_.exists())
 		list_scenes_client_.call(list_scenes_srv_);
 
 	request_task_state_=FINISHED;
-	ROS_INFO("Exiting request_task_cb");
+	//ROS_INFO("Exiting request_task_cb");
 }
 
 int Statemachine::request_task()
 {
 	if(request_task_state_==OPEN)
 	{
+		//start the service call as thread and monitor request_task_state
 		lsc_ = boost::thread(&Statemachine::request_task_cb,this);
 	}
 	else if(request_task_state_==FINISHED)//lsc_.timed_join(boost::posix_time::seconds(0.0)))
@@ -187,6 +190,8 @@ int Statemachine::request_task()
 				ROS_INFO("[%2d] - %s", ii,scene.name.c_str());
 			}
 		}
+
+		//destroy thread (should not be necessary?!)
 		lsc_.detach();
 
 
@@ -197,6 +202,7 @@ int Statemachine::request_task()
 
 		//ROS_INFO("Your Choice: %d", active_scene_);
 		task_active_=true;
+
 
 		//==============================================
 		//state:
@@ -241,6 +247,7 @@ int Statemachine::start_sim()
 		ROS_INFO("Statemachine: Server started");
 		ros::service::waitForService(save_log_,ros::Duration(5.0));
 
+
 		//==============================================
 		//state:
 		state_.sub.one = fsm::PARSE_YAML;
@@ -256,13 +263,14 @@ int Statemachine::parse_yaml_file()
 	// The start simulator service returns a description of the selected task in yaml format
 	std::string &task_yaml_description = start_simulator_srv_.response.description_yaml;
 
-
+	//parse the yaml file -> content is saved in EurocInput-class
 	if(-1==ein_->parse_yaml_file(task_yaml_description))
 	{
 		ROS_ERROR("Statemachine: Error in parse_yaml_file()");
 	}
 
 	ROS_INFO("Statemachine: Parsing YAML-file finished");
+
 
 	//==============================================
 	//state:
@@ -275,7 +283,9 @@ int Statemachine::parse_yaml_file()
 
 int Statemachine::solve_task()
 {
-	//blub
+	//do nothing ....
+	//this should not be called!
+
 
 	//==============================================
 	//state:
@@ -287,6 +297,8 @@ int Statemachine::solve_task()
 void Statemachine::stop_sim_cb()
 {
 	stop_sim_state_=RUNNING;
+
+	//save the log
 	ROS_INFO("Statemachine: Saving log");
 	if(save_log_client_.exists())
 		save_log_client_.call(save_log_srv_);
@@ -308,6 +320,7 @@ int Statemachine::stop_sim()
 	else if(stop_sim_state_==FINISHED)
 	{
 		lsc_.detach();
+
 
 		//==============================================
 		//state:
@@ -337,8 +350,6 @@ int Statemachine::locate_object()
 			ein_->set_object_finished(); // jump to green cylinder
 			first=false;
 		}
-		//ein_->get_object();
-		//ein_->set_object_finished(); // jump to red cube
 		cur_obj_ = ein_->get_object();
 
 		ein_->print_object(&cur_obj_);
@@ -352,19 +363,22 @@ int Statemachine::locate_object()
 		}
 		goal.target_zone=ein_->get_target_zone();
 
+		//send goal to vision-node.
+		//the callback function vision_done is registered to the action_done event
 		vision_action_client_.sendGoal(goal,
 										boost::bind(&Statemachine::vision_done,this,_1,_2),
 										visionClient::SimpleActiveCallback(),
 										visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::vision_feedback,this,_1));
 										);
+
+		//set vision state to RUNNING and wait until it switches to FINISHED
 		vision_state_=RUNNING;
 	}
 	else if(vision_state_==FINISHED)
 	{
-//		boost::shared_ptr<const am_msgs::VisionResult> result=vision_action_client_.getResult();
-//		cur_obj_.abs_pose=result->abs_object_pose;
-
+		//reset vision state
 		vision_state_=OPEN;
+
 
 		//==============================================
 		//state:
@@ -382,6 +396,7 @@ int Statemachine::get_grasping_pose()
 
 	get_grasp_pose_srv_.request.object=cur_obj_;
 
+	//call grasp service -> maybe call it in a seperate thread?!
 	if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
 	{
 		geometry_msgs::Pose *pose= &get_grasp_pose_srv_.response.grasp_pose;
@@ -396,6 +411,7 @@ int Statemachine::get_grasping_pose()
 		msg_error("Failed to call get_grasp_pose service.");
 	}
 
+
 	//==============================================
 	//state:
 	state_.sub.one = fsm::SOLVE_TASK;
@@ -406,7 +422,7 @@ int Statemachine::get_grasping_pose()
 
 void Statemachine::grip_cb()
 {
-
+	//
 	if(gripper_control_client_.exists())
 	{
 		if(gripper_control_client_.call(gripper_control_srv_))
@@ -429,6 +445,7 @@ int Statemachine::move_to_object()
 	{
 		msg_info("Enter state");
 
+
 		//release gripper request
 		gripper_control_srv_.request.gripping_mode = RELEASE;
 		//start thread for gripper service call
@@ -438,30 +455,53 @@ int Statemachine::move_to_object()
 	else if((motion_state_==OPEN) && (grip_state_==FINISHED))
 	{
 		//send goals to motion-planning
-		am_msgs::goalPoseGoal goal;
-		goal.goal_pose = ein_->get_grasping_pose();
-		goal.goal_pose.position.z+=0.2;
-		goal.planning_algorithm = STANDARD_IK_7DOF;
-		if(!goal1_sent_)
+		active_goal_=0;
+		nr_goals_=2;
+		goal_queue.resize(nr_goals_);
+
+		goal_queue[0].goal_pose = ein_->get_grasping_pose();
+		goal_queue[0].goal_pose.position.z+=0.2;
+		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+
+		goal_queue[1]=goal_queue[0];
+		goal_queue[1].goal_pose.position.z-=0.2;
+		goal_queue[1].planning_algorithm = STANDARD_IK_7DOF;
+
+		//send first goal
+		motion_planning_action_client_.sendGoal(goal_queue[0],
+												boost::bind(&Statemachine::motion_done,this,_1,_2),
+												motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
+												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
+												);
+		//and set motion state to RUNNING
+		motion_state_=RUNNING;
+	}
+	else if((motion_state_==RUNNING) && (grip_state_==FINISHED))
+	{
+		//request state from motion planning
+		actionlib::SimpleClientGoalState state=motion_planning_action_client_.getState();
+		//ROS_INFO("state: %s",state.toString().c_str());
+		switch(state.state_)
 		{
-			motion_planning_action_client_.sendGoal(goal,
-													motionClient::SimpleDoneCallback(),
-													motionClient::SimpleActiveCallback(),
-													boost::bind(&Statemachine::motion_feedback,this,_1) // Client::SimpleFeedbackCallback());
-													);
-			goal1_sent_=true;
-		}
-		else if(!goal2_sent_)
-		{
-			goal.goal_pose.position.z-=0.2;
-			motion_planning_action_client_.sendGoal(goal,
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
 													boost::bind(&Statemachine::motion_done,this,_1,_2),
 													motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
 													motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
 													);
-
-			goal2_sent_=true;
-			motion_state_=RUNNING;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+			active_goal_--;
+			break;
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+		default:
+			break;
 		}
 	}
 	else if((motion_state_==FINISHED) && (grip_state_==FINISHED))
@@ -470,8 +510,6 @@ int Statemachine::move_to_object()
 		grip_state_=OPEN;
 		motion_state_=OPEN;
 
-		goal1_sent_=false;
-		goal2_sent_=false;
 
 		//==============================================
 		//state:
@@ -515,54 +553,57 @@ int Statemachine::move_to_target_zone()
 	{
 		msg_info("Enter state");
 
-		am_msgs::goalPoseGoal goal;
+		active_goal_=0;
+		nr_goals_=3;
+		goal_queue.resize(nr_goals_);
 
-		if(!goal1_sent_)
+		goal_queue[0].goal_pose = ein_->get_grasping_pose();
+		goal_queue[0].goal_pose.position.z+=0.2;
+		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+
+//		goal_queue[1]=goal_queue[0];
+//		goal_queue[1].goal_pose.position.z+=0.2;
+//		goal_queue[1].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[1].planning_algorithm = HOMING_7DOF;
+
+		cur_zone_ = ein_->get_target_zone();
+		goal_queue[2].goal_pose.position = cur_zone_.position;
+		goal_queue[2].goal_pose.position.z=0.3;
+		goal_queue[2].goal_pose.orientation.x=1;
+		goal_queue[2].goal_pose.orientation.y=0;
+		goal_queue[2].goal_pose.orientation.z=0;
+		goal_queue[2].goal_pose.orientation.w=0;
+		goal_queue[2].planning_algorithm = STANDARD_IK_7DOF;
+
+		motion_planning_action_client_.sendGoal(goal_queue[0],
+												boost::bind(&Statemachine::motion_done,this,_1,_2),
+												motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
+												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
+												);
+		motion_state_=RUNNING;
+	}
+	else if(motion_state_==RUNNING)
+	{
+		actionlib::SimpleClientGoalState state=motion_planning_action_client_.getState();
+		//ROS_INFO("state: %s",state.toString().c_str());
+		switch(state.state_)
 		{
-
-			goal.goal_pose = ein_->get_grasping_pose();
-			goal.goal_pose.position.z+=0.2;
-			goal.planning_algorithm = STANDARD_IK_7DOF;
-			motion_planning_action_client_.sendGoal(goal,
-													motionClient::SimpleDoneCallback(),
-													motionClient::SimpleActiveCallback(),
-													motionClient::SimpleFeedbackCallback()
-													);
-
-			goal1_sent_=true;
-		}
-		else if(!goal2_sent_)
-		{
-			ros::spinOnce();
-			ros::Duration(0.15).sleep();
-			goal.planning_algorithm = HOMING_7DOF;
-			//goal.goal_pose.position.z+=0.05;
-			motion_planning_action_client_.sendGoal(goal,
-													motionClient::SimpleDoneCallback(),
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+													boost::bind(&Statemachine::motion_done,this,_1,_2),
 													motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
 													motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
 													);
-			goal2_sent_=true;
-		}
-		else if(!goal3_sent_)
-		{
-			ros::spinOnce();
-			ros::Duration(0.15).sleep();
-			am_msgs::TargetZone tmp_zone= ein_->get_target_zone();
-			goal.goal_pose.position = tmp_zone.position;
-			goal.goal_pose.position.z=0.3;
-			goal.goal_pose.orientation.x=1;
-			goal.goal_pose.orientation.y=0;
-			goal.goal_pose.orientation.z=0;
-			goal.goal_pose.orientation.w=0;
-			goal.planning_algorithm = STANDARD_IK_7DOF;
-
-			motion_planning_action_client_.sendGoal(goal,
-													boost::bind(&Statemachine::motion_done,this,_1,_2),
-													motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
-													motionClient::SimpleFeedbackCallback());//boost::bind(&Statemachine::mto_feedback,this,_1,_2));
-			motion_state_=RUNNING;
-			goal3_sent_=true;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+		default:
+			break;
 		}
 	}
 	else if((motion_state_==FINISHED) && (grip_state_==OPEN))
@@ -581,10 +622,6 @@ int Statemachine::move_to_target_zone()
 
 		grip_state_=OPEN;
 		motion_state_=OPEN;
-
-		goal1_sent_=false;
-		goal2_sent_=false;
-		goal3_sent_=false;
 
 		//==============================================
 		//state:
@@ -611,17 +648,50 @@ int Statemachine::homing()
 	{
 		msg_info("Enter state");
 
-		//send goals to motion-planning
-		am_msgs::goalPoseGoal goal;
+		active_goal_=0;
+		nr_goals_=2;
+		goal_queue.resize(nr_goals_);
 
-		goal.planning_algorithm = HOMING_7DOF;
-		motion_planning_action_client_.sendGoal(goal,
+		goal_queue[0].goal_pose.position = cur_zone_.position;
+		goal_queue[0].goal_pose.position.z=0.4;
+		goal_queue[0].goal_pose.orientation.x=1;
+		goal_queue[0].goal_pose.orientation.y=0;
+		goal_queue[0].goal_pose.orientation.z=0;
+		goal_queue[0].goal_pose.orientation.w=0;
+		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+
+		goal_queue[1].planning_algorithm = HOMING_7DOF;
+		motion_planning_action_client_.sendGoal(goal_queue[0],
 												boost::bind(&Statemachine::motion_done,this,_1,_2),
 												motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
 												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
 												);
 
 		motion_state_=RUNNING;
+	}
+	else if(motion_state_==RUNNING)
+	{
+		actionlib::SimpleClientGoalState state=motion_planning_action_client_.getState();
+		//ROS_INFO("state: %s",state.toString().c_str());
+		switch(state.state_)
+		{
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+													boost::bind(&Statemachine::motion_done,this,_1,_2),
+													motionClient::SimpleActiveCallback(), //Statemachine::mto_active(),
+													motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::mto2_feedback,this,_1));
+													);
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+		default:
+			break;
+		}
 	}
 	else if(motion_state_==FINISHED)
 	{
@@ -659,5 +729,19 @@ void Statemachine::motion_done(const actionlib::SimpleClientGoalState& state,
 {
 	//state = motion_planning_action_client_.getState();
 	ROS_INFO("Motion action finished: %s",state.toString().c_str());
-	motion_state_=FINISHED;
+
+	//increase active_goal counter
+	active_goal_++;
+
+	//resolve if there are remaining goals
+	if(active_goal_==nr_goals_)
+	{
+		msg_info("all goals completed, motion_state is set to finished");
+		motion_state_=FINISHED;
+	}
+	else
+	{
+		ROS_INFO("there are remaining goals, motion_state is set to running");
+		motion_state_=RUNNING;
+	}
 }
