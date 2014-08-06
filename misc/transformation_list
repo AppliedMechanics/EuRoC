@@ -1,0 +1,52 @@
+##############################################
+Transformations in the EUROC challenge 2
+##############################################
+
+T_KI means transformation from I to K-System
+     	   		  from child I to parent K
+
+I --> "child"
+K --> "parent"
+
+Example: K_r = T_KI * I_r
+
+			 K
+Craig's Notation: T_KI =   T
+		       	 I
+
+
+Coordinate Systems
+
+System		Explanation
+---------------------------
+0		Origin
+LA_0		LA Base
+LA_TCP		Linear Axes "TCP" = LWR_0
+LWR_0		LWR Base = LA_TCP
+LWR_TCP		LWR TCP
+GP_0		Gripper Base
+GP_TCP		Gripper TCP
+T_DEPTH		TCP Depth Camera
+T_RGB		TCP RGB Camera
+CM		Camera Mast Base
+PT_0		Pan Tilt Base
+PT_TCP		Pan Tilt TCP
+S_RGB		Scene RGB Camera
+S_DEPTH		Scene Depth Camera		
+
+
+AM_TF	EUROC_TF   	YAML						Child		Parent		broadcasted
+-------------------------------------------------------------------------------------------------------------------
+	T_LA_Base	robot/pose					0		LA_0
+	T_LA								LA_0		LWR_0
+	T_LWR								LWR_0		LWR_TCP
+	T_GP		robot/gripper_pose				LWR_TCP		GP_0
+	T_GP_TCP	robot/gripper_tcp				GP_0		GP_TCP
+	T_TRGB		sensors/tcp_rgb_cam/pose			GP_0		T_RGB
+	T_TDEPTH	sensors/tcp_depth_cam/relative_pose/pose	T_RGB		T_DEPTH
+	T_CM		mast_of_cam/base_pose				0		CM
+	T_PT_Base	mast_of_cam/pan_tilt_base			CM		PT_0
+	T_PT								PT_0		PT_TCP
+	T_SRGB		sensors/scene_rgb_cam/pose			PT_TCP		S_RGB
+	T_SDEPTH	sensors/scene_depth_cam/relative_pose/pose	S_RGB		S_DEPTH
+

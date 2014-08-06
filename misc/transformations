@@ -1,0 +1,14 @@
+AM_TF	EUROC_TF   	YAML						Child		Parent		broadcasted
+-------------------------------------------------------------------------------------------------------------------
+	T_LA_Base	robot/pose					0		LA_0
+	T_LA								LA_0		LWR_0
+	T_LWR								LWR_0		LWR_TCP
+	T_GP		robot/gripper_pose				LWR_TCP		GP_0
+	T_GP_TCP	robot/gripper_tcp				GP_0		GP_TCP
+	T_TRGB		sensors/tcp_rgb_cam/pose			GP_0		T_RGB
+	T_TDEPTH	sensors/tcp_depth_cam/relative_pose/pose	T_RGB		T_DEPTH
+	T_CM		mast_of_cam/base_pose				0		CM
+	T_PT_Base	mast_of_cam/pan_tilt_base			CM		PT_0
+	T_PT								PT_0		PT_TCP
+	T_SRGB		sensors/scene_rgb_cam/pose			PT_TCP		S_RGB
+	T_SDEPTH	sensors/scene_depth_cam/relative_pose/pose	S_RGB		S_DEPTH

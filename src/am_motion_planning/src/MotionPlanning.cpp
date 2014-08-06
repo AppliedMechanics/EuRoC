@@ -90,7 +90,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		else
 		{
 			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"Something strange happend");
+			goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
 		}
 
 		break;
