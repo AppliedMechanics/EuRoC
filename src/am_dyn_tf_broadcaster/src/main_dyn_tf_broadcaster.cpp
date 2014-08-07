@@ -36,7 +36,7 @@ void update_tf(const euroc_c2_msgs::Telemetry &msg)
 	T_PT.setOrigin(tf::Vector3(0,0,0));
 	T_PT.setRotation(q_cam);
 
-//	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),LWR_0,LWR_TCP));
+	//	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),LWR_0,LWR_TCP));
 	br.sendTransform(tf::StampedTransform(T_LA, ros::Time::now(),LA_0,LWR_0));
 	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),PT_0,PT_TCP));
 
@@ -53,41 +53,41 @@ void update_tf(const euroc_c2_msgs::Telemetry &msg)
 
 	telemetry_msg = msg;
 
-	// Populate a vector with all the lwr joint names
-	const unsigned int nr_lwr_joints = 7;
-	std::vector<std::string> lwr_joints(nr_lwr_joints);
-	std::stringstream name;
-	for(unsigned int i = 0; i < nr_lwr_joints; ++i){
-		name.str("lwr_joint_");
-		name.seekp(0, std::ios_base::end);
-		name << (i + 1);
-		lwr_joints[i] = name.str();
-	}
-	// Get the current configuration from the telemetry message
-	for(unsigned int i = 0; i < 7; ++i){
-		std::vector<std::string> &joint_names = telemetry_msg.joint_names;
-		unsigned int telemetry_index = std::find(joint_names.begin(), joint_names.end(), lwr_joints[i]) - joint_names.begin();
-		configuration.q[i] = telemetry_msg.measured.position[telemetry_index];
-	}
-	if (ros::service::waitForService(forward_kin,ros::Duration(0.5)))
-	{
-		forward_kin_srv.request.configuration = configuration;
-		forward_kin_client.call(forward_kin_srv);
-		std::string &ls_error_message = forward_kin_srv.response.error_message;
-		if(!ls_error_message.empty()){
-			ROS_ERROR("Forward Kinematics failed: %s", ls_error_message.c_str());
-		}
-		else
-		{
-			geometry_msgs::Pose &lwr_tcp_pose = forward_kin_srv.response.ee_frame;
-			T_LWR.setOrigin(tf::Vector3(lwr_tcp_pose.position.x,lwr_tcp_pose.position.y,lwr_tcp_pose.position.z));
-			T_LWR.setRotation(tf::Quaternion(lwr_tcp_pose.orientation.x,lwr_tcp_pose.orientation.y,lwr_tcp_pose.orientation.z,lwr_tcp_pose.orientation.w));
-			std::cout<< "configuration "<<configuration.q[0]<<configuration.q[1]<<configuration.q[2]<<std::endl;
-			std::cout << "x = "<<lwr_tcp_pose.position.x<<" y = "<<lwr_tcp_pose.position.y <<" z = "<<lwr_tcp_pose.position.z <<std::endl;
-			std::cout << "x = "<<lwr_tcp_pose.orientation.x<<" y = "<<lwr_tcp_pose.orientation.y <<" z = "<<lwr_tcp_pose.orientation.z <<" w = "<< lwr_tcp_pose.orientation.w<<std::endl;
-			br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),LWR_0,LWR_TCP));
-		}
-	}
+	//	// Populate a vector with all the lwr joint names
+	//	const unsigned int nr_lwr_joints = 7;
+	//	std::vector<std::string> lwr_joints(nr_lwr_joints);
+	//	std::stringstream name;
+	//	for(unsigned int i = 0; i < nr_lwr_joints; ++i){
+	//		name.str("lwr_joint_");
+	//		name.seekp(0, std::ios_base::end);
+	//		name << (i + 1);
+	//		lwr_joints[i] = name.str();
+	//	}
+	//	// Get the current configuration from the telemetry message
+	//	for(unsigned int i = 0; i < 7; ++i){
+	//		std::vector<std::string> &joint_names = telemetry_msg.joint_names;
+	//		unsigned int telemetry_index = std::find(joint_names.begin(), joint_names.end(), lwr_joints[i]) - joint_names.begin();
+	//		configuration.q[i] = telemetry_msg.measured.position[telemetry_index];
+	//	}
+	//	if (ros::service::waitForService(forward_kin,ros::Duration(0.5)))
+	//	{
+	//		forward_kin_srv.request.configuration = configuration;
+	//		forward_kin_client.call(forward_kin_srv);
+	//		std::string &ls_error_message = forward_kin_srv.response.error_message;
+	//		if(!ls_error_message.empty()){
+	//			ROS_ERROR("Forward Kinematics failed: %s", ls_error_message.c_str());
+	//		}
+	//		else
+	//		{
+	//			geometry_msgs::Pose &lwr_tcp_pose = forward_kin_srv.response.ee_frame;
+	//			T_LWR.setOrigin(tf::Vector3(lwr_tcp_pose.position.x,lwr_tcp_pose.position.y,lwr_tcp_pose.position.z));
+	//			T_LWR.setRotation(tf::Quaternion(lwr_tcp_pose.orientation.x,lwr_tcp_pose.orientation.y,lwr_tcp_pose.orientation.z,lwr_tcp_pose.orientation.w));
+	//			std::cout<< "configuration "<<configuration.q[0]<<configuration.q[1]<<configuration.q[2]<<std::endl;
+	//			std::cout << "x = "<<lwr_tcp_pose.position.x<<" y = "<<lwr_tcp_pose.position.y <<" z = "<<lwr_tcp_pose.position.z <<std::endl;
+	//			std::cout << "x = "<<lwr_tcp_pose.orientation.x<<" y = "<<lwr_tcp_pose.orientation.y <<" z = "<<lwr_tcp_pose.orientation.z <<" w = "<< lwr_tcp_pose.orientation.w<<std::endl;
+	//			br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),LWR_0,LWR_TCP));
+	//		}
+	//	}
 
 	double la_x,la_y,cam_pan,cam_tilt;
 	la_x = 0;
@@ -113,8 +113,8 @@ void update_tf(const euroc_c2_msgs::Telemetry &msg)
 
 
 	//	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),LWR_0,LWR_TCP));
-	//	br.sendTransform(tf::StampedTransform(T_LA, ros::Time::now(),LA_0,LWR_0));
-	//	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),PT_0,PT_TCP));
+	br.sendTransform(tf::StampedTransform(T_LA, ros::Time::now(),LA_0,LWR_0));
+	br.sendTransform(tf::StampedTransform(T_LWR, ros::Time::now(),PT_0,PT_TCP));
 
 }
 
