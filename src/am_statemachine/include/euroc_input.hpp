@@ -12,8 +12,12 @@
 // Includes for parsing yaml data
 #include <yaml-cpp/yaml.h>
 
+#include <tf/LinearMath/Quaternion.h>
+
 class EurocInput
 {
+	friend class StaticTFBroadcaster;
+
 public:
 	EurocInput();
 	~EurocInput();

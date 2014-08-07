@@ -11,8 +11,8 @@
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <config.hpp>
+#include <utils.hpp>
 
-namespace fsm {
 
 class EurocInput;
 
@@ -26,7 +26,7 @@ public:
 
 private:
 	ros::NodeHandle nh_;
-	static tf::TransformBroadcaster br_;
+	tf::TransformBroadcaster br_;
 
 	tf::Transform T_LA_Base;
 	tf::Transform T_GP;
@@ -43,5 +43,4 @@ private:
 
 };
 
-} /* namespace fsm */
 #endif /* STATICTFBROADCASTER_H_ */

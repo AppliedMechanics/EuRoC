@@ -32,6 +32,8 @@
 typedef actionlib::SimpleActionClient<am_msgs::VisionAction> visionClient;
 typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> motionClient;
 
+class StaticTFBroadcaster;
+
 class Statemachine
 {
 
@@ -44,6 +46,10 @@ private:
 
 	//!statemachine instance (singleton)
 	static Statemachine* instance_;
+
+	//!Static TF Broadcaster
+	StaticTFBroadcaster* broadcaster_;
+	ros::Timer br_timer_;
 
 	//!input container class for yaml data
 	EurocInput *ein_;
@@ -144,6 +150,8 @@ public:
 private:
 	//!main function that is called every timestep
 	int tick();
+	//! broadcast callback
+	void brTimerCallback(const ros::TimerEvent& event);
 
 	//functions for each state (all of them are called in tick() )
 	//!request task state function

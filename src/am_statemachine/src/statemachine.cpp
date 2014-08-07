@@ -1,5 +1,6 @@
 #include <statemachine.hpp>
 #include <cmath>
+#include <StaticTFBroadcaster.h>
 
 Statemachine* Statemachine::instance_ = 0x0;
 
@@ -21,6 +22,8 @@ Statemachine::Statemachine():
 		motion_state_(OPEN)
 {
 	ein_=new EurocInput();
+	broadcaster_ = new StaticTFBroadcaster();
+	br_timer_ = node_.createTimer(ros::Duration(1.0),&Statemachine::brTimerCallback,this,false,false);
 
 	//==============================================
 	//state:
@@ -101,7 +104,6 @@ void Statemachine::execute()
 
 int Statemachine::tick()
 {
-
 	switch(state_.sub.one)
 	{
 	case fsm::REQUEST_TASK:
@@ -147,6 +149,12 @@ int Statemachine::tick()
 		return -1;
 	}
 
+}
+
+void Statemachine::brTimerCallback(const ros::TimerEvent& event)
+{
+	//! Publish static TF
+	broadcaster_->publish_static_tf();
 }
 
 void Statemachine::request_task_cb()
@@ -271,6 +279,16 @@ int Statemachine::parse_yaml_file()
 
 	ROS_INFO("Statemachine: Parsing YAML-file finished");
 
+	ROS_INFO("Statemachine: Filling TF Broadcast information...");
+	try {
+		broadcaster_->fill_tf_information(ein_);
+		ROS_INFO("Statemachine: Filling TF info successful.");
+		br_timer_.start();
+	}
+	catch (...)
+	{
+		msg_error("Filling up TF information failed.");
+	}
 
 	//==============================================
 	//state:

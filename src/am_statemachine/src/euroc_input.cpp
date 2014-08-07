@@ -39,6 +39,8 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	double rpy[3];
 	double a_tf[9];
 	double q_tf[4];
+	tf::Quaternion q_tf_ros;
+
 	try{
 		(*base_pose)[0] >> base_pose_.position.x;
 		(*base_pose)[1] >> base_pose_.position.y;
@@ -46,11 +48,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		(*base_pose)[3] >> rpy[0];
 		(*base_pose)[4] >> rpy[1];
 		(*base_pose)[5] >> rpy[2];
-		rpy2quat(rpy,a_tf,q_tf);
-		base_pose_.orientation.w=q_tf[0];
-		base_pose_.orientation.x=q_tf[1];
-		base_pose_.orientation.y=q_tf[2];
-		base_pose_.orientation.z=q_tf[3];
+		q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+		base_pose_.orientation.w=q_tf_ros.getW();
+		base_pose_.orientation.x=q_tf_ros.getX();
+		base_pose_.orientation.y=q_tf_ros.getY();
+		base_pose_.orientation.z=q_tf_ros.getZ();
+//		rpy2quat(rpy,a_tf,q_tf);
+//		base_pose_.orientation.w=q_tf[0];
+//		base_pose_.orientation.x=q_tf[1];
+//		base_pose_.orientation.y=q_tf[2];
+//		base_pose_.orientation.z=q_tf[3];
 	}
 	catch(YAML::Exception e){
 		ROS_ERROR("EurocInput: YAML Error in base_pose");
@@ -65,11 +72,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		(*pan_tilt_base)[3] >> rpy[0];
 		(*pan_tilt_base)[4] >> rpy[1];
 		(*pan_tilt_base)[5] >> rpy[2];
-		rpy2quat(rpy,a_tf,q_tf);
-		pan_tilt_base_.orientation.w=q_tf[0];
-		pan_tilt_base_.orientation.x=q_tf[1];
-		pan_tilt_base_.orientation.y=q_tf[2];
-		pan_tilt_base_.orientation.z=q_tf[3];
+		q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+		pan_tilt_base_.orientation.w=q_tf_ros.getW();
+		pan_tilt_base_.orientation.x=q_tf_ros.getX();
+		pan_tilt_base_.orientation.y=q_tf_ros.getY();
+		pan_tilt_base_.orientation.z=q_tf_ros.getZ();
+//		rpy2quat(rpy,a_tf,q_tf);
+//		pan_tilt_base_.orientation.w=q_tf[0];
+//		pan_tilt_base_.orientation.x=q_tf[1];
+//		pan_tilt_base_.orientation.y=q_tf[2];
+//		pan_tilt_base_.orientation.z=q_tf[3];
 	}
 	catch(YAML::Exception e){
 		ROS_ERROR("EurocInput: YAML Error in pan_filt_base");
@@ -216,11 +228,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				(*sh_pose)[3] >> rpy[0];
 				(*sh_pose)[4] >> rpy[1];
 				(*sh_pose)[5] >> rpy[2];
-				rpy2quat(rpy,a_tf,q_tf);
-				tmp_obj.shape[jj].pose.orientation.w=q_tf[0];
-				tmp_obj.shape[jj].pose.orientation.x=q_tf[1];
-				tmp_obj.shape[jj].pose.orientation.y=q_tf[2];
-				tmp_obj.shape[jj].pose.orientation.z=q_tf[3];
+				q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+				tmp_obj.shape[jj].pose.orientation.w=q_tf_ros.getW();
+				tmp_obj.shape[jj].pose.orientation.x=q_tf_ros.getX();
+				tmp_obj.shape[jj].pose.orientation.y=q_tf_ros.getY();
+				tmp_obj.shape[jj].pose.orientation.z=q_tf_ros.getZ();
+//				rpy2quat(rpy,a_tf,q_tf);
+//				tmp_obj.shape[jj].pose.orientation.w=q_tf[0];
+//				tmp_obj.shape[jj].pose.orientation.x=q_tf[1];
+//				tmp_obj.shape[jj].pose.orientation.y=q_tf[2];
+//				tmp_obj.shape[jj].pose.orientation.z=q_tf[3];
 			}catch(YAML::Exception e) {
 				ROS_ERROR("Pose not found in shape");
 				return -1;
@@ -344,11 +361,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		(*rob_pose)[3] >> rpy[0];
 		(*rob_pose)[4] >> rpy[1];
 		(*rob_pose)[5] >> rpy[2];
-		rpy2quat(rpy, a_tf, q_tf);
-		robot_.pose.orientation.w = q_tf[0];
-		robot_.pose.orientation.x = q_tf[1];
-		robot_.pose.orientation.y = q_tf[2];
-		robot_.pose.orientation.z = q_tf[3];
+		q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+		robot_.pose.orientation.w=q_tf_ros.getW();
+		robot_.pose.orientation.x=q_tf_ros.getX();
+		robot_.pose.orientation.y=q_tf_ros.getY();
+		robot_.pose.orientation.z=q_tf_ros.getZ();
+//		rpy2quat(rpy, a_tf, q_tf);
+//		robot_.pose.orientation.w = q_tf[0];
+//		robot_.pose.orientation.x = q_tf[1];
+//		robot_.pose.orientation.y = q_tf[2];
+//		robot_.pose.orientation.z = q_tf[3];
 	} catch (YAML::Exception e) {
 		ROS_ERROR("EurocInput: YAML Error in robot pose");
 		return -1;
@@ -382,11 +404,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		(*grip_pose)[3] >> rpy[0];
 		(*grip_pose)[4] >> rpy[1];
 		(*grip_pose)[5] >> rpy[2];
-		rpy2quat(rpy, a_tf, q_tf);
-		robot_.gripper_pose.orientation.w = q_tf[0];
-		robot_.gripper_pose.orientation.x = q_tf[1];
-		robot_.gripper_pose.orientation.y = q_tf[2];
-		robot_.gripper_pose.orientation.z = q_tf[3];
+		q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+		robot_.gripper_pose.orientation.w=q_tf_ros.getW();
+		robot_.gripper_pose.orientation.x=q_tf_ros.getX();
+		robot_.gripper_pose.orientation.y=q_tf_ros.getY();
+		robot_.gripper_pose.orientation.z=q_tf_ros.getZ();
+//		rpy2quat(rpy, a_tf, q_tf);
+//		robot_.gripper_pose.orientation.w = q_tf[0];
+//		robot_.gripper_pose.orientation.x = q_tf[1];
+//		robot_.gripper_pose.orientation.y = q_tf[2];
+//		robot_.gripper_pose.orientation.z = q_tf[3];
 	} catch (YAML::Exception e) {
 		ROS_ERROR("EurocInput: YAML Error in gripper pose");
 		return -1;
@@ -400,11 +427,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		(*tcp_pose)[3] >> rpy[0];
 		(*tcp_pose)[4] >> rpy[1];
 		(*tcp_pose)[5] >> rpy[2];
-		rpy2quat(rpy, a_tf, q_tf);
-		robot_.gripper_tcp.orientation.w = q_tf[0];
-		robot_.gripper_tcp.orientation.x = q_tf[1];
-		robot_.gripper_tcp.orientation.y = q_tf[2];
-		robot_.gripper_tcp.orientation.z = q_tf[3];
+		q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+		robot_.gripper_tcp.orientation.w=q_tf_ros.getW();
+		robot_.gripper_tcp.orientation.x=q_tf_ros.getX();
+		robot_.gripper_tcp.orientation.y=q_tf_ros.getY();
+		robot_.gripper_tcp.orientation.z=q_tf_ros.getZ();
+//		rpy2quat(rpy, a_tf, q_tf);
+//		robot_.gripper_tcp.orientation.w = q_tf[0];
+//		robot_.gripper_tcp.orientation.x = q_tf[1];
+//		robot_.gripper_tcp.orientation.y = q_tf[2];
+//		robot_.gripper_tcp.orientation.z = q_tf[3];
 	} catch (YAML::Exception e) {
 		ROS_ERROR("EurocInput: YAML Error in gripper tcp pose");
 		return -1;
@@ -467,11 +499,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				(*rel_pose)[3] >> rpy[0];
 				(*rel_pose)[4] >> rpy[1];
 				(*rel_pose)[5] >> rpy[2];
-				rpy2quat(rpy, a_tf, q_tf);
-				tmp_sens.pose.orientation.w = q_tf[0];
-				tmp_sens.pose.orientation.x = q_tf[1];
-				tmp_sens.pose.orientation.y = q_tf[2];
-				tmp_sens.pose.orientation.z = q_tf[3];
+				q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+				tmp_sens.pose.orientation.w=q_tf_ros.getW();
+				tmp_sens.pose.orientation.x=q_tf_ros.getX();
+				tmp_sens.pose.orientation.y=q_tf_ros.getY();
+				tmp_sens.pose.orientation.z=q_tf_ros.getZ();
+//				rpy2quat(rpy, a_tf, q_tf);
+//				tmp_sens.pose.orientation.w = q_tf[0];
+//				tmp_sens.pose.orientation.x = q_tf[1];
+//				tmp_sens.pose.orientation.y = q_tf[2];
+//				tmp_sens.pose.orientation.z = q_tf[3];
 			} catch (YAML::Exception e) {
 				ROS_ERROR("EurocInput: YAML Error in sensor pose");
 				return -1;
@@ -498,11 +535,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				(*sens_pose)[3] >> rpy[0];
 				(*sens_pose)[4] >> rpy[1];
 				(*sens_pose)[5] >> rpy[2];
-				rpy2quat(rpy, a_tf, q_tf);
-				tmp_sens.pose.orientation.w = q_tf[0];
-				tmp_sens.pose.orientation.x = q_tf[1];
-				tmp_sens.pose.orientation.y = q_tf[2];
-				tmp_sens.pose.orientation.z = q_tf[3];
+				q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+				tmp_sens.pose.orientation.w=q_tf_ros.getW();
+				tmp_sens.pose.orientation.x=q_tf_ros.getX();
+				tmp_sens.pose.orientation.y=q_tf_ros.getY();
+				tmp_sens.pose.orientation.z=q_tf_ros.getZ();
+//				rpy2quat(rpy, a_tf, q_tf);
+//				tmp_sens.pose.orientation.w = q_tf[0];
+//				tmp_sens.pose.orientation.x = q_tf[1];
+//				tmp_sens.pose.orientation.y = q_tf[2];
+//				tmp_sens.pose.orientation.z = q_tf[3];
 			} catch (YAML::Exception e) {
 				ROS_ERROR("EurocInput: YAML Error in sensor pose");
 				return -1;
