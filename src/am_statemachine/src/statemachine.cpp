@@ -316,6 +316,7 @@ void Statemachine::stop_sim_cb()
 {
 	stop_sim_state_=RUNNING;
 
+
 	//save the log
 	ROS_INFO("Statemachine: Saving log");
 	if(save_log_client_.exists())
@@ -350,6 +351,8 @@ int Statemachine::stop_sim()
 	request_task_state_=OPEN;
 	start_sim_state_=OPEN;
 	stop_sim_state_=OPEN;
+
+	br_timer_.stop();
 
 	return 0;
 }
