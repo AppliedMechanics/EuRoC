@@ -7,6 +7,9 @@ HowTo merge trunk with branches
 	
 	dry-run Option for preview of changes. Watch for Errors!
 	If everything seems to be fine:
+
+	(proposed method for conflicts in merge: postpone 
+	-> edit afterwards by hand)
 	
 	$ svn merge ^/Euroc/trunk/src 
 	$ svn commit -m "Merged trunk to branch."
