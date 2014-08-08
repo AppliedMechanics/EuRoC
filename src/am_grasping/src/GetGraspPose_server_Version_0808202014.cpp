@@ -22,42 +22,57 @@ tf::Transform transform_0;
 tf::Transform transform_gripper;
 tf::Transform transform_object;
 
-//##########################################################################################//
-//                              Auxiliary functions                                         //
-//##########################################################################################//
-void cross_product(double* vec1, double* vec2, double* vec1_x_vec2) {
-	vec1_x_vec2[0] = vec1[1] * vec2[2] - vec1[2] * vec2[1];
-	vec1_x_vec2[1] = vec1[2] * vec2[0] - vec1[0] * vec2[2];
-	vec1_x_vec2[2] = vec1[0] * vec2[1] - vec1[1] * vec2[0];
+// Auxiliary functions
+void cross_product(double* vec1, double* vec2, double* vec1_x_vec2)
+{
+	vec1_x_vec2[0] = vec1[1]*vec2[2]-vec1[2]*vec2[1];
+	vec1_x_vec2[1] = vec1[2]*vec2[0]-vec1[0]*vec2[2];
+	vec1_x_vec2[2] = vec1[0]*vec2[1]-vec1[1]*vec2[0];
 }
 
-void matrix_times_vector(double* A, double* b, double* r) {
+void matrix_times_vector(double* A, double* b, double* r)
+{
 	// Compute A*b=r assuming that A is a 9-element array with
 	// A = {A_11 A_12 A_13, A_21 A_22 A_23, A_31 A_32 A_33};
 	for (unsigned row = 0; row < 3; row++) {
 		r[row] = 0;
 		for (unsigned col = 0; col < 3; col++)
-			r[row] += A[row * 3 + col] * b[col];
+			r[row] += A[row*3 + col] * b[col];
 	}
 }
 
 void matrix_multiply(double* M1, double* M2, double* Result) {
-	for (unsigned row = 0; row < 3; row++) {
-		for (unsigned col = 0; col < 3; col++) {
-			Result[row * 3 + col] = 0;
-			for (unsigned i = 0; i < 3; i++)
-				Result[row * 3 + col] += M1[row * 3 + i] * M2[i * 3 + col];
+	for(unsigned row=0; row<3; row++) {
+		for(unsigned col=0; col<3; col++) {
+			Result[row*3 + col] = 0;
+			for(unsigned i=0; i<3; i++)
+				Result[row*3 + col] += M1[row*3 + i] * M2[i*3 + col];
 		}
 	}
 }
 
-void matrix_transpose(double* A, double* At) {
-	unsigned int idx_At[9] = { 0, 3, 6, 1, 4, 7, 2, 5, 8 };
-	for (unsigned i = 0; i < 9; i++)
+void matrix_transpose( double* A, double* At )
+{
+
+	unsigned int idx_At[9] = {0,3,6, 1,4,7, 2,5,8};
+	for(unsigned i=0; i<9; i++)
 		At[idx_At[i]] = A[i];
 }
 
-void rotate_vec_k2i(double* v_k, double* quat, double* v_i) {
+void rotate_vec_k2i(double* v_k, double* quat, double* v_i)
+{
+	/*double rot_angle = M_PI/2.0;
+	double cos_th = cos(rot_angle/2.0);
+	double sin_th = sin(rot_angle/2.0);
+	double xq = 1.0 * sin_th;
+	double yq = 0.0 * sin_th;
+	double zq = 0.0 * sin_th;
+	double wq = cos_th;
+	quat[0] = wq;
+	quat[1] = xq;
+	quat[2] = yq;
+	quat[3] = zq;*/
+
 	// Compute v_i = A_ik * v_k, where A_ik is represented by a quaternion q_ik
 	// Convert object-quaternion to rotation matrix
 	double A_ik[9];
@@ -65,22 +80,26 @@ void rotate_vec_k2i(double* v_k, double* quat, double* v_i) {
 	quat2dcm(quat,A_ki);
 	matrix_transpose(A_ki,A_ik);
 	matrix_times_vector( A_ik, v_k, v_i  );
-}
 
-std::vector<boost::array<double,3> > get_base_vectors( double* A_k20, unsigned int verbose ) {
-	// Extract base-vectors
-	std::vector<boost::array<double,3> > base_vectors(3);
-	for(unsigned i = 0; i < 3; i++) {
-		if(verbose)
-			std::cout << "Base vector " << i+1 << std::endl;
-		for(unsigned j = 0; j < 3; j++) {
-			base_vectors.at(i).at(j) = A_k20[i + j*3];
-			if(verbose)
-				std::cout << A_k20[i + j*3] << std::endl;
-		}
-	}
+	/*std::cout << "In rotate_vec_k2i: Quaternion q_ik" << std::endl;
+	std::cout << "w=" << quat[0] << std::endl;
+	std::cout << "r=[" << quat[1] << "," <<  quat[2] << "," <<  quat[3]<< "]" << std::endl;
 
-	return base_vectors;
+	double angles[3];
+	double A_ik2[9];
+	quat2kardan(quat,angles,A_ik2);
+	std::cout << "In rotate_vec_k2i: Transformation of Quaternion q_ik to r,p,y" << std::endl;
+	std::cout << "alpha=" << angles[0] << std::endl;
+	std::cout << "beta=" << angles[1] << std::endl;
+	std::cout << "gamma=" << angles[2] << std::endl;
+
+	std::cout << "In rotate_vec_k2i: Matrix A_ik" << std::endl;
+	for(unsigned row=0; row<3; row++)
+	{
+		for(unsigned col=0; col<3; col++)
+			std::cout << A_ik[row*3 + col] <<"  ";
+		 std::cout << std::endl;
+	}*/
 }
 
 // ROS-Service Function
@@ -105,6 +124,16 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 		std::cout << "z: " << req.object.abs_pose.orientation.z << std::endl;
 		std::cout << "w: " << req.object.abs_pose.orientation.w << std::endl;
 
+
+
+/*	double A[9] = {1,2,3,4,5,6,7,8,9};
+	double b[3] = {1,0,1};
+	double r[3] = {1,0,1};
+	matrix_times_vector(A,b,r);
+	std::cout << "Test of matrix_times_vector: " << std::endl;
+			std::cout << "r[0]: " << r[0] << std::endl;
+			std::cout << "r[1]: " << r[1] << std::endl;
+			std::cout << "r[2]: " << r[2] << std::endl;*/
 	std::cout << "Test of matrix_transpose: " << std::endl;
 	double A[9] = {1,2,3,4,5,6,7,8,9};
 	double At[9];
@@ -123,6 +152,31 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 				std::cout << At[i*3 + j] << "  ";
 			std::cout << std::endl;
 		}
+		/*
+	std::cout << "Test of rotate_vec_k2i: " << std::endl;
+		double vk[3] = {1,1,1};
+		double vi[3];
+		// i-FoR is rotated with 90 degrees around x-axis w.r.t k-FoR
+		double A_ik[9] = {1,0,0, 0,0,-1, 0,1,0};
+		double A_ik_t[9];
+		matrix_transpose(A_ik, A_ik_t);
+		double quat_tf[4];
+		dcm2quat(A_ik_t, quat_tf);
+		rotate_vec_k2i(vk,quat_tf,vi);
+		for(unsigned int i=0; i<3; i++)
+			std::cout << "vi[i]=" << vi[i] << std::endl;*/
+	/*std::cout << "Test Matrix Multiply" << std::endl;
+		double M1[9] = {1,2,3, 1,0,0, 0,1,1};
+		double M2[9] = {1,2,-3, 4,0,0, 0,5,6};
+		double Res[9];
+		matrix_multiply(M1,M2,Res);
+		for(unsigned int i=0; i<3; i++)
+		{
+			for(unsigned int j=0; j<3; j++)
+				std::cout << Res[i*3 + j] << "  ";
+			std::cout << std::endl;
+		}*/
+
 
 	// CoG coordinates relative to absolute object pose
 	double object_CoG[3]     = {0.0, 0.0, 0.0}; // Relative position of object-CoG w.r.t abs_pose (in obj-FoR)
@@ -138,17 +192,8 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 	// quaternion rotation vector describing rotation from 0-FoR to obj-FoR
 	double quat_02obj[4] = {req.object.abs_pose.orientation.w,req.object.abs_pose.orientation.x,\
 			req.object.abs_pose.orientation.y,req.object.abs_pose.orientation.z};
-	// Rotation matrix converting a vector from the object frame into the 0-frame
-	double A_obj20[9]; // A_0.obj
-	quat2dcm(quat_02obj,A_obj20);
-	// Rotation matrix converting a vector from the shape frame into the object frame
-	double A_shape2obj[9]; // A_obj.shape
-	// Rotation matrix converting a vector from the object frame into the 0-frame
-	double A_shape20[9]; // A_0.shape
 	// object height
 	double object_height = 0.0;
-	//
-	double q_obj2shape[4];
 	for(unsigned int idx_shape=0; idx_shape<req.object.nr_shapes; idx_shape++ )
 	{
 		// Compute volume & mass of each shape
@@ -211,17 +256,11 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 		if( r_02shape_0.at(idx_shape).at(2) > object_height ) {
 			// Find shape axis pointing "upwards" (along ez_0)
 			double dot_prod_max = -10.0;
+			double dot_prod_max = -10.0;
 			for(unsigned i=0; i<3; i++) {
 
 			}
 		}
-		q_obj2shape[0] = current_shape->pose.orientation.w;
-		q_obj2shape[1] = current_shape->pose.orientation.x;
-		q_obj2shape[2] = current_shape->pose.orientation.y;
-		q_obj2shape[3] = current_shape->pose.orientation.z;
-		//
-		quat2dcm(q_obj2shape,A_shape2obj);
-		matrix_multiply(A_obj20,A_shape2obj,A_shape20);
 
 	}
 	if( object_mass == 0.0 )
@@ -274,6 +313,8 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 
 
 	// Convert object-quaternion to rotation matrix
+	double A_shape2obj[9]; // A_obj.shape
+	double q_obj2shape[4];
 	q_obj2shape[0]=req.object.shape[idx_shape_CoG].pose.orientation.w;
 	q_obj2shape[1]=req.object.shape[idx_shape_CoG].pose.orientation.x;
 	q_obj2shape[2]=req.object.shape[idx_shape_CoG].pose.orientation.y;
@@ -290,6 +331,8 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 		std::cout << std::endl;
 	}
 	//
+	double A_obj20[9]; // A_0.obj
+	quat2dcm(quat_02obj,A_obj20);
 	// Control Output
 	std::cout << "q_02obj = " << std::endl;
 	for (unsigned int i = 0; i < 4; i++)
@@ -301,6 +344,7 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 		std::cout << std::endl;
 	}
 	//
+	double A_shape20[9]; // A_0.shape
 	matrix_multiply(A_obj20,A_shape2obj,A_shape20);
 	std::cout << "A_0.shape = " << std::endl;
 	for (unsigned int i = 0; i < 3; i++) {
@@ -325,6 +369,7 @@ bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPos
 	double ez_0_0[3] = {0.0,0.0,1.0};
 	double dot_prod = 0.0, abs_dot_prod_max = 0.0, sgn_dot_prod_max;
 	unsigned int idx_dot_prod_max = 0;
+	double object_height = 0.0;
 	for(unsigned ii=0; ii<3; ii++) {
 		// Compute vector dot-product
 		for(unsigned jj=0; jj<3; jj++)

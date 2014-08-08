@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   actionlib
   roscpp
+  crops_manipulator_utils
 )
 
 ## System dependencies are found with CMake's conventions
@@ -112,5 +113,6 @@ add_dependencies(am_vision am_vision_generate_messages_cpp)
 ## Specify libraries to link a library or executable target against
  target_link_libraries(am_vision
    ${catkin_LIBRARIES}
+   crops_manipulator_utils
  )
 

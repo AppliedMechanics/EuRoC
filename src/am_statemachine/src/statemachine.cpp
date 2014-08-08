@@ -364,13 +364,13 @@ int Statemachine::locate_object()
 		msg_info("Enter state");
 
 		//hack: dont use blue handle!!
-		static bool first=true;
-		if(first)
-		{
-			ein_->get_object();
-			ein_->set_object_finished(); // jump to green cylinder
-			first=false;
-		}
+//		static bool first=true;
+//		if(first)
+//		{
+//			ein_->get_object();
+//			ein_->set_object_finished(); // jump to green cylinder
+//			first=false;
+//		}
 		cur_obj_ = ein_->get_object();
 
 		ein_->print_object(&cur_obj_);
@@ -547,8 +547,12 @@ int Statemachine::grip_object()
 	{
 		msg_info("Enter state");
 
-		gripper_control_srv_.request.gripping_force = 30;
-		gripper_control_srv_.request.object_width = 0.05;
+		gripper_control_srv_.request.gripping_force = 40;
+		if(cur_obj_.name.compare("blue_handle"))
+			gripper_control_srv_.request.object_width = 0.05;
+		else
+			gripper_control_srv_.request.object_width = 0.01;
+
 		gripper_control_srv_.request.gripping_mode = FF_FORCE;
 
 		lsc_ = boost::thread(&Statemachine::grip_cb,this);

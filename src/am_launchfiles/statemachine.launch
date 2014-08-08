@@ -7,7 +7,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
       
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
-	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv"/>
+	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen" />
      <!-- Gripper  -->
 	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface"/>
 
@@ -16,7 +16,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_vision" type="am_vision" name="am_vision"/>
 
 <!-- Motion Planning  -->
-	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen" />
+	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" />
 
 <!-- State Machine  -->
 	<node pkg="am_statemachine" type="statemachine" name="statemachine" output="screen" launch-prefix="xterm -e"/>

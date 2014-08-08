@@ -7,6 +7,8 @@
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/VisionAction.h>
 
+#include <tf_rot.hpp>
+
 class Vision
 {
 public:

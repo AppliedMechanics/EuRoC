@@ -36,7 +36,7 @@ void kardan2dcm(double* kardan,double* r_tf)
 
 void dcm2quat(double* r_tf, double* q_tf)
 {
-  double normq;
+  /*double normq;
   //! Prevent Error in DCM
   for (int i=0;i<9;i++){
     if (r_tf[i]<-1.0)
@@ -51,6 +51,7 @@ void dcm2quat(double* r_tf, double* q_tf)
   q_tf[2] = 0.5*sign(r_tf[6]-r_tf[2])*sqrt(-r_tf[0]+r_tf[4]-r_tf[8]+1);
   q_tf[3] = 0.5*sign(r_tf[1]-r_tf[3])*sqrt(-r_tf[0]-r_tf[4]+r_tf[8]+1);
 
+
   normq = q_tf[0]*q_tf[0]+q_tf[1]*q_tf[1]+q_tf[2]*q_tf[2]+q_tf[3]*q_tf[3];
   if (normq != 1.0)
     {
@@ -59,7 +60,59 @@ void dcm2quat(double* r_tf, double* q_tf)
       q_tf[1] = q_tf[1]/normq;
       q_tf[2] = q_tf[2]/normq;
       q_tf[3] = q_tf[3]/normq;
-    }
+    }*/
+
+	// inspired by MATLAB implementation of dcm2quat
+
+	q_tf[3] = 0;
+	double tr = r_tf[0] +r_tf[4] + r_tf[8];
+	if(tr>0) {
+		double temp = sqrt( tr + 1 );
+		q_tf[0] = 0.5*temp;
+		q_tf[1] = ( r_tf[5] - r_tf[7] ) / (2*sqrt(temp));
+		q_tf[2] = ( r_tf[6] - r_tf[2] ) / (2*sqrt(temp));
+		q_tf[3] = ( r_tf[1] - r_tf[3] ) / (2*sqrt(temp));
+	}
+	else {
+		double d[3] = { r_tf[0],r_tf[4],r_tf[8] };
+		if( (d[1]>d[0]) && (d[1]>d[2]) ) {
+			double temp = sqrt( d[1] - d[0]  -d[2] + 1.0 );
+
+			q_tf[2] = 0.5*temp;
+
+			if( temp != 0)
+				temp = 0.5/temp;
+
+			q_tf[0] = ( r_tf[6] - r_tf[2] ) * temp;
+			q_tf[1] = ( r_tf[1] + r_tf[3] ) * temp;
+			q_tf[3] = ( r_tf[5] + r_tf[7] ) * temp;
+		}
+		else if( d[2] > d[0] ) {
+			double temp = sqrt( d[2] - d[0] - d[1] + 1.0 );
+
+			q_tf[3] = 0.5*temp;
+
+			if( temp != 0 )
+				temp = 0.5/temp;
+
+			q_tf[0] = ( r_tf[1] - r_tf[3] ) * temp;
+			q_tf[1] = ( r_tf[6] + r_tf[2] ) * temp;
+			q_tf[2] = ( r_tf[5] + r_tf[7] ) * temp;
+		}
+		else {
+			double temp = sqrt( d[0] - d[1] - d[2] + 1.0 );
+			std::cout<<"temp= "<<temp<<std::endl;
+
+			q_tf[1] = 0.5*temp;
+
+			if( temp != 0 )
+				temp = 0.5/temp;
+
+			q_tf[0] = ( r_tf[5] - r_tf[7] ) * temp;
+			q_tf[2] = ( r_tf[1] + r_tf[3] ) * temp;
+			q_tf[3] = ( r_tf[6] + r_tf[2] ) * temp;
+		}
+	}
 
 
 }
@@ -100,7 +153,7 @@ void quat2dcm(double* q_tf, double* r_tf)
   // r_tf[8] = 2*(w*w+z*z)-1;
 
 
-  r_tf[0] = w*w+x*x-y*y-z*z;
+  /*r_tf[0] = w*w+x*x-y*y-z*z;
   r_tf[1] = 2*x*y+2*w*z;
   r_tf[2] = 2*x*z-2*w*y;
   r_tf[3] = 2*x*y-2*w*z;
@@ -108,15 +161,26 @@ void quat2dcm(double* q_tf, double* r_tf)
   r_tf[5] = 2*y*z+2*w*x;
   r_tf[6] = 2*x*z+2*w*y;
   r_tf[7] = 2*y*z-2*w*x;
-  r_tf[8] = w*w-x*x-y*y+z*z;
+  r_tf[8] = w*w-x*x-y*y+z*z;*/
+
+  // Added by Niko, 06.08.2014
+  r_tf[0] = 1-2*(y*y+z*z);
+  r_tf[1] = 2*(x*y-w*z);
+  r_tf[2] = 2*(x*z+w*y);
+  r_tf[3] = 2*(x*y+w*z);
+  r_tf[4] = 1-2*(x*x+z*z);
+  r_tf[5] = 2*(y*z-w*x);
+  r_tf[6] = 2*(x*z-w*y);
+  r_tf[7] = 2*(y*z+w*x);
+  r_tf[8] = 1-2*(x*x+y*y);
 
   //! Prevent Error in DCM
-  for (int i=0;i<9;i++){
-    if (r_tf[i]<-1.0)
-      r_tf[i] = -1.0;
-    else if (r_tf[i]>1.0)
-      r_tf[i] = 1.0;
-  }
+//  for (int i=0;i<9;i++){
+//    if (r_tf[i]<-1.0)
+//      r_tf[i] = -1.0;
+//    else if (r_tf[i]>1.0)
+//      r_tf[i] = 1.0;
+//  }
 
 
 }
