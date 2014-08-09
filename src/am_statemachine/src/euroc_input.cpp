@@ -549,7 +549,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				ROS_ERROR("EurocInput: YAML Error in sensor pose");
 				return -1;
 			}
-			tmp_sens.parent = -1;
+			tmp_sens.parent = "";
 		}
 
 		const YAML::Node* cam = sens->FindValue("camera");

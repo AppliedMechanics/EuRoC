@@ -23,7 +23,7 @@ Statemachine::Statemachine():
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
-	br_timer_ = node_.createTimer(ros::Duration(1.0),&Statemachine::brTimerCallback,this,false,false);
+	br_timer_ = node_.createTimer(ros::Duration(0.1),&Statemachine::brTimerCallback,this,false,false);
 
 	//==============================================
 	//state:
