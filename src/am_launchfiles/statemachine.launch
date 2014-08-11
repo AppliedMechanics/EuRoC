@@ -3,7 +3,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 -->
 
 <launch>	
- <param name="use_sim_time" type="bool" value="true" /> 
+ <param name="use_sim_time" type="bool" value="true" />
       
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
@@ -23,7 +23,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 
 
 <!-- Dynamic TF Broadcaster  -->
-<!--	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" output="screen"/>-->
+	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" output="screen"/>
 
 
 </launch>

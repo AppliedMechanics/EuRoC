@@ -72,12 +72,13 @@ int Statemachine::init_sm()
 
 void Statemachine::execute()
 {
+	ROS_INFO("Starting statemachine ...");
 	//update rate
 	ros::Rate loop_rate(FREQ);
 
 	//main loop:
-	double start=(double)ros::Time::now().toSec();
 	double t_act=0;
+	ROS_INFO("Entering while-loop");
 	while(ros::ok() && !(state_.sub.one == fsm::FINISHED))
 	{
 
@@ -91,12 +92,12 @@ void Statemachine::execute()
 	  ros::spinOnce();
 
 	  //sleep for the remaining time
-	  loop_rate.sleep();
+	  if(state_.sub.one == fsm::SOLVE_TASK)
+		  loop_rate.sleep();
 
 	  counter++;
-	  t_act=(double)ros::Time::now().toSec()-start;
+	  t_act=(double)ros::Time::now().toSec();
 
-//	  std::cout<<"time: "<<t_act<<" s, counter: "<<counter<<std::endl;
 	  printf("time= %f s \r",t_act);
 	  fflush(stdout);
 	}
@@ -159,14 +160,16 @@ void Statemachine::brTimerCallback(const ros::TimerEvent& event)
 
 void Statemachine::request_task_cb()
 {
-	//ROS_INFO("In request_task_cb");
+	ROS_INFO("In request_task_cb");
 	request_task_state_=RUNNING;
 
 	if(list_scenes_client_.exists())
 		list_scenes_client_.call(list_scenes_srv_);
+	else
+		msg_error("list_scenes_client doesn't exist!");
 
 	request_task_state_=FINISHED;
-	//ROS_INFO("Exiting request_task_cb");
+	ROS_INFO("Exiting request_task_cb");
 }
 
 int Statemachine::request_task()
@@ -174,7 +177,8 @@ int Statemachine::request_task()
 	if(request_task_state_==OPEN)
 	{
 		//start the service call as thread and monitor request_task_state
-		lsc_ = boost::thread(&Statemachine::request_task_cb,this);
+		//lsc_ = boost::thread(&Statemachine::request_task_cb,this);
+		request_task_cb();
 	}
 	else if(request_task_state_==FINISHED)//lsc_.timed_join(boost::posix_time::seconds(0.0)))
 	{
@@ -239,7 +243,8 @@ int Statemachine::start_sim()
 		start_simulator_srv_.request.user_id = "am-robotics";
 		start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
 
-		lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
+		//lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
+		start_sim_cb();
 	}
 	else if(start_sim_state_==FINISHED)
 	{
@@ -334,7 +339,8 @@ int Statemachine::stop_sim()
 {
 	if(stop_sim_state_==OPEN)
 	{
-		lsc_ = boost::thread(&Statemachine::stop_sim_cb,this);
+		//lsc_ = boost::thread(&Statemachine::stop_sim_cb,this);
+		stop_sim_cb();
 	}
 	else if(stop_sim_state_==FINISHED)
 	{
