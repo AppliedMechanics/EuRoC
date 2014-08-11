@@ -46,6 +46,6 @@ const std::string lwr_6 = "joint6";
 const std::string lwr_7 = "joint7";
 
 
-#define FREQ 10 //rosnode frequency
+#define FREQ 100 //rosnode frequency
 
 #endif

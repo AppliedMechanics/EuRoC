@@ -46,6 +46,7 @@ Statemachine::~Statemachine()
 	{
 		stop_sim();
 	}
+	delete instance_;
 }
 
 int Statemachine::init_sm()
@@ -610,7 +611,7 @@ int Statemachine::move_to_target_zone()
 
 		cur_zone_ = ein_->get_target_zone();
 		goal_queue[2].goal_pose.position = cur_zone_.position;
-		goal_queue[2].goal_pose.position.z=0.3;
+		goal_queue[2].goal_pose.position.z=goal_queue[0].goal_pose.position.z-0.2+0.005;
 		goal_queue[2].goal_pose.orientation.x=1;
 		goal_queue[2].goal_pose.orientation.y=0;
 		goal_queue[2].goal_pose.orientation.z=0;
