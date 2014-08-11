@@ -41,6 +41,7 @@ Statemachine::Statemachine():
 
 Statemachine::~Statemachine()
 {
+	ROS_INFO("Killing Statemachine ...");
 	if(sim_running_)
 	{
 		stop_sim();
@@ -70,41 +71,43 @@ int Statemachine::init_sm()
 	return 0;
 }
 
-void Statemachine::execute()
-{
-	ROS_INFO("Starting statemachine ...");
-	//update rate
-	ros::Rate loop_rate(FREQ);
-
-	//main loop:
-	double t_act=0;
-	ROS_INFO("Entering while-loop");
-	while(ros::ok() && !(state_.sub.one == fsm::FINISHED))
-	{
-
-	  //do state action ...
-	  if(-1==tick())
-	  {
-		  msg_error("Error in Statemachine::tick()");
-	  }
-
-	  //"tick"
-	  ros::spinOnce();
-
-	  //sleep for the remaining time
-	  if(state_.sub.one == fsm::SOLVE_TASK)
-		  loop_rate.sleep();
-
-	  counter++;
-	  t_act=(double)ros::Time::now().toSec();
-
-	  printf("time= %f s \r",t_act);
-	  fflush(stdout);
-	}
-}
+//void Statemachine::execute()
+//{
+//	ROS_INFO("Starting statemachine ...");
+//	//update rate
+//	ros::Rate loop_rate(FREQ);
+//
+//	//main loop:
+//	double t_act=0;
+//	ROS_INFO("Entering while-loop");
+//	while(ros::ok() && !(state_.sub.one == fsm::FINISHED))
+//	{
+//
+//	  //do state action ...
+//	  if(-1==tick())
+//	  {
+//		  msg_error("Error in Statemachine::tick()");
+//	  }
+//
+//	  //"tick"
+//	  ros::spinOnce();
+//
+//	  //sleep for the remaining time (only during solve task)
+//	  if(state_.sub.one == fsm::SOLVE_TASK)
+//		  loop_rate.sleep();
+//
+//	  t_act=(double)ros::Time::now().toSec();
+//
+//	  printf("time= %f s \r",t_act);
+//	  fflush(stdout);
+//	}
+//
+//}
 
 int Statemachine::tick()
 {
+	counter++;
+
 	switch(state_.sub.one)
 	{
 	case fsm::REQUEST_TASK:
@@ -204,7 +207,7 @@ int Statemachine::request_task()
 		}
 
 		//destroy thread (should not be necessary?!)
-		lsc_.detach();
+		//lsc_.detach();
 
 
 		std::cout<<"Choose task: ";
@@ -256,7 +259,10 @@ int Statemachine::start_sim()
 		}
 
 		//destroy thread
-		lsc_.detach();
+		//lsc_.detach();
+
+		sim_running_=true;
+
 		ROS_INFO("Statemachine: Server started");
 		ros::service::waitForService(save_log_,ros::Duration(5.0));
 
@@ -321,17 +327,20 @@ void Statemachine::stop_sim_cb()
 {
 	stop_sim_state_=RUNNING;
 
-
 	//save the log
 	ROS_INFO("Statemachine: Saving log");
 	if(save_log_client_.exists())
 		save_log_client_.call(save_log_srv_);
+	else
+		msg_error("save_log_client doesn't exist");
 
 	ROS_INFO("Statemachine: Stopping server");
 
 	// The stop simulator callback ends the current simulation
 	if(stop_simulator_client_.exists())
 		stop_simulator_client_.call(stop_simulator_srv_);
+	else
+		msg_error("stop_simulator_client doesn't exist");
 
 	stop_sim_state_=FINISHED;
 }
@@ -344,7 +353,16 @@ int Statemachine::stop_sim()
 	}
 	else if(stop_sim_state_==FINISHED)
 	{
-		lsc_.detach();
+		//lsc_.detach();
+
+		sim_running_=false;
+
+		//reset states:
+		request_task_state_=OPEN;
+		start_sim_state_=OPEN;
+		stop_sim_state_=OPEN;
+
+		br_timer_.stop();
 
 
 		//==============================================
@@ -352,13 +370,6 @@ int Statemachine::stop_sim()
 		state_.sub.one = fsm::FINISHED;
 		//==============================================
 	}
-
-	//reset states:
-	request_task_state_=OPEN;
-	start_sim_state_=OPEN;
-	stop_sim_state_=OPEN;
-
-	br_timer_.stop();
 
 	return 0;
 }
@@ -656,18 +667,9 @@ int Statemachine::move_to_target_zone()
 
 		//==============================================
 		//state:
-		if(ein_->all_finished()) //stop simulation, when all objects finished
-		{
-			state_.sub.one = fsm::STOP_SIM;
-			state_.sub.two = 0;
-			task_active_=false;
-		}
-		else
-		{
-			//otherwise start again with next object
-			state_.sub.one = fsm::SOLVE_TASK;
-			state_.sub.two = fsm::HOMING;
-		}
+
+		state_.sub.one = fsm::SOLVE_TASK;
+		state_.sub.two = fsm::HOMING;
 		//==============================================
 	}
 	return 0;
@@ -731,8 +733,18 @@ int Statemachine::homing()
 
 		//==============================================
 		//state:
-		state_.sub.one = fsm::SOLVE_TASK;
-		state_.sub.two = fsm::LOCATE_OBJECT;
+		if(ein_->all_finished()) //stop simulation, when all objects finished
+		{
+			state_.sub.one = fsm::STOP_SIM;
+			state_.sub.two = 0;
+			task_active_=false;
+		}
+		else
+		{
+			//otherwise start again with next object
+			state_.sub.one = fsm::SOLVE_TASK;
+			state_.sub.two = fsm::LOCATE_OBJECT;
+		}
 		//==============================================
 	}
 	return 0;
@@ -743,9 +755,24 @@ void Statemachine::vision_done(const actionlib::SimpleClientGoalState& state,
 {
 	ROS_INFO("Vision action finished: %s",state.toString().c_str());
 
-	cur_obj_.abs_pose=result->abs_object_pose;
+	switch(state.state_)
+	{
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		cur_obj_.abs_pose=result->abs_object_pose;
+		vision_state_=FINISHED;
+		break;
+	case actionlib::SimpleClientGoalState::ACTIVE:
+		break;
+	case actionlib::SimpleClientGoalState::PENDING:
+	case actionlib::SimpleClientGoalState::RECALLED:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::PREEMPTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+	default:
+		break;
+	}
 
-	vision_state_=FINISHED;
 }
 void Statemachine::vision_feedback(const am_msgs::VisionFeedbackConstPtr feedback)
 {

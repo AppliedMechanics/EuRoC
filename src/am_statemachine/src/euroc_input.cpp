@@ -632,7 +632,7 @@ am_msgs::TargetZone EurocInput::get_target_zone()
 		if(!obj_name.compare(target_zones_[ii].expected_object.c_str()))
 		{
 			active_zone_=ii;
-			ROS_INFO("Obj: %s, Zone expected: %s",obj_name.c_str(),target_zones_[ii].expected_object.c_str());
+			//ROS_INFO("Obj: %s, Zone expected: %s",obj_name.c_str(),target_zones_[ii].expected_object.c_str());
 			return target_zones_[ii];
 		}
 	}

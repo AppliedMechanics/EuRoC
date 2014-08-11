@@ -139,17 +139,21 @@ public:
 	//!singleton implementation
 	static Statemachine* get_instance();
 
+	//!destroy current instance
+	void clear_instance();
+
 	//!init statemachine
 	int init_sm();
-	//!execute statemachine
-	void execute();
+	//!execute statemachine (while loop in statemachine)
+	//void execute();
 
 	//!returns current state
 	fsm::fsm_state_t get_state()	{ return state_; };
 
-private:
 	//!main function that is called every timestep
 	int tick();
+
+private:
 	//! broadcast callback
 	void brTimerCallback(const ros::TimerEvent& event);
 
@@ -226,5 +230,12 @@ inline Statemachine* Statemachine::get_instance()
 	}
 	return instance_;
 };
+inline void Statemachine::clear_instance()
+{
+	if(instance_!=NULL)
+	{
+		delete instance_;
+	}
+}
 
 #endif //__STATEMACHINE_HPP__
