@@ -23,7 +23,6 @@ Statemachine::Statemachine():
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
-	br_timer_ = node_.createTimer(ros::Duration(0.1),&Statemachine::brTimerCallback,this,false,false);
 
 	//==============================================
 	//state:
@@ -154,12 +153,6 @@ int Statemachine::tick()
 		return -1;
 	}
 
-}
-
-void Statemachine::brTimerCallback(const ros::TimerEvent& event)
-{
-	//! Publish static TF
-	broadcaster_->publish_static_tf();
 }
 
 void Statemachine::request_task_cb()
@@ -295,7 +288,7 @@ int Statemachine::parse_yaml_file()
 	try {
 		broadcaster_->fill_tf_information(ein_);
 		ROS_INFO("Statemachine: Filling TF info successful.");
-		br_timer_.start();
+		broadcaster_->publish_static_tf();
 	}
 	catch (...)
 	{
@@ -362,9 +355,6 @@ int Statemachine::stop_sim()
 		request_task_state_=OPEN;
 		start_sim_state_=OPEN;
 		stop_sim_state_=OPEN;
-
-		br_timer_.stop();
-
 
 		//==============================================
 		//state:

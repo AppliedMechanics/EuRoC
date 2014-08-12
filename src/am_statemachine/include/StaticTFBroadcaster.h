@@ -9,7 +9,7 @@
 #define STATICTFBROADCASTER_H_
 
 #include <ros/ros.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <config.hpp>
 #include <utils.hpp>
 
@@ -26,17 +26,17 @@ public:
 
 private:
 	ros::NodeHandle nh_;
-	tf::TransformBroadcaster br_;
+	tf2_ros::StaticTransformBroadcaster sbr_;
 
-	tf::Transform T_LA_Base;
-	tf::Transform T_GP;
-	tf::Transform T_GP_TCP;
-	tf::Transform T_TRGB;
-	tf::Transform T_TDEPTH;
-	tf::Transform T_CM;
-	tf::Transform T_PT_Base;
-	tf::Transform T_SRGB;
-	tf::Transform T_SDEPTH;
+	geometry_msgs::TransformStamped T_LA_Base;
+	geometry_msgs::TransformStamped T_GP;
+	geometry_msgs::TransformStamped T_GP_TCP;
+	geometry_msgs::TransformStamped T_TRGB;
+	geometry_msgs::TransformStamped T_TDEPTH;
+	geometry_msgs::TransformStamped T_CM;
+	geometry_msgs::TransformStamped T_PT_Base;
+	geometry_msgs::TransformStamped T_SRGB;
+	geometry_msgs::TransformStamped T_SDEPTH;
 
 
 

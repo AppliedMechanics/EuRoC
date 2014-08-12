@@ -49,7 +49,6 @@ private:
 
 	//!Static TF Broadcaster
 	StaticTFBroadcaster* broadcaster_;
-	ros::Timer br_timer_;
 
 	//!input container class for yaml data
 	EurocInput *ein_;
@@ -154,9 +153,6 @@ public:
 	int tick();
 
 private:
-	//! broadcast callback
-	void brTimerCallback(const ros::TimerEvent& event);
-
 	//functions for each state (all of them are called in tick() )
 	//!request task state function
 	int request_task();
