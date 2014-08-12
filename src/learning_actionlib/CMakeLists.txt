@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   std_msgs
   actionlib
+  crops_manipulator_utils
   message_generation
   roscpp
   rospy
@@ -48,3 +49,7 @@ add_dependencies(fibonacci_client  ${learning_actionlib_EXPORTED_TARGETS})
 add_executable(goalPose_client src/goalPose_client.cpp)
 target_link_libraries(goalPose_client ${catkin_LIBRARIES})
 add_dependencies(goalPose_client  ${learning_actionlib_EXPORTED_TARGETS})
+
+add_executable(testing_tf2 src/testing_tf2.cpp)
+target_link_libraries(testing_tf2 ${catkin_LIBRARIES})
+add_dependencies(testing_tf2  ${learning_actionlib_EXPORTED_TARGETS})
