@@ -14,6 +14,10 @@ EurocInput::EurocInput():
 {
 
 }
+EurocInput::~EurocInput()
+{
+
+}
 
 int EurocInput::parse_yaml_file(std::string task_yaml_description)
 {

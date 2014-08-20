@@ -1,0 +1,29 @@
+Howto setup an eclipse project with the euroc-code:
+
+1) check bashrc:
+   -> type in terminal: eb
+   -> an editor opens with the bashrc-file, go to the end of the file
+   -> edit the line with "MYROSPACKAGEPATH=" with your branch-directory
+      (e.g. MYROSPACKAGEPATH=/home/euroc_student/EUROC_SVN/branches/grasping)
+   -> save the file (ctrl-x,ctrl-s)
+   -> close the file (ctrl-x,ctrl-c)
+   -> type in terminal: sb 
+      (there should be no output visible)
+
+2) change in your branch-folder (e.g. /home/euroc_student/EUROC_SVN/branches/grasping)
+
+3) check whether there's a build folder  
+   -> if not, type in terminal: catkin_ec
+
+4) open eclipse (type in terminal: ec)
+
+5) if there is an existing project in eclipse -> delete the project 
+   (but not the disc-content)
+
+6) import the project with file->import
+   -> Select as source "General/Existing Projects into Workspace"
+   -> "Select root directory -> Browse" 
+   -> Select your branch folder as root 
+     (e.g.  /home/euroc_student/EUROC_SVN/branches/grasping)
+   -> Finish
+

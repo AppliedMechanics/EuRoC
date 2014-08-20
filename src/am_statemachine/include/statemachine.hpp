@@ -28,6 +28,7 @@
 #include <config.hpp>
 #include <fsm_state.hpp>
 #include <euroc_input.hpp>
+#include <state_observer.hpp>
 
 typedef actionlib::SimpleActionClient<am_msgs::VisionAction> visionClient;
 typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> motionClient;
@@ -52,6 +53,9 @@ private:
 
 	//!input container class for yaml data
 	EurocInput *ein_;
+
+	//!state observer class
+	StateObserver *state_obs_;
 
 	//!state variable
 	fsm::fsm_state_t state_;

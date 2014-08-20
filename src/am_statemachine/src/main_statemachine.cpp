@@ -75,6 +75,7 @@ int main(int argc, char **argv)
 
   }
   ROS_INFO("Nach while");
+  sm->clear_instance();
 
   return 0;
 }
