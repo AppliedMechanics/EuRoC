@@ -35,7 +35,6 @@ include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 
 add_executable(statemachine src/euroc_input.cpp 
-				src/state_observer.cpp 
 				src/StaticTFBroadcaster.cpp 
 				src/statemachine.cpp 
 				src/main_statemachine.cpp)

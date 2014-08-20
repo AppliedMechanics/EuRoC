@@ -6,77 +6,40 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "statemachine.hpp"
+#include "state_observer.hpp"
 
-Statemachine* sm;
-
-void signalHandler(int sig)
-{
-    ROS_ERROR("Interrupt signal ( %d ) received.\n",sig);
-
-    ros::shutdown();
-    sm->clear_instance();
-    //exit(sig);
-}
 
 int main(int argc, char **argv)
 {
-  //init ros system, register as node "sm"
-  ros::init(argc, argv, "statemachine",ros::init_options::NoSigintHandler);
+	//init ros system, register as node "sm"
+	ros::init(argc, argv, "stateobserver");
 
-  signal(SIGINT,  signalHandler);
-  signal(SIGKILL, signalHandler);
-  signal(SIGABRT, signalHandler);
-  signal(SIGTERM, signalHandler);
 
-  //statemachine class
-  sm = Statemachine::get_instance();
+	//!node handle for this node
+	ros::NodeHandle nh;
 
-  //init statemachine
-  if(-1 == sm->init_sm())
-  {
-	  msg_error("Error initializing Statemachine");
-  }
+	std::string	euroc_c2_interface_ = "/euroc_interface_node";
+	std::string telemetry_ = euroc_c2_interface_ + "/telemetry";
 
-//  //run statemachine
-//  sm->execute();
+	//create stateobserver
+	StateObserver so;
 
-  //update rate
-  ros::Rate loop_rate(FREQ);
+	//subscribe to telemetry message
+	ros::Subscriber telemetry_subscriber_ = nh.subscribe(telemetry_,1,&StateObserver::callback,&so);
 
-  //main loop:
-  double t_act=0;
-  fsm::fsm_state_t sm_state=sm->get_state();
-  ROS_INFO("Entering while-loop");
-  while(ros::ok() && !(sm_state.sub.one == fsm::FINISHED))
-  {
+	//update rate
+	ros::Rate loop_rate(FREQ);
 
-	  //perform main tick-routine
-	  if(-1==sm->tick())
-	  {
-		  msg_error("Error in Statemachine::tick()");
-	  }
+	//main loop:
+	while(ros::ok())
+	{
 
 	  //"tick"
 	  ros::spinOnce();
+	  loop_rate.sleep();
 
+	}
 
-	  //update state
-	  sm_state=sm->get_state();
-
-	  //sleep for the remaining time (only during solve task)
-	  if(sm_state.sub.one == fsm::SOLVE_TASK)
-		  loop_rate.sleep();
-
-	  t_act=(double)ros::Time::now().toSec();
-
-	  printf("time= %f s \r",t_act);
-	  fflush(stdout);
-
-  }
-  ROS_INFO("Nach while");
-  sm->clear_instance();
-
-  return 0;
+	return 0;
 }
 

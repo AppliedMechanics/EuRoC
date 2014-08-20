@@ -12,7 +12,7 @@
 class StateObserver
 {
 public:
-	StateObserver(ros::NodeHandle*);
+	StateObserver();
 	~StateObserver();
 
 	bool check_state();

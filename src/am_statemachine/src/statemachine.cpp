@@ -22,7 +22,6 @@ Statemachine::Statemachine():
 		motion_state_(OPEN)
 {
 	ein_=new EurocInput();
-	state_obs_=new StateObserver();
 	broadcaster_ = new StaticTFBroadcaster();
 
 	//==============================================
@@ -113,10 +112,6 @@ int Statemachine::init_sm()
 int Statemachine::tick()
 {
 	counter++;
-
-	if(state_.sub.one==fsm::SOLVE_TASK)
-		state_obs_->check_state();
-
 
 	switch(state_.sub.one)
 	{

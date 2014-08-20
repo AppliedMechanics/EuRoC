@@ -1,12 +1,12 @@
 #include <state_observer.hpp>
 
 
-StateObserver::StateObserver(ros::NodeHandle *nh)
+StateObserver::StateObserver()
 {
-	euroc_c2_interface_ = "/euroc_interface_node";
+/*	euroc_c2_interface_ = "/euroc_interface_node";
 	telemetry_ = euroc_c2_interface_ + "/telemetry";
 
-	telemetry_subscriber_ = nh->subscribe(telemetry_,1,&StateObserver::callback);
+	telemetry_subscriber_ = nh->subscribe(telemetry_,1,&StateObserver::callback);*/
 }
 
 StateObserver::~StateObserver()

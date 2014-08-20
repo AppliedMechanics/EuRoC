@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>am_statemachine</name>
+  <name>am_stateobserver</name>
   <version>0.0.0</version>
-  <description>The statemachine package</description>
+  <description>The stateobserver package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -44,15 +44,11 @@
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>am_msgs</build_depend>
-  <build_depend>actionlib</build_depend>
-  <build_depend>actionlib_msgs</build_depend>
   <build_depend>crops_manipulator_utils</build_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>am_msgs</run_depend>
-  <run_depend>actionlib</run_depend>
-  <run_depend>actionlib_msgs</run_depend>
   <run_depend>crops_manipulator_utils</run_depend>
 
 
