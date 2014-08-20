@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
 	//subscribe to telemetry message
 	ros::Subscriber telemetry_subscriber_ = nh.subscribe(telemetry_,1,&StateObserver::callback,&so);
-	ros::Publisher stop_pub = nh.advertise<std_msgs::Bool>("stop_cond",1000);
+	//ros::Publisher stop_pub = nh.advertise<std_msgs::Bool>("stop_cond",1000);
 
 	//update rate
 	ros::Rate loop_rate(FREQ);
@@ -38,9 +38,9 @@ int main(int argc, char **argv)
 	  {
 		  msg_error("Error in check_state!");
 
-		  /*std_msgs::Bool msg;
-		  msg.data=true;
-		  stop_pub.publish(msg);*/
+//		  std_msgs::Bool msg;
+//		  msg.data=true;
+//		  stop_pub.publish(msg);
 	  }
 
 	  //"tick"

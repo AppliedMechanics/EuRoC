@@ -18,10 +18,12 @@ public:
 
 	bool check_state();
 	void callback(const euroc_c2_msgs::Telemetry& msg);
-private:
 
+private:
+	//telemetry message for callback
 	euroc_c2_msgs::Telemetry telemetry_;
 
+	//publisher to send stop message (bool)
 	ros::Publisher stop_pub;
 
 	uint64_t counter;
