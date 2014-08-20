@@ -3,6 +3,7 @@
 #define _STATE_OBSERVER_HPP_
 
 #include <ros/ros.h>
+#include "std_msgs/Bool.h"
 
 #include <euroc_c2_msgs/Telemetry.h>
 
@@ -12,18 +13,21 @@
 class StateObserver
 {
 public:
-	StateObserver();
+	StateObserver(ros::NodeHandle *);
 	~StateObserver();
 
 	bool check_state();
-	void callback(const euroc_c2_msgs::TelemetryConstPtr& msg);
+	void callback(const euroc_c2_msgs::Telemetry& msg);
 private:
 
-	std::string euroc_c2_interface_;
-	std::string telemetry_;
+	euroc_c2_msgs::Telemetry telemetry_;
 
-	ros::Subscriber telemetry_subscriber_;
-	euroc_c2_msgs::Telemetry _telemetry;
+	ros::Publisher stop_pub;
+
+	uint64_t counter;
+	uint64_t stamp_;
+
+	double limit;
 };
 
 #endif

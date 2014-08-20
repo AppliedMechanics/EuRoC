@@ -1,12 +1,13 @@
 #include <state_observer.hpp>
 
 
-StateObserver::StateObserver()
+StateObserver::StateObserver(ros::NodeHandle *nh)
 {
-/*	euroc_c2_interface_ = "/euroc_interface_node";
-	telemetry_ = euroc_c2_interface_ + "/telemetry";
+	counter = 0;
+	stamp_ = 0;
+	//stop_pub = nh->advertise<std_msgs::Bool>("stop", 1);
 
-	telemetry_subscriber_ = nh->subscribe(telemetry_,1,&StateObserver::callback);*/
+	limit=50;
 }
 
 StateObserver::~StateObserver()
@@ -16,27 +17,49 @@ StateObserver::~StateObserver()
 
 bool StateObserver::check_state()
 {
-	double starting_time = ros::Time::now().toSec();
+	counter++;
 
-	_telemetry = *(ros::topic::waitForMessage<euroc_c2_msgs::Telemetry>(telemetry_,ros::Duration(10.0)));
-
-	double stopping_time = ros::Time::now().toSec();
-	ROS_INFO("time for get_telemetry: %f",stopping_time-starting_time);
-
-	if (&_telemetry==NULL)
+	if(counter%100==0)
 	{
-		msg_warn("No telemetry message received.");
-		return false;
+		ROS_INFO("============================");
+		ROS_INFO("Telemetry from stamp %llu:", stamp_);
+		ROS_INFO("joint name joint 1: %s",telemetry_.joint_names[2].c_str());
+		ROS_INFO("external torque joint 1: %f",telemetry_.measured.external_torque[2]);
+		ROS_INFO("internal torque joint 1: %f",telemetry_.measured.torque[2]);
+		ROS_INFO("position joint 1: %f",telemetry_.measured.position[2]);
 	}
-	else
-		return true;
+
+	std_msgs::Bool msg;
+	//double abs_ext_t = telemetry_.measured.external_torque[2]+telemetry_.measured.torque[2];
+	/*if((abs_ext_t>limit)||(abs_ext_t<-limit))
+	{
+		msg.data=true;
+		try{
+			stop_pub.publish(msg);
+			msg_warn("Published stopping message!");
+		}
+		catch(...)
+		{
+			return false;
+		}
+		return false;
+	}*/
+
+	return true;
 }
 
-void StateObserver::callback(const euroc_c2_msgs::TelemetryConstPtr& msg)
+void StateObserver::callback(const euroc_c2_msgs::Telemetry& msg)
 {
-	double starting_time = ros::Time::now().toSec();
+	//double starting_time = ros::Time::now().toNSec();
 
-	_telemetry = *msg;
+	if(&msg)
+	{
+		telemetry_ = msg;
+		stamp_ = ros::Time::now().toNSec();
+	}
+	else
+		msg_error("invalid message received!");
 
-	double stopping_time = ros::Time::now().toSec();
+	//double stopping_time = ros::Time::now().toNSec();
+	//ROS_INFO("time for get_telemetry: %e",stopping_time-starting_time);
 }
