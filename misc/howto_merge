@@ -17,7 +17,12 @@ HowTo merge trunk with branches
 2 Get changes from branch to trunk
 
 	$ cd [trunk]/src
-	$ svn merge --reintegrate ^/Euroc/branches/src --dry-run
+	$ svn merge --reintegrate ^/Euroc/branches/[BRANCH]/src --dry-run
+
+	Resolve conflicts
+	[MODE] zB theirs-full, working
+	$ svn resolve --accept=[MODE] [FILE]
+
 	
 	Watch out for errors
 	
