@@ -113,8 +113,17 @@ void dcm2quat(double* r_tf, double* q_tf)
 			q_tf[3] = ( r_tf[6] + r_tf[2] ) * temp;
 		}
 	}
-
-
+	double normq = q_tf[0]*q_tf[0] + q_tf[1]*q_tf[1] + q_tf[2]*q_tf[2] + q_tf[3]*q_tf[3];
+	if (normq == 0.0) {
+		normq = 1.0;
+	}
+	else {
+		normq = sqrt(normq);
+		q_tf[0] = q_tf[0] / normq;
+		q_tf[1] = q_tf[1] / normq;
+		q_tf[2] = q_tf[2] / normq;
+		q_tf[3] = q_tf[3] / normq;
+	}
 }
 
 void quat2dcm(double* q_tf, double* r_tf)

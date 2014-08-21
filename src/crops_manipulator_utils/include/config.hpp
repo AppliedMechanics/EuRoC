@@ -44,6 +44,7 @@ const std::string lwr_4 = "joint4";
 const std::string lwr_5 = "joint5";
 const std::string lwr_6 = "joint6";
 const std::string lwr_7 = "joint7";
+const std::string OBJ_POSE = "obj_pose";
 
 
 #define FREQ 100 //rosnode frequency
