@@ -12,6 +12,7 @@
 #include <tf_rot.hpp>
 #include <numeric>
 #include <tf/transform_broadcaster.h>
+#include <config.hpp>
 
 // Distance from LWR-TCP to GP-TCP in z0-direction
 const double dr_tcp=0.173; // Need to use tf-Trafo later for Transformation: LWR-TCP -> GP -> GP-TCP
@@ -535,9 +536,9 @@ int main(int argc, char **argv)
   static tf::TransformBroadcaster br;
   while (ros::ok())
   {
-	  br.sendTransform(tf::StampedTransform(transform_0, ros::Time::now(), "origin", "0"));
-	  br.sendTransform(tf::StampedTransform(transform_gripper, ros::Time::now(), "origin", "grasp pose"));
-	  br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), "origin", "object pose"));
+	  //br.sendTransform(tf::StampedTransform(transform_0, ros::Time::now(), ORIGIN, "0"));
+	  br.sendTransform(tf::StampedTransform(transform_gripper, ros::Time::now(), ORIGIN, "grasp pose"));
+	  br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), ORIGIN, "object pose"));
 	  ros::Duration(0.5).sleep();
 	  ros::spinOnce();
   }

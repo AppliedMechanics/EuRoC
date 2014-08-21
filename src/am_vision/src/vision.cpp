@@ -44,7 +44,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 		vision_result_.abs_object_pose.position.z=0.025;
 	  
 		tf::Quaternion q;
-		q.setRPY(3.14/2.0,0,0.3);
+		q.setRPY(-1.5, 0, 0.4);
 
 
 		vision_result_.abs_object_pose.orientation.w = q.getW();
