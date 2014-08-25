@@ -226,6 +226,7 @@ void GraspPose::compute_idx_shape_CoM_() {
 			ROS_ERROR("Call method 'compute_object_CoM_()' before 'compute_idx_shape_CoM_()'");
 
 	// For objects with several shapes, find shape closest to object-CoM
+	// TODO: Check feasibility of grip at this shape!
 	if( object_.nr_shapes > 1) {
 		double dr[3];
 		double CoM_temp[3] = {object_CoM_.x, object_CoM_.y, object_CoM_.z};
@@ -320,7 +321,7 @@ void GraspPose::compute_object_height_() {
 }
 
 void GraspPose::compute_grasp_pose_(unsigned int prio) {
-	if( prio != 1)
+	if( prio != 1 )
 		ROS_ERROR("Currently only Prio-1 pose is implemented");
 
 	compute_abs_shape_positions_();
@@ -332,12 +333,8 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 	double A_shape2obj[9]; // A_obj.shape
 	// Rotation matrix converting a vector from the object frame into the 0-frame
 	double A_shape20[9]; // A_0.shape
-	// object height
-	double object_height = 0.0;
 	// shape heights
 	double shape_height[object_.nr_shapes];
-	// safety-margin between object height & waiting height
-	double safety_margin_obj2wait = 0.1;
 	// Quaternion for rotation of shape w.r.t object
 	double q_obj2shape[4];
 
@@ -390,7 +387,7 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 	shape_at_CoM_base_vectors = get_base_vectors_( A_shape20, 0 );
 
 
-	// Find shape-axis parallel to z-axis of table coordinate frame:
+	// Find shape-axis parallel to z-axis of world coordinate frame:
 	// ei_0_obj = arg( max_j(abs( ez_0_0' * ej_0_obj )) )
 	double sgn_dot_prod_max;
 	for(unsigned i=0; i<3; i++) {
@@ -413,11 +410,13 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 	}
 
 	// Search among other two-object axis to determine gripper x-axis
+	// TODO: Before computing grasp width, check if grasp width is possible
 	double ex_0_GP[3] = { 0.0, 0.0, 0.0 };
 	for (unsigned i = 0; i < 3; i++) {
 		if (i != idx_dot_prod_max) { // Search among other axes
 			if (!object_.shape[idx_shape_CoM_].type.compare("cylinder")) {
 				// Distinguish between the two cases cylinder pointing upwards and cylinder lying horizontally
+				// TODO: Case where cylinder not aligned with any axis of the base frame
 				if (idx_dot_prod_max == 2) { // cylinder pointing upwards
 					// This must be replaced, e.g. with old gripper x-axis (coz no rotation is necessary)
 					ex_0_GP[0] = 1.0; // any direction
@@ -537,23 +536,12 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 
 	std::cout << "-- GPTCP_target_pose_:" << std::endl;
 	std::cout << GPTCP_target_pose_ << std::endl;
+
 	//---------------------------------------------------------------------------------------//
 	//               Transform target pose from GPTCP-FoR to LWRTCP-FoR                      //
 	//---------------------------------------------------------------------------------------//
 	LWRTCP_target_pose_ = transform_grasp_pose_GPTCP_2_LWRTCP_();
 
-	/// Delete this code
-	std::cout << "Using tf's: " << std::endl;
-	std::cout << "LWRTCP_target_pose.position.x=" << LWRTCP_target_pose_.position.x << std::endl;
-	std::cout << "LWRTCP_target_pose.position.y=" << LWRTCP_target_pose_.position.y << std::endl;
-	std::cout << "LWRTCP_target_pose.position.z=" << LWRTCP_target_pose_.position.z << std::endl;
-
-	const double dr_tcp=0.173; // For debugging of tf-Trafo
-	std::cout << "Using brain: " << std::endl;
-	std::cout << "LWRTCP_target_pose.position.x=" << GPTCP_target_pose_.position.x << std::endl;
-	std::cout << "LWRTCP_target_pose.position.y=" << GPTCP_target_pose_.position.y << std::endl;
-	std::cout << "LWRTCP_target_pose.position.z=" << GPTCP_target_pose_.position.z + dr_tcp << std::endl;
-    /// end delete
 
 	std::cout << "Desired LWR-TCP position: " << std::endl;
 	std::cout << "x: " << LWRTCP_target_pose_.position.x << std::endl;
@@ -565,6 +553,7 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 	std::cout << "z: " << LWRTCP_target_pose_.orientation.z << std::endl;
 	std::cout << "w: " << LWRTCP_target_pose_.orientation.w << std::endl;
 }
+
 
 geometry_msgs::Pose GraspPose::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 	tf::TransformListener tf_listener;
