@@ -333,8 +333,6 @@ void GraspPose::compute_grasp_pose_(unsigned int prio) {
 	double A_shape2obj[9]; // A_obj.shape
 	// Rotation matrix converting a vector from the object frame into the 0-frame
 	double A_shape20[9]; // A_0.shape
-	// shape heights
-	double shape_height[object_.nr_shapes];
 	// Quaternion for rotation of shape w.r.t object
 	double q_obj2shape[4];
 
