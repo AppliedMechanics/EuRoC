@@ -17,6 +17,7 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float64.h>
 
+
 #include <tf_rot.hpp>
 #include <joint_info.hpp>
 
@@ -69,6 +70,8 @@ private:
 	ros::ServiceClient enable_servo_mode_client_;
 	ros::ServiceClient set_servo_target_client_;
 
+	ros::ServiceClient get_fk_client_;
+
 	ros::Subscriber telemetry_subscriber_;
 
 
@@ -89,6 +92,8 @@ private:
 	std::string timing_along_joint_path_;
 	std::string search_ik_solution_;
 
+	std::string get_fk_;
+
 	std::vector<std::string> joint_names_;
 	double  measured_positions_[12];
 	double  measured_forces_[12];
@@ -107,6 +112,7 @@ private:
 	euroc_c2_msgs::SetStopConditions set_stop_conditions_srv_;
 	euroc_c2_msgs::EnableServoMode enable_servo_mode_srv_;
 	euroc_c2_msgs::SetServoTarget set_servo_target_srv_;
+	euroc_c2_msgs::GetForwardKinematics get_fk_srv_;
 
 	euroc_c2_msgs::Configuration commanded_configuration_;
 
@@ -134,11 +140,12 @@ public slots:
 void callStartSimulator(std::string);
 void callStopSimulator();
 void callSetCustomGoalConfiguration(double*);
-void callMoveToTargetPose(double*);
+void callMoveToTargetPose(geometry_msgs::Pose);
 void callNextObject();
 void callSetStopConditions(std::vector<std::string>,std::vector<std::string>,std::vector<double>);
 void callEnableServoMode(bool);
 void sendCurrentCfgOnce();
+void callGetFK();
 
 void callSetCommandedConfiguration(int*,int*);
 
@@ -150,7 +157,7 @@ void getTimingAlongJointPath();
 signals:
 void emitMeasuredValues(std::vector<std::string>, double*, double*, double*);
 void emitCurrentCfgOnce(std::vector<std::string>,double*);
-
+void emitFK(geometry_msgs::Pose);
 
 };
 

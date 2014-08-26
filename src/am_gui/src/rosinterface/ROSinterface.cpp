@@ -15,10 +15,10 @@
 ROSinterface* ROSinterface::m_ROSinterface = 0;
 
 ROSinterface::ROSinterface(QObject *parent) :
-								  joint_names_(12),
-								  system_limits_(12),
-								  scenes_(1),
-								  QObject(parent)
+												  joint_names_(12),
+												  system_limits_(12),
+												  scenes_(1),
+												  QObject(parent)
 {
 	//Wait for the simulator services and wait for them to be available:
 	task_selector_ = "/euroc_c2_task_selector";
@@ -37,6 +37,8 @@ ROSinterface::ROSinterface(QObject *parent) :
 	enable_servo_mode_ = (euroc_c2_interface_ + "/enable_servo_mode");
 	set_servo_target_ = (euroc_c2_interface_ + "/set_servo_target");
 
+	get_fk_ = (euroc_c2_interface_ + "/get_forward_kinematics");
+
 	ros::service::waitForService(list_scenes_,ros::Duration(3.0));
 	ros::service::waitForService(start_simulator_,ros::Duration(3.0));
 	ros::service::waitForService(stop_simulator_,ros::Duration(3.0));
@@ -49,6 +51,7 @@ ROSinterface::ROSinterface(QObject *parent) :
 	set_stop_conditions_client_ = nh.serviceClient<euroc_c2_msgs::SetStopConditions>(set_stop_conditions_);
 	enable_servo_mode_client_ = nh.serviceClient<euroc_c2_msgs::EnableServoMode>(enable_servo_mode_);
 	set_servo_target_client_ =  nh.serviceClient<euroc_c2_msgs::SetServoTarget>(set_servo_target_);
+	get_fk_client_ = nh.serviceClient<euroc_c2_msgs::GetForwardKinematics>(get_fk_);
 
 	list_scenes_client_     = nh.serviceClient<euroc_c2_msgs::ListScenes>(list_scenes_);
 	start_simulator_client_ = nh.serviceClient<euroc_c2_msgs::StartSimulator>(start_simulator_);
@@ -160,15 +163,9 @@ void ROSinterface::callStopSimulator()
 
 }
 
-void ROSinterface::callMoveToTargetPose(double* target_pose)
+void ROSinterface::callMoveToTargetPose(geometry_msgs::Pose target_pose)
 {
-	pose_.position.x 	= target_pose[0];
-	pose_.position.y 	= target_pose[1];
-	pose_.position.z 	= target_pose[2];
-	pose_.orientation.w = target_pose[3];
-	pose_.orientation.x = target_pose[4];
-	pose_.orientation.y = target_pose[5];
-	pose_.orientation.z = target_pose[6];
+	pose_ = target_pose;
 
 	if (getIKSolution7DOF())
 		moveToTarget = boost::thread(&ROSinterface::moveToTargetCB,this);
@@ -300,6 +297,31 @@ void ROSinterface::moveToTargetCB()
 void ROSinterface::sendCurrentCfgOnce()
 {
 	emit emitCurrentCfgOnce(joint_names_,measured_positions_);
+}
+
+void ROSinterface::callGetFK()
+{
+	euroc_c2_msgs::Configuration current_cfg;
+	geometry_msgs::Pose current_pose;
+
+	current_cfg.q.resize(7);
+	for (int i=0;i<7;i++)
+		current_cfg.q[i] = measured_positions_[i+2];
+
+	get_fk_srv_.request.configuration = current_cfg;
+	get_fk_client_.call(get_fk_srv_);
+
+	// The error_message field of each service response indicates whether an error occured. An empty string indicates success
+	std::string &ls_error_message = get_fk_srv_.response.error_message;
+	if(!ls_error_message.empty()){
+		ROS_ERROR("Get FK failed: %s", ls_error_message.c_str());
+	}
+	else
+	{
+		current_pose = get_fk_srv_.response.ee_frame;
+		emit emitFK(current_pose);
+	}
+
 }
 
 // ROS Callback for the telemetry topic
@@ -472,7 +494,7 @@ void ROSinterface::callEnableServoMode(bool enable)
 		}
 		else if (!enable && ros::service::waitForService(set_servo_target_,ros::Duration(1.0)))
 		{			setServoTarget.interrupt();
-			std::cout << "end servo mode"<<std::endl;
+		std::cout << "end servo mode"<<std::endl;
 		}
 		else
 			ROS_WARN("Send servo target service not applicable.");
