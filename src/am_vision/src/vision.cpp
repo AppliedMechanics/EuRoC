@@ -21,7 +21,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 	{
 		vision_result_.abs_object_pose.position.x=-0.3;
 		vision_result_.abs_object_pose.position.y=-0.39;
-		vision_result_.abs_object_pose.position.z=0.025;
+		vision_result_.abs_object_pose.position.z=0.03;
 		q.setRPY(0,0,0);
 	}
 	else if(!goal->object.name.compare("green_cylinder"))
@@ -44,9 +44,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
 		vision_result_.abs_object_pose.position.x=0.0; //-0.07;
 		vision_result_.abs_object_pose.position.y=0.5; //0.475;
-		vision_result_.abs_object_pose.position.z=0.025; //0.025;
-//		q.setRPY(-1.5, 0, 0.4);
-		q.setRPY(-3.14/2, 0, 0.4);
+		vision_result_.abs_object_pose.position.z=0.03; //0.025;
+		q.setRPY(-1.5, 0, 0.4);
+//		q.setRPY(-3.14/2, 0, 0.4);
 
 
 	}
