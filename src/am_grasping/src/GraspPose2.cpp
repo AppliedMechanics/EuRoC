@@ -26,7 +26,7 @@ void GraspPose2::set_object_data_(am_msgs::Object object) {
 	o_transform_shapes_.resize(object_.nr_shapes);
 
 	gripper_height_=0.06;
-	grip_safety_dist_=0.015;
+	grip_safety_dist_=0.01;
 }
 
 // ROS-Service Function
@@ -182,6 +182,9 @@ void GraspPose2::compute_object_height_() {
 		if(!object_.shape[ii].type.compare("cylinder"))
 		{
 			dot_product = o_transform_shapes_[ii].getBasis().getColumn(2).dot(z_axis);
+			std::cout<<"x-axis "<<o_transform_shapes_[ii].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(0).getZ()<<std::endl;
+			std::cout<<"y-axis "<<o_transform_shapes_[ii].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(1).getZ()<<std::endl;
+			std::cout<<"z-axis "<<o_transform_shapes_[ii].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(2).getZ()<<std::endl;
 			std::cout<<"dot product "<<o_transform_shapes_[ii].getBasis().getColumn(2).dot(z_axis)<<" "<<dot_product<<std::endl;
 			if (dot_product > -0.7 && dot_product < 0.7){
 				tmp_oh = o_transform_shapes_[ii].getOrigin().getZ() + object_.shape[ii].radius;
@@ -248,7 +251,25 @@ void GraspPose2::compute_grasp_pose_() {
 	else if (!object_.shape[com_idx_].type.compare("box"))
 	{
 		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
-		dcm.getRPY(dummy1,dummy2,yaw);
+		std::cout<<"x-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getZ()<<std::endl;
+		std::cout<<"y-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getZ()<<std::endl;
+		std::cout<<"z-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getZ()<<std::endl;
+		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(0).dot(z_axis))>0.9)
+		{
+			ROS_INFO("x_axis pointing up");
+			dcm.getRPY(yaw,dummy1,dummy2);
+		}
+		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(1).dot(z_axis))>0.9)
+		{
+			ROS_INFO("y_axis pointing up");
+			dcm.getRPY(dummy1,yaw,dummy2);
+		}
+		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis))>0.9)
+		{
+			ROS_INFO("z_axis pointing up");
+			dcm.getRPY(dummy1,dummy2,yaw);
+		}
+
 		grasp_width_ = object_.shape[com_idx_].size[0];
 	}
 

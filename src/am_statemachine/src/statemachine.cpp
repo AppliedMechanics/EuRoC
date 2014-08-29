@@ -211,7 +211,7 @@ int Statemachine::request_task()
 
 		std::cout<<"Choose task: ";
 		int blub=8;
-		//std::cin>>blub;
+		std::cin>>blub;
 		active_scene_=blub;
 
 		//ROS_INFO("Your Choice: %d", active_scene_);
