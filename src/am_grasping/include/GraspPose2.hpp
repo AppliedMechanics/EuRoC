@@ -46,6 +46,8 @@ private:
 	double object_height_;
 	// Mass of object
 	double object_mass_;
+	// Grasp width
+	double grasp_width_;
 	// Index of shape closest to COM
 	int8_t com_idx_;
 	int8_t high_idx_;

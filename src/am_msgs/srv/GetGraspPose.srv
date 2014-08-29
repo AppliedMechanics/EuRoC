@@ -11,3 +11,4 @@ string error_message
 geometry_msgs/Pose grasp_pose
 float64 grasp_width
 float64 waiting_height
+float64 object_mass

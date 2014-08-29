@@ -52,8 +52,9 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	ROS_INFO("CoM part of shape %i",com_idx_);
 	// Compute grasp pose
 	res.grasp_pose = LWRTCP_target_pose_;
-	res.grasp_width = 0.1;
-	res.waiting_height = object_height_+0.1;
+	res.grasp_width = grasp_width_;
+	res.waiting_height = object_height_+0.2;
+	res.object_mass = object_mass_;
 
 }
 
@@ -229,11 +230,11 @@ void GraspPose2::compute_grasp_pose_() {
 	if(!object_.shape[com_idx_].type.compare("cylinder"))
 	{
 		dot_product = o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis);
+		grasp_width_ = object_.shape[com_idx_].radius*2.0;
 		if (dot_product > -0.7 && dot_product < 0.7)
 		{
 			dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
 			dcm.getRPY(dummy1,dummy2,yaw);
-
 		}
 		else
 		{
@@ -241,7 +242,6 @@ void GraspPose2::compute_grasp_pose_() {
 			pitch = M_PI;
 			yaw = 0.0; //TODO!
 			yaw = atan2(am_abs(GPTCP_target_pose_.position.y),am_abs(GPTCP_target_pose_.position.x));
-
 		}
 
 	}
@@ -249,6 +249,7 @@ void GraspPose2::compute_grasp_pose_() {
 	{
 		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
 		dcm.getRPY(dummy1,dummy2,yaw);
+		grasp_width_ = object_.shape[com_idx_].size[0];
 	}
 
 	//! Choose roll, pitch dependent on position
