@@ -110,6 +110,7 @@ void GraspPose2::compute_object_CoM_() {
 
 	//! Checked with blue handle, Task v1
 	std::cout<<"Object CoM"<<o_object_com_[0]<<" "<<o_object_com_[1]<<" "<<o_object_com_[2]<<std::endl;
+	ROS_INFO("Object Mass: %f kg",object_mass_);
 }
 
 void GraspPose2::compute_idx_shape_CoM_() {
@@ -223,8 +224,7 @@ void GraspPose2::compute_grasp_pose_() {
 	tf::Matrix3x3 dcm;
 	tf::Quaternion q_tmp;
 
-	roll = M_PI;
-	pitch = 0.0;
+
 
 	if(!object_.shape[com_idx_].type.compare("cylinder"))
 	{
@@ -240,6 +240,8 @@ void GraspPose2::compute_grasp_pose_() {
 			roll = 0;
 			pitch = M_PI;
 			yaw = 0.0; //TODO!
+			yaw = atan2(am_abs(GPTCP_target_pose_.position.y),am_abs(GPTCP_target_pose_.position.x));
+
 		}
 
 	}
@@ -248,6 +250,33 @@ void GraspPose2::compute_grasp_pose_() {
 		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
 		dcm.getRPY(dummy1,dummy2,yaw);
 	}
+
+	//! Choose roll, pitch dependent on position
+	if (am_abs(GPTCP_target_pose_.position.x)>am_abs(GPTCP_target_pose_.position.y))
+	{
+		roll = 0;
+		if (GPTCP_target_pose_.position.x > 0)
+			pitch = M_PI;
+		else
+			pitch = -M_PI;
+	}
+	else
+	{
+		pitch = 0;
+		if (GPTCP_target_pose_.position.y > 0)
+			roll = -M_PI;
+		else
+			roll = M_PI;
+	}
+
+	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
+
+	//! Choose yaw always  between [-PI/2;+PI/2]
+	if (yaw<-M_PI_2)
+		yaw+=M_PI;
+	else if (yaw>M_PI_2)
+		yaw-=M_PI;
+	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
 
 	q_tmp.setRPY(roll,pitch,yaw);
 	GPTCP_target_pose_.orientation.x = q_tmp.getX();

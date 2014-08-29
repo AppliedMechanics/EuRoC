@@ -15,6 +15,6 @@ void quat2kardan(double*, double*, double*);
 void kardan2quat(double* ,double* ,double* );
 void rpy2quat(double*,double*,double*);
 int sign(double);
-
+double am_abs(double in);
 
 #endif

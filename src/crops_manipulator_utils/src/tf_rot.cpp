@@ -11,6 +11,14 @@ int sign(double value)
     return 1;
 }
 
+double am_abs(double in)
+{
+	if (in < 0)
+		return -in;
+	else
+		return in;
+}
+
 void kardan2dcm(double* kardan,double* r_tf)
 {
 
