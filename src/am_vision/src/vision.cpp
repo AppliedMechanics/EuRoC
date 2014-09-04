@@ -16,7 +16,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
 	//detection code ...
 	tf::Quaternion q;
-	int task = 23;
+	int task = 1;
 
 	if(!goal->object.name.compare("red_cube"))
 	{
