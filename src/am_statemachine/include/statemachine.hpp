@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include "std_msgs/String.h"
 #include <actionlib/client/simple_action_client.h>
+#include <tf/LinearMath/Quaternion.h>
 //general includes
 #include <sstream>
 #include <boost/thread.hpp>
@@ -21,6 +22,7 @@
 #include <am_msgs/GetGraspPose.h>
 #include <am_msgs/goalPoseAction.h>
 #include <am_msgs/GripperControl.h>
+#include <am_msgs/TakeImage.h>
 #include <am_msgs/VisionAction.h>
 
 //am includes
@@ -98,7 +100,14 @@ private:
 	ros::ServiceClient gripper_control_client_;
 	//!gripper message
 	am_msgs::GripperControl gripper_control_srv_;
-
+	//!client for xploreEnv-service
+	ros::ServiceClient take_image_client_;
+	//!Explore Environment service
+	am_msgs::TakeImage take_image_srv_;
+	//!env number of goals in the queue for a certain state
+	uint8_t env_nr_goals_;
+	//!env active goal
+	uint8_t env_active_goal_;
 
 	//!true if a task is actually running
 	bool task_active_;
@@ -207,6 +216,20 @@ private:
 
 	//!homing function (goto upright pose)
 	int homing();
+
+	//!explore environment function (move arm to map scene)
+	//!callback for xplore Env service calls
+	void take_image_cb();
+	uint8_t take_image_state_;
+	//!explore environment function (move arm to map scene) by LWR
+	int explore_env();
+	//!State of the exploring the environment function LWR
+	uint8_t explore_state_;
+	//! Watch scene (by pan/tilt)
+	int watch_scene();
+	//! State of the watch_scene function
+	uint8_t watch_scene_state_;
+
 
 	//!vision action-client callbacks:
 	void vision_done(const actionlib::SimpleClientGoalState& state,

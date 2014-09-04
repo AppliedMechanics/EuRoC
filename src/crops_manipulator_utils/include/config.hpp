@@ -23,6 +23,11 @@ typedef enum {
 	FINISHED
 } thread_state_t;
 
+typedef enum {
+	SCENE_CAM=0,
+	TCP_CAM
+} camera_type_t;
+
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";
 const std::string LWR_0 = "LWR_0";

@@ -7,13 +7,14 @@ project(am_vision)
 find_package(catkin REQUIRED COMPONENTS
   am_msgs
   cv_bridge
+  pcl_ros
   actionlib
   roscpp
   crops_manipulator_utils
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+#find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -101,13 +102,15 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 ## Declare a cpp library
 # add_library(am_vision
 #   src/${PROJECT_NAME}/am_vision.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(am_vision src/main_vision.cpp src/vision.cpp)
+add_executable(am_vision src/main_vision.cpp  src/vision.cpp src/MovePantilt.cpp)
 add_dependencies(am_vision am_vision_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against

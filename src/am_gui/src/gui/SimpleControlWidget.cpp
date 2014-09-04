@@ -187,18 +187,18 @@ void SimpleControlWidget::updateFK(geometry_msgs::Pose pose)
 
 	dcm_.getRPY(roll,pitch,yaw);
 
-	fkPose[0]->setText(QString::number(pose.position.x,'f',3));
-	fkPose[1]->setText(QString::number(pose.position.y,'f',3));
-	fkPose[2]->setText(QString::number(pose.position.z,'f',3));
+	fkPose[0]->setText(QString::number(pose.position.x,'f',6));
+	fkPose[1]->setText(QString::number(pose.position.y,'f',6));
+	fkPose[2]->setText(QString::number(pose.position.z,'f',6));
 
 	fkPose[3]->setText(QString::number(roll,'f',3));
 	fkPose[4]->setText(QString::number(pitch,'f',3));
 	fkPose[5]->setText(QString::number(yaw,'f',3));
 
-	fkPose[6]->setText(QString::number(q_current_.x(),'f',3));
-	fkPose[7]->setText(QString::number(q_current_.y(),'f',3));
-	fkPose[8]->setText(QString::number(q_current_.z(),'f',3));
-	fkPose[9]->setText(QString::number(q_current_.w(),'f',3));
+	fkPose[6]->setText(QString::number(q_current_.x(),'f',6));
+	fkPose[7]->setText(QString::number(q_current_.y(),'f',6));
+	fkPose[8]->setText(QString::number(q_current_.z(),'f',6));
+	fkPose[9]->setText(QString::number(q_current_.w(),'f',6));
 
 
 }
