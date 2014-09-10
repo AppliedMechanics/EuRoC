@@ -44,6 +44,7 @@ public:
 
 	//!all objects finished
 	bool all_finished();
+
 private:
 	//!task description
 	std::string description_;

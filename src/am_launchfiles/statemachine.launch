@@ -18,9 +18,8 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 <!-- Motion Planning  -->
 	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" />
 
-<!-- State Machine  -->
-<node pkg="am_statemachine" type="statemachine" name="statemachine" output="screen" /> 
-
+<!-- State Machine -->
+	<node pkg="am_statemachine" type="statemachine" name="statemachine" output="screen" launch-prefix="xterm -e"/>
 
 
 <!-- Dynamic TF Broadcaster  -->

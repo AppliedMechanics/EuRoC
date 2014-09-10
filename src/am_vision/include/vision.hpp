@@ -134,6 +134,9 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
 
 	bool isObjectVisible(pcl::PointCloud<pcl::PointXYZ>::Ptr);
+
+        //alignemt was successfull
+        bool obj_aligned_;
 };
 
 #endif //VISION_HPP__

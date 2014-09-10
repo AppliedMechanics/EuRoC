@@ -20,7 +20,8 @@ typedef enum {
 typedef enum {
 	OPEN=0,
 	RUNNING,
-	FINISHED
+	FINISHED,
+	FINISHEDWITHERROR
 } thread_state_t;
 
 typedef enum {

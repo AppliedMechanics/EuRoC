@@ -6,6 +6,7 @@
 #include "std_msgs/String.h"
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
+
 //general includes
 #include <sstream>
 #include <boost/thread.hpp>
@@ -38,223 +39,258 @@ class StaticTFBroadcaster;
 
 class Statemachine
 {
+	public:
+		//!Constructor
+		Statemachine();
+		//!Destructor
+		~Statemachine();
 
-private:
-	//!Constructor
-	Statemachine();
-	//!private copy contructor ...
-	Statemachine(const Statemachine&);
-	~Statemachine();
+		//!true if a task is actually running
+		bool task_active_;
+		//!true if simulation client is running
+		bool sim_running_;
 
-	//!statemachine instance (singleton)
-	static Statemachine* instance_;
+	private:
+		//!Static TF Broadcaster
+		StaticTFBroadcaster* broadcaster_;
 
-	//!Static TF Broadcaster
-	StaticTFBroadcaster* broadcaster_;
+		//!input container class for yaml data
+		EurocInput *ein_;
 
-	//!input container class for yaml data
-	EurocInput *ein_;
+		//!state variable
+		fsm::fsm_state_t state_;
+		std::vector<fsm::fsm_state_t> state_queue;
 
-	//!state variable
-	fsm::fsm_state_t state_;
+		//!node handle for this node
+		ros::NodeHandle node_;
 
-	//!node handle for this node
-	ros::NodeHandle node_;
+		//!interface/client names
+		std::string task_selector_;
+		std::string list_scenes_;
+		std::string start_simulator_;
+		std::string stop_simulator_;
+		std::string euroc_c2_interface_;
+		std::string save_log_;
 
-	//!interface/client names
-	std::string task_selector_;
-	std::string list_scenes_;
-	std::string start_simulator_;
-	std::string stop_simulator_;
-	std::string euroc_c2_interface_;
-	std::string save_log_;
+		//!Euroc client to access available scenes
+		ros::ServiceClient list_scenes_client_;
+		//!list scenes message
+		euroc_c2_msgs::ListScenes list_scenes_srv_;
+		//!Euroc client to start the simulator
+		ros::ServiceClient start_simulator_client_;
+		//!start simulator message
+		euroc_c2_msgs::StartSimulator start_simulator_srv_;
+		//!Euroc client to stop the simulator
+		ros::ServiceClient stop_simulator_client_;
+		//stop simulator message
+		euroc_c2_msgs::StopSimulator stop_simulator_srv_;
+		//!Euroc client to save the logfile
+		ros::ServiceClient save_log_client_;
+		//!save log message
+		euroc_c2_msgs::SaveLog save_log_srv_;
 
+		//!action client for motionplanning-node (am_motionplanning)
+		actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
+		//!action client for vision-node (am_vision)
+		actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
+		//!client for grasp-service (am_grasping)
+		ros::ServiceClient get_grasp_pose_client_;
+		//!grasp message
+		am_msgs::GetGraspPose get_grasp_pose_srv_;
+		//!client for gripper-service
+		ros::ServiceClient gripper_control_client_;
+		//!gripper message
+		am_msgs::GripperControl gripper_control_srv_;
+		//!client for environment scanning
+		ros::ServiceClient take_image_client_;
+		//!explore environment service
+		am_msgs::TakeImage take_image_srv_;
 
-	//!Euroc client to access available scenes
-	ros::ServiceClient list_scenes_client_;
-	//!list scenes message
-	euroc_c2_msgs::ListScenes list_scenes_srv_;
-	//!Euroc client to start the simulator
-	ros::ServiceClient start_simulator_client_;
-	//!start simulator message
-	euroc_c2_msgs::StartSimulator start_simulator_srv_;
-	//!Euroc client to stop the simulator
-	ros::ServiceClient stop_simulator_client_;
-	//stop simulator message
-	euroc_c2_msgs::StopSimulator stop_simulator_srv_;
-	//!Euroc client to save the logfile
-	ros::ServiceClient save_log_client_;
-	//!save log message
-	euroc_c2_msgs::SaveLog save_log_srv_;
+		//!internal counter for while loop in execute()
+		uint64_t counter;
 
+		//!list of all available scenes
+		std::vector<euroc_c2_msgs::Scene> scenes_;
+		//!number of scenes
+		uint8_t nr_scenes_;
+		//!active scene
+		int8_t active_scene_;
+		//!active task number (generated out of name (string))
+		int8_t active_task_number_;
 
-	//!action client for motionplanning-node (am_motionplanning)
-	actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
-	//!action client for vision-node (am_vision)
-	actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
-	//!client for grasp-service (am_grasping)
-	ros::ServiceClient get_grasp_pose_client_;
-	//!grasp message
-	am_msgs::GetGraspPose get_grasp_pose_srv_;
-	//!client for gripper-service
-	ros::ServiceClient gripper_control_client_;
-	//!gripper message
-	am_msgs::GripperControl gripper_control_srv_;
-	//!client for xploreEnv-service
-	ros::ServiceClient take_image_client_;
-	//!Explore Environment service
-	am_msgs::TakeImage take_image_srv_;
-	//!env number of goals in the queue for a certain state
-	uint8_t env_nr_goals_;
-	//!env active goal
-	uint8_t env_active_goal_;
+		//!current object that is in progress
+		am_msgs::Object cur_obj_;
+		//!corresponding zone to this object
+		am_msgs::TargetZone cur_zone_;
 
-	//!true if a task is actually running
-	bool task_active_;
-	//!true if simulation client is running
-	bool sim_running_;
+		//!goal queue for motion planning action server
+		std::vector<am_msgs::goalPoseGoal> goal_queue;
+		//!number of goals in the queue for a certain state
+		uint8_t nr_goals_;
+		//!active goal
+		uint8_t active_goal_;
+		//!has the active goal been reached?
+		bool reached_active_goal_;
 
+		//!thread for long lasting service calls
+		boost::thread lsc_;
 
-	//!internal counter for while loop in execute()
-	uint64_t counter;
+	public:
+		//!init statemachine
+		int init_sm();
 
+		//!returns current state
+		fsm::fsm_state_t get_state()	{ return state_; };
 
-	//!list of all available scenes
-	std::vector<euroc_c2_msgs::Scene> scenes_;
-	//!number of scenes
-	uint8_t nr_scenes_;
-	//!active scene
-	int8_t active_scene_;
+		//! returns the name of the given state-tree as a string
+		std::string get_state_name(fsm::fsm_state_t parstate);
 
+		//!main function that is called every timestep
+		int tick();
 
-	//!current object that is in progress
-	am_msgs::Object cur_obj_;
-	//!corresponding zone to this object
-	am_msgs::TargetZone cur_zone_;
+	private:
+		//! move to next state
+		void scheduler_next();
+		//! make a new schedule, or modify the existing one
+		void scheduler_schedule();
+		//!print state queue to console
+		void scheduler_printqueue();
 
+		//!Make a stop to help with debugging (waits for console input)
+		int pause();
+		//!state of pause() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t pause_state_;
 
-	//!goal queue for motion planning action server
-	std::vector<am_msgs::goalPoseGoal> goal_queue;
-	//!number of goals in the queue for a certain state
-	uint8_t nr_goals_;
-	//!active goal
-	uint8_t active_goal_;
+		//!request task from ROS-master
+		int request_task();
+		//!callback for request_task()
+		void request_task_cb();
+		//!state of request_task() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t request_task_state_;
 
-	//!thread for long lasting service calls
-	boost::thread lsc_;
+		//!start simulator
+		int start_sim();
+		//!callback for start_sim()
+		void start_sim_cb();
+		//!state of start_sim() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t start_sim_state_;
 
-public:
-	//!singleton implementation
-	static Statemachine* get_instance();
+		//!parse yaml file
+		int parse_yaml_file();
+		//!state of parse_yaml_file() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t parse_yaml_file_state_;
 
-	//!destroy current instance
-	void clear_instance();
+		//!stop simulator
+		int stop_sim();
+		//!callback for stop_sim()
+		void stop_sim_cb();
+		//!state of stop_sim() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t stop_sim_state_;
 
-	//!init statemachine
-	int init_sm();
-	//!execute statemachine (while loop in statemachine)
-	//void execute();
+		//!Scan the scene
+		int watch_scene();
+		//!callback for watch_scene()
+		void watch_scene_cb();
+		//!state of watch_scene() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t watch_scene_state_;
 
-	//!returns current state
-	fsm::fsm_state_t get_state()	{ return state_; };
+		//!Explore the environment (initial part)
+		int explore_environment_init();
+		//!state of explore_environment_init() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t explore_environment_init_state_;
 
-	//!main function that is called every timestep
-	int tick();
+		//!Explore the environment (motion part)
+		int explore_environment_motion();
+		//!state of explore_environment_motion() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t explore_environment_motion_state_;
+		//!callbacks for explore_environment_motion()
+		void explore_environment_motion_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void explore_environment_motion_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-private:
-	//functions for each state (all of them are called in tick() )
-	//!request task state function
-	int request_task();
-	//!callback for request task state function
-	void request_task_cb();
-	//!state of the callback (OPEN,RUNNING,FINISHED)
-	uint8_t request_task_state_;
+		//!Explore the environment (image part)
+		int explore_environment_image();
+		//!callback for explore_environment_image()
+		void explore_environment_image_cb();
+		//!state of explore_environment_image() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t explore_environment_image_state_;
 
-	//!start sim state function
-	int start_sim();
-	//!callback for start sim state function (started as thread)
-	void start_sim_cb();
-	//!state of the callback (OPEN,RUNNING,FINISHED)
-	uint8_t start_sim_state_;
+		//!locate object
+		int locate_object();
+		//!state of locate_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t locate_object_state_;
+		//!callbacks for locate_object()
+		void locate_object_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
+		void locate_object_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
 
-	//!parse yaml file state function
-	int parse_yaml_file();
+		//!get grasping pose
+		int get_grasping_pose();
+		//!callback for get_grasping_pose()
+		void get_grasping_pose_cb();
+		//!state of get_grasping_pose() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t get_grasping_pose_state_;
 
-	//!solve task state function (dummy)
-	int solve_task();
+		//!move to object above
+		int move_to_object_above();
+		//!state of move_to_object_above() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_above_state_;
+		//!callbacks for move_to_object_above()
+		void move_to_object_above_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_object_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-	//!stop sim state function
-	int stop_sim();
-	//!callback for stop sim state function (started as thread)
-	void stop_sim_cb();
-	//!state of the callback (OPEN,RUNNING,FINISHED)
-	uint8_t stop_sim_state_;
+		//!move to object
+		int move_to_object();
+		//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_state_;
+		//!callbacks for move_to_object()
+		void move_to_object_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_object_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-	//!callback for gripper service calls
-	void grip_cb();
-	//!state of gripper service call (OPEN,RUNNING,FINISHED)
-	uint8_t grip_state_;
+		//!check wether the object has been placed correctly
+		int check_object_finished();
+		//!state of check_object_finished() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t check_object_finished_state_;
 
-	//!locate object state function
-	int locate_object();
-	//!state of the vision (OPEN,RUNNING,FINISHED)
-	uint8_t vision_state_;
+		//!release the gripper
+		int gripper_release();
+		//!callback for gripper_release()
+		void gripper_release_cb();
+		//!state of gripper_release() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t gripper_release_state_;
 
-	//!get grasping pose state function
-	int get_grasping_pose();
+		//!release the gripper
+		int gripper_close();
+		//!callback for gripper_close()
+		void gripper_close_cb();
+		//!state of gripper_close() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t gripper_close_state_;
 
-	//!move to object state function
-	int move_to_object();
-	//!state of motion function (OPEN,RUNNING,FINISHED)
-	uint8_t motion_state_;
+		//!move to target zone above
+		int move_to_target_zone_above();
+		//!state of move_to_target_zone_above() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_above_state_;
+		//!callbacks for move_to_target_zone_above()
+		void move_to_target_zone_above_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_target_zone_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-	//!grip object state function
-	int grip_object();
+		//!move to target zone
+		int move_to_target_zone();
+		//!state of move_to_target_zone() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_state_;
+		//!callbacks for move_to_target_zone()
+		void move_to_target_zone_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_target_zone_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-	//!move to target zone state function
-	int move_to_target_zone();
-
-	//!homing function (goto upright pose)
-	int homing();
-
-	//!explore environment function (move arm to map scene)
-	//!callback for xplore Env service calls
-	void take_image_cb();
-	uint8_t take_image_state_;
-	//!explore environment function (move arm to map scene) by LWR
-	int explore_env();
-	//!State of the exploring the environment function LWR
-	uint8_t explore_state_;
-	//! Watch scene (by pan/tilt)
-	int watch_scene();
-	//! State of the watch_scene function
-	uint8_t watch_scene_state_;
-
-
-	//!vision action-client callbacks:
-	void vision_done(const actionlib::SimpleClientGoalState& state,
-			  	  	 const am_msgs::VisionResultConstPtr& result);
-	void vision_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
-	//!motion action-client callbacks:
-	void motion_done(const actionlib::SimpleClientGoalState& state,
-				  const am_msgs::goalPoseResultConstPtr& result);
-	void motion_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!homing function (goto upright pose)
+		int homing();
+		//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t homing_state_;
+		//!callbacks of homing()
+		void homing_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void homing_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 };
 
-inline Statemachine* Statemachine::get_instance()
-{
-	if(instance_==NULL)
-	{
-		instance_=new Statemachine();
-	}
-	return instance_;
-};
-inline void Statemachine::clear_instance()
-{
-	if(instance_!=NULL)
-	{
-		delete instance_;
-	}
-}
+//Methods of main programm
+void exitstatemachine();
+void signalHandler(int sig);
 
 #endif //__STATEMACHINE_HPP__

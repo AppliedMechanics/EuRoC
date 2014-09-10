@@ -1,82 +1,124 @@
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-#include <sstream>
-#include <utils.hpp>
-#include <config.hpp>
-#include <stdio.h>
+#include "statemachine.hpp"
 #include <signal.h>
 
-#include "statemachine.hpp"
-
-Statemachine* sm;
-
-void signalHandler(int sig)
-{
-    ROS_ERROR("Interrupt signal ( %d ) received.\n",sig);
-
-    ros::shutdown();
-    sm->clear_instance();
-    //exit(sig);
-}
+//Variables
+Statemachine* sm; 	//global pointer to statemachine object
 
 int main(int argc, char **argv)
 {
-  //init ros system, register as node "sm"
-  ros::init(argc, argv, "statemachine",ros::init_options::NoSigintHandler);
+	//init this node in the ros-system
+	ROS_INFO("Main: initializing the node statemachine...");
+	try
+	{
+		//init node and tell ros it should not handle interrupt signals
+		ros::init(argc, argv, "statemachine",ros::init_options::NoSigintHandler);
+	}
+	catch(...) 	//catch all possible errors
+	{
+		msg_error("Main: Error. ros::init(...) failed\n");
+		//this fail is critical, so the program has to be stopped
+		exitstatemachine();
+		return 1;
+	}
+	ROS_INFO("Main: initialization of the node statemachine done.");
 
-  signal(SIGINT,  signalHandler);
-  signal(SIGKILL, signalHandler);
-  signal(SIGABRT, signalHandler);
-  signal(SIGTERM, signalHandler);
+	//register the method signalHandler to process interrupt signals
+	//(only works for signals in the terminal window of the statemachine)
+	signal(SIGINT,  signalHandler);
+	signal(SIGKILL, signalHandler);
+	signal(SIGABRT, signalHandler);
+	signal(SIGTERM, signalHandler);
 
-  //statemachine class
-  sm = Statemachine::get_instance();
+	//allocate new instance of statemachine object and set sm to point to it
+	sm = new Statemachine();
 
-  //init statemachine
-  if(-1 == sm->init_sm())
-  {
-	  msg_error("Error initializing Statemachine");
-  }
+	//try to initialize statemachine
+	ROS_INFO("Main: initializing the statemachine-class...");
+	if(-1 == sm->init_sm())
+	{
+		msg_error("Main: Error. statemachine::init_sm() failed\n");
+		//this fail is critical so the program has to be stopped
+		exitstatemachine();
+		return 1;
+	}
+	ROS_INFO("Main: initialization of statemachine-class done.");
 
-//  //run statemachine
-//  sm->execute();
+	//main loop:
+	ros::Rate loop_rate(FREQ); 		//set loop rate
+	double t_act=0;					//actual time for console output
+	fsm::fsm_state_t sm_state=sm->get_state();
+	ROS_INFO("Main: entering while-loop");
+	while(ros::ok() && !(sm_state.sub.one == fsm::FINISHED))
+	{
+		//perform main tick-routine
+		if(sm->tick()==-1)
+		{
+			msg_error("Main: Error. statemachine::tick() failed\n");
+			//this fail is critical so the program has to be stopped
+			//comment two lines below to allow errors in tick() method
+			exitstatemachine();
+			return 1;
+		}
 
-  //update rate
-  ros::Rate loop_rate(FREQ);
+		//try to process callbacks
+		try
+		{
+			ros::spinOnce();
+		}
+		catch(...)
+		{
+			//only show error message, but don't stop program here
+			msg_error("Main: Error. ros::spinOnce() failed\n");
+		}
 
-  //main loop:
-  double t_act=0;
-  fsm::fsm_state_t sm_state=sm->get_state();
-  ROS_INFO("Entering while-loop");
-  while(ros::ok() && !(sm_state.sub.one == fsm::FINISHED))
-  {
+		//update state to local variable
+		sm_state=sm->get_state();
 
-	  //perform main tick-routine
-	  if(-1==sm->tick())
-	  {
-		  msg_error("Error in Statemachine::tick()");
-	  }
+		//refresh actual time
+		t_act=(double)ros::Time::now().toSec();
+		printf("time= %fs [state: %s]\r",t_act,sm->get_state_name(sm_state).c_str());
+		fflush(stdout);
 
-	  //"tick"
-	  ros::spinOnce();
+		//sleep to ensure previously defined loop rate
+		//during solve task use ROS-Time
+		//if(sm_state.sub.one == fsm::SOLVE_TASK) //replaced by sm->sim_running_
+		if(sm->sim_running_)
+		{
+			loop_rate.sleep();
+		}
+		else //otherwise use system time to sleep
+		{
+			boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+		}
+	}
+	ROS_INFO("Main: while-loop finished.");
 
-
-	  //update state
-	  sm_state=sm->get_state();
-
-	  //sleep for the remaining time (only during solve task)
-	  if(sm_state.sub.one == fsm::SOLVE_TASK)
-		  loop_rate.sleep();
-
-	  t_act=(double)ros::Time::now().toSec();
-
-	  printf("time= %f s \r",t_act);
-	  fflush(stdout);
-
-  }
-  ROS_INFO("Nach while");
-  sm->clear_instance();
-
-  return 0;
+	//quit properly
+	exitstatemachine();
+	return 0;
 }
 
+void exitstatemachine()
+{
+	ROS_INFO("Main: shutting down statemachine...");
+	try
+	{
+		ros::shutdown(); 		//try to disconnect from master
+		//wait for a couple of milliseconds, to let it close properly
+		boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+	}
+	catch(...) 	//catch all possible errors
+	{
+		msg_error("Main: Error. ros::shutdown() failed\n");
+		//but quit anyway
+	}
+	delete sm;				//delete the statemachine object for memory release (not really necessary, cleared anyway)
+	ROS_INFO("Main: statemachine shut down.");
+}
+
+void signalHandler(int sig)
+{
+	msg_error("Main: interrupt signal ( %d ) received.\n",sig);
+	//quit properly
+    exitstatemachine();
+}

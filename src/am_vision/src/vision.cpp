@@ -20,7 +20,8 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 Vision::Vision():
 			        		vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
-			        		vision_action_name_("VisionAction")
+			        		vision_action_name_("VisionAction"),
+						obj_aligned_(false)
 {
 
 	failed = false;
@@ -139,6 +140,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
   ROS_INFO("Entered Vision::handle()...");
 
+  obj_aligned_=false;
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
 
   if(!goal->object.name.compare("red_cube"))
@@ -242,6 +245,10 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
   // Align observed point cloud with modeled object
   transformation = align_PointClouds(object_model, targetPC);
+  if(obj_aligned_==false)
+    {
+      vision_server_.setPreempted(vision_result_,"Alignment failed.");
+    }
 
   //Publish aligned PointCloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr test (new pcl::PointCloud<pcl::PointXYZ>);
@@ -744,27 +751,32 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 	fest.compute (*scene_features);
 
 	// Perform alignment
+	uint32_t iters=400000;
 	pcl::console::print_highlight ("Starting alignment...\n");
 	pcl::SampleConsensusPrerejective<PointNT,PointNT,FeatureT> align;
 	align.setInputSource (object);
 	align.setSourceFeatures (object_features);
 	align.setInputTarget (scene);
 	align.setTargetFeatures (scene_features);
-	align.setMaximumIterations (300000); // Number of RANSAC iterations
+	align.setMaximumIterations (iters); // Number of RANSAC iterations
 	align.setNumberOfSamples (3); // Number of points to sample for generating/prerejecting a pose
 	align.setCorrespondenceRandomness (3); // Number of nearest features to use
 	align.setSimilarityThreshold (0.7f); // Polygonal edge length similarity threshold
 	align.setMaxCorrespondenceDistance (0.005); // Inlier threshold
 	align.setInlierFraction (0.15f); // Required inlier fraction for accepting a pose hypothesis
 
-	pcl::ScopeTime t("Alignment");
-	align.align (*object_aligned);
+	Eigen::Matrix4f transformation;
+	uint16_t nmbr_tries=0;
+	while(nmbr_tries<5)
+	  {
+	    pcl::ScopeTime t("Alignment");
+	    align.align (*object_aligned);
 
-	if (align.hasConverged ())
-	{
+	    if (align.hasConverged ())
+	      {
 		// Print results
 		printf ("\n");
-		Eigen::Matrix4f transformation = align.getFinalTransformation ();
+		transformation = align.getFinalTransformation ();
 		pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (0,0), transformation (0,1), transformation (0,2));
 		pcl::console::print_info ("R = | %6.3f %6.3f %6.3f | \n", transformation (1,0), transformation (1,1), transformation (1,2));
 		pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (2,0), transformation (2,1), transformation (2,2));
@@ -773,15 +785,22 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 		pcl::console::print_info ("\n");
 		pcl::console::print_info ("Inliers: %i/%i\n", align.getInliers ().size (), object->size ());
 
-		return transformation;
-
-	}
-	else
-	{
-		Eigen::Matrix4f transformation = align.getFinalTransformation ();
+		obj_aligned_=true;
+		break;
+	      }
+	    else
+	      {
+		transformation = align.getFinalTransformation ();
 		pcl::console::print_error ("Alignment failed!\n");
-		return transformation;
-	}
+		obj_aligned_=false;
 
+		iters+=200000;
+		align.setMaximumIterations (iters);
+	      }
+
+	    nmbr_tries++;
+	  }
+
+	return transformation;
 }
 
