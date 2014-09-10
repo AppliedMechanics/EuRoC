@@ -55,6 +55,8 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	res.grasp_width = grasp_width_;
 	res.waiting_height = object_height_+0.2;
 	res.object_mass = object_mass_;
+	res.r_tcp_com = r_tcp_com_;
+	res.r_gp_com = r_gp_com_;
 
 }
 
@@ -340,4 +342,19 @@ void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 	LWRTCP_target_pose_.orientation.y = tf_tmp2.getRotation().getY();
 	LWRTCP_target_pose_.orientation.z = tf_tmp2.getRotation().getZ();
 	LWRTCP_target_pose_.orientation.w = tf_tmp2.getRotation().getW();
+
+
+	//calculate relative vector (Object-CoM / LWR-TCP)
+	r_tcp_com_.x = o_object_com_.x()-LWRTCP_target_pose_.position.x;
+	r_tcp_com_.y = o_object_com_.y()-LWRTCP_target_pose_.position.y;
+	r_tcp_com_.z = o_object_com_.z()-LWRTCP_target_pose_.position.z;
+
+	//calculate relative vector (Object-CoM / GP-TCP)
+	r_gp_com_.x = r_tcp_com_.x-transform_GPTCP_2_LWRTCP.getOrigin().getX();
+	r_gp_com_.y = r_tcp_com_.y-transform_GPTCP_2_LWRTCP.getOrigin().getY();
+	r_gp_com_.z = r_tcp_com_.z-transform_GPTCP_2_LWRTCP.getOrigin().getZ();
+
+	//	ROS_INFO("r_tcp_com: [%f %f %f]",r_tcp_com_.x,r_tcp_com_.y,r_tcp_com_.z);
+	//	ROS_INFO("r_gp_com:  [%f %f %f]",r_gp_com_.x,r_gp_com_.y,r_gp_com_.z);
+
 }

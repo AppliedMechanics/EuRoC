@@ -48,6 +48,11 @@ private:
 	double object_mass_;
 	// Grasp width
 	double grasp_width_;
+	//!relative vector from TCP -> Object CoM
+	geometry_msgs::Vector3 r_tcp_com_;
+	//!relative vector from GP -> Object CoM
+	geometry_msgs::Vector3 r_gp_com_;
+
 	// Index of shape closest to COM
 	int8_t com_idx_;
 	int8_t high_idx_;

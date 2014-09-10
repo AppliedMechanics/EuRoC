@@ -1566,6 +1566,9 @@ int Statemachine::get_grasping_pose()
 				pose->orientation.x,pose->orientation.y,pose->orientation.z);
 
 		ein_->set_grasping_pose(get_grasp_pose_srv_.response.grasp_pose);
+		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
+		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
 
 		//==============================================
 		scheduler_next();

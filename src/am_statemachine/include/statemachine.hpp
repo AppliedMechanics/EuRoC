@@ -122,6 +122,10 @@ class Statemachine
 		am_msgs::Object cur_obj_;
 		//!corresponding zone to this object
 		am_msgs::TargetZone cur_zone_;
+		//!current object mass
+		double cur_obj_mass_;
+		geometry_msgs::Vector3 r_tcp_curobjcom_;
+		geometry_msgs::Vector3 r_gp_curobjcom_;
 
 		//!goal queue for motion planning action server
 		std::vector<am_msgs::goalPoseGoal> goal_queue;
