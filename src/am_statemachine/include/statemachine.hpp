@@ -132,6 +132,7 @@ class Statemachine
 		double cur_obj_mass_;
 		geometry_msgs::Vector3 r_tcp_curobjcom_;
 		geometry_msgs::Vector3 r_gp_curobjcom_;
+		geometry_msgs::Vector3 r_gp_curobj_;
 
 		//!goal queue for motion planning action server
 		std::vector<am_msgs::goalPoseGoal> goal_queue;

@@ -904,7 +904,7 @@ int Statemachine::start_sim()
 	{
 		ROS_INFO("start_sim() called: OPEN");
 
-		start_simulator_srv_.request.user_id = "am-robotics";
+		start_simulator_srv_.request.user_id = "oxofrmbl";
 		start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
 		start_sim_state_=RUNNING;
 		//lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
@@ -1572,6 +1572,7 @@ int Statemachine::get_grasping_pose()
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
 		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
 		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
+		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
 
 		//==============================================
 		scheduler_next();
@@ -2011,6 +2012,8 @@ int Statemachine::move_to_target_zone()
 		grasp_pose.goal_pose = ein_->get_grasping_pose();
 		cur_zone_ = ein_->get_target_zone();
 		goal_queue[0].goal_pose.position = cur_zone_.position;
+		goal_queue[0].goal_pose.position.x -= r_gp_curobj_.x;
+		goal_queue[0].goal_pose.position.y -= r_gp_curobj_.y;
 		goal_queue[0].goal_pose.position.z=grasp_pose.goal_pose.position.z+0.005;
 		goal_queue[0].goal_pose.orientation.x=1;
 		goal_queue[0].goal_pose.orientation.y=0;

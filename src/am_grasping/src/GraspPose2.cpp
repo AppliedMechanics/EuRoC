@@ -35,7 +35,6 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 
 	// Control output
 
-
 	// Only Prio-1 grasp poses are currently implemented
 	unsigned int prio = 1;
 
@@ -57,7 +56,12 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	res.object_mass = object_mass_;
 	res.r_tcp_com = r_tcp_com_;
 	res.r_gp_com = r_gp_com_;
+	res.r_gp_obj = r_target_offset_;
 
+	if (!first_called)
+		first_called =true;
+
+	return true;
 }
 
 void GraspPose2::compute_abs_shape_poses_() {
@@ -311,7 +315,7 @@ void GraspPose2::compute_grasp_pose_() {
 
 void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 
-	tf::TransformListener tf_listener;
+	tf::TransformListener tf_listener, tf_listener_obj;
 	tf::StampedTransform transform_GPTCP_2_LWRTCP;
 	tf::Transform tf_tmp,tf_tmp2;
 
@@ -331,6 +335,8 @@ void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 			GPTCP_target_pose_.orientation.y,
 			GPTCP_target_pose_.orientation.z,
 			GPTCP_target_pose_.orientation.w));
+
+	transform_gripper = tf_tmp;
 
 	tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
 
@@ -354,7 +360,11 @@ void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 	r_gp_com_.y = r_tcp_com_.y-transform_GPTCP_2_LWRTCP.getOrigin().getY();
 	r_gp_com_.z = r_tcp_com_.z-transform_GPTCP_2_LWRTCP.getOrigin().getZ();
 
-	//r_target_offset_.x =
+
+	//! Vector from Gripper tcp to object frame
+	r_target_offset_.x = object_.abs_pose.position.x - LWRTCP_target_pose_.position.x;
+	r_target_offset_.y = object_.abs_pose.position.y - LWRTCP_target_pose_.position.y;
+	r_target_offset_.z = object_.abs_pose.position.z - LWRTCP_target_pose_.position.z;
 	//	ROS_INFO("r_tcp_com: [%f %f %f]",r_tcp_com_.x,r_tcp_com_.y,r_tcp_com_.z);
 	//	ROS_INFO("r_gp_com:  [%f %f %f]",r_gp_com_.x,r_gp_com_.y,r_gp_com_.z);
 

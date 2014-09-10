@@ -38,6 +38,8 @@ public:
 	// Transform shapes
 	std::vector<tf::Transform> b_transform_shapes_;
 	std::vector<tf::Transform> o_transform_shapes_;
+
+	bool first_called;
 private:
 	// ------------------------- Class Properties -----------------------------
 	// "Object" as defined in ros message
