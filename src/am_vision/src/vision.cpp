@@ -195,9 +195,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
   {
     if (!goal->object.shape[i].type.compare("cylinder"))
     {
-      //generate Cylinder PC (PointCloud)
+      // generate Cylinder PC (PointCloud) closed on the top and bottom side
       step_size = 0.01;
       shape_generator.generateCylinder(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].length * Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
+      shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, 0.0f), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
+      shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, goal->object.shape[i].length), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
 
       //transform Cylinder PC to valid position
       q = Eigen::Quaternion<double>(goal->object.shape[i].pose.orientation.w, goal->object.shape[i].pose.orientation.x, goal->object.shape[i].pose.orientation.y, goal->object.shape[i].pose.orientation.z);
@@ -763,7 +765,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 	align.setCorrespondenceRandomness (3); // Number of nearest features to use
 	align.setSimilarityThreshold (0.7f); // Polygonal edge length similarity threshold
 	align.setMaxCorrespondenceDistance (0.005); // Inlier threshold
-	align.setInlierFraction (0.15f); // Required inlier fraction for accepting a pose hypothesis
+	align.setInlierFraction (0.16f); // Required inlier fraction for accepting a pose hypothesis
 
 	Eigen::Matrix4f transformation;
 	uint16_t nmbr_tries=0;
