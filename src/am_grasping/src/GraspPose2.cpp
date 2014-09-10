@@ -354,6 +354,7 @@ void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
 	r_gp_com_.y = r_tcp_com_.y-transform_GPTCP_2_LWRTCP.getOrigin().getY();
 	r_gp_com_.z = r_tcp_com_.z-transform_GPTCP_2_LWRTCP.getOrigin().getZ();
 
+	//r_target_offset_.x =
 	//	ROS_INFO("r_tcp_com: [%f %f %f]",r_tcp_com_.x,r_tcp_com_.y,r_tcp_com_.z);
 	//	ROS_INFO("r_gp_com:  [%f %f %f]",r_gp_com_.x,r_gp_com_.y,r_gp_com_.z);
 

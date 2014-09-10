@@ -98,6 +98,9 @@ int Statemachine::init_sm()
 	gripper_control_client_ = node_.serviceClient<am_msgs::GripperControl>("GripperInterface");
 	take_image_client_ = node_.serviceClient<am_msgs::TakeImage>("TakeImageService");
 
+	//ros::service::waitForService("/ObjectPickedUp_srv",ros::Duration(5.0));
+    state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
+
 	//wait for all action servers
 	ROS_INFO("waiting for action servers...");
 	uint8_t CheckActionServerCounter=0;
@@ -818,7 +821,7 @@ int Statemachine::request_task()
 		//destroy thread
 		//lsc_.detach();
 
-		//std::cout<<"choose task: ";
+		std::cout<<"choose task: ";
 		int blub=8;
 		std::cin>>blub;
 		active_scene_=blub;
@@ -1741,6 +1744,27 @@ int Statemachine::move_to_object_above()
 	{
 		reached_active_goal_=false;
 		active_goal_++;
+
+
+		//check object picked up:
+          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_ABOVE))
+          {
+              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
+              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
+
+              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
+              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
+              if(state_observer_client_.call(obj_picked_up_srv_))
+              {
+                ROS_INFO("got object!");
+              }
+              else
+              {
+                ROS_INFO("lost object!");
+              }
+           }
+
+
 		if(active_goal_==nr_goals_)
 		{
 			move_to_object_above_state_=FINISHED;

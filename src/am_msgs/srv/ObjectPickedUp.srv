@@ -1,0 +1,10 @@
+# A service that tests whether an object has been picked up successfully. SetObjectLoad service will be called through this service
+#
+
+float64 ObjectMass
+geometry_msgs/Vector3 CentreOfMass
+
+
+---
+string error_message
+bool GotObject

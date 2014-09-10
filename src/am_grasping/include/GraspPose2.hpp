@@ -52,6 +52,8 @@ private:
 	geometry_msgs::Vector3 r_tcp_com_;
 	//!relative vector from GP -> Object CoM
 	geometry_msgs::Vector3 r_gp_com_;
+	//!target zone offset (x,y)
+	geometry_msgs::Vector3 r_target_offset_;
 
 	// Index of shape closest to COM
 	int8_t com_idx_;

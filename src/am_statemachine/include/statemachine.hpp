@@ -25,6 +25,7 @@
 #include <am_msgs/GripperControl.h>
 #include <am_msgs/TakeImage.h>
 #include <am_msgs/VisionAction.h>
+#include <am_msgs/ObjectPickedUp.h>
 
 //am includes
 #include <utils.hpp>
@@ -105,6 +106,11 @@ class Statemachine
 		ros::ServiceClient take_image_client_;
 		//!explore environment service
 		am_msgs::TakeImage take_image_srv_;
+
+		//!state-observer interface
+		ros::ServiceClient state_observer_client_;
+		am_msgs::ObjectPickedUp obj_picked_up_srv_;
+
 
 		//!internal counter for while loop in execute()
 		uint64_t counter;

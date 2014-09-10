@@ -360,7 +360,10 @@ void Vision::scan_with_pan_tilt()
       pcl::PointCloud<pcl::PointXYZ>::Ptr threshPC;
 
       // move scene camera to hard-coded configuration
-      mpt->move_pan_tilt_abs(pan[panTiltCounter], tilt[panTiltCounter]);
+      if(!mpt->move_pan_tilt_abs(pan[panTiltCounter], tilt[panTiltCounter]))
+      {
+    	  msg_error("failed to move pan-tilt unit for counter %d",panTiltCounter);
+      }
       ros::Duration(2.0).sleep();
 
       _scene_rgb_image = *(ros::topic::waitForMessage<sensor_msgs::Image>(camera_scene_rgb_topic, ros::Duration(1.0)));
@@ -784,43 +787,43 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 	align.setCorrespondenceRandomness (3); // Number of nearest features to use
 	align.setSimilarityThreshold (0.7f); // Polygonal edge length similarity threshold
 	align.setMaxCorrespondenceDistance (0.005); // Inlier threshold
-	align.setInlierFraction (0.16f); // Required inlier fraction for accepting a pose hypothesis
+	align.setInlierFraction (0.15f); // Required inlier fraction for accepting a pose hypothesis
 
 	Eigen::Matrix4f transformation;
 	uint16_t nmbr_tries=0;
 	while(nmbr_tries<5)
-	  {
-	    pcl::ScopeTime t("Alignment");
-	    align.align (*object_aligned);
+	{
+		pcl::ScopeTime t("Alignment");
+		align.align (*object_aligned);
 
-	    if (align.hasConverged ())
-	      {
-		// Print results
-		printf ("\n");
-		transformation = align.getFinalTransformation ();
-		pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (0,0), transformation (0,1), transformation (0,2));
-		pcl::console::print_info ("R = | %6.3f %6.3f %6.3f | \n", transformation (1,0), transformation (1,1), transformation (1,2));
-		pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (2,0), transformation (2,1), transformation (2,2));
-		pcl::console::print_info ("\n");
-		pcl::console::print_info ("t = < %0.3f, %0.3f, %0.3f >\n", transformation (0,3), transformation (1,3), transformation (2,3));
-		pcl::console::print_info ("\n");
-		pcl::console::print_info ("Inliers: %i/%i\n", align.getInliers ().size (), object->size ());
+		if (align.hasConverged ())
+		{
+			// Print results
+			printf ("\n");
+			transformation = align.getFinalTransformation ();
+			pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (0,0), transformation (0,1), transformation (0,2));
+			pcl::console::print_info ("R = | %6.3f %6.3f %6.3f | \n", transformation (1,0), transformation (1,1), transformation (1,2));
+			pcl::console::print_info ("    | %6.3f %6.3f %6.3f | \n", transformation (2,0), transformation (2,1), transformation (2,2));
+			pcl::console::print_info ("\n");
+			pcl::console::print_info ("t = < %0.3f, %0.3f, %0.3f >\n", transformation (0,3), transformation (1,3), transformation (2,3));
+			pcl::console::print_info ("\n");
+			pcl::console::print_info ("Inliers: %i/%i\n", align.getInliers ().size (), object->size ());
 
-		obj_aligned_=true;
-		break;
-	      }
-	    else
-	      {
-		transformation = align.getFinalTransformation ();
-		pcl::console::print_error ("Alignment failed!\n");
-		obj_aligned_=false;
+			obj_aligned_=true;
+			break;
+		}
+		else
+		{
+			transformation = align.getFinalTransformation ();
+			pcl::console::print_error ("Alignment failed!\n");
+			obj_aligned_=false;
 
-		iters+=200000;
-		align.setMaximumIterations (iters);
-	      }
+			iters+=200000;
+			align.setMaximumIterations (iters);
+		}
 
-	    nmbr_tries++;
-	  }
+		nmbr_tries++;
+	}
 
 	return transformation;
 }

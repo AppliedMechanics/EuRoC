@@ -14,4 +14,5 @@ float64 waiting_height
 float64 object_mass
 geometry_msgs/Vector3 r_tcp_com
 geometry_msgs/Vector3 r_gp_com
+geometry_msgs/Vector3 r_obj_gp
 

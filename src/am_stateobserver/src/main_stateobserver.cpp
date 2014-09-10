@@ -12,19 +12,11 @@ int main(int argc, char **argv)
 	//init ros system, register as node "sm"
 	ros::init(argc, argv, "stateobserver");
 
-
-	//!node handle for this node
-	ros::NodeHandle nh;
-
-	std::string	euroc_c2_interface_ = "/euroc_interface_node";
-	std::string telemetry_ = euroc_c2_interface_ + "/telemetry";
-
 	//create stateobserver
-	StateObserver so(&nh);
+	StateObserver so;
 
-	//subscribe to telemetry message
-	ros::Subscriber telemetry_subscriber_ = nh.subscribe(telemetry_,1,&StateObserver::callback,&so);
-	//ros::Publisher stop_pub = nh.advertise<std_msgs::Bool>("stop_cond",1000);
+	//Set required torque limits
+	//so.CallSetStopConditions(0);
 
 	//update rate
 	ros::Rate loop_rate(FREQ);
@@ -37,13 +29,11 @@ int main(int argc, char **argv)
 	  if(so.check_state()==false)
 	  {
 		  msg_error("Error in check_state!");
-
-//		  std_msgs::Bool msg;
-//		  msg.data=true;
-//		  stop_pub.publish(msg);
 	  }
 
 	  //"tick"
+	  // The spinOnce fuction of ros will execute the callbacks of our subscribed topics once.
+	  // This will update our global _telemetry message.
 	  ros::spinOnce();
 	  loop_rate.sleep();
 

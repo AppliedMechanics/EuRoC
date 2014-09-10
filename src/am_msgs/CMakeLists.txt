@@ -66,6 +66,8 @@ add_service_files(
   GetGraspPose.srv
   GripperControl.srv
   TakeImage.srv
+  ObjectPickedUp.srv
+  CallSetStopConditions.srv
 )
 
 ## Generate actions in the 'action' folder
