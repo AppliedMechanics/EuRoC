@@ -361,9 +361,7 @@ pcl::PointXYZ am_pointcloud::calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ
 	{
 		for(int j=0; j<cloud->width; j++)
 		{
-			if( pcl_isfinite(cloud->at(j,i).x)
-					||pcl_isfinite(cloud->at(j,i).y)
-					||pcl_isfinite(cloud->at(j,i).z) )
+			if( pcl::isFinite(cloud->at(j,i)) )
 			{
 			p.x+=cloud->at(j,i).x;
 			p.y+=cloud->at(j,i).y;
@@ -376,4 +374,28 @@ pcl::PointXYZ am_pointcloud::calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ
 	p.y/=counter;
 	p.z/=counter;
 	return p;
+}
+
+
+octomath::Vector3 am_pointcloud::getSensorOriginScene ()
+{
+	octomath::Vector3 SensorOrigin;
+
+	ros::Time now = ros::Time::now();
+		try
+		{
+			_tfListener.waitForTransform(S_DEPTH, ORIGIN, now, ros::Duration(2.0));
+			_tfListener.lookupTransform(S_DEPTH, ORIGIN, ros::Time(0), _transform);
+		}
+		catch (...)
+		{
+			ROS_ERROR("Exception: listening to transformation failed");
+			ros::Duration(1.0).sleep();
+		}
+
+	SensorOrigin.x() = _transform.getOrigin().getX();
+	SensorOrigin.y() = _transform.getOrigin().getY();
+	SensorOrigin.z() = _transform.getOrigin().getZ();
+
+	return SensorOrigin;
 }

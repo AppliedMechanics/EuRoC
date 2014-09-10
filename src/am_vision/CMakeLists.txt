@@ -7,6 +7,7 @@ project(am_vision)
 find_package(catkin REQUIRED COMPONENTS
   am_msgs
   cv_bridge
+  octomap_ros
   pcl_ros
   actionlib
   roscpp

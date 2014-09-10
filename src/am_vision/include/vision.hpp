@@ -12,6 +12,13 @@
 #include <am_msgs/TakeImage.h>
 #include <shape_generator.cpp>
 
+// Octomap includes
+#include <octomap/octomap.h>
+#include <octomap_ros/conversions.h>
+#include <octomap/OcTree.h>
+#include <octomap/Pointcloud.h>
+#include <octomap/math/Vector3.h>
+
 
 // PCL includes
 #include <pcl/common/transforms.h>
@@ -113,6 +120,14 @@ public:
 
 	static const int CAM_TCP = 0;
 	static const int CAM_SCENE = 1;
+
+	// Octomap/ Octree
+	// You can change resolution here
+	octomap::OcTree* tree;
+	octomap::Pointcloud* OctoCloud;
+
+	//am_pointcloud *scenePointCloud;
+	//am_pointcloud *tcpPointCloud;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalTcpPC;

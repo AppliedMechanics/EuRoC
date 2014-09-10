@@ -70,6 +70,12 @@ Vision::Vision():
         finalVoxelizedCyanPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
         finalVoxelizedMagentaPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
 
+    // Create and set resolution of Octree
+       tree = new octomap::OcTree(0.005);
+
+    // Create octomap::PointCloud
+       OctoCloud = new octomap::Pointcloud();
+
 	vision_server_.start();
 	ROS_INFO("vision action server started.");
 }
@@ -263,9 +269,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
   //get quaternion from rotation-matrix
   tf::Matrix3x3 rotation;
-  rotation.setValue(transformation(0,0), transformation(0,1), transformation(0,2),
-                    transformation(1,0), transformation(1,1), transformation(1,2),
-                    transformation(2,0), transformation(2,1), transformation(2,2));
+  rotation.setValue((double)transformation(0,0), (double)transformation(0,1), (double)transformation(0,2),
+		  	  	  	(double)transformation(1,0), (double)transformation(1,1), (double)transformation(1,2),
+		  	  	  	(double)transformation(2,0), (double)transformation(2,1), (double)transformation(2,2));
 
   tf::Quaternion tfqt;
   rotation.getRotation(tfqt);
@@ -429,6 +435,19 @@ void Vision::scan_with_pan_tilt()
       // filter out the robot, table surface and irrelevant points
       robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
       threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
+
+      // Create Octomap (whole scene)
+/*      OctoCloud->reserve(worldPC->points.size());
+      octomap::pointcloudPCLToOctomap(*worldPC,*OctoCloud);
+      ROS_INFO("now we are so far");
+      tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene());
+      if(panTiltCounter == 4)
+      {
+    	  tree->writeBinary("/home/euroc_admin/EUROC_SVN/branches/vision_octomap/Octomap2_World.bt");
+    	  ROS_INFO("Tree was written to Binary File ... Octomap_World.bt");
+      }
+*/
+
 
       // Add result to global point cloud
       *finalScenePC += *threshPC;

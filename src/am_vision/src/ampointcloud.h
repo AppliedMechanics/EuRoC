@@ -13,6 +13,7 @@
 #include <pcl-1.7/pcl/point_cloud.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include <octomap/octomap.h>
 
 #include <config.hpp>
 #include <tf/transform_listener.h>
@@ -58,6 +59,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	octomath::Vector3 getSensorOriginScene ();
 
 
 };
