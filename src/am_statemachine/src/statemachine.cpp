@@ -1292,7 +1292,7 @@ int Statemachine::explore_environment_init()
 		goal_queue[13].goal_pose.position.z = 0.792;
 		q_temp[13].setRPY(3.14,-0.082,0);
 
-		for (int i=0;i<14;i++)
+		for (int i=0;i<nr_goals_;i++)
 		{
 			goal_queue[i].planning_algorithm = STANDARD_IK_7DOF;
 			goal_queue[i].goal_pose.orientation.x = q_temp[i].getX();

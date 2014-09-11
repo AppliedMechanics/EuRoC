@@ -27,7 +27,12 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 
 	YAML::Parser parser(yaml_stream);
 	YAML::Node task_description_node;
-	parser.GetNextDocument(task_description_node);
+	if(!parser.GetNextDocument(task_description_node))
+	{
+	  msg_error("failed to get next document!");
+	  return -1;
+	}
+
 
 	task_description_node["description"] >> description_;
 	task_description_node["log_filename"] >> log_filename_;
@@ -158,16 +163,26 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 			return -1;
 		}
 
-		const YAML::Node* sur = obj->FindValue("surface_material");
-		if(!des){
-			ROS_ERROR("EurocInput: surface material not found in object");
-		    return -1;
-		}
-		try {
-			*sur >> tmp_obj.surface_material;
-		}catch(YAML::Exception e){
-	    	ROS_ERROR("EurocInput: Obj error");
-	    	return -1;
+	    try {
+                const YAML::Node* sur = obj->FindValue("surface_material");
+
+                if(!sur){
+                  ROS_ERROR("EurocInput: surface material not found in object");
+                  //return -1;
+                }
+                else
+                {
+                  try {
+                    *sur >> tmp_obj.surface_material;
+                  }catch(YAML::Exception e)
+                  {
+                    ROS_ERROR("EurocInput: Obj error");
+                    return -1;
+                  }
+                }
+	    }catch(YAML::Exception e) {
+	      ROS_ERROR("surface material not found in shape");
+	      //return -1;
 	    }
 
 
@@ -251,8 +266,10 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				const YAML::Node* dens = (*it2).FindValue("density");
 				(*dens) >> tmp_obj.shape[jj].density;
 			}catch(YAML::Exception e) {
-				ROS_ERROR("dimensions not found in shape");
-				return -1;
+				ROS_ERROR("density not found in shape");
+
+				tmp_obj.shape[jj].density=7850;
+				//return -1;
 			}
 			jj++;
 
