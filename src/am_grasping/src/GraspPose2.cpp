@@ -26,7 +26,7 @@ void GraspPose2::set_object_data_(am_msgs::Object object) {
 	o_transform_shapes_.resize(object_.nr_shapes);
 
 	gripper_height_=0.06;
-	grip_safety_dist_=0.01;
+	grip_safety_dist_=0.02;
 }
 
 // ROS-Service Function
@@ -240,12 +240,12 @@ void GraspPose2::compute_grasp_pose_() {
 	{
 		dot_product = o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis);
 		grasp_width_ = object_.shape[com_idx_].radius*2.0;
-		if (dot_product > -0.7 && dot_product < 0.7)
+		if (dot_product > -0.7 && dot_product < 0.7) // cylinder is vertical
 		{
 			dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
 			dcm.getRPY(dummy1,dummy2,yaw);
 		}
-		else
+		else //! Cylinder is horizontal
 		{
 			roll = 0;
 			pitch = M_PI;

@@ -111,7 +111,7 @@ add_definitions(${PCL_DEFINITIONS})
 # )
 
 ## Declare a cpp executable
-add_executable(am_vision src/main_vision.cpp  src/vision.cpp src/MovePantilt.cpp)
+add_executable(am_vision src/main_vision.cpp src/vision_dummy.cpp src/vision.cpp src/MovePantilt.cpp)
 add_dependencies(am_vision am_vision_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
