@@ -6,6 +6,16 @@
 #include <tf/transform_broadcaster.h>
 #include <opencv2/opencv.hpp>
 
+// For creating octomap with whole scene (with robot and pantilt); also the man outside the table can be seen; every sweep; takes too much time when using every sweep
+// #define OCTOMAP_COMPLETE
+
+// For creating octomap without robot and things outside the table; every sweep; time ok
+// #define OCTOMAP_REDUCED
+
+// Output Octomap binary file
+// #define OUTPUT_OCTOMAP
+
+
 namespace enc = sensor_msgs::image_encodings;
 using namespace cv;
 
@@ -69,6 +79,9 @@ Vision::Vision():
         finalVoxelizedYellowPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
         finalVoxelizedCyanPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
         finalVoxelizedMagentaPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
+
+        // leaf size voxels
+        leaf_size = 0.005;
 
     // Create and set resolution of Octree
        tree = new octomap::OcTree(0.005);
@@ -146,24 +159,45 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
   ROS_INFO("Entered Vision::handle()...");
 
+#ifdef OUTPUT_OCTOMAP
+  tree->writeBinary("/home/euroc_student/EUROC_SVN_STUDENT/vision_octomap/Octomap.bt");
+  ROS_INFO("Tree was written to Binary File ... Octomap_World.bt");
+#endif
+
   obj_aligned_=false;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
 
-  if(!goal->object.name.compare("red_cube"))
+
+  if(!goal->object.color.compare("ff0000"))
   {
-    std::cout<<"Looking for: red cube"<<std::endl;
+    ROS_INFO("Looking for: red objects");
     *targetPC += *finalVoxelizedRedPC;
   }
-  else if (!goal->object.name.compare("green_cylinder"))
+  else if (!goal->object.color.compare("00ff00"))
   {
-    std::cout<<"Looking for: green cylinder"<<std::endl;
+    ROS_INFO("Looking for: green objects");
     *targetPC += *finalVoxelizedGreenPC;
   }
-  else if (!goal->object.name.compare("blue_handle"))
+  else if (!goal->object.color.compare("0000ff"))
   {
-    std::cout<<"Looking for: blue handle"<<std::endl;
+    ROS_INFO("Looking for: blue objects");
     *targetPC += *finalVoxelizedBluePC;
+  }
+  else if (!goal->object.color.compare("00ffff"))
+  {
+    ROS_INFO("Looking for: cyan objects");
+    *targetPC += *finalVoxelizedCyanPC;
+  }
+  else if (!goal->object.color.compare("ff00ff"))
+  {
+    ROS_INFO("Looking for: magenta objects");
+    *targetPC += *finalVoxelizedMagentaPC;
+  }
+  else if (!goal->object.color.compare("ffff00"))
+  {
+    ROS_INFO("Looking for: yellow objects");
+    *targetPC += *finalVoxelizedYellowPC;
   }
 
 //  pcl::visualization::CloudViewer viewer ("Cloud Viewer");
@@ -193,7 +227,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
   Eigen::Vector3d translation;
   Eigen::Matrix4f transformation;
   pcl::NormalEstimationOMP<PointNT,PointNT> nest;
-  nest.setRadiusSearch (0.02);
+  nest.setKSearch(15);
 
   shape_generator.setOutputCloud(shape_model);
 
@@ -202,7 +236,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     if (!goal->object.shape[i].type.compare("cylinder"))
     {
       // generate Cylinder PC (PointCloud) closed on the top and bottom side
-      step_size = 0.01;
+      step_size = leaf_size;
       shape_generator.generateCylinder(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].length * Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
       shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, 0.0f), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
       shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, goal->object.shape[i].length), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
@@ -228,7 +262,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     else if(!goal->object.shape[i].type.compare("box"))
     {
       //generate box PC (PointCloud)
-      step_size = 0.01;
+      step_size = leaf_size;
       shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.1f);
 
       //transform Cylinder PC to valid position
@@ -359,6 +393,7 @@ void Vision::scan_with_pan_tilt()
       pcl::PointCloud<pcl::PointXYZ>::Ptr robotLessPC;
       pcl::PointCloud<pcl::PointXYZ>::Ptr threshPC;
 
+
       // move scene camera to hard-coded configuration
       if(!mpt->move_pan_tilt_abs(pan[panTiltCounter], tilt[panTiltCounter]))
       {
@@ -439,17 +474,23 @@ void Vision::scan_with_pan_tilt()
       robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
       threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
 
-      // Create Octomap (whole scene)
-/*      OctoCloud->reserve(worldPC->points.size());
+#ifdef OCTOMAP_COMPLETE
+      // Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
+      OctoCloud->reserve(worldPC->points.size());
       octomap::pointcloudPCLToOctomap(*worldPC,*OctoCloud);
-      ROS_INFO("now we are so far");
+      ROS_INFO("Starting to add actuall PointCloud to Octomap...");
       tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene());
-      if(panTiltCounter == 4)
-      {
-    	  tree->writeBinary("/home/euroc_admin/EUROC_SVN/branches/vision_octomap/Octomap2_World.bt");
-    	  ROS_INFO("Tree was written to Binary File ... Octomap_World.bt");
-      }
-*/
+      ROS_INFO("Added actual PointCloud to Octomap");
+#endif
+
+#ifdef OCTOMAP_REDUCED
+      // Create Octomap without robot and things outside the table
+      OctoCloud->reserve(threshPC->points.size());
+      octomap::pointcloudPCLToOctomap(*threshPC,*OctoCloud);
+      ROS_INFO("Starting to add actuall PointCloud to Octomap...");
+      tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene());
+      ROS_INFO("Added actual PointCloud to Octomap");
+#endif
 
 
       // Add result to global point cloud
@@ -470,6 +511,7 @@ void Vision::scan_with_pan_tilt()
       *finalYellowPC += *yellowFilteredPC;
       *finalCyanPC += *cyanFilteredPC;
       *finalMagentaPC += *magentaFilteredPC;
+
 
       ROS_INFO("Finished sweep #%d", panTiltCounter);
       // set counter for next pan-tilt scan
@@ -497,37 +539,37 @@ void Vision::scan_with_pan_tilt()
 
     ROS_INFO("Voxelization: global point cloud...");
     vg.setInputCloud(finalScenePC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedPC);
 
     ROS_INFO("Voxelization: blue point cloud...");
     vg.setInputCloud(finalBluePC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedBluePC);
 
     ROS_INFO("Voxelization: green point cloud...");
     vg.setInputCloud(finalGreenPC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedGreenPC);
 
     ROS_INFO("Voxelization: red point cloud...");
     vg.setInputCloud(finalRedPC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedRedPC);
 
     ROS_INFO("Voxelization: yellow point cloud...");
     vg.setInputCloud(finalYellowPC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedYellowPC);
 
     ROS_INFO("Voxelization: cyan point cloud...");
     vg.setInputCloud(finalCyanPC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedCyanPC);
 
     ROS_INFO("Voxelization: magenta point cloud...");
     vg.setInputCloud(finalMagentaPC);
-    vg.setLeafSize (0.01f, 0.01f, 0.01f);
+    vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedMagentaPC);
 
     ROS_INFO("Voxelization: Finished.");
@@ -642,7 +684,25 @@ void Vision::scan_with_tcp()
   robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
   threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
 
-  *finalTcpPC += *worldPC;
+#ifdef OCTOMAP_COMPLETE
+      // Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
+      OctoCloud->reserve(worldPC->points.size());
+      octomap::pointcloudPCLToOctomap(*worldPC,*OctoCloud);
+      ROS_INFO("Starting to add actuall PointCloud to Octomap...");
+      tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene());
+      ROS_INFO("Added actual PointCloud to Octomap");
+#endif
+
+#ifdef OCTOMAP_REDUCED
+      // Create Octomap without robot and things outside the table
+      OctoCloud->reserve(threshPC->points.size());
+      octomap::pointcloudPCLToOctomap(*threshPC,*OctoCloud);
+      ROS_INFO("Starting to add actuall PointCloud to Octomap...");
+      tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene());
+      ROS_INFO("Added actual PointCloud to Octomap");
+#endif
+
+  *finalTcpPC += *threshPC;
 
   // Filter the points cloud by color
   blueFilteredPC = scenePointCloud->filterPointCloudByColor(threshPC, thresholdBlue);
@@ -665,37 +725,37 @@ void Vision::scan_with_tcp()
 
   ROS_INFO("Voxelization: global point cloud...");
   vg.setInputCloud(threshPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*tempVoxelizedPC);
 
   ROS_INFO("Voxelization: blue point cloud...");
   vg.setInputCloud(finalBluePC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedBluePC);
 
   ROS_INFO("Voxelization: green point cloud...");
   vg.setInputCloud(finalGreenPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedGreenPC);
 
   ROS_INFO("Voxelization: red point cloud...");
   vg.setInputCloud(finalRedPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedRedPC);
 
   ROS_INFO("Voxelization: yellow point cloud...");
   vg.setInputCloud(finalYellowPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedYellowPC);
 
   ROS_INFO("Voxelization: cyan point cloud...");
   vg.setInputCloud(finalCyanPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedCyanPC);
 
   ROS_INFO("Voxelization: magenta point cloud...");
   vg.setInputCloud(finalMagentaPC);
-  vg.setLeafSize (0.01f, 0.01f, 0.01f);
+  vg.setLeafSize (leaf_size, leaf_size, leaf_size);
   vg.filter (*finalVoxelizedMagentaPC);
 
   ROS_INFO("Voxelization: finished.");
@@ -746,27 +806,17 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 	//pcl::io::savePCDFileASCII ("/home/euroc_student/object_model.pcd", *object);
 	//pcl::io::savePCDFileASCII ("/home/euroc_studentq/scene.pcd", *scene);
 
-	// Downsample
-	//    pcl::console::print_highlight ("Downsampling...\n");
-	//    pcl::VoxelGrid<PointNT> grid;
-	//    const float leaf = 0.005f;
-	//    grid.setLeafSize (leaf, leaf, leaf);
-	//    grid.setInputCloud (object);
-	//    grid.filter (*object);
-	//    grid.setInputCloud (scene);
-	//    grid.filter (*scene);
-
 	// Estimate normals for scene
 	pcl::console::print_highlight ("Estimating scene normals...\n");
 	pcl::NormalEstimationOMP<PointNT,PointNT> nest;
-	nest.setRadiusSearch (0.01);
+	nest.setKSearch(15);
 	nest.setInputCloud (scene);
 	nest.compute (*scene);
 
 	// Estimate features
 	pcl::console::print_highlight ("Estimating features...\n");
 	FeatureEstimationT fest;
-	fest.setRadiusSearch (0.1);
+	fest.setKSearch(30);
 	fest.setInputCloud (object);
 	fest.setInputNormals (object);
 	fest.compute (*object_features);
@@ -783,11 +833,11 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<PointNT>::Ptr object, 
 	align.setInputTarget (scene);
 	align.setTargetFeatures (scene_features);
 	align.setMaximumIterations (iters); // Number of RANSAC iterations
-	align.setNumberOfSamples (3); // Number of points to sample for generating/prerejecting a pose
+	align.setNumberOfSamples (4); // Number of points to sample for generating/prerejecting a pose
 	align.setCorrespondenceRandomness (3); // Number of nearest features to use
-	align.setSimilarityThreshold (0.7f); // Polygonal edge length similarity threshold
-	align.setMaxCorrespondenceDistance (0.005); // Inlier threshold
-	align.setInlierFraction (0.15f); // Required inlier fraction for accepting a pose hypothesis
+	align.setSimilarityThreshold (0.75f); // Polygonal edge length similarity threshold
+	align.setMaxCorrespondenceDistance (0.003); // Inlier threshold
+	align.setInlierFraction (0.35f); // Required inlier fraction for accepting a pose hypothesis
 
 	Eigen::Matrix4f transformation;
 	uint16_t nmbr_tries=0;

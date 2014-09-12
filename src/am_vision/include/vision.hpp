@@ -152,6 +152,9 @@ public:
 
         //alignemt was successfull
         bool obj_aligned_;
+
+        // size of voxels
+        float leaf_size;
 };
 
 #endif //VISION_HPP__
