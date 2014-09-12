@@ -67,7 +67,7 @@ public:
 	bool on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeImage::Response &res);
 	void scan_with_pan_tilt();
 	void scan_with_tcp();
-	void handle(const am_msgs::VisionGoal::ConstPtr &goal);
+	virtual void handle(const am_msgs::VisionGoal::ConstPtr &goal);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointNormal>::Ptr object, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input);
 
 	ros::NodeHandle nh_;

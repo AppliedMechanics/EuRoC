@@ -4,15 +4,14 @@
  *  Created on: Aug 11, 2014
  *      Author: sahandy
  */
-#define DUMMY
+
 
 #include <ros/ros.h>
 
-#ifndef DUMMY
+
 #include "vision.hpp"
-#else
 #include "vision_dummy.hpp"
-#endif
+
 
 #include "MovePantilt.h"
 #include <config.hpp>
@@ -22,11 +21,15 @@ int main(int argc, char** argv) {
 	ros::init(argc, argv, "am_vision");
 	ros::NodeHandle nodeHandle;
 
-#ifndef DUMMY
-	Vision vision;
-#else
-	VisionDummy vision;
-#endif
+	bool skip_vision;
+	ros::param::get("/skip_vision",skip_vision);
+
+	Vision* vision;
+	if (skip_vision)
+		vision = new VisionDummy();
+	else
+		vision = new Vision();
+
 
 
 	// Example, how MovePantilt class can be used

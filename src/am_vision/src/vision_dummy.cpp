@@ -7,19 +7,11 @@
 
 #include "vision_dummy.hpp"
 
-namespace enc = sensor_msgs::image_encodings;
-using namespace cv;
-
-// Types
-typedef pcl::PointNormal PointNT;
-typedef pcl::PointCloud<PointNT> PointCloudT;
-typedef pcl::FPFHSignature33 FeatureT;
-typedef pcl::FPFHEstimationOMP<PointNT,PointNT,FeatureT> FeatureEstimationT;
-typedef pcl::PointCloud<FeatureT> FeatureCloudT;
-typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
-
 VisionDummy::VisionDummy() {
 	// TODO Auto-generated constructor stub
+	mod_scene_ = 16;
+	ros::param::get("task_nr",mod_scene_);
+	loadScene(mod_scene_);
 
 }
 
@@ -29,167 +21,204 @@ VisionDummy::~VisionDummy() {
 
 void VisionDummy::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
-  ROS_INFO("Entered VisionDummy::handle()...");
+	ROS_INFO("Entered VisionDummy::handle()...");
 
-  obj_aligned_=false;
+	obj_aligned_=false;
+	int obj_idx;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
+	if(!goal->object.color.compare("ff0000"))
+		obj_idx = 0;
+	else if (!goal->object.color.compare("00ff00"))
+		obj_idx = 1;
+	else if (!goal->object.color.compare("0000ff"))
+		obj_idx = 2;
+	else if (!goal->object.color.compare("00ffff"))
+		obj_idx = 3;
+	else if (!goal->object.color.compare("ff00ff"))
+		obj_idx = 4;
+	else if (!goal->object.color.compare("ffff00"))
+		obj_idx = 5;
 
-  if(!goal->object.name.compare("red_cube"))
-  {
-    std::cout<<"Looking for: red cube"<<std::endl;
-    *targetPC += *finalVoxelizedRedPC;
-  }
-  else if (!goal->object.name.compare("green_cylinder"))
-  {
-    std::cout<<"Looking for: green cylinder"<<std::endl;
-    *targetPC += *finalVoxelizedGreenPC;
-  }
-  else if (!goal->object.name.compare("blue_handle"))
-  {
-    std::cout<<"Looking for: blue handle"<<std::endl;
-    *targetPC += *finalVoxelizedBluePC;
-  }
+	// ==========================================================================================
 
-//  pcl::visualization::CloudViewer viewer ("Cloud Viewer");
-//  viewer.showCloud(targetPC);
+	//-------------------------------- SEND RESULT ----------------------------------------//
 
-  pcl::console::print_highlight ("Passing target point cloud to pose estimator...\n");
-  ros::Duration(2.0).sleep();
+	vision_result_.abs_object_pose = modscene_poses_[obj_idx];
 
-  // publish final thresholded point cloud
-  //ROS_INFO("Show point cloud");
-  pcl::toROSMsg (*targetPC, msg);
-  msg.header.frame_id = "LWR_0";
-  msg.header.stamp = ros::Time::now();
-  pub.publish (msg);
+	vision_feedback_.execution_time = ros::Time::now().sec;
+	vision_server_.publishFeedback(vision_feedback_);
 
 
-  // ==========================================================================================
-  // ========== Code from Fabian ==========
-  // Generate PointClouds from the given obstacles
+	if(failed)
+	{
+		vision_result_.object_detected=false;
+		vision_server_.setPreempted(vision_result_,"Got no telemetry.");
+	}
+	else
+	{
+		vision_result_.object_detected=true;
+		vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+	}
 
-  //ROS_INFO("Passing the voxelized point cloud to pose estimator...");
-  ShapeGenerator<PointNT> shape_generator;
-  pcl::PointCloud<PointNT>::Ptr object_model (new pcl::PointCloud<PointNT>);
-  pcl::PointCloud<PointNT>::Ptr shape_model (new pcl::PointCloud<PointNT>);
-  float step_size = 0.005;
-  Eigen::Quaternion<double> q;
-  Eigen::Vector3d translation;
-  Eigen::Matrix4f transformation;
-  pcl::NormalEstimationOMP<PointNT,PointNT> nest;
-  nest.setRadiusSearch (0.02);
-
-  shape_generator.setOutputCloud(shape_model);
-
-  for (int i=0; i < goal->object.nr_shapes; i++)
-  {
-    if (!goal->object.shape[i].type.compare("cylinder"))
-    {
-      // generate Cylinder PC (PointCloud) closed on the top and bottom side
-      step_size = 0.01;
-      shape_generator.generateCylinder(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].length * Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
-      shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, 0.0f), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
-      shape_generator.generateCirclePlane (step_size, Eigen::Vector3f (0.0f, 0.0f, goal->object.shape[i].length), Eigen::Vector3f::UnitZ(), goal->object.shape[i].radius);
-
-      //transform Cylinder PC to valid position
-      q = Eigen::Quaternion<double>(goal->object.shape[i].pose.orientation.w, goal->object.shape[i].pose.orientation.x, goal->object.shape[i].pose.orientation.y, goal->object.shape[i].pose.orientation.z);
-      translation[0] = goal->object.shape[i].pose.position.x;
-      translation[1] = goal->object.shape[i].pose.position.y;
-      translation[2] = -(goal->object.shape[i].length/2) + goal->object.shape[i].pose.position.z;
-
-      pcl::transformPointCloud(*shape_model, *shape_model, translation, q);
-
-      // Estimate normals for scene
-      pcl::console::print_highlight ("Estimating cylinder normals...\n");
-      nest.setInputCloud (shape_model);
-      nest.compute (*shape_model);
-
-      *object_model += *shape_model;
-
-      shape_model->clear();
-    }
-
-    else if(!goal->object.shape[i].type.compare("box"))
-    {
-      //generate box PC (PointCloud)
-      step_size = 0.01;
-      shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.1f);
-
-      //transform Cylinder PC to valid position
-      q = Eigen::Quaternion<double>(goal->object.shape[i].pose.orientation.w, goal->object.shape[i].pose.orientation.x, goal->object.shape[i].pose.orientation.y, goal->object.shape[i].pose.orientation.z);
-      translation[0] = -(goal->object.shape[i].size[0]/2) + goal->object.shape[i].pose.position.x;
-      translation[1] = -(goal->object.shape[i].size[1]/2) + goal->object.shape[i].pose.position.y;
-      translation[2] = -(goal->object.shape[i].size[2]/2) + goal->object.shape[i].pose.position.z;
-
-      pcl::transformPointCloud(*shape_model, *shape_model, translation, q);
-
-      // Estimate normals for scene
-      pcl::console::print_highlight ("Estimating box normals...\n");
-      nest.setInputCloud (shape_model);
-      nest.compute (*shape_model);
-
-      *object_model += *shape_model;
-
-      shape_model->clear();
-    }
-
-  }
-
-  // Align observed point cloud with modeled object
-  transformation = align_PointClouds(object_model, targetPC);
-  if(obj_aligned_==false)
-    {
-      vision_server_.setPreempted(vision_result_,"Alignment failed.");
-    }
-
-  //Publish aligned PointCloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr test (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud(*object_model, *test);
-  pcl::transformPointCloud(*test, *test, transformation);
-  pcl::toROSMsg (*test, msg);
-  msg.header.frame_id = "LWR_0";
-  msg.header.stamp = ros::Time::now();
-  pub_2.publish (msg);
-
-  //get quaternion from rotation-matrix
-  tf::Matrix3x3 rotation;
-  rotation.setValue((double)transformation(0,0), (double)transformation(0,1), (double)transformation(0,2),
-		  	  	  	(double)transformation(1,0), (double)transformation(1,1), (double)transformation(1,2),
-		  	  	  	(double)transformation(2,0), (double)transformation(2,1), (double)transformation(2,2));
-
-  tf::Quaternion tfqt;
-  rotation.getRotation(tfqt);
-  // END code from Fabian
-  // ==========================================================================================
-
-  //-------------------------------- SEND RESULT ----------------------------------------//
-
-  vision_result_.abs_object_pose.position.x = transformation(0,3);
-  vision_result_.abs_object_pose.position.y = transformation(1,3);
-  vision_result_.abs_object_pose.position.z = transformation(2,3);
-  vision_result_.abs_object_pose.orientation.w = tfqt.getW();
-  vision_result_.abs_object_pose.orientation.x = tfqt.getX();
-  vision_result_.abs_object_pose.orientation.y = tfqt.getY();
-  vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
+}
 
 
+void VisionDummy::loadScene(int scene)
+{
+	tf::Quaternion q_tmp;
+	switch (scene)
+	{
+	case 15:
+		modscene_poses_.resize(6);
 
-  vision_feedback_.execution_time = ros::Time::now().sec;
-  vision_server_.publishFeedback(vision_feedback_);
+		//    red_handle:
+		//      start_pose: [0.4, 0, 0.03, 1.50, 0, 1.5]
+		//    green_handle:
+		//      start_pose: [0, 0.3, 0.03, -1.500, 0, 0]
+		//    blue_handle:
+		//      start_pose: [0, -0.30, 0.03, 1.50, 0, 0]
+		//    cyan_handle:
+		//      start_pose: [-0.6, -0.6, 0.03, -1.50, 0, -0.75]
+		//    magenta_handle:
+		//      start_pose: [-0.7, 0, 0.03, 1.50, 0, 1.5]
+		//    yellow_handle:
+		//      start_pose: [-0.6, 0.6, 0.03, 1.5, 0, 0.75]
 
+		//red
+		modscene_poses_[0].position.x = 0.4;
+		modscene_poses_[0].position.y = 0;
+		modscene_poses_[0].position.z = 0.025;
+		q_tmp.setRPY(1.50, 0, 1.5);
+		modscene_poses_[0].orientation.w = q_tmp.getW();
+		modscene_poses_[0].orientation.x = q_tmp.getX();
+		modscene_poses_[0].orientation.y = q_tmp.getY();
+		modscene_poses_[0].orientation.z = q_tmp.getZ();
 
-  if(failed)
-  {
-    vision_result_.object_detected=false;
-    vision_server_.setPreempted(vision_result_,"Got no telemetry.");
-  }
-  else
-  {
-    vision_result_.object_detected=true;
-    vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
-  }
+		// green
+		modscene_poses_[1].position.x = 0;
+		modscene_poses_[1].position.y = 0.3;
+		modscene_poses_[1].position.z = 0.025;
+		q_tmp.setRPY(-1.500, 0, 0);
+		modscene_poses_[1].orientation.w = q_tmp.getW();
+		modscene_poses_[1].orientation.x = q_tmp.getX();
+		modscene_poses_[1].orientation.y = q_tmp.getY();
+		modscene_poses_[1].orientation.z = q_tmp.getZ();
 
-  //-------------------------------- Clean Up ----------------------------------------//
-  targetPC->clear();
+		//blue
+		modscene_poses_[2].position.x = 0;
+		modscene_poses_[2].position.y = -0.3;
+		modscene_poses_[2].position.z = 0.025;
+		q_tmp.setRPY(1.50, 0, 0.0);
+		modscene_poses_[2].orientation.w = q_tmp.getW();
+		modscene_poses_[2].orientation.x = q_tmp.getX();
+		modscene_poses_[2].orientation.y = q_tmp.getY();
+		modscene_poses_[2].orientation.z = q_tmp.getZ();
+
+		//cyan
+		modscene_poses_[3].position.x = -0.6;
+		modscene_poses_[3].position.y = -0.6;
+		modscene_poses_[3].position.z = 0.025;
+		q_tmp.setRPY(-1.50, 0, -0.75);
+		modscene_poses_[3].orientation.w = q_tmp.getW();
+		modscene_poses_[3].orientation.x = q_tmp.getX();
+		modscene_poses_[3].orientation.y = q_tmp.getY();
+		modscene_poses_[3].orientation.z = q_tmp.getZ();
+
+		//magenta
+		modscene_poses_[4].position.x = -0.7;
+		modscene_poses_[4].position.y = 0;
+		modscene_poses_[4].position.z = 0.025;
+		q_tmp.setRPY(1.50, 0, 1.5);
+		modscene_poses_[4].orientation.w = q_tmp.getW();
+		modscene_poses_[4].orientation.x = q_tmp.getX();
+		modscene_poses_[4].orientation.y = q_tmp.getY();
+		modscene_poses_[4].orientation.z = q_tmp.getZ();
+
+		//yellow
+		modscene_poses_[5].position.x = -0.6;
+		modscene_poses_[5].position.y = 0.6;
+		modscene_poses_[5].position.z = 0.025;
+		q_tmp.setRPY(1.5, 0, 0.75);
+		modscene_poses_[5].orientation.w = q_tmp.getW();
+		modscene_poses_[5].orientation.x = q_tmp.getX();
+		modscene_poses_[5].orientation.y = q_tmp.getY();
+		modscene_poses_[5].orientation.z = q_tmp.getZ();
+		break;
+	case 16:
+		modscene_poses_.resize(6);
+
+		//	    red_cube:
+		//	      start_pose: [-0.3, -0.4, 0.03, 0, 0, 0]
+		//	    green_cube:
+		//	      start_pose: [-0.5, 0.1, 0.051, -3.1415, 0, 0.8]
+		//	    blue_cube:
+		//	      start_pose: [0, 0.5, 0.03, -1.5, 0, 0.4]
+		//	    cyan_cube:
+		//	      start_pose: [-0.3, 0.4, 0.1, 0, 0, 0]
+		//	    magenta_cube:
+		//	      start_pose: [-0.5, -0.2, 0.051, -3.1415, 0, 0.8]
+		//	    yellow_cube:
+		//	      start_pose: [0, -0.6, 0, 0, 0, 0.3]
+
+		//red
+		modscene_poses_[0].position.x = -0.3;
+		modscene_poses_[0].position.y = -0.4;
+		modscene_poses_[0].position.z = 0.025;
+		q_tmp.setRPY(0, 0, 0);
+		modscene_poses_[0].orientation.w = q_tmp.getW();
+		modscene_poses_[0].orientation.x = q_tmp.getX();
+		modscene_poses_[0].orientation.y = q_tmp.getY();
+		modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+		// green
+		modscene_poses_[1].position.x = -0.50;
+		modscene_poses_[1].position.y = 0.1;
+		modscene_poses_[1].position.z = 0.05;
+		q_tmp.setRPY(-3.1415, 0, 0.8);
+		modscene_poses_[1].orientation.w = q_tmp.getW();
+		modscene_poses_[1].orientation.x = q_tmp.getX();
+		modscene_poses_[1].orientation.y = q_tmp.getY();
+		modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+		//blue
+		modscene_poses_[2].position.x = 0;
+		modscene_poses_[2].position.y = 0.5;
+		modscene_poses_[2].position.z = 0.025;
+		q_tmp.setRPY(-1.5, 0, 0.4);
+		modscene_poses_[2].orientation.w = q_tmp.getW();
+		modscene_poses_[2].orientation.x = q_tmp.getX();
+		modscene_poses_[2].orientation.y = q_tmp.getY();
+		modscene_poses_[2].orientation.z = q_tmp.getZ();
+
+		//cyan
+		modscene_poses_[3].position.x = -0.3;
+		modscene_poses_[3].position.y = 0.4;
+		modscene_poses_[3].position.z = 0.1;
+		q_tmp.setRPY(0,0,0);
+		modscene_poses_[3].orientation.w = q_tmp.getW();
+		modscene_poses_[3].orientation.x = q_tmp.getX();
+		modscene_poses_[3].orientation.y = q_tmp.getY();
+		modscene_poses_[3].orientation.z = q_tmp.getZ();
+
+		//magenta
+		modscene_poses_[4].position.x = -0.5;
+		modscene_poses_[4].position.y = -0.2;
+		modscene_poses_[4].position.z = 0.05;
+		q_tmp.setRPY(-3.1415, 0, 0.8);
+		modscene_poses_[4].orientation.w = q_tmp.getW();
+		modscene_poses_[4].orientation.x = q_tmp.getX();
+		modscene_poses_[4].orientation.y = q_tmp.getY();
+		modscene_poses_[4].orientation.z = q_tmp.getZ();
+
+		//yellow
+		modscene_poses_[5].position.x = 0;
+		modscene_poses_[5].position.y = -0.6;
+		modscene_poses_[5].position.z = 0.025;
+		q_tmp.setRPY(0, 0, 0.3);
+		modscene_poses_[5].orientation.w = q_tmp.getW();
+		modscene_poses_[5].orientation.x = q_tmp.getX();
+		modscene_poses_[5].orientation.y = q_tmp.getY();
+		modscene_poses_[5].orientation.z = q_tmp.getZ();
+		break;
+	}
 }

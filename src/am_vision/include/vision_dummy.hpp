@@ -9,6 +9,7 @@
 #define VISIONDUMMY_H_
 
 #include <vision.hpp>
+#include <tf/LinearMath/Quaternion.h>
 
 
 
@@ -20,6 +21,11 @@ public:
 	virtual ~VisionDummy();
 
 	void handle(const am_msgs::VisionGoal::ConstPtr &goal);
+
+	std::vector<geometry_msgs::Pose> modscene_poses_;
+
+	int mod_scene_;
+	void loadScene(int scene);
 };
 
 #endif /* VISIONDUMMY_H_ */

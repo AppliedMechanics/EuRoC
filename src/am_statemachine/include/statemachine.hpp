@@ -146,6 +146,8 @@ class Statemachine
 		//!thread for long lasting service calls
 		boost::thread lsc_;
 
+		bool skip_vision_;
+
 	public:
 		//!init statemachine
 		int init_sm();
