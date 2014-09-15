@@ -46,6 +46,7 @@ homing_state_(OPEN)
 	save_log_ = euroc_c2_interface_ + "/save_log";
 
 	ros::param::get("/skip_vision",skip_vision_);
+	ros::param::get("/skip_motion",skip_motion_);
 }
 
 Statemachine::~Statemachine()
@@ -415,20 +416,25 @@ void Statemachine::scheduler_schedule()
 					temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::LOCATE_OBJECT;					state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::MOVE_TO_OBJECT_ABOVE;			state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::GRAB_OBJECT;
-					temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-					temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
-					temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
-					temp_state.sub.three=fsm::MOVE_TO_OBJECT_ABOVE;		state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_ABOVE;		state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::PLACE_OBJECT;
-					temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
-					temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-					temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_ABOVE;state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
-
+					if (!skip_motion_){
+						temp_state.sub.two=fsm::MOVE_TO_OBJECT_ABOVE;			state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::GRAB_OBJECT;
+						temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::MOVE_TO_OBJECT_ABOVE;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_ABOVE;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::PLACE_OBJECT;
+						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_ABOVE;state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
+					}
+					else{
+						ein_->set_object_finished();
+						ros::Duration(5.0).sleep();
+					}
 					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 				}
 				scheduler_printqueue(); //print queue to console for debugging purposes

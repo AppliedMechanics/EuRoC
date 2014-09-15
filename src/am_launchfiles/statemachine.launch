@@ -5,9 +5,12 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 <launch>
 
  <arg name="skip_vision" default="false" />
- <arg name="task_nr" default="16" />	
+ <arg name="skip_motion" default="false" />
+ <arg name="task_nr" default="11" />	
+ 
  <param name="use_sim_time" type="bool" value="true" />
  <param name="skip_vision" type="bool" value="$(arg skip_vision)" />
+ <param name="skip_motion" type="bool" value="$(arg skip_motion)" />
  <param name="task_nr" type="int" value="$(arg task_nr)" />
 <!-- Grasping  -->
      <!-- Grasp Planning  -->

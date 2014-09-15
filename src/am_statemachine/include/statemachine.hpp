@@ -147,7 +147,7 @@ class Statemachine
 		boost::thread lsc_;
 
 		bool skip_vision_;
-
+		bool skip_motion_;
 	public:
 		//!init statemachine
 		int init_sm();
