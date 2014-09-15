@@ -29,6 +29,11 @@ typedef enum {
 	TCP_CAM
 } camera_type_t;
 
+typedef enum {
+	GLOBAL_POSE_ESTIMATION=0,
+	CLOSE_RANGE_POSE_ESTIMATION
+} vision_mode_t;
+
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";
 const std::string LWR_0 = "LWR_0";

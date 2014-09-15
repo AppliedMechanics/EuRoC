@@ -106,7 +106,6 @@ class Statemachine
 		ros::ServiceClient take_image_client_;
 		//!explore environment service
 		am_msgs::TakeImage take_image_srv_;
-
 		//!state-observer interface
 		ros::ServiceClient state_observer_client_;
 		am_msgs::ObjectPickedUp obj_picked_up_srv_;
@@ -227,13 +226,21 @@ class Statemachine
 		//!state of explore_environment_image() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t explore_environment_image_state_;
 
-		//!locate object
-		int locate_object();
-		//!state of locate_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t locate_object_state_;
-		//!callbacks for locate_object()
-		void locate_object_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
-		void locate_object_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+		//!locate object in a global manner
+		int locate_object_global();
+		//!state of locate_object_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t locate_object_global_state_;
+		//!callbacks for locate_object_global()
+		void locate_object_global_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
+		void locate_object_global_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+
+		//!locate object from short distance with TCP CAM
+		int locate_object_close_range();
+		//!state of locate_object_close_range() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t locate_object_close_range_state_;
+		//!callbacks for locate_object_close_range()
+		void locate_object_close_range_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
+		void locate_object_close_range_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
 
 		//!get grasping pose
 		int get_grasping_pose();
@@ -258,10 +265,17 @@ class Statemachine
 		void move_to_object_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_object_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
-		//!check wether the object has been placed correctly
+		//!check whether the object has been placed correctly
 		int check_object_finished();
 		//!state of check_object_finished() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t check_object_finished_state_;
+
+		//!check whether the object has been gripped correctly
+		int check_object_gripped();
+		//!callback for check_object_gripped()
+		void check_object_gripped_cb();
+		//!state of check_object_gripped() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t check_object_gripped_state_;
 
 		//!release the gripper
 		int gripper_release();

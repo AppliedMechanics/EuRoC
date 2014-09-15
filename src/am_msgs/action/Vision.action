@@ -2,6 +2,7 @@
 am_msgs/Object object
 am_msgs/TargetZone target_zone
 am_msgs/Sensor[] sensors
+uint16 mode
 ---
 #result definition
 geometry_msgs/Pose abs_object_pose
