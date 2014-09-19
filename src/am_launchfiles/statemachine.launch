@@ -14,7 +14,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
  <param name="task_nr" type="int" value="$(arg task_nr)" />
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
-	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv"/>
+	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen" />
      <!-- Gripper  -->
 	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface"/>
 

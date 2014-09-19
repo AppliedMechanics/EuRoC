@@ -34,11 +34,11 @@ int main(int argc, char **argv)
 
 
 	while (ros::ok()) {
-//		if (grasp_pose.first_called)
-//		{
+		if (grasp_pose.first_called)
+		{
 			br.sendTransform(tf::StampedTransform(grasp_pose.transform_gripper, ros::Time::now(), ORIGIN, "grasp pose"));
 			br.sendTransform(tf::StampedTransform(grasp_pose.transform_object, ros::Time::now(), ORIGIN, OBJ_POSE));
-//		}
+		}
 		ros::Duration(0.5).sleep();
 		ros::spinOnce();
 	}

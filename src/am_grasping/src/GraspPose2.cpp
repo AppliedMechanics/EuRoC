@@ -26,7 +26,7 @@ void GraspPose2::set_object_data_(am_msgs::Object object) {
 	o_transform_shapes_.resize(object_.nr_shapes);
 
 	gripper_height_=0.06;
-	grip_safety_dist_=0.02;
+	grip_safety_dist_=0.01;
 }
 
 // ROS-Service Function
@@ -222,6 +222,12 @@ void GraspPose2::compute_grasp_pose_() {
 
 	double dot_product;
 	tf::Vector3 z_axis(0,0,1);
+	tf::Vector3 x_obj, y_obj, z_obj;
+	tf::Vector3 z_grp, x_grp, y_grp;
+
+	x_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(0);
+	y_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(1);
+	z_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(2);
 
 	GPTCP_target_pose_.position.x = o_object_com_.getX();
 	GPTCP_target_pose_.position.y = o_object_com_.getY();
@@ -230,73 +236,137 @@ void GraspPose2::compute_grasp_pose_() {
 	else
 		GPTCP_target_pose_.position.z = o_object_com_.getZ() + grip_safety_dist_;
 
+	if (GPTCP_target_pose_.position.z<0.04)
+		GPTCP_target_pose_.position.z = 0.04;
+
 	double roll,pitch,yaw,dummy1,dummy2;
 	tf::Matrix3x3 dcm;
 	tf::Quaternion q_tmp;
-
+	bool cyl_vert = false;
 
 
 	if(!object_.shape[com_idx_].type.compare("cylinder"))
 	{
-		dot_product = o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis);
+		dot_product = z_obj.dot(z_axis);
 		grasp_width_ = object_.shape[com_idx_].radius*2.0;
-		if (dot_product > -0.7 && dot_product < 0.7) // cylinder is vertical
+		if (dot_product > -0.7 && dot_product < 0.7)
 		{
-			dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
-			dcm.getRPY(dummy1,dummy2,yaw);
+			ROS_INFO("horizontal cylinder");
+			//dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
+			//! Revised Version
+			// Set z pointing down, set y along z of object, calculate x
+			z_grp = -1.0*z_axis;
+			y_grp = z_obj;
+			x_grp = y_grp.cross(z_grp);
+
+			cyl_vert = true;
 		}
 		else //! Cylinder is horizontal
 		{
-			roll = 0;
-			pitch = M_PI;
-			yaw = 0.0; //TODO!
-			yaw = atan2(am_abs(GPTCP_target_pose_.position.y),am_abs(GPTCP_target_pose_.position.x));
+			ROS_INFO("vertical cylinder");
+			//			roll = 0;
+			//			pitch = M_PI;
+			//			yaw = 0.0; //TODO!
+			//			yaw = atan2(am_abs(GPTCP_target_pose_.position.y),am_abs(GPTCP_target_pose_.position.x));
+			z_grp = -1.0*z_axis;
+			y_grp.setX(GPTCP_target_pose_.position.x);
+			y_grp.setY(GPTCP_target_pose_.position.y);
+			y_grp.setZ(0);
+			x_grp = y_grp.cross(z_grp);
 		}
-
+//		ROS_INFO("Cylinder RPY = %f,%f,%f",roll,pitch,yaw);
 	}
 	else if (!object_.shape[com_idx_].type.compare("box"))
 	{
-		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
-		std::cout<<"x-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getZ()<<std::endl;
-		std::cout<<"y-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getZ()<<std::endl;
-		std::cout<<"z-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getZ()<<std::endl;
-		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(0).dot(z_axis))>0.9)
+		//		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
+		//		std::cout<<"x-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getZ()<<std::endl;
+		//		std::cout<<"y-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getZ()<<std::endl;
+		//		std::cout<<"z-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getZ()<<std::endl;
+		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(0).dot(z_axis))>0.9)
+		//		{
+		//			ROS_INFO("x_axis pointing up");
+		//			dcm.getRPY(yaw,dummy1,dummy2);
+		//		}
+		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(1).dot(z_axis))>0.9)
+		//		{
+		//			ROS_INFO("y_axis pointing up");
+		//			dcm.getRPY(dummy1,yaw,dummy2);
+		//		}
+		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis))>0.9)
+		//		{
+		//			ROS_INFO("z_axis pointing up");
+		//			dcm.getRPY(dummy1,dummy2,yaw);
+		//		}
+		z_grp = -1.0*z_axis;
+		if (am_abs(x_obj.dot(z_axis))>0.9)
 		{
 			ROS_INFO("x_axis pointing up");
-			dcm.getRPY(yaw,dummy1,dummy2);
+			if (object_.shape[com_idx_].size[1]>=object_.shape[com_idx_].size[2])
+			{
+				grasp_width_ = object_.shape[com_idx_].size[2];
+				y_grp = y_obj;
+			}
+			else
+			{
+				grasp_width_ = object_.shape[com_idx_].size[1];
+				y_grp = z_obj;
+			}
 		}
-		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(1).dot(z_axis))>0.9)
+		if (am_abs(y_obj.dot(z_axis))>0.9)
 		{
 			ROS_INFO("y_axis pointing up");
-			dcm.getRPY(dummy1,yaw,dummy2);
+			if (object_.shape[com_idx_].size[0]>=object_.shape[com_idx_].size[2])
+			{
+				grasp_width_ = object_.shape[com_idx_].size[2];
+				y_grp = x_obj;
+			}
+			else
+			{
+				grasp_width_ = object_.shape[com_idx_].size[0];
+				y_grp = z_obj;
+			}
 		}
-		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis))>0.9)
+		if (am_abs(z_obj.dot(z_axis))>0.9)
 		{
 			ROS_INFO("z_axis pointing up");
-			dcm.getRPY(dummy1,dummy2,yaw);
+			if (object_.shape[com_idx_].size[0]>=object_.shape[com_idx_].size[1])
+			{
+				grasp_width_ = object_.shape[com_idx_].size[1];
+				y_grp = x_obj;
+			}
+			else
+			{
+				grasp_width_ = object_.shape[com_idx_].size[0];
+				y_grp = y_obj;
+			}
 		}
+		x_grp = y_grp.cross(z_grp);
 
-		grasp_width_ = object_.shape[com_idx_].size[0];
 	}
 
 	//! Choose roll, pitch dependent on position
-	if (am_abs(GPTCP_target_pose_.position.x)>am_abs(GPTCP_target_pose_.position.y))
-	{
-		roll = 0;
-		if (GPTCP_target_pose_.position.x > 0)
-			pitch = M_PI;
-		else
-			pitch = -M_PI;
-	}
-	else
-	{
-		pitch = 0;
-		if (GPTCP_target_pose_.position.y > 0)
-			roll = -M_PI;
-		else
-			roll = M_PI;
-	}
+	//	if (!cyl_vert)
+	//	{
+	//		if (am_abs(GPTCP_target_pose_.position.x)>am_abs(GPTCP_target_pose_.position.y))
+	//		{
+	//			roll = 0;
+	//			if (GPTCP_target_pose_.position.x > 0)
+	//				pitch = M_PI;
+	//			else
+	//				pitch = -M_PI;
+	//		}
+	//		else
+	//		{
+	//			pitch = 0;
+	//			if (GPTCP_target_pose_.position.y > 0)
+	//				roll = -M_PI;
+	//			else
+	//				roll = M_PI;
+	//		}
+	//	}
 
+	dcm.setValue(x_grp.getX(),x_grp.getY(),x_grp.getZ(),y_grp.getX(),y_grp.getY(),y_grp.getZ(),z_grp.getX(),z_grp.getY(),z_grp.getZ());
+	dcm.getRPY(roll,pitch,yaw);
 	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
 
 	//! Choose yaw always  between [-PI/2;+PI/2]
@@ -304,6 +374,7 @@ void GraspPose2::compute_grasp_pose_() {
 		yaw+=M_PI;
 	else if (yaw>M_PI_2)
 		yaw-=M_PI;
+
 	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
 
 	q_tmp.setRPY(roll,pitch,yaw);
