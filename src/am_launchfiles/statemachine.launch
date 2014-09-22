@@ -37,4 +37,21 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 
 <!-- GUI  -->
 	<node pkg="am_gui" type="am_gui" name="am_gui" output="screen" />
+
+<!-- Octomap Server -->
+<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+    <param name="resolution" value="0.01" />
+
+    <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+    <param name="frame_id" type="string" value="LWR_0" />
+
+    <!-- maximum range to integrate (speedup!) -->
+    <param name="max_sensor_range" value="5.0" />
+
+    <param name="latch" value="false" />
+    <!-- data source to integrate (PointCloud2) -->
+    <remap from="cloud_in" to="/PointCloud_Octomap" />
+
+</node>
+
 </launch>

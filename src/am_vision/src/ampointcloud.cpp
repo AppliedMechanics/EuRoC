@@ -89,7 +89,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::createInitialPointCloud()
  * This function gets the point cloud that is created by Depth sensor and align them with the RGB camera. In other words,
  * indexes of the returned point cloud will correspond to the same point in RGB image.
  */
-pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::alignWithRGB(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType, ros::Time timeStamp)
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::alignWithRGB(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType)
 {
 
 	std::string sourceFrame, targetFrame;
@@ -113,14 +113,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::alignWithRGB(pcl::PointCloud<
 
 	double iValue, jValue, temp;
 
-	tf::Vector3 dcs_vec; // Depth coordinate system vector
-	tf::Vector3 rgbcs_vec; // RGB coordinate system vector
+	tf::Vector3 dcs_vec;
+	tf::Vector3 rgbcs_vec;
 
 	ros::Time now = ros::Time::now();
 	try
 		{
 			_tfListener.waitForTransform(targetFrame, sourceFrame, now, ros::Duration(2.0));
-			_tfListener.lookupTransform(targetFrame, sourceFrame, timeStamp, _transform);
+			_tfListener.lookupTransform(targetFrame, sourceFrame, ros::Time(0), _transform);
 		}
 		catch (...)
 		{
@@ -207,7 +207,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::filterPointCloudByColor(pcl::
  * This function transforms a point cloud (in this case in pan/tilt unit camera coordinate) to the world coordinate system
  * integrity between the new points and their corresponding points in RGB camera remains intact.
  */
-pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType, ros::Time timeStamp)
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType)
 {
 	std::string sourceFrame, targetFrame;
 
@@ -227,7 +227,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::transformToWorld(pcl::PointCl
 	try
 	{
 		_tfListener.waitForTransform(ORIGIN, sourceFrame, now, ros::Duration(2.0));
-		_tfListener.lookupTransform(ORIGIN, sourceFrame, timeStamp, _transform);
+		_tfListener.lookupTransform(ORIGIN, sourceFrame, ros::Time(0), _transform);
 	}
 	catch (...)
 	{
@@ -289,8 +289,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::xyzTheresholdCloud(pcl::Point
 	pcl::PointCloud<pcl::PointXYZ>::Ptr theresholdedPointCloud;
 
 	// Hard-coded values, based on table measures (in meters)
-	float xthreshold = 1.9;
-	float ythreshold = 1.9;
+	float xthreshold = 0.9;
+	float ythreshold = 0.9;
 
 	theresholdedPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 
@@ -361,9 +361,7 @@ pcl::PointXYZ am_pointcloud::calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ
 	{
 		for(int j=0; j<cloud->width; j++)
 		{
-			if( pcl_isfinite(cloud->at(j,i).x)
-					||pcl_isfinite(cloud->at(j,i).y)
-					||pcl_isfinite(cloud->at(j,i).z) )
+			if( pcl::isFinite(cloud->at(j,i)) )
 			{
 			p.x+=cloud->at(j,i).x;
 			p.y+=cloud->at(j,i).y;
@@ -376,4 +374,42 @@ pcl::PointXYZ am_pointcloud::calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ
 	p.y/=counter;
 	p.z/=counter;
 	return p;
+}
+
+
+octomath::Vector3 am_pointcloud::getSensorOriginScene (int cameraType)
+{
+	octomath::Vector3 SensorOrigin;
+	std::string sourceFrame, targetFrame;
+
+	switch (cameraType) {
+	                case CAM_TCP:
+	                        // CAM_TCP
+	                        sourceFrame = T_DEPTH;
+	                        targetFrame = T_RGB;
+	                        break;
+	                case CAM_SCENE:
+	                        // CAM_SCENE
+	                        sourceFrame = S_DEPTH;
+	                        targetFrame = S_RGB;
+	                        break;
+	        }
+
+	ros::Time now = ros::Time::now();
+		try
+		{
+			_tfListener.waitForTransform(sourceFrame, targetFrame, now, ros::Duration(2.0));
+			_tfListener.lookupTransform(sourceFrame, targetFrame, ros::Time(0), _transform);
+		}
+		catch (...)
+		{
+			ROS_ERROR("Exception: listening to transformation failed");
+			ros::Duration(1.0).sleep();
+		}
+
+	SensorOrigin.x() = _transform.getOrigin().getX();
+	SensorOrigin.y() = _transform.getOrigin().getY();
+	SensorOrigin.z() = _transform.getOrigin().getZ();
+
+	return SensorOrigin;
 }

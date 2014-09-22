@@ -3,7 +3,7 @@
 
 #include "shape_generator.h"
 
-//define for removing three sides of the generated PointCloud box
+//define for removing three sides of the generated PointCloud box and the sides of the boxes at the bottom of the handle
 #define REDUCE_BOX
 
 using namespace std;
