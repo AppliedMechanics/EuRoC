@@ -13,7 +13,6 @@
 #include <pcl-1.7/pcl/point_cloud.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-#include <octomap/octomap.h>
 
 #include <config.hpp>
 #include <tf/transform_listener.h>
@@ -53,13 +52,12 @@ public:
 	virtual ~am_pointcloud();
 	double verticalFov(double, double, double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr createInitialPointCloud();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr alignWithRGB(pcl::PointCloud<pcl::PointXYZ>::Ptr, int);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr alignWithRGB(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filterPointCloudByColor(pcl::PointCloud<pcl::PointXYZ>::Ptr, Mat &);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr, int);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	octomath::Vector3 getSensorOriginScene ();
 
 
 };
