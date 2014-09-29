@@ -310,7 +310,7 @@ void VisionDummy::loadScene(int scene)
 		//cyan
 		modscene_poses_[3].position.x = -0.3;
 		modscene_poses_[3].position.y = 0.4;
-		modscene_poses_[3].position.z = 0.1;
+		modscene_poses_[3].position.z = 0.015;
 		q_tmp.setRPY(0,0,0);
 		modscene_poses_[3].orientation.w = q_tmp.getW();
 		modscene_poses_[3].orientation.x = q_tmp.getX();
@@ -358,7 +358,7 @@ void VisionDummy::loadScene(int scene)
 
 		// green
 		modscene_poses_[1].position.x = -0.1992;
-		modscene_poses_[1].position.y = 0.4402;
+		modscene_poses_[1].position.y = -0.4402;
 		modscene_poses_[1].position.z = 0.051;
 		q_tmp.setRPY(0,0,1.8);
 		modscene_poses_[1].orientation.w = q_tmp.getW();

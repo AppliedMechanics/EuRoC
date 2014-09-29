@@ -2,6 +2,8 @@
 #include <tf_rot.hpp>
 #include <utils.hpp>
 #include <iostream>
+#include <string>
+#include <sstream>
 
 #undef DBG_OUT
 
@@ -118,7 +120,6 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 
 	nr_objects_ = objects->size();
 	obj_finished_.resize(nr_objects_,0);
-	grasping_pose_.resize(nr_objects_);
 	unsigned int ii = 0;
 	am_msgs::Object tmp_obj;
 	//objects_.resize(nr_objects);
@@ -630,38 +631,222 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	return 0;
 }
 
-am_msgs::Object EurocInput::get_object()
+void EurocInput::select_new_object()
 {
-	for(uint32_t ii=0;ii<nr_objects_;ii++)
+	uint16_t actualindex;
+	actualindex=active_object_;
+
+	//Find next object which is not finsihed. Start to search right after the
+	//active object. If all are finished remain at the actual object.
+	for(uint16_t ii=1; ii<nr_objects_; ii++)
 	{
-		if(obj_finished_[ii]==0)
+		actualindex=actualindex+1;
+		if(actualindex<0 || actualindex>=nr_objects_)
 		{
-			active_object_=ii;
-			return objects_[ii];
+			actualindex=0;
+		}
+		if(obj_finished_[actualindex]==0)
+		{
+			active_object_=actualindex;
+			//...and determine the target zone
+			std::string obj_name=objects_[active_object_].name;
+			for(uint16_t jj=0;jj<nr_zones_;jj++)
+			{
+				if(!obj_name.compare(target_zones_[jj].expected_object.c_str()))
+				{
+					active_zone_=jj;
+				}
+			}
+			//...and stop searching
+			ii=nr_objects_;
 		}
 	}
-
-	//should not happen
-//	am_msgs::Object empty_obj;
-//	return empty_obj;
 }
-am_msgs::TargetZone EurocInput::get_target_zone()
+
+am_msgs::Object EurocInput::get_active_object()
 {
-	std::string obj_name=objects_[active_object_].name;
-	for(uint16_t ii=0;ii<nr_zones_;ii++)
+	if(active_object_<0 || active_object_ >= nr_objects_)
 	{
-		if(!obj_name.compare(target_zones_[ii].expected_object.c_str()))
+		msg_error("EurocInput: get_active_object() failed. Index out of range.");
+		am_msgs::Object empty_obj;
+		return empty_obj;
+	}
+	else
+	{
+		return objects_[active_object_];
+	}
+}
+
+am_msgs::TargetZone EurocInput::get_active_target_zone()
+{
+	if(active_zone_<0 || active_zone_ >= nr_zones_)
+	{
+		msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
+		am_msgs::TargetZone empty_zone;
+		return empty_zone;
+	}
+	else
+	{
+		return target_zones_[active_zone_];
+	}
+}
+
+void EurocInput::save_objects_to_parameter_server(ros::NodeHandle n, bool show_log_messages)
+{
+	n.setParam("nr_objects_", nr_objects_);
+	if(show_log_messages)
+	{ ROS_INFO("saved nr_objects_=%d to parameter server.", nr_objects_); }
+
+	std::stringstream parname;
+	uint8_t objecttype;
+	uint8_t shapetype;
+	uint8_t intnrshapes;
+
+	for(uint16_t ii=0; ii<nr_objects_; ii++)
+	{
+		objecttype=OBJECT_UNKNOWN;
+		if(objects_[ii].nr_shapes==1)
 		{
-			active_zone_=ii;
-			//ROS_INFO("Obj: %s, Zone expected: %s",obj_name.c_str(),target_zones_[ii].expected_object.c_str());
-			return target_zones_[ii];
+			if(objects_[ii].shape[0].type == "cylinder")
+			{
+				objecttype=OBJECT_CYLINDER;
+			}
+			if(objects_[ii].shape[0].type == "box")
+			{
+				objecttype=OBJECT_CUBE;
+			}
+		}
+		if(objects_[ii].nr_shapes==3)
+		{
+			objecttype=OBJECT_HANDLE;
+		}
+
+		//saving object name
+		parname.str("");
+		parname << "object_" << ii << "_name_";
+		n.setParam(parname.str(), objects_[ii].name);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%s to parameter server.", parname.str().c_str(), objects_[ii].name.c_str()); }
+
+		//saving object type
+		parname.str("");
+		parname << "object_" << ii << "_type_";
+		n.setParam(parname.str(), objecttype);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%d to parameter server.", parname.str().c_str(),objecttype); }
+
+		//saving object color
+		parname.str("");
+		parname << "object_" << ii << "_color_";
+		n.setParam(parname.str(), objects_[ii].color);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%s to parameter server.", parname.str().c_str(), objects_[ii].color.c_str()); }
+
+		//saving object shapes
+		intnrshapes=objects_[ii].nr_shapes;
+		parname.str("");
+		parname << "object_" << ii << "_nr_shapes_";
+		n.setParam(parname.str(), intnrshapes);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%d to parameter server.", parname.str().c_str(), intnrshapes); }
+
+		for(uint16_t jj=0; jj<objects_[ii].shape.size(); jj++)
+		{
+			if(objects_[ii].shape[jj].type == "cylinder")
+			{
+				shapetype=SHAPE_CYLINDER;
+				parname.str("");
+				parname << "object_" << ii  << "_shape_" << jj << "_type_";
+				n.setParam(parname.str(), shapetype);
+				if(show_log_messages)
+				{ ROS_INFO("saved %s=%d to parameter server.", parname.str().c_str(), shapetype); }
+
+				parname.str("");
+				parname << "object_" << ii << "_shape_" << jj << "_length_";
+				n.setParam(parname.str(), objects_[ii].shape[jj].length);
+				if(show_log_messages)
+				{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].length); }
+
+				parname.str("");
+				parname << "object_" << ii << "_shape_" << jj << "_radius_";
+				n.setParam(parname.str(), objects_[ii].shape[jj].radius);
+				if(show_log_messages)
+				{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].radius); }
+			}
+			else if(objects_[ii].shape[jj].type == "box")
+			{
+				shapetype=SHAPE_BOX;
+				parname.str("");
+				parname << "object_" << ii << "_shape_" << jj << "_type_";
+				n.setParam(parname.str(), shapetype);
+				if(show_log_messages)
+				{ ROS_INFO("saved %s=%d to parameter server.", parname.str().c_str(), shapetype); }
+
+				for(uint16_t kk=0; kk<objects_[ii].shape[jj].size.size(); kk++)
+				{
+					parname.str("");
+					parname << "object_" << ii << "_shape_" << jj << "_size_" << kk << "_";
+					n.setParam(parname.str(), objects_[ii].shape[jj].size[kk]);
+					if(show_log_messages)
+					{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].size[kk]); }
+				}
+			}
+			else
+			{
+				shapetype=SHAPE_UNKNOWN;
+				parname.str("");
+				parname << "object_" << ii << "_shape_" << jj << "_type_";
+				n.setParam(parname.str(), shapetype);
+				if(show_log_messages)
+				{ ROS_INFO("saved %s=%d to parameter server.", parname.str().c_str(), shapetype); }
+			}
+
+			//saving shape pose
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_position_x_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.position.x);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.position.x); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_position_y_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.position.y);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.position.y); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_position_z_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.position.z);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.position.z); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_orientation_w_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.orientation.w);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.orientation.w); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_orientation_x_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.orientation.x);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.orientation.x); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_orientation_y_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.orientation.y);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.orientation.y); }
+
+			parname.str("");
+			parname << "object_" << ii  << "_shape_" << jj << "_pose_orientation_z_";
+			n.setParam(parname.str(), objects_[ii].shape[jj].pose.orientation.z);
+			if(show_log_messages)
+			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.orientation.z); }
 		}
 	}
-
-	//should not happen
-//	am_msgs::TargetZone empty_zone;
-//	return empty_zone;
 }
+
 void EurocInput::print_object(am_msgs::Object*obj)
 {
 	ROS_INFO("Name: %s",obj->name.c_str());
@@ -691,20 +876,23 @@ void EurocInput::print_object(am_msgs::Object*obj)
 				obj->shape[zz].pose.orientation.y,obj->shape[zz].pose.orientation.z);
 	}
 }
-void EurocInput::set_object_finished()
+
+void EurocInput::set_active_object_finished()
 {
-	if(active_object_==-1)
-		ROS_ERROR("EurocInput: Setting object finished failed");
+	if(active_object_<0 || active_object_ >= nr_objects_)
+	{
+		msg_error("EurocInput: set_active_object_finished() failed. Index out of range.");
+	}
 	else
 	{
 		obj_finished_[active_object_] = 1;
-		active_object_=-1;
 	}
 }
+
 bool EurocInput::all_finished()
 {
 	uint16_t cnt=0;
-	for(uint16_t ii=0;ii<nr_objects_;ii++)
+	for(uint16_t ii=0; ii<nr_objects_; ii++)
 	{
 		if(obj_finished_[ii]==1)
 			cnt++;

@@ -2,17 +2,31 @@
 # 
 
 am_msgs/Object object
+am_msgs/TargetZone target_zone
 # geometry_msgs/Pose abs_pose
 
 
 ---
 # An error message. An empty string indicates success.
 string error_message
+float64 object_mass
+#OLD:
 geometry_msgs/Pose grasp_pose
 float64 grasp_width
 float64 waiting_height
-float64 object_mass
 geometry_msgs/Vector3 r_tcp_com
 geometry_msgs/Vector3 r_gp_com
 geometry_msgs/Vector3 r_gp_obj
-
+#NEW:
+geometry_msgs/Pose[] object_grip_pose
+geometry_msgs/Pose[] object_safe_pose
+geometry_msgs/Pose[] object_vision_pose
+uint16[] object_pose_type
+float64[] object_grasp_width
+geometry_msgs/Pose[] target_place_pose
+geometry_msgs/Pose[] target_safe_pose
+geometry_msgs/Pose[] target_vision_pose
+uint16[] target_pose_type
+geometry_msgs/Vector3[] object_grip_r_tcp_com
+geometry_msgs/Vector3[] object_grip_r_gp_com
+geometry_msgs/Vector3[] object_grip_r_gp_obj

@@ -6,37 +6,38 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 
  <arg name="skip_vision" default="false" />
  <arg name="skip_motion" default="false" />
+ <arg name="pause_in_loop" default="false" />
  <arg name="task_nr" default="11" />	
  
  <param name="use_sim_time" type="bool" value="true" />
  <param name="skip_vision" type="bool" value="$(arg skip_vision)" />
  <param name="skip_motion" type="bool" value="$(arg skip_motion)" />
+ <param name="pause_in_loop" type="bool" value="$(arg pause_in_loop)" />
  <param name="task_nr" type="int" value="$(arg task_nr)" />
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
-	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen" />
+	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen"/>
      <!-- Gripper  -->
 	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface"/>
 
 
 <!-- Vision  -->
-	<node pkg="am_vision" type="am_vision" name="am_vision" output="screen" />
+	<node pkg="am_vision" type="am_vision" name="am_vision"/>
 
 <!-- Motion Planning  -->
-	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" />
+	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning"/>
 	
 <!-- State Observer  -->
-	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" output="screen"/>
+	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver"/>
 
 <!-- State Machine -->
-	<node pkg="am_statemachine" type="statemachine" name="statemachine" launch-prefix="xterm -e"/>
-
+	<node pkg="am_statemachine" type="statemachine" name="statemachine" launch-prefix="xterm -geometry 120x70 -e"/>
 
 <!-- Dynamic TF Broadcaster  -->
-	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" output="screen"/>
+	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster"/>
 
 <!-- GUI  -->
-	<node pkg="am_gui" type="am_gui" name="am_gui" output="screen" />
+	<node pkg="am_gui" type="am_gui" name="am_gui"/>
 
 <!-- Octomap Server -->
 <node pkg="octomap_server" type="octomap_server_node" name="octomap_server">

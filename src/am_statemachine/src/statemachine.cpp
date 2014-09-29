@@ -2,40 +2,41 @@
 #include <cmath>
 #include <StaticTFBroadcaster.h>
 
-//#define NO_ENV_SCAN
-
 Statemachine::Statemachine():
-scenes_(1),
-task_active_(false),
-sim_running_(false),
-nr_scenes_(0),
-active_scene_(-1),
-motion_planning_action_client_("goalPoseAction", true),
-vision_action_client_("VisionAction", true),
-active_goal_(0),
-nr_goals_(0),
-reached_active_goal_(false),
-request_task_state_(OPEN),
-start_sim_state_(OPEN),
-pause_state_(OPEN),
-parse_yaml_file_state_(OPEN),
-stop_sim_state_(OPEN),
-watch_scene_state_(OPEN),
-explore_environment_init_state_(OPEN),
-explore_environment_motion_state_(OPEN),
-explore_environment_image_state_(OPEN),
-locate_object_global_state_(OPEN),
-locate_object_close_range_state_(OPEN),
-check_object_finished_state_(OPEN),
-check_object_gripped_state_(OPEN),
-get_grasping_pose_state_(OPEN),
-move_to_object_above_state_(OPEN),
-move_to_object_state_(OPEN),
-gripper_release_state_(OPEN),
-gripper_close_state_(OPEN),
-move_to_target_zone_above_state_(OPEN),
-move_to_target_zone_state_(OPEN),
-homing_state_(OPEN)
+	    scenes_(1),
+		task_active_(false),
+		sim_running_(false),
+		nr_scenes_(0),
+		active_scene_(-1),
+		motion_planning_action_client_("goalPoseAction", true),
+		vision_action_client_("VisionAction", true),
+		active_goal_(0),
+		nr_goals_(0),
+		reached_active_goal_(false),
+		request_task_state_(OPEN),
+		start_sim_state_(OPEN),
+		set_object_load_state_(OPEN),
+		pause_state_(OPEN),
+		parse_yaml_file_state_(OPEN),
+		stop_sim_state_(OPEN),
+		watch_scene_state_(OPEN),
+		explore_environment_init_state_(OPEN),
+		explore_environment_motion_state_(OPEN),
+		explore_environment_image_state_(OPEN),
+		locate_object_global_state_(OPEN),
+		locate_object_close_range_state_(OPEN),
+		check_object_finished_state_(OPEN),
+		check_object_gripped_state_(OPEN),
+		get_grasping_pose_state_(OPEN),
+		move_to_object_vision_state_(OPEN),
+		move_to_object_safe_state_(OPEN),
+		move_to_object_state_(OPEN),
+		gripper_release_state_(OPEN),
+		gripper_close_state_(OPEN),
+		move_to_target_zone_safe_state_(OPEN),
+		move_to_target_zone_vision_state_(OPEN),
+		move_to_target_zone_state_(OPEN),
+		homing_state_(OPEN)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -49,9 +50,11 @@ homing_state_(OPEN)
 	stop_simulator_ = (task_selector_ + "/stop_simulator");
 	euroc_c2_interface_ = "/euroc_interface_node";
 	save_log_ = euroc_c2_interface_ + "/save_log";
+    set_object_load_ = euroc_c2_interface_ + "/set_object_load";
 
 	ros::param::get("/skip_vision",skip_vision_);
 	ros::param::get("/skip_motion",skip_motion_);
+	ros::param::get("/pause_in_loop",pause_in_loop_);
 }
 
 Statemachine::~Statemachine()
@@ -73,11 +76,11 @@ int Statemachine::init_sm()
 	{
 		CheckServiceCounter=0;	//reset counter
 		if(ros::service::exists(list_scenes_,false)==true)
-		{ CheckServiceCounter++; }
+			{ CheckServiceCounter++; }
 		if(ros::service::exists(start_simulator_,false)==true)
-		{ CheckServiceCounter++; }
+			{ CheckServiceCounter++; }
 		if(ros::service::exists(stop_simulator_,false)==true)
-		{ CheckServiceCounter++; }
+			{ CheckServiceCounter++; }
 		if(CheckServiceCounter<3)
 		{
 			//if not all services are available...
@@ -103,8 +106,8 @@ int Statemachine::init_sm()
 	get_grasp_pose_client_ = node_.serviceClient<am_msgs::GetGraspPose>("GraspPose_srv");
 	gripper_control_client_ = node_.serviceClient<am_msgs::GripperControl>("GripperInterface");
 	take_image_client_ = node_.serviceClient<am_msgs::TakeImage>("TakeImageService");
-	//ros::service::waitForService("/ObjectPickedUp_srv",ros::Duration(5.0));
-	state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
+    state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
+    set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
 
 	//wait for all action servers
 	ROS_INFO("waiting for action servers...");
@@ -114,9 +117,9 @@ int Statemachine::init_sm()
 	{
 		CheckActionServerCounter=0;	//reset counter
 		if(motion_planning_action_client_.isServerConnected())
-		{ CheckActionServerCounter++; }
+			{ CheckActionServerCounter++; }
 		if(vision_action_client_.isServerConnected())
-		{ CheckActionServerCounter++; }
+			{ CheckActionServerCounter++; }
 		if(CheckActionServerCounter<2)
 		{
 			//if not all action servers are connected...
@@ -144,96 +147,106 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 {
 	switch(parstate.sub.one)
 	{
-	case fsm::INITIAL_STATE:
-		return "INITIAL_STATE";
-	case fsm::PAUSE:
-		return "PAUSE";
-	case fsm::REQUEST_TASK:
-		return "REQUEST_TASK";
-	case fsm::START_SIM:
-		return "START_SIM";
-	case fsm::PARSE_YAML:
-		return "PARSE_YAML";
-	case fsm::SCHEDULER:
-		return "SCHEDULER";
-	case fsm::WATCH_SCENE:
-		return "WATCH_SCENE";
-	case fsm::EXPLORE_ENVIRONMENT:
-		switch(parstate.sub.two)
-		{
-		case fsm::HOMING:
-			return "EXPLORE_ENVIRONMENT->HOMING";
-		case fsm::EXPLORE_ENVIRONMENT_INIT:
-			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_INIT";
-		case fsm::EXPLORE_ENVIRONMENT_MOTION:
-			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_MOTION";
-		case fsm::EXPLORE_ENVIRONMENT_IMAGE:
-			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_IMAGE";
-		default:
-			return "EXPLORE_ENVIRONMENT->default";
-		}
-		break;
+		case fsm::INITIAL_STATE:
+			return "INITIAL_STATE";
+		case fsm::PAUSE:
+			return "PAUSE";
+		case fsm::REQUEST_TASK:
+			return "REQUEST_TASK";
+		case fsm::START_SIM:
+			return "START_SIM";
+		case fsm::PARSE_YAML:
+			return "PARSE_YAML";
+		case fsm::SCHEDULER:
+			return "SCHEDULER";
+		case fsm::WATCH_SCENE:
+			return "WATCH_SCENE";
+		case fsm::EXPLORE_ENVIRONMENT:
+			switch(parstate.sub.two)
+			{
+				case fsm::PAUSE:
+					return "EXPLORE_ENVIRONMENT->PAUSE";
+				case fsm::HOMING:
+					return "EXPLORE_ENVIRONMENT->HOMING";
+				case fsm::EXPLORE_ENVIRONMENT_INIT:
+					return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_INIT";
+				case fsm::EXPLORE_ENVIRONMENT_MOTION:
+					return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_MOTION";
+				case fsm::EXPLORE_ENVIRONMENT_IMAGE:
+					return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_IMAGE";
+				default:
+					return "EXPLORE_ENVIRONMENT->default";
+			}
+			break;
 		case fsm::SOLVE_TASK:
 			switch(parstate.sub.two)
 			{
-			case fsm::SCHEDULER:
-				return "SOLVE_TASK->SCHEDULER";
-			case fsm::HOMING:
-				return "SOLVE_TASK->HOMING";
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				return "SOLVE_TASK->LOCATE_OBJECT_GLOBAL";
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
-			case fsm::GET_GRASPING_POSE:
-				return "SOLVE_TASK->GET_GRASPING_POSE";
-			case fsm::GRIPPER_RELEASE:
-				return "SOLVE_TASK->GRIPPER_RELEASE";
-			case fsm::GRIPPER_CLOSE:
-				return "SOLVE_TASK->GRIPPER_CLOSE";
-			case fsm::MOVE_TO_OBJECT_ABOVE:
-				return "SOLVE_TASK->MOVE_TO_OBJECT_ABOVE";
-			case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_ABOVE";
-			case fsm::CHECK_OBJECT_FINISHED:
-				return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
-			case fsm::CHECK_OBJECT_GRIPPED:
-				return "SOLVE_TASK->CHECK_OBJECT_GRIPPED";
-			case fsm::GRAB_OBJECT:
-				switch(parstate.sub.three)
-				{
+				case fsm::PAUSE:
+					return "SOLVE_TASK->PAUSE";
+				case fsm::SCHEDULER:
+					return "SOLVE_TASK->SCHEDULER";
+				case fsm::HOMING:
+					return "SOLVE_TASK->HOMING";
+				case fsm::LOCATE_OBJECT_GLOBAL:
+					return "SOLVE_TASK->LOCATE_OBJECT_GLOBAL";
+				case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+					return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
+				case fsm::GET_GRASPING_POSE:
+					return "SOLVE_TASK->GET_GRASPING_POSE";
 				case fsm::GRIPPER_RELEASE:
-					return "SOLVE_TASK->GRAB_OBJECT->GRIPPER_RELEASE";
-				case fsm::MOVE_TO_OBJECT:
-					return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECT";
+					return "SOLVE_TASK->GRIPPER_RELEASE";
 				case fsm::GRIPPER_CLOSE:
-					return "SOLVE_TASK->GRAB_OBJECT->GRIPPER_CLOSE";
-				case fsm::MOVE_TO_OBJECT_ABOVE:
-					return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECTABOVE";
-				default:
-					return "SOLVE_TASK->GRAB_OBJECT->default";
-				}
-				break;
+					return "SOLVE_TASK->GRIPPER_CLOSE";
+				case fsm::MOVE_TO_OBJECT_VISION:
+					return "SOLVE_TASK->MOVE_TO_OBJECT_VISION";
+				case fsm::MOVE_TO_OBJECT_SAFE:
+					return "SOLVE_TASK->MOVE_TO_OBJECT_SAFE";
+				case fsm::MOVE_TO_TARGET_ZONE_VISION:
+					return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_VISION";
+				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+					return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_SAFE";
+				case fsm::CHECK_OBJECT_FINISHED:
+					return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
+				case fsm::CHECK_OBJECT_GRIPPED:
+					return "SOLVE_TASK->CHECK_OBJECT_GRIPPED";
+				case fsm::GRAB_OBJECT:
+					switch(parstate.sub.three)
+					{
+						case fsm::PAUSE:
+							return "SOLVE_TASK->GRAB_OBJECT->PAUSE";
+						case fsm::MOVE_TO_OBJECT:
+							return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECT";
+						case fsm::GRIPPER_CLOSE:
+							return "SOLVE_TASK->GRAB_OBJECT->GRIPPER_CLOSE";
+						case fsm::MOVE_TO_OBJECT_SAFE:
+							return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECTSAFE";
+						default:
+							return "SOLVE_TASK->GRAB_OBJECT->default";
+					}
+					break;
 				case fsm::PLACE_OBJECT:
 					switch(parstate.sub.three)
 					{
-					case fsm::MOVE_TO_TARGET_ZONE:
-						return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE";
-					case fsm::GRIPPER_RELEASE:
-						return "SOLVE_TASK->PLACE_OBJECT->GRIPPER_RELEASE";
-					case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-						return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE_ABOVE";
-					default:
-						return "SOLVE_TASK->PLACE_OBJECT->default";
+						case fsm::PAUSE:
+							return "SOLVE_TASK->PLACE_OBJECT->PAUSE";
+						case fsm::MOVE_TO_TARGET_ZONE:
+							return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE";
+						case fsm::GRIPPER_RELEASE:
+							return "SOLVE_TASK->PLACE_OBJECT->GRIPPER_RELEASE";
+						case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+							return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE_SAFE";
+						default:
+							return "SOLVE_TASK->PLACE_OBJECT->default";
 					}
 					break;
-					default:
-						return "SOLVE_TASK->default";
+				default:
+					return "SOLVE_TASK->default";
 			}
 			break;
-			case fsm::STOP_SIM:
-				return "STOP_SIM";
-			default:
-				return "default";
+		case fsm::STOP_SIM:
+			return "STOP_SIM";
+		default:
+			return "default";
 	}
 }
 
@@ -243,8 +256,8 @@ void Statemachine::scheduler_next()
 	if(state_queue.size()==0)	//nothing planned next
 	{
 		//start scheduler to get new plan
-		scheduler_schedule();
 		ROS_INFO("Scheduler: state queue is empty, starting scheduler...");
+		scheduler_schedule();
 	}
 	else
 	{
@@ -263,274 +276,225 @@ void Statemachine::scheduler_schedule()
 	ROS_INFO("Scheduler: scheduler_schedule() called");
 	switch(state_.sub.one)
 	{
-	//------------------------------------------------------------------
-	//--- SET UP THE STARTUP-PLAN --------------------------------------
-	//------------------------------------------------------------------
-	case fsm::INITIAL_STATE: //the first 4 states are always the same
-		//clear the queue
-		state_queue.clear();
+		//------------------------------------------------------------------
+		//--- SET UP THE STARTUP-PLAN --------------------------------------
+		//------------------------------------------------------------------
+		case fsm::INITIAL_STATE: //the first 4 states are always the same
+			//clear the queue
+			state_queue.clear();
 
-		//temp_state.sub.one=fsm::PAUSE;				state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::REQUEST_TASK;		state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::START_SIM;			state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::PARSE_YAML;			state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
-		scheduler_printqueue(); //print queue to console for debugging purposes
-		break;
+			temp_state.sub.one=fsm::REQUEST_TASK;		state_queue.push_back(temp_state);
+			temp_state.sub.one=fsm::START_SIM;			state_queue.push_back(temp_state);
+			temp_state.sub.one=fsm::PARSE_YAML;			state_queue.push_back(temp_state);
+			temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+			scheduler_printqueue(); //print queue to console for debugging purposes
+			break;
 
-	case fsm::SCHEDULER: //make a schedule at beginning of a task
+		case fsm::SCHEDULER: //make a schedule at beginning of a task
+			//Get first object
+			scheduler_next_object();
 
+			//clear the queue
+			state_queue.clear();
 
-		if (!skip_vision_)
-		{
-			//schedule for task 1 to 4
-			if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 || active_task_number_==4)
+			if (!skip_vision_)
 			{
-				temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
-				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
-				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
-				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
-				for (int i=0; i<14; i++)
+				//schedule for task 1 to 4
+				if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 || active_task_number_==4)
 				{
-					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_MOTION;		state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_IMAGE;		state_queue.push_back(temp_state);
+					temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
+					temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+						temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
+						for (int i=0; i<14; i++)
+						{
+							temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_MOTION;		state_queue.push_back(temp_state);
+							temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_IMAGE;		state_queue.push_back(temp_state);
+						}
+						temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				}
-				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
+				else if(active_task_number_==5 || active_task_number_==6) //schedule for task 5 and 6
+				{
+					//Nothing special right now
+				}
 			}
-			else if(active_task_number_==5 || active_task_number_==6) //schedule for task 5 and 6
+			//Then make a new schedule inside the SOLVE_TASK
+			temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::SCHEDULER;								state_queue.push_back(temp_state);
+			scheduler_printqueue(); //print queue to console for debugging purposes
+			break;
+		case fsm::PAUSE:
+			if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
 			{
-				//Nothing special right now
+				state_queue.clear();	//throw plan away
+				temp_state.sub.one=fsm::STOP_SIM;				state_queue.push_back(temp_state);
+				pause_state_=FINISHED;
 			}
-		}
-
-		//Then make a new schedule inside the SOLVE_TASK
-		temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.two=fsm::SCHEDULER;								state_queue.push_back(temp_state);
-		scheduler_printqueue(); //print queue to console for debugging purposes
-		break;
-	case fsm::PAUSE:
-		if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
-		{
-			state_queue.clear();	//throw plan away
-			temp_state.sub.one=fsm::STOP_SIM;				state_queue.push_back(temp_state);
-			pause_state_=FINISHED;
-		}
-		break;
-	case fsm::REQUEST_TASK:
-		if(request_task_state_==FINISHEDWITHERROR)	//something went wrong
-		{
-			//just start the state again
-			ROS_INFO("Statemachine-Errorhandler: restarting REQUEST_TASK state");
-			request_task_state_=OPEN;
-		}
-		break;
-	case fsm::START_SIM:
-		if(start_sim_state_==FINISHEDWITHERROR)	//something went wrong
-		{
-			//just start the state again
-			ROS_INFO("Statemachine-Errorhandler: restarting state");
-			start_sim_state_=OPEN;
-		}
-		break;
-	case fsm::PARSE_YAML:
-		if(parse_yaml_file_state_==FINISHEDWITHERROR)	//something went wrong
-		{
-			//just start the state again
-			ROS_INFO("Statemachine-Errorhandler: restarting state");
-			parse_yaml_file_state_=OPEN;
-		}
-		break;
-	case fsm::STOP_SIM:
-		if(stop_sim_state_==FINISHEDWITHERROR)	//something went wrong
-		{
-			//the statemachine was shutting down anyway, so just proceed...
-			state_.sub.one = fsm::FINISHED;
-			task_active_=false;
-			sim_running_=false;
-		}
-		break;
-	case fsm::WATCH_SCENE:
-		if(watch_scene_state_==FINISHEDWITHERROR)	//something went wrong
-		{
-			//just start the state again
-			ROS_INFO("Statemachine-Errorhandler: restarting state");
-			watch_scene_state_=OPEN;
-		}
-		break;
-	case fsm::EXPLORE_ENVIRONMENT:
-		switch(state_.sub.two)
-		{
-		case fsm::HOMING:
-			if(homing_state_==FINISHEDWITHERROR)
+			break;
+		case fsm::REQUEST_TASK:
+			if(request_task_state_==FINISHEDWITHERROR)	//something went wrong
+			{
+				//just start the state again
+				ROS_INFO("Statemachine-Errorhandler: restarting REQUEST_TASK state");
+				request_task_state_=OPEN;
+			}
+			break;
+		case fsm::START_SIM:
+			if(start_sim_state_==FINISHEDWITHERROR)	//something went wrong
 			{
 				//just start the state again
 				ROS_INFO("Statemachine-Errorhandler: restarting state");
-				homing_state_=OPEN;
+				start_sim_state_=OPEN;
 			}
 			break;
-		case fsm::EXPLORE_ENVIRONMENT_INIT:
-			if(explore_environment_init_state_==FINISHEDWITHERROR)	//something went wrong
+		case fsm::PARSE_YAML:
+			if(parse_yaml_file_state_==FINISHEDWITHERROR)	//something went wrong
 			{
 				//just start the state again
 				ROS_INFO("Statemachine-Errorhandler: restarting state");
-				explore_environment_init_state_=OPEN;
+				parse_yaml_file_state_=OPEN;
 			}
 			break;
-		case fsm::EXPLORE_ENVIRONMENT_MOTION:
-			if(explore_environment_motion_state_==FINISHEDWITHERROR)	//something went wrong
+		case fsm::STOP_SIM:
+			if(stop_sim_state_==FINISHEDWITHERROR)	//something went wrong
+			{
+				//the statemachine was shutting down anyway, so just proceed...
+				state_.sub.one = fsm::FINISHED;
+				task_active_=false;
+				sim_running_=false;
+			}
+			break;
+		case fsm::WATCH_SCENE:
+			if(watch_scene_state_==FINISHEDWITHERROR)	//something went wrong
 			{
 				//just start the state again
 				ROS_INFO("Statemachine-Errorhandler: restarting state");
-				explore_environment_motion_state_=OPEN;
+				watch_scene_state_=OPEN;
 			}
 			break;
-		case fsm::EXPLORE_ENVIRONMENT_IMAGE:
-			if(explore_environment_image_state_==FINISHEDWITHERROR)	//something went wrong
+		case fsm::EXPLORE_ENVIRONMENT:
+			switch(state_.sub.two)
 			{
-				//just start the state again
-				ROS_INFO("Statemachine-Errorhandler: restarting state");
-				explore_environment_image_state_=OPEN;
+				case fsm::HOMING:
+					if(homing_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						homing_state_=OPEN;
+					}
+					break;
+				case fsm::EXPLORE_ENVIRONMENT_INIT:
+					if(explore_environment_init_state_==FINISHEDWITHERROR)	//something went wrong
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						explore_environment_init_state_=OPEN;
+					}
+					break;
+				case fsm::EXPLORE_ENVIRONMENT_MOTION:
+					if(explore_environment_motion_state_==FINISHEDWITHERROR)	//something went wrong
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						explore_environment_motion_state_=OPEN;
+					}
+					break;
+				case fsm::EXPLORE_ENVIRONMENT_IMAGE:
+					if(explore_environment_image_state_==FINISHEDWITHERROR)	//something went wrong
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						explore_environment_image_state_=OPEN;
+					}
+					break;
+				default:
+					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 			}
 			break;
-		default:
-			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-		}
-		break;
 		case fsm::SOLVE_TASK:
 			switch(state_.sub.two)
 			{
-			case fsm::SCHEDULER:
-				if(ein_->all_finished()) //stop simulation, when all objects finished
-				{
-					//temp_state.sub.one=fsm::PAUSE;								state_queue.push_back(temp_state);
-					temp_state.sub.one=fsm::STOP_SIM;							state_queue.push_back(temp_state);
-				}
-				else	//otherwise start with next object
-				{
-					//Following code can be modified according to specific object-properties
-					temp_state.sub.one=fsm::SOLVE_TASK;
-					temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
-					if (!skip_motion_){
-
-						temp_state.sub.two=fsm::MOVE_TO_OBJECT_ABOVE;			state_queue.push_back(temp_state);
-						//						temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::MOVE_TO_OBJECT_ABOVE;			state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::GRAB_OBJECT;
-						temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-						temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
-						temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
-						temp_state.sub.three=fsm::MOVE_TO_OBJECT_ABOVE;		state_queue.push_back(temp_state);
-						//							temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_ABOVE;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::PLACE_OBJECT;
-						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
-						temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_ABOVE;state_queue.push_back(temp_state);
-						//						temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
+				case fsm::SCHEDULER:
+					if(ein_->all_finished()) //stop simulation, when all objects finished
+					{
+						//temp_state.sub.one=fsm::PAUSE;								state_queue.push_back(temp_state);
+						temp_state.sub.one=fsm::STOP_SIM;							state_queue.push_back(temp_state);
 					}
-					else{
-						ein_->set_object_finished();
-						ros::Duration(5.0).sleep();
-					}	
-					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
-				}
-				scheduler_printqueue(); //print queue to console for debugging purposes
-				break;
-			case fsm::HOMING:
-				if(homing_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					homing_state_=OPEN;
-				}
-				break;
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				if(locate_object_global_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					locate_object_global_state_=OPEN;
-				}
-				break;
-			case fsm::GET_GRASPING_POSE:
-				if(get_grasping_pose_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					get_grasping_pose_state_=OPEN;
-				}
-				break;
-			case fsm::GRIPPER_RELEASE:
-				if(gripper_release_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					gripper_release_state_=OPEN;
-				}
-				break;
-			case fsm::GRIPPER_CLOSE:
-				if(gripper_close_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					gripper_close_state_=OPEN;
-				}
-				break;
-			case fsm::MOVE_TO_OBJECT_ABOVE:
-				if(move_to_object_above_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					move_to_object_above_state_ =OPEN;
-				}
-				break;
-			case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-				if(move_to_target_zone_above_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					move_to_target_zone_above_state_ =OPEN;
-				}
-				break;
-			case fsm::CHECK_OBJECT_FINISHED:
-				if(check_object_finished_state_==FINISHEDWITHERROR)
-				{
-					//FOR TESTING!!!!!!!!!!!!
-					//-----------------------
-					ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					check_object_finished_state_ =FINISHED;
-					//-----------------------
-				}
-				break;
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				if(locate_object_close_range_state_==FINISHEDWITHERROR)
-				{
-					//FOR TESTING!!!!!!!!!!!!
-					//-----------------------
-					ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					locate_object_close_range_state_ =FINISHED;
-					//-----------------------
-				}
-				break;
-			case fsm::CHECK_OBJECT_GRIPPED:
-				if(check_object_gripped_state_==FINISHEDWITHERROR)
-				{
-					//FOR TESTING!!!!!!!!!!!!
-					//-----------------------
-					ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					check_object_gripped_state_ =FINISHED;
-					//-----------------------
-				}
-				break;
-			case fsm::GRAB_OBJECT:
-				switch(state_.sub.three)
-				{
+					else	//otherwise start with next object
+					{
+						//Following code can be modified according to specific object-properties
+						temp_state.sub.one=fsm::SOLVE_TASK;
+							if(pause_in_loop_==true)
+							{
+								temp_state.sub.two=fsm::PAUSE;							state_queue.push_back(temp_state);
+							}
+							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+							temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
+							temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
+							temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
+							if (!skip_motion_)
+							{
+								temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::GRAB_OBJECT;
+									temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
+									temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
+									temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::PLACE_OBJECT;
+									temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
+									temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
+									temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
+							}
+							else
+							{
+								ein_->set_active_object_finished();
+								scheduler_next_object();
+								ros::Duration(5.0).sleep();
+							}
+						temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
+					}
+					scheduler_printqueue(); //print queue to console for debugging purposes
+					break;
+				case fsm::PAUSE:
+					if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
+					{
+						state_queue.clear();	//throw plan away
+						temp_state.sub.one=fsm::STOP_SIM;				state_queue.push_back(temp_state);
+						pause_state_=FINISHED;
+					}
+					break;
+				case fsm::HOMING:
+					if(homing_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						homing_state_=OPEN;
+					}
+					break;
+				case fsm::LOCATE_OBJECT_GLOBAL:
+					if(locate_object_global_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						locate_object_global_state_=OPEN;
+					}
+					break;
+				case fsm::GET_GRASPING_POSE:
+					if(get_grasping_pose_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						get_grasping_pose_state_=OPEN;
+					}
+					break;
 				case fsm::GRIPPER_RELEASE:
 					if(gripper_release_state_==FINISHEDWITHERROR)
 					{
@@ -538,13 +502,11 @@ void Statemachine::scheduler_schedule()
 						ROS_INFO("Statemachine-Errorhandler: restarting state");
 						gripper_release_state_=OPEN;
 					}
-					break;
-				case fsm::MOVE_TO_OBJECT:
-					if(move_to_object_state_==FINISHEDWITHERROR)
+					if(set_object_load_state_==FINISHEDWITHERROR)
 					{
 						//just start the state again
 						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_object_state_=OPEN;
+						set_object_load_state_=OPEN;
 					}
 					break;
 				case fsm::GRIPPER_CLOSE:
@@ -554,56 +516,156 @@ void Statemachine::scheduler_schedule()
 						ROS_INFO("Statemachine-Errorhandler: restarting state");
 						gripper_close_state_=OPEN;
 					}
-					break;
-				case fsm::MOVE_TO_OBJECT_ABOVE:
-					if(move_to_object_above_state_==FINISHEDWITHERROR)
+					if(set_object_load_state_==FINISHEDWITHERROR)
 					{
 						//just start the state again
 						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_object_above_state_ =OPEN;
+						set_object_load_state_=OPEN;
+					}
+					break;
+				case fsm::MOVE_TO_OBJECT_VISION:
+					if(move_to_object_vision_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						move_to_object_vision_state_ =OPEN;
+					}
+					break;
+				case fsm::MOVE_TO_OBJECT_SAFE:
+					if(move_to_object_safe_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						move_to_object_safe_state_ =OPEN;
+					}
+					break;
+				case fsm::MOVE_TO_TARGET_ZONE_VISION:
+					if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						move_to_target_zone_vision_state_ =OPEN;
+					}
+					break;
+				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+					if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						move_to_target_zone_safe_state_ =OPEN;
+					}
+					break;
+				case fsm::CHECK_OBJECT_FINISHED:
+					if(check_object_finished_state_==FINISHEDWITHERROR)
+					{
+						//FOR TESTING!!!!!!!!!!!!
+						//-----------------------
+						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+						check_object_finished_state_ =FINISHED;
+						//-----------------------
+					}
+					break;
+				case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+					if(locate_object_close_range_state_==FINISHEDWITHERROR)
+					{
+						//FOR TESTING!!!!!!!!!!!!
+						//-----------------------
+						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+						locate_object_close_range_state_ =FINISHED;
+						//-----------------------
+					}
+					break;
+				case fsm::CHECK_OBJECT_GRIPPED:
+					if(check_object_gripped_state_==FINISHEDWITHERROR)
+					{
+						//FOR TESTING!!!!!!!!!!!!
+						//-----------------------
+						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+						check_object_gripped_state_ =OPEN;
+						scheduler_next();
+						//-----------------------
+					}
+					break;
+				case fsm::GRAB_OBJECT:
+					switch(state_.sub.three)
+					{
+						case fsm::MOVE_TO_OBJECT:
+							if(move_to_object_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								move_to_object_state_=OPEN;
+							}
+							break;
+						case fsm::GRIPPER_CLOSE:
+							if(gripper_close_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								gripper_close_state_=OPEN;
+							}
+							if(set_object_load_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								set_object_load_state_=OPEN;
+							}
+							break;
+						case fsm::MOVE_TO_OBJECT_SAFE:
+							if(move_to_object_safe_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								move_to_object_safe_state_ =OPEN;
+							}
+							break;
+						default:
+							ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+					}
+					break;
+				case fsm::PLACE_OBJECT:
+					switch(state_.sub.three)
+					{
+						case fsm::MOVE_TO_TARGET_ZONE:
+							if(move_to_target_zone_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								move_to_target_zone_state_=OPEN;
+							}
+							break;
+						case fsm::GRIPPER_RELEASE:
+							if(gripper_release_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								gripper_release_state_=OPEN;
+							}
+							if(set_object_load_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								set_object_load_state_=OPEN;
+							}
+							break;
+						case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+							if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
+							{
+								//just start the state again
+								ROS_INFO("Statemachine-Errorhandler: restarting state");
+								move_to_target_zone_safe_state_=OPEN;
+							}
+							break;
+						default:
+							ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 					}
 					break;
 				default:
 					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-				}
-				break;
-				case fsm::PLACE_OBJECT:
-					switch(state_.sub.three)
-					{
-					case fsm::MOVE_TO_TARGET_ZONE:
-						if(move_to_target_zone_state_==FINISHEDWITHERROR)
-						{
-							//just start the state again
-							ROS_INFO("Statemachine-Errorhandler: restarting state");
-							move_to_target_zone_state_=OPEN;
-						}
-						break;
-					case fsm::GRIPPER_RELEASE:
-						if(gripper_release_state_==FINISHEDWITHERROR)
-						{
-							//just start the state again
-							ROS_INFO("Statemachine-Errorhandler: restarting state");
-							gripper_release_state_=OPEN;
-						}
-						break;
-					case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-						if(move_to_target_zone_above_state_==FINISHEDWITHERROR)
-						{
-							//just start the state again
-							ROS_INFO("Statemachine-Errorhandler: restarting state");
-							move_to_target_zone_above_state_=OPEN;
-						}
-						break;
-					default:
-						ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-					}
-					break;
-					default:
-						ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 			}
 			break;
-			default:
-				ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+		default:
+			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 	}
 }
 
@@ -614,146 +676,202 @@ void Statemachine::scheduler_printqueue()
 		ROS_INFO("[%d] %s",i,get_state_name(state_queue.at(i)).c_str());
 }
 
+void Statemachine::scheduler_skip_object()
+{
+	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
+
+	ROS_INFO("Scheduler: skipping object");
+	scheduler_next_object();
+
+	//clear the queue
+	state_queue.clear();
+	temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
+	scheduler_next();
+}
+
+void Statemachine::scheduler_next_object()
+{
+	ROS_INFO("Scheduler: changing to next object");
+	ein_->select_new_object();
+	cur_obj_ = ein_->get_active_object();
+	cur_zone_ = ein_->get_active_target_zone();
+	ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
+	cur_object_type_=OBJECT_UNKNOWN;
+	if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("cylinder")))
+	{
+		cur_object_type_=OBJECT_CYLINDER;
+		ROS_INFO("new object-type: CYLINDER");
+	}
+	if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("box")))
+	{
+		cur_object_type_=OBJECT_CUBE;
+		ROS_INFO("new object-type: CUBE");
+	}
+	if(cur_obj_.nr_shapes==3)
+	{
+		cur_object_type_=OBJECT_HANDLE;
+		ROS_INFO("new object-type: HANDLE");
+	}
+}
+
 int Statemachine::tick()
 {
 	counter++; 	//tick counter (only for debugging)
 	switch(state_.sub.one)
 	{
-	case fsm::INITIAL_STATE:
-		scheduler_schedule();	//Make an initial schedule
-		scheduler_next();
-		return 0;
+		case fsm::INITIAL_STATE:
+			scheduler_schedule();	//Make an initial schedule
+			scheduler_next();
+			return 0;
 
-	case fsm::PAUSE:
-		return pause();
+		case fsm::PAUSE:
+			return pause();
 
-	case fsm::REQUEST_TASK:
-		return request_task();
+		case fsm::REQUEST_TASK:
+			return request_task();
 
-	case fsm::START_SIM:
-		return start_sim();
+		case fsm::START_SIM:
+			return start_sim();
 
-	case fsm::PARSE_YAML:
-		return parse_yaml_file();
+		case fsm::PARSE_YAML:
+			return parse_yaml_file();
 
-	case fsm::SCHEDULER:
-		scheduler_schedule();	//make a schedule depending on chosen task
-		scheduler_next();		//jump to the first state in the queue
-		return 0;
+		case fsm::SCHEDULER:
+			scheduler_schedule();	//make a schedule depending on chosen task
+			scheduler_next();		//jump to the first state in the queue
+			return 0;
 
-	case fsm::WATCH_SCENE:
-		return watch_scene();
+		case fsm::WATCH_SCENE:
+			return watch_scene();
 
-	case fsm::EXPLORE_ENVIRONMENT:
-		switch(state_.sub.two)
-		{
-		case fsm::HOMING:
-			return homing();
+		case fsm::EXPLORE_ENVIRONMENT:
+			switch(state_.sub.two)
+			{
+				case fsm::PAUSE:
+					return pause();
 
-		case fsm::EXPLORE_ENVIRONMENT_INIT:
-			return explore_environment_init();
+				case fsm::HOMING:
+					return homing();
 
-		case fsm::EXPLORE_ENVIRONMENT_MOTION:
-			return explore_environment_motion();
+				case fsm::EXPLORE_ENVIRONMENT_INIT:
+					return explore_environment_init();
 
-		case fsm::EXPLORE_ENVIRONMENT_IMAGE:
-			return explore_environment_image();
+				case fsm::EXPLORE_ENVIRONMENT_MOTION:
+					return explore_environment_motion();
 
-		default:
-			msg_error("Error. unknown state of level two (EXPLORE_ENVIRONMENT) in tick()");
-			return -1;
-		}
-		break;
+				case fsm::EXPLORE_ENVIRONMENT_IMAGE:
+					return explore_environment_image();
+
+				default:
+					msg_error("Error. unknown state of level two (EXPLORE_ENVIRONMENT) in tick()");
+					return -1;
+			}
+			break;
 
 		case fsm::SOLVE_TASK:
 			switch(state_.sub.two)
 			{
-			case fsm::SCHEDULER:
-				scheduler_schedule();	//make a schedule
-				scheduler_next();		//jump to the first state in the queue
-				return 0;
+				case fsm::PAUSE:
+					return pause();
 
-			case fsm::HOMING:
-				return homing();
+				case fsm::SCHEDULER:
+					scheduler_schedule();	//make a schedule
+					scheduler_next();		//jump to the first state in the queue
+					return 0;
 
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				return locate_object_global();
+				case fsm::HOMING:
+					return homing();
 
-			case fsm::GET_GRASPING_POSE:
-				return get_grasping_pose();
+				case fsm::LOCATE_OBJECT_GLOBAL:
+					return locate_object_global();
 
-			case fsm::GRIPPER_RELEASE:
-				return gripper_release();
+				case fsm::GET_GRASPING_POSE:
+					return get_grasping_pose();
 
-			case fsm::GRIPPER_CLOSE:
-				return gripper_close();
-
-			case fsm::MOVE_TO_OBJECT_ABOVE:
-				return move_to_object_above();
-
-			case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-				return move_to_target_zone_above();
-
-			case fsm::CHECK_OBJECT_FINISHED:
-				return check_object_finished();
-
-			case fsm::CHECK_OBJECT_GRIPPED:
-				return check_object_gripped();
-
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				return locate_object_close_range();
-
-			case fsm::GRAB_OBJECT:
-				switch(state_.sub.three)
-				{
 				case fsm::GRIPPER_RELEASE:
 					return gripper_release();
-
-				case fsm::MOVE_TO_OBJECT:
-					return move_to_object();
 
 				case fsm::GRIPPER_CLOSE:
 					return gripper_close();
 
-				case fsm::MOVE_TO_OBJECT_ABOVE:
-					return move_to_object_above();
+				case fsm::MOVE_TO_OBJECT_VISION:
+					return move_to_object_vision();
 
-				default:
-					msg_error("Error. unknown state of level three (SOLVE_TASK->GRAB_OBJECT) in tick()");
-					return -1;
-				}
-				break;
+				case fsm::MOVE_TO_OBJECT_SAFE:
+					return move_to_object_safe();
+
+				case fsm::MOVE_TO_TARGET_ZONE_VISION:
+					return move_to_target_zone_vision();
+
+				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+					return move_to_target_zone_safe();
+
+				case fsm::CHECK_OBJECT_FINISHED:
+					return check_object_finished();
+
+				case fsm::CHECK_OBJECT_GRIPPED:
+					return check_object_gripped();
+
+				case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+					return locate_object_close_range();
+
+				case fsm::GRAB_OBJECT:
+					switch(state_.sub.three)
+					{
+						case fsm::PAUSE:
+							return pause();
+
+						case fsm::MOVE_TO_OBJECT:
+							return move_to_object();
+
+						case fsm::GRIPPER_CLOSE:
+							return gripper_close();
+
+						case fsm::MOVE_TO_OBJECT_SAFE:
+							return move_to_object_safe();
+
+						default:
+							msg_error("Error. unknown state of level three (SOLVE_TASK->GRAB_OBJECT) in tick()");
+							return -1;
+					}
+					break;
 
 				case fsm::PLACE_OBJECT:
 					switch(state_.sub.three)
 					{
-					case fsm::MOVE_TO_TARGET_ZONE:
-						return move_to_target_zone();
+						case fsm::PAUSE:
+							return pause();
 
-					case fsm::GRIPPER_RELEASE:
-						return gripper_release();
+						case fsm::MOVE_TO_TARGET_ZONE:
+							return move_to_target_zone();
 
-					case fsm::MOVE_TO_TARGET_ZONE_ABOVE:
-						return move_to_target_zone_above();
+						case fsm::GRIPPER_RELEASE:
+							return gripper_release();
 
-					default:
-						msg_error("Error. unknown state of level three (SOLVE_TASK->PLACE_OBJECT) in tick()");
-						return -1;
+						case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+							return move_to_target_zone_safe();
+
+						default:
+							msg_error("Error. unknown state of level three (SOLVE_TASK->PLACE_OBJECT) in tick()");
+							return -1;
 					}
 					break;
 
-					default:
-						msg_error("Error. unknown state of level two (SOLVE_TASK) in tick()");
-						return -1;
+				default:
+					msg_error("Error. unknown state of level two (SOLVE_TASK) in tick()");
+					return -1;
 			}
 			break;
 
-			case fsm::STOP_SIM:
-				return stop_sim();
+		case fsm::STOP_SIM:
+			return stop_sim();
 
-			default:
-				msg_error("Error. unknown state of level one in tick()");
-				return -1;
+		default:
+			msg_error("Error. unknown state of level one in tick()");
+			return -1;
 	}
 }
 
@@ -764,19 +882,36 @@ int Statemachine::pause()
 		ROS_INFO("pause() called: OPEN");
 
 		pause_state_=RUNNING;
-
-		ROS_INFO("Paused. Write '1' to continue or '0' to exit: ");
-		std::cout<<"Paused. Write '1' to continue or '0' to exit: ";
+		cur_obj_ = ein_->get_active_object();
+		ROS_INFO("Paused. Current object: %s",cur_obj_.name.c_str());
+		ROS_INFO("options:");
+		ROS_INFO("--------");
+		ROS_INFO("'0'->exit");
+		ROS_INFO("'1'->continue");
+		ROS_INFO("'2'->next object");
+		ROS_INFO("'3'->next object (and set current one to finished)");
+		std::cout<<"your choice: ";
 		int something=0;
 		std::cin>>something;
 
-		if(something==0)
+		switch(something)
 		{
-			pause_state_=FINISHEDWITHERROR;
-		}
-		else
-		{
-			pause_state_=FINISHED;
+			case 0:
+				pause_state_=FINISHEDWITHERROR;
+				break;
+			case 2:
+				scheduler_next_object();
+				pause_state_=OPEN;
+				break;
+			case 3:
+				ein_->set_active_object_finished();
+				scheduler_next_object();
+				pause_state_=OPEN;
+				break;
+			case 1:
+			default:
+				pause_state_=FINISHED;
+				break;
 		}
 	}
 	else if(pause_state_==FINISHED)
@@ -828,6 +963,12 @@ int Statemachine::request_task()
 		ROS_INFO("request_task() called: OPEN");
 
 		request_task_state_=RUNNING;
+
+		//wait for a specific time to let the service start up properly
+		ROS_INFO("waiting for 2 seconds to let the list_scenes_-service start...");
+		boost::this_thread::sleep( boost::posix_time::milliseconds(2000));
+		ROS_INFO("...ok, let's go!");
+
 		//lsc_ = boost::thread(&Statemachine::request_task_cb,this);
 		request_task_cb();
 	}
@@ -872,19 +1013,19 @@ int Statemachine::request_task()
 		std::transform(strTaskName.begin(), strTaskName.end(), strTaskName.begin(), ::tolower);
 
 		if(strcmp(strTaskName.c_str(),"task1")==0)
-		{ active_task_number_=1; }
+			{ active_task_number_=1; }
 		else if(strcmp(strTaskName.c_str(),"task2")==0)
-		{ active_task_number_=2; }
+			{ active_task_number_=2; }
 		else if(strcmp(strTaskName.c_str(),"task3")==0)
-		{ active_task_number_=3; }
+			{ active_task_number_=3; }
 		else if(strcmp(strTaskName.c_str(),"task4")==0)
-		{ active_task_number_=4; }
+			{ active_task_number_=4; }
 		else if(strcmp(strTaskName.c_str(),"task5")==0)
-		{ active_task_number_=5; }
+			{ active_task_number_=5; }
 		else if(strcmp(strTaskName.c_str(),"task6")==0)
-		{ active_task_number_=6; }
+			{ active_task_number_=6; }
 		else
-		{ active_task_number_=0; }
+			{ active_task_number_=0; }
 		if(active_task_number_==0)
 		{
 			ROS_INFO("scene number %d chosen", active_scene_);
@@ -985,9 +1126,9 @@ int Statemachine::start_sim()
 		while(!SaveLogAvailable)	//Loop until save log service is available
 		{
 			if(ros::service::exists(save_log_,false)==true)
-			{ SaveLogAvailable=true; }
+				{ SaveLogAvailable=true; }
 			if(FirstTimeLoop==true && SaveLogAvailable==false)
-			{ ROS_INFO("save_log_ service is not available. Waiting for service..."); }
+				{ ROS_INFO("save_log_ service is not available. Waiting for service..."); }
 			FirstTimeLoop=false;
 			//wait for a specific time to reduce cpu usage
 			boost::this_thread::sleep( boost::posix_time::milliseconds(100));
@@ -1058,6 +1199,16 @@ int Statemachine::parse_yaml_file()
 			return 0;
 		}
 
+		ROS_INFO("saving object data to parameter server...");
+		try
+		{
+			ein_->save_objects_to_parameter_server(node_,false);
+		}
+		catch(...)
+		{
+			msg_error("Error. could not save object data to parameter server.");
+		}
+
 		parse_yaml_file_state_=FINISHED;
 	}
 	else if(parse_yaml_file_state_==FINISHED)
@@ -1090,8 +1241,11 @@ int Statemachine::check_object_finished()
 		//TODO: Insert service of state_observer here!!!!!!
 		//		compare actual object pose to target zone with tolerance
 		ROS_INFO("TODO: insert service of state_observer here. skipping...");
+
 		//set current object finished
-		ein_->set_object_finished();
+		ein_->set_active_object_finished();
+		//and get next one
+		scheduler_next_object();
 
 		check_object_finished_state_=FINISHED;
 	}
@@ -1146,8 +1300,12 @@ int Statemachine::check_object_gripped()
 		ROS_INFO("check_object_gripped() called: OPEN");
 
 		obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
-		obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
 		check_object_gripped_state_=RUNNING;
+
+		//Wait to let the robot finish its movement (vibrations)
+		ROS_INFO("waiting for 1 second to ensure a static robot...");
+		ros::Duration waittime = ros::Duration(1, 0);
+		waittime.sleep();
 		lsc_ = boost::thread(&Statemachine::check_object_gripped_cb,this);
 		//check_object_gripped_cb();
 	}
@@ -1175,7 +1333,8 @@ int Statemachine::check_object_gripped()
 			else
 			{
 				ROS_INFO("state-observer says, that object is not gripped: NOT OK");
-				//todo: set event here
+				check_object_gripped_state_=FINISHEDWITHERROR;
+				return 0;
 			}
 		}
 
@@ -1528,10 +1687,10 @@ int Statemachine::explore_environment_motion()
 		//send actual goal
 		explore_environment_motion_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
-				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));
-		);
+			boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));
+			);
 	}
 	else if(explore_environment_motion_state_==FINISHED)
 	{
@@ -1557,29 +1716,29 @@ void Statemachine::explore_environment_motion_feedback(const am_msgs::goalPoseFe
 }
 
 void Statemachine::explore_environment_motion_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
 	ROS_INFO("explore_environment_motion_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		//increase active_goal counter
-		active_goal_++;
-		explore_environment_motion_state_=FINISHED;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		explore_environment_motion_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			//increase active_goal counter
+			active_goal_++;
+			explore_environment_motion_state_=FINISHED;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			explore_environment_motion_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -1589,9 +1748,9 @@ int Statemachine::locate_object_global()
 	{
 		ROS_INFO("locate_object_global() called: OPEN");
 
-		cur_obj_ = ein_->get_object();
-		ROS_INFO("current object:");
-		ein_->print_object(&cur_obj_);
+		//ROS_INFO("current object:");
+		//ein_->print_object(&cur_obj_);
+		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
 
 		am_msgs::VisionGoal goal;
 		goal.mode = GLOBAL_POSE_ESTIMATION;
@@ -1601,15 +1760,15 @@ int Statemachine::locate_object_global()
 		{
 			goal.sensors[ii]=ein_->get_sensors(ii);
 		}
-		goal.target_zone=ein_->get_target_zone();
+		goal.target_zone=ein_->get_active_target_zone();
 
 		//send goal to vision-node.
 		locate_object_global_state_=RUNNING;
 		vision_action_client_.sendGoal(goal,
-				boost::bind(&Statemachine::locate_object_global_done,this,_1,_2),
-				visionClient::SimpleActiveCallback(),
-				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
-		);
+										boost::bind(&Statemachine::locate_object_global_done,this,_1,_2),
+										visionClient::SimpleActiveCallback(),
+										visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
+										);
 	}
 	else if(locate_object_global_state_==FINISHED)
 	{
@@ -1635,37 +1794,37 @@ void Statemachine::locate_object_global_feedback(const am_msgs::VisionFeedbackCo
 }
 
 void Statemachine::locate_object_global_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::VisionResultConstPtr& result)
+		 	 	 	 	 	   const am_msgs::VisionResultConstPtr& result)
 {
 	ROS_INFO("locate_object_global_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		cur_obj_.abs_pose=result->abs_object_pose;
-		if(result->object_detected==true)
-		{
-			locate_object_global_state_=FINISHED;
-		}
-		else
-		{
-			msg_error("Error. vision node could not locate object");
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			cur_obj_.abs_pose=result->abs_object_pose;
+			if(result->object_detected==true)
+			{
+				locate_object_global_state_=FINISHED;
+			}
+			else
+			{
+				msg_error("Error. vision node could not locate object");
+				locate_object_global_state_=FINISHEDWITHERROR;
+				//todo: set event here to skip object
+			}
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
 			locate_object_global_state_=FINISHEDWITHERROR;
-			//todo: set event here to skip object
-		}
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		locate_object_global_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -1675,9 +1834,9 @@ int Statemachine::locate_object_close_range()
 	{
 		ROS_INFO("locate_object_close_range() called: OPEN");
 
-		cur_obj_ = ein_->get_object();
-		ROS_INFO("current object:");
-		ein_->print_object(&cur_obj_);
+		//ROS_INFO("current object:");
+		//ein_->print_object(&cur_obj_);
+		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
 
 		am_msgs::VisionGoal goal;
 		goal.mode = CLOSE_RANGE_POSE_ESTIMATION;
@@ -1687,15 +1846,15 @@ int Statemachine::locate_object_close_range()
 		{
 			goal.sensors[ii]=ein_->get_sensors(ii);
 		}
-		goal.target_zone=ein_->get_target_zone();
+		goal.target_zone=ein_->get_active_target_zone();
 
 		//send goal to vision-node.
 		locate_object_close_range_state_=RUNNING;
 		vision_action_client_.sendGoal(goal,
-				boost::bind(&Statemachine::locate_object_close_range_done,this,_1,_2),
-				visionClient::SimpleActiveCallback(),
-				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_close_range_feedback,this,_1));
-		);
+										boost::bind(&Statemachine::locate_object_close_range_done,this,_1,_2),
+										visionClient::SimpleActiveCallback(),
+										visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_close_range_feedback,this,_1));
+										);
 	}
 	else if(locate_object_close_range_state_==FINISHED)
 	{
@@ -1721,37 +1880,37 @@ void Statemachine::locate_object_close_range_feedback(const am_msgs::VisionFeedb
 }
 
 void Statemachine::locate_object_close_range_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::VisionResultConstPtr& result)
+		 	 	 	 	 	   const am_msgs::VisionResultConstPtr& result)
 {
 	ROS_INFO("locate_object_close_range_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		cur_obj_.abs_pose=result->abs_object_pose;
-		if(result->object_detected==true)
-		{
-			locate_object_close_range_state_=FINISHED;
-		}
-		else
-		{
-			msg_error("Error. vision node could not locate object");
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			cur_obj_.abs_pose=result->abs_object_pose;
+			if(result->object_detected==true)
+			{
+				locate_object_close_range_state_=FINISHED;
+			}
+			else
+			{
+				msg_error("Error. vision node could not locate object");
+				locate_object_close_range_state_=FINISHEDWITHERROR;
+				//todo: set event here to skip object
+			}
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
 			locate_object_close_range_state_=FINISHEDWITHERROR;
-			//todo: set event here to skip object
-		}
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		locate_object_close_range_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -1786,6 +1945,7 @@ int Statemachine::get_grasping_pose()
 	{
 		ROS_INFO("get_grasping_pose() called: OPEN");
 		get_grasp_pose_srv_.request.object=cur_obj_;
+		get_grasp_pose_srv_.request.target_zone=cur_zone_;
 		get_grasping_pose_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::get_grasping_pose_cb,this);
 		//get_grasping_pose_cb();
@@ -1797,16 +1957,91 @@ int Statemachine::get_grasping_pose()
 		//destroy thread
 		lsc_.detach();
 
-		geometry_msgs::Pose *pose= &get_grasp_pose_srv_.response.grasp_pose;
-		ROS_INFO("received grapsing pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
-				pose->position.x,pose->position.y,pose->position.z,pose->orientation.w,
-				pose->orientation.x,pose->orientation.y,pose->orientation.z);
-
-		ein_->set_grasping_pose(get_grasp_pose_srv_.response.grasp_pose);
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
-		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
-		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
-		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
+
+		//old
+//		geometry_msgs::Pose *pose= &get_grasp_pose_srv_.response.grasp_pose;
+//		ROS_INFO("received grapsing pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
+//				pose->position.x,pose->position.y,pose->position.z,pose->orientation.w,
+//				pose->orientation.x,pose->orientation.y,pose->orientation.z);
+//		object_grip_pose_old_=get_grasp_pose_srv_.response.grasp_pose;
+//		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
+//		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
+//		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
+
+		object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
+		object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
+		object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
+		object_pose_type=get_grasp_pose_srv_.response.object_pose_type;
+		object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
+		target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
+		target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
+		target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
+		target_pose_type=get_grasp_pose_srv_.response.target_pose_type;
+		object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
+		object_grip_r_gp_com=get_grasp_pose_srv_.response.object_grip_r_gp_com;
+		object_grip_r_gp_obj=get_grasp_pose_srv_.response.object_grip_r_gp_obj;
+		switch (cur_object_type_)
+		{
+			case OBJECT_HANDLE:
+				selected_object_pose_=1;
+				selected_target_pose_=0;
+				break;
+			case OBJECT_CYLINDER:
+				selected_object_pose_=1;
+				selected_target_pose_=1;
+				break;
+			case OBJECT_CUBE:
+				selected_object_pose_=1;
+				selected_target_pose_=1;
+				break;
+		}
+
+		if (object_grip_pose.size()<1)
+		{
+			msg_error("Error. no object poses received");
+			get_grasping_pose_state_=FINISHEDWITHERROR;
+			return 0;
+		}
+		if (target_place_pose.size()<1)
+		{
+			msg_error("Error. no target poses received");
+			get_grasping_pose_state_=FINISHEDWITHERROR;
+			return 0;
+		}
+		bool checksizes;
+		checksizes=true;
+		if (object_safe_pose.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (object_vision_pose.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (object_pose_type.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (object_grasp_width.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (target_safe_pose.size()!=target_place_pose.size())
+			checksizes=false;
+		if (target_vision_pose.size()!=target_place_pose.size())
+			checksizes=false;
+		if (target_pose_type.size()!=target_place_pose.size())
+			checksizes=false;
+		if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (object_grip_r_gp_com.size()!=object_grip_pose.size())
+			checksizes=false;
+		if (object_grip_r_gp_obj.size()!=object_grip_pose.size())
+			checksizes=false;
+
+		if (checksizes!=true)
+		{
+			msg_error("Error. received vectors of grasping poses have invalid sizes! (check nr. %d failed)",checksizes);
+			ROS_INFO("vector-sizes: %d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",object_grip_pose.size(),object_safe_pose.size(),
+					object_vision_pose.size(),object_pose_type.size(),object_grasp_width.size(),target_place_pose.size(),
+					target_safe_pose.size(),target_vision_pose.size(),target_pose_type.size(),object_grip_r_tcp_com.size(),
+					object_grip_r_gp_com.size(),object_grip_r_gp_obj.size());
+			get_grasping_pose_state_=FINISHEDWITHERROR;
+			return 0;
+		}
 
 		//==============================================
 		scheduler_next();
@@ -1824,6 +2059,31 @@ int Statemachine::get_grasping_pose()
 	}
 
 	return 0;
+}
+
+void Statemachine::set_object_load_cb()
+{
+	ROS_INFO("set_object_load_cb() running");
+
+	if(set_object_load_client_.exists())
+	{
+		if(set_object_load_client_.call(set_object_load_srv_))
+		{
+			set_object_load_state_=FINISHED;
+		}
+		else
+		{
+			msg_error("Error. call of set_object_load_client_ failed");
+			set_object_load_state_=FINISHEDWITHERROR;
+		}
+	}
+	else
+	{
+		msg_error("Error. set_object_load_client_ is not available");
+		set_object_load_state_=FINISHEDWITHERROR;
+	}
+
+	ROS_INFO("set_object_load_cb() finished");
 }
 
 void Statemachine::gripper_release_cb()
@@ -1853,34 +2113,78 @@ void Statemachine::gripper_release_cb()
 
 int Statemachine::gripper_release()
 {
-	if(gripper_release_state_==OPEN)
+	if(gripper_release_state_==OPEN && set_object_load_state_==OPEN)
 	{
-		ROS_INFO("gripper_release() called: OPEN");
+		ROS_INFO("gripper_release() called: OPEN (release) OPEN (set object load)");
 
 		gripper_control_srv_.request.gripping_mode = RELEASE;
 		gripper_release_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::gripper_release_cb,this);
 		//gripper_release_cb();
 	}
-	else if(gripper_release_state_==FINISHED)
+	else if(gripper_release_state_==FINISHED && set_object_load_state_==OPEN)
 	{
-		ROS_INFO("gripper_release() called: FINISHED");
+		ROS_INFO("gripper_release() called: FINISHED (release) OPEN (set object load)");
 
 		//destroy thread
 		lsc_.detach();
+
+		if (object_grip_r_tcp_com.size()>0)
+		{
+			set_object_load_srv_.request.center_of_gravity = object_grip_r_tcp_com[selected_object_pose_];
+		}
+		else
+		{
+			geometry_msgs::Vector3 emptyvector;
+			emptyvector.x=0;
+			emptyvector.y=0;
+			emptyvector.z=0;
+			set_object_load_srv_.request.center_of_gravity = emptyvector;
+		}
+		set_object_load_srv_.request.mass = 0;
+		set_object_load_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::set_object_load_cb,this);
+		//set_object_load_cb();
+	}
+	else if(gripper_release_state_==FINISHED && set_object_load_state_==FINISHED)
+	{
+		ROS_INFO("gripper_release() called: FINISHED (release) FINISHED (set object load)");
+
+		//destroy thread
+		lsc_.detach();
+
+		if(!set_object_load_srv_.response.error_message.empty())
+		{
+			msg_error("Error. failed to set object load! reason: %s",set_object_load_srv_.response.error_message.c_str());
+			set_object_load_state_=FINISHEDWITHERROR;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("object mass set to 0kg");
+		}
 
 		//==============================================
 		scheduler_next();
 		//==============================================
 		//reset state
 		gripper_release_state_=OPEN;
+		set_object_load_state_=OPEN;
 	}
 	else if(gripper_release_state_==FINISHEDWITHERROR)
 	{
 		//destroy thread
 		lsc_.detach();
 
-		ROS_INFO("gripper_release() called: FINISHEDWITHERROR");
+		ROS_INFO("gripper_release() called: FINISHEDWITHERROR (release)");
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	else if(set_object_load_state_==FINISHEDWITHERROR)
+	{
+		//destroy thread
+		lsc_.detach();
+
+		ROS_INFO("gripper_close() called: FINISHEDWITHERROR (set object load)");
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -1913,49 +2217,104 @@ void Statemachine::gripper_close_cb()
 
 int Statemachine::gripper_close()
 {
-	if(gripper_close_state_==OPEN)
+	if(gripper_close_state_==OPEN && set_object_load_state_==OPEN)
 	{
-		ROS_INFO("gripper_close() called: OPEN");
+		ROS_INFO("gripper_close() called: OPEN (close) OPEN (set object load)");
 
-		gripper_control_srv_.request.gripping_force = 40;
-		if(cur_obj_.name.compare("blue_handle"))
-			gripper_control_srv_.request.object_width = 0.05;
+		//calculate estimated gripper forces over friction (friction-coefficient=0.1, safety-factor=1.5)
+		gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*0.1);
+		if (gripper_control_srv_.request.gripping_force>170)
+		{
+			gripper_control_srv_.request.gripping_force=170;
+		}
+
+		ROS_INFO("gripper force set to %3.2fN",gripper_control_srv_.request.gripping_force);
+		if (object_grasp_width.size()>0)
+		{
+			gripper_control_srv_.request.object_width = object_grasp_width[selected_object_pose_];
+		}
 		else
-			gripper_control_srv_.request.object_width = 0.01;
+		{
+			gripper_control_srv_.request.object_width = 0;
+		}
 		gripper_control_srv_.request.gripping_mode = FF_FORCE;
 		gripper_close_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::gripper_close_cb,this);
 		//gripper_close_cb();
 	}
-	else if(gripper_close_state_==FINISHED)
+	else if(gripper_close_state_==FINISHED && set_object_load_state_==OPEN)
 	{
-		ROS_INFO("gripper_close() called: FINISHED");
+		ROS_INFO("gripper_close() called: FINISHED (close) OPEN (set object load)");
 
 		//destroy thread
 		lsc_.detach();
+
+		if (object_grip_r_tcp_com.size()>0)
+		{
+			set_object_load_srv_.request.center_of_gravity = object_grip_r_tcp_com[selected_object_pose_];
+		}
+		else
+		{
+			geometry_msgs::Vector3 emptyvector;
+			emptyvector.x=0;
+			emptyvector.y=0;
+			emptyvector.z=0;
+			set_object_load_srv_.request.center_of_gravity = emptyvector;
+		}
+		set_object_load_srv_.request.mass = cur_obj_mass_;
+		set_object_load_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::set_object_load_cb,this);
+		//set_object_load_cb();
+	}
+	else if(gripper_close_state_==FINISHED && set_object_load_state_==FINISHED)
+	{
+		ROS_INFO("gripper_close() called: FINISHED (close) FINISHED (set object load)");
+
+		//destroy thread
+		lsc_.detach();
+
+		if(!set_object_load_srv_.response.error_message.empty())
+		{
+			msg_error("Error. failed to set object load! reason: %s",set_object_load_srv_.response.error_message.c_str());
+			set_object_load_state_=FINISHEDWITHERROR;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("object mass set to %3.2fkg",cur_obj_mass_);
+		}
 
 		//==============================================
 		scheduler_next();
 		//==============================================
 		//reset state
 		gripper_close_state_=OPEN;
+		set_object_load_state_=OPEN;
 	}
 	else if(gripper_close_state_==FINISHEDWITHERROR)
 	{
 		//destroy thread
 		lsc_.detach();
 
-		ROS_INFO("gripper_close() called: FINISHEDWITHERROR");
+		ROS_INFO("gripper_close() called: FINISHEDWITHERROR (close)");
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	else if(set_object_load_state_==FINISHEDWITHERROR)
+	{
+		//destroy thread
+		lsc_.detach();
+
+		ROS_INFO("gripper_close() called: FINISHEDWITHERROR (set object load)");
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
 }
 
-int Statemachine::move_to_object_above()
+int Statemachine::move_to_object_safe()
 {
-	if(move_to_object_above_state_==OPEN)
+	if(move_to_object_safe_state_==OPEN)
 	{
-		ROS_INFO("move_to_object_above() called: OPEN");
+		ROS_INFO("move_to_object_safe() called: OPEN");
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -1963,104 +2322,215 @@ int Statemachine::move_to_object_above()
 		reached_active_goal_=false;
 		goal_queue.resize(nr_goals_);
 
-		goal_queue[0].goal_pose = ein_->get_grasping_pose();
-		goal_queue[0].goal_pose.position.z+=0.2;
+		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 
 		//send first goal
-		move_to_object_above_state_=RUNNING;
+		move_to_object_safe_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::move_to_object_above_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_above_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_above_feedback,this,_1));
-		);
+			boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
+			);
 	}
-	else if (move_to_object_above_state_==RUNNING && reached_active_goal_==true)
+	else if (move_to_object_safe_state_==RUNNING && reached_active_goal_==true)
 	{
 		reached_active_goal_=false;
 		active_goal_++;
 
 
-		//		//check object picked up:
-		//          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_ABOVE))
-		//          {
-		//              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
-		//              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
-		//
-		//              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
-		//              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
-		//              if(state_observer_client_.call(obj_picked_up_srv_))
-		//              {
-		//                ROS_INFO("got object!");
-		//              }
-		//              else
-		//              {
-		//                ROS_INFO("lost object!");
-		//              }
-		//           }
+//		//check object picked up:
+//          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_SAFE))
+//          {
+//              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
+//              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
+//
+//              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
+//              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
+//              if(state_observer_client_.call(obj_picked_up_srv_))
+//              {
+//                ROS_INFO("got object!");
+//              }
+//              else
+//              {
+//                ROS_INFO("lost object!");
+//              }
+//           }
 
 
 		if(active_goal_==nr_goals_)
 		{
-			move_to_object_above_state_=FINISHED;
+			move_to_object_safe_state_=FINISHED;
 			return 0;
 		}
 		else
 		{
-			ROS_INFO("move_to_object_above() called: RUNNING (remaining goals)");
+			ROS_INFO("move_to_object_safe() called: RUNNING (remaining goals)");
 		}
 
 		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
-				boost::bind(&Statemachine::move_to_object_above_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_above_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_above_feedback,this,_1));
-		);
+			boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
+			);
 	}
-	else if(move_to_object_above_state_==FINISHED)
+	else if(move_to_object_safe_state_==FINISHED)
 	{
-		ROS_INFO("move_to_object_above() called: FINISHED");
+		ROS_INFO("move_to_object_safe() called: FINISHED");
 
 		//==============================================
 		scheduler_next();
 		//==============================================
 		//reset state
-		move_to_object_above_state_=OPEN;
+		move_to_object_safe_state_=OPEN;
 	}
-	else if(move_to_object_above_state_==FINISHEDWITHERROR)
+	else if(move_to_object_safe_state_==FINISHEDWITHERROR)
 	{
-		ROS_INFO("move_to_object_above() called: FINISHEDWITHERROR");
+		ROS_INFO("move_to_object_safe() called: FINISHEDWITHERROR");
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
 }
 
-void Statemachine::move_to_object_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+void Statemachine::move_to_object_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
 {
-	ROS_INFO("move_to_object_above_feedback() called");
+	ROS_INFO("move_to_object_safe_feedback() called");
 }
 
-void Statemachine::move_to_object_above_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+void Statemachine::move_to_object_safe_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
-	ROS_INFO("move_to_object_above_done() called, state: %s",state.toString().c_str());
+	ROS_INFO("move_to_object_safe_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		reached_active_goal_=true;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		move_to_object_above_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			reached_active_goal_=true;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_object_safe_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
+	}
+}
+
+int Statemachine::move_to_object_vision()
+{
+	if(move_to_object_vision_state_==OPEN)
+	{
+		ROS_INFO("move_to_object_vision() called: OPEN");
+
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=1;
+		reached_active_goal_=false;
+		goal_queue.resize(nr_goals_);
+
+		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+
+		//send first goal
+		move_to_object_vision_state_=RUNNING;
+		motion_planning_action_client_.sendGoal(goal_queue[0],
+			boost::bind(&Statemachine::move_to_object_vision_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+			);
+	}
+	else if (move_to_object_vision_state_==RUNNING && reached_active_goal_==true)
+	{
+		reached_active_goal_=false;
+		active_goal_++;
+
+
+//		//check object picked up:
+//          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_vision))
+//          {
+//              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
+//              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
+//
+//              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
+//              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
+//              if(state_observer_client_.call(obj_picked_up_srv_))
+//              {
+//                ROS_INFO("got object!");
+//              }
+//              else
+//              {
+//                ROS_INFO("lost object!");
+//              }
+//           }
+
+
+		if(active_goal_==nr_goals_)
+		{
+			move_to_object_vision_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("move_to_object_vision() called: RUNNING (remaining goals)");
+		}
+
+		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+			boost::bind(&Statemachine::move_to_object_vision_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+			);
+	}
+	else if(move_to_object_vision_state_==FINISHED)
+	{
+		ROS_INFO("move_to_object_vision() called: FINISHED");
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		move_to_object_vision_state_=OPEN;
+	}
+	else if(move_to_object_vision_state_==FINISHEDWITHERROR)
+	{
+		ROS_INFO("move_to_object_vision() called: FINISHEDWITHERROR");
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
+void Statemachine::move_to_object_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+{
+	ROS_INFO("move_to_object_vision_feedback() called");
+}
+
+void Statemachine::move_to_object_vision_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
+{
+	ROS_INFO("move_to_object_vision_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			reached_active_goal_=true;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_object_vision_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -2075,15 +2545,15 @@ int Statemachine::move_to_object()
 		nr_goals_=1;
 		goal_queue.resize(nr_goals_);
 
-		goal_queue[0].goal_pose = ein_->get_grasping_pose();
+		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 
 		move_to_object_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::move_to_object_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
-		);
+												boost::bind(&Statemachine::move_to_object_done,this,_1,_2),
+												motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_active(),
+												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
+												);
 	}
 	else if(move_to_object_state_==FINISHED)
 	{
@@ -2109,35 +2579,35 @@ void Statemachine::move_to_object_feedback(const am_msgs::goalPoseFeedbackConstP
 }
 
 void Statemachine::move_to_object_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
 	ROS_INFO("move_to_object_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		move_to_object_state_=FINISHED;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		move_to_object_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			move_to_object_state_=FINISHED;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_object_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }
 
-int Statemachine::move_to_target_zone_above()
+int Statemachine::move_to_target_zone_safe()
 {
-	if(move_to_target_zone_above_state_==OPEN)
+	if(move_to_target_zone_safe_state_==OPEN)
 	{
-		ROS_INFO("move_to_target_zone_above() called: OPEN");
+		ROS_INFO("move_to_target_zone_safe() called: OPEN");
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -2145,89 +2615,171 @@ int Statemachine::move_to_target_zone_above()
 		reached_active_goal_=false;
 		goal_queue.resize(nr_goals_);
 
-		am_msgs::goalPoseGoal grasp_pose;
-		grasp_pose.goal_pose = ein_->get_grasping_pose();
-		cur_zone_ = ein_->get_target_zone();
-		goal_queue[0].goal_pose.position = cur_zone_.position;
-		goal_queue[0].goal_pose.position.z=grasp_pose.goal_pose.position.z+0.2;
-		goal_queue[0].goal_pose.orientation.x=1;
-		goal_queue[0].goal_pose.orientation.y=0;
-		goal_queue[0].goal_pose.orientation.z=0;
-		goal_queue[0].goal_pose.orientation.w=0;
+		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 
-		move_to_target_zone_above_state_=RUNNING;
+		move_to_target_zone_safe_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::move_to_target_zone_above_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_above_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_above_feedback,this,_1));
-		);
+			boost::bind(&Statemachine::move_to_target_zone_safe_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_safe_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_safe_feedback,this,_1));
+			);
 	}
-	else if(move_to_target_zone_above_state_==RUNNING && reached_active_goal_==true)
+	else if(move_to_target_zone_safe_state_==RUNNING && reached_active_goal_==true)
 	{
 		reached_active_goal_=false;
 		active_goal_++;
 		if(active_goal_==nr_goals_)
 		{
-			move_to_target_zone_above_state_=FINISHED;
+			move_to_target_zone_safe_state_=FINISHED;
 			return 0;
 		}
 		else
 		{
-			ROS_INFO("move_to_target_zone_above() called: RUNNING (remaining goals)");
+			ROS_INFO("move_to_target_zone_safe() called: RUNNING (remaining goals)");
 		}
 
 		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
-				boost::bind(&Statemachine::move_to_target_zone_above_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_above_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_above_feedback,this,_1));
-		);
+			boost::bind(&Statemachine::move_to_target_zone_safe_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_safe_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_safe_feedback,this,_1));
+			);
 	}
-	else if(move_to_target_zone_above_state_==FINISHED)
+	else if(move_to_target_zone_safe_state_==FINISHED)
 	{
-		ROS_INFO("move_to_target_zone_above() called: FINISHED");
+		ROS_INFO("move_to_target_zone_safe() called: FINISHED");
 
 		//==============================================
 		scheduler_next();
 		//==============================================
 		//reset state
-		move_to_target_zone_above_state_=OPEN;
+		move_to_target_zone_safe_state_=OPEN;
 	}
-	else if(move_to_target_zone_above_state_==FINISHEDWITHERROR)
+	else if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
 	{
-		ROS_INFO("move_to_target_zone_above() called: FINISHEDWITHERROR");
+		ROS_INFO("move_to_target_zone_safe() called: FINISHEDWITHERROR");
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
 }
 
-void Statemachine::move_to_target_zone_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+void Statemachine::move_to_target_zone_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
 {
-	ROS_INFO("move_to_target_zone_above_feedback() called");
+	ROS_INFO("move_to_target_zone_safe_feedback() called");
 }
 
-void Statemachine::move_to_target_zone_above_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+void Statemachine::move_to_target_zone_safe_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
-	ROS_INFO("move_to_target_zone_above_done() called, state: %s",state.toString().c_str());
+	ROS_INFO("move_to_target_zone_safe_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		reached_active_goal_=true;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		move_to_target_zone_above_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			reached_active_goal_=true;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_target_zone_safe_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
+	}
+}
+
+int Statemachine::move_to_target_zone_vision()
+{
+	if(move_to_target_zone_vision_state_==OPEN)
+	{
+		ROS_INFO("move_to_target_zone_vision() called: OPEN");
+
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=1;
+		reached_active_goal_=false;
+		goal_queue.resize(nr_goals_);
+
+		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
+		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+
+		move_to_target_zone_vision_state_=RUNNING;
+		motion_planning_action_client_.sendGoal(goal_queue[0],
+			boost::bind(&Statemachine::move_to_target_zone_vision_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_vision_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_vision_feedback,this,_1));
+			);
+	}
+	else if(move_to_target_zone_vision_state_==RUNNING && reached_active_goal_==true)
+	{
+		reached_active_goal_=false;
+		active_goal_++;
+		if(active_goal_==nr_goals_)
+		{
+			move_to_target_zone_vision_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("move_to_target_zone_vision() called: RUNNING (remaining goals)");
+		}
+
+		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+			boost::bind(&Statemachine::move_to_target_zone_vision_done,this,_1,_2),
+			motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_vision_active(),
+			motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_vision_feedback,this,_1));
+			);
+	}
+	else if(move_to_target_zone_vision_state_==FINISHED)
+	{
+		ROS_INFO("move_to_target_zone_vision() called: FINISHED");
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		move_to_target_zone_vision_state_=OPEN;
+	}
+	else if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
+	{
+		ROS_INFO("move_to_target_zone_vision() called: FINISHEDWITHERROR");
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
+void Statemachine::move_to_target_zone_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+{
+	ROS_INFO("move_to_target_zone_vision_feedback() called");
+}
+
+void Statemachine::move_to_target_zone_vision_done(const actionlib::SimpleClientGoalState& state,
+							 const am_msgs::goalPoseResultConstPtr& result)
+{
+	ROS_INFO("move_to_target_zone_vision_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			reached_active_goal_=true;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_target_zone_vision_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -2242,25 +2794,15 @@ int Statemachine::move_to_target_zone()
 		nr_goals_=1;
 		goal_queue.resize(nr_goals_);
 
-		am_msgs::goalPoseGoal grasp_pose;
-		grasp_pose.goal_pose = ein_->get_grasping_pose();
-		cur_zone_ = ein_->get_target_zone();
-		goal_queue[0].goal_pose.position = cur_zone_.position;
-		goal_queue[0].goal_pose.position.x -= r_gp_curobj_.x;
-		goal_queue[0].goal_pose.position.y -= r_gp_curobj_.y;
-		goal_queue[0].goal_pose.position.z=grasp_pose.goal_pose.position.z+0.005;
-		goal_queue[0].goal_pose.orientation.x=1;
-		goal_queue[0].goal_pose.orientation.y=0;
-		goal_queue[0].goal_pose.orientation.z=0;
-		goal_queue[0].goal_pose.orientation.w=0;
+		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 
 		move_to_target_zone_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::move_to_target_zone_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_feedback,this,_1));
-		);
+												boost::bind(&Statemachine::move_to_target_zone_done,this,_1,_2),
+												motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_active(),
+												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_feedback,this,_1));
+												);
 	}
 	else if(move_to_target_zone_state_==FINISHED)
 	{
@@ -2286,27 +2828,27 @@ void Statemachine::move_to_target_zone_feedback(const am_msgs::goalPoseFeedbackC
 }
 
 void Statemachine::move_to_target_zone_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
 	ROS_INFO("move_to_target_zone_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		move_to_target_zone_state_=FINISHED;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		move_to_target_zone_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			move_to_target_zone_state_=FINISHED;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			move_to_target_zone_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }
 
@@ -2324,10 +2866,10 @@ int Statemachine::homing()
 		goal_queue[0].planning_algorithm = HOMING_7DOF;
 		homing_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::homing_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::homing_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::homing_feedback,this,_1));
-		);
+												boost::bind(&Statemachine::homing_done,this,_1,_2),
+												motionClient::SimpleActiveCallback(), //Statemachine::homing_active(),
+												motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::homing_feedback,this,_1));
+												);
 	}
 	else if(homing_state_==FINISHED)
 	{
@@ -2353,26 +2895,26 @@ void Statemachine::homing_feedback(const am_msgs::goalPoseFeedbackConstPtr feedb
 }
 
 void Statemachine::homing_done(const actionlib::SimpleClientGoalState& state,
-		const am_msgs::goalPoseResultConstPtr& result)
+							 const am_msgs::goalPoseResultConstPtr& result)
 {
 	ROS_INFO("homing_done() called, state: %s",state.toString().c_str());
 
 	switch(state.state_)
 	{
-	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		homing_state_=FINISHED;
-		break;
-	case actionlib::SimpleClientGoalState::ACTIVE:
-	case actionlib::SimpleClientGoalState::PENDING:
-	case actionlib::SimpleClientGoalState::RECALLED:
-		break;
-	case actionlib::SimpleClientGoalState::LOST:
-	case actionlib::SimpleClientGoalState::REJECTED:
-	case actionlib::SimpleClientGoalState::PREEMPTED:
-	case actionlib::SimpleClientGoalState::ABORTED:
-		homing_state_=FINISHEDWITHERROR;
-		break;
-	default:
-		break;
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			homing_state_=FINISHED;
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			homing_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
 	}
 }

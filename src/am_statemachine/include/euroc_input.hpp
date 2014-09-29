@@ -11,6 +11,7 @@
 #include <am_msgs/Sensor.h>
 // Includes for parsing yaml data
 #include <yaml-cpp/yaml.h>
+#include "config.hpp"
 
 #include <tf/LinearMath/Quaternion.h>
 
@@ -24,19 +25,20 @@ public:
 
 	int parse_yaml_file(std::string task_yaml_description);
 
-	//!get a new object (that is not finished)
-	am_msgs::Object get_object();
+	//!select a new object that is not finished (preferred: right after active_object)
+	void select_new_object();
+	//!get active object
+	am_msgs::Object get_active_object();
 	//!print object properties
 	void print_object(am_msgs::Object*obj);
 	//!set active_object_ to finished
-	void set_object_finished();
+	void set_active_object_finished();
 
-	//!interface for grasping pose
-	void set_grasping_pose(geometry_msgs::Pose pose){grasping_pose_[active_object_]=pose;};
-	geometry_msgs::Pose get_grasping_pose(){return grasping_pose_[active_object_];};
+	//!save the object data to the ros parameter server
+	void save_objects_to_parameter_server(ros::NodeHandle n, bool show_log_messages);
 
 	//!get for active_object the corresponding target_zone
-	am_msgs::TargetZone get_target_zone();
+	am_msgs::TargetZone get_active_target_zone();
 
 	//!interface for sensors
 	uint16_t get_nr_sensors(){return nr_sensors;};
@@ -72,9 +74,6 @@ private:
 
 	//!index for current active object
 	int8_t active_object_;
-
-	//!grasping pose for each object
-	std::vector<geometry_msgs::Pose> grasping_pose_;
 
 	//!vector with values 0/1 for not finished/finished
 	std::vector<uint32_t> obj_finished_;

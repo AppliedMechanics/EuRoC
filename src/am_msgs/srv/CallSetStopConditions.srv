@@ -1,5 +1,8 @@
 #request which limit level should be used
 uint16 level
 uint16 joint_nbr
+#string condition_operator
+float64 current_value
+
 ---
 string error_message

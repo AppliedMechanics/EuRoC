@@ -16,6 +16,7 @@
 #include <euroc_c2_msgs/ListScenes.h>
 #include <euroc_c2_msgs/StartSimulator.h>
 #include <euroc_c2_msgs/StopSimulator.h>
+#include <euroc_c2_msgs/SetObjectLoad.h>
 
 //am msgs
 #include <am_msgs/Object.h>
@@ -72,6 +73,7 @@ class Statemachine
 		std::string stop_simulator_;
 		std::string euroc_c2_interface_;
 		std::string save_log_;
+		std::string set_object_load_;
 
 		//!Euroc client to access available scenes
 		ros::ServiceClient list_scenes_client_;
@@ -89,6 +91,10 @@ class Statemachine
 		ros::ServiceClient save_log_client_;
 		//!save log message
 		euroc_c2_msgs::SaveLog save_log_srv_;
+		//!Euroc client to set object load
+		ros::ServiceClient set_object_load_client_;
+		//!object load message
+		euroc_c2_msgs::SetObjectLoad set_object_load_srv_;
 
 		//!action client for motionplanning-node (am_motionplanning)
 		actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
@@ -125,13 +131,33 @@ class Statemachine
 
 		//!current object that is in progress
 		am_msgs::Object cur_obj_;
+		uint8_t cur_object_type_;
 		//!corresponding zone to this object
 		am_msgs::TargetZone cur_zone_;
 		//!current object mass
 		double cur_obj_mass_;
-		geometry_msgs::Vector3 r_tcp_curobjcom_;
-		geometry_msgs::Vector3 r_gp_curobjcom_;
-		geometry_msgs::Vector3 r_gp_curobj_;
+
+		//grasping poses
+		//old
+//		geometry_msgs::Pose object_grip_pose_old_;
+//		geometry_msgs::Vector3 r_tcp_curobjcom_;
+//		geometry_msgs::Vector3 r_gp_curobjcom_;
+//		geometry_msgs::Vector3 r_gp_curobj_;
+
+		uint16_t selected_object_pose_;
+		std::vector<geometry_msgs::Pose> object_grip_pose;
+		std::vector<geometry_msgs::Pose> object_safe_pose;
+		std::vector<geometry_msgs::Pose> object_vision_pose;
+		std::vector<uint16_t> object_pose_type;
+		std::vector<double> object_grasp_width;
+		uint16_t selected_target_pose_;
+		std::vector<geometry_msgs::Pose> target_place_pose;
+		std::vector<geometry_msgs::Pose> target_safe_pose;
+		std::vector<geometry_msgs::Pose> target_vision_pose;
+		std::vector<uint16_t> target_pose_type;
+		std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
+		std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
+		std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
 
 		//!goal queue for motion planning action server
 		std::vector<am_msgs::goalPoseGoal> goal_queue;
@@ -147,6 +173,8 @@ class Statemachine
 
 		bool skip_vision_;
 		bool skip_motion_;
+		bool pause_in_loop_;
+
 	public:
 		//!init statemachine
 		int init_sm();
@@ -167,6 +195,15 @@ class Statemachine
 		void scheduler_schedule();
 		//!print state queue to console
 		void scheduler_printqueue();
+		//!skip object
+		void scheduler_skip_object();
+		//!properly change to next object
+		void scheduler_next_object();
+
+		//!state for setting the object load in gripper_close() and gripper_release()
+		uint8_t set_object_load_state_;
+		//!callback for gripper_release() and gripper_close()
+		void set_object_load_cb();
 
 		//!Make a stop to help with debugging (waits for console input)
 		int pause();
@@ -249,13 +286,21 @@ class Statemachine
 		//!state of get_grasping_pose() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t get_grasping_pose_state_;
 
-		//!move to object above
-		int move_to_object_above();
-		//!state of move_to_object_above() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_object_above_state_;
-		//!callbacks for move_to_object_above()
-		void move_to_object_above_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
-		void move_to_object_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!move to object safe
+		int move_to_object_safe();
+		//!state of move_to_object_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_safe_state_;
+		//!callbacks for move_to_object_safe()
+		void move_to_object_safe_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_object_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+
+		//!move to object vision
+		int move_to_object_vision();
+		//!state of move_to_object_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_vision_state_;
+		//!callbacks for move_to_object_vision()
+		void move_to_object_vision_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_object_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
 		//!move to object
 		int move_to_object();
@@ -291,13 +336,21 @@ class Statemachine
 		//!state of gripper_close() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t gripper_close_state_;
 
-		//!move to target zone above
-		int move_to_target_zone_above();
-		//!state of move_to_target_zone_above() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_target_zone_above_state_;
-		//!callbacks for move_to_target_zone_above()
-		void move_to_target_zone_above_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
-		void move_to_target_zone_above_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!move to target zone safe
+		int move_to_target_zone_safe();
+		//!state of move_to_target_zone_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_safe_state_;
+		//!callbacks for move_to_target_zone_safe()
+		void move_to_target_zone_safe_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_target_zone_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+
+		//!move to target zone vision
+		int move_to_target_zone_vision();
+		//!state of move_to_target_zone_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_vision_state_;
+		//!callbacks for move_to_target_zone_vision()
+		void move_to_target_zone_vision_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+		void move_to_target_zone_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 
 		//!move to target zone
 		int move_to_target_zone();

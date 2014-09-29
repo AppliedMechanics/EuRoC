@@ -15,9 +15,6 @@ int main(int argc, char **argv)
 	//create stateobserver
 	StateObserver so;
 
-	//Set required torque limits
-	//so.CallSetStopConditions(0);
-
 	//update rate
 	ros::Rate loop_rate(FREQ);
 

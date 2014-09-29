@@ -31,8 +31,37 @@ typedef enum {
 
 typedef enum {
 	GLOBAL_POSE_ESTIMATION=0,
-	CLOSE_RANGE_POSE_ESTIMATION
+	CLOSE_RANGE_POSE_ESTIMATION,
+	CHECKING_FOR_OBJECT_IN_TARGET_ZONE
 } vision_mode_t;
+
+typedef enum {
+	OBJECT_UNKNOWN=0,
+	OBJECT_HANDLE,
+	OBJECT_CYLINDER,
+	OBJECT_CUBE
+} object_type_t;
+
+typedef enum {
+	SHAPE_UNKNOWN=0,
+	SHAPE_BOX,
+	SHAPE_CYLINDER
+} shape_type_t;
+
+typedef enum {
+	OBJECT_POSE_CUBE_X_UP=0,
+	OBJECT_POSE_CUBE_Y_UP,
+	OBJECT_POSE_CUBE_Z_UP,
+	OBJECT_POSE_CYLINDER_VERTICAL,
+	OBJECT_POSE_CYLINDER_HORIZONTAL,
+	OBJECT_POSE_HANDLE_HORIZONTAL,
+	OBJECT_POSE_HANDLE_HORIZONTAL_CYLINDER,
+	OBJECT_POSE_HANDLE_HORIZONTAL_BOX_1,
+	OBJECT_POSE_HANDLE_HORIZONTAL_BOX_2,
+	OBJECT_POSE_HANDLE_VERTICAL,
+	OBJECT_POSE_HANDLE_VERTICAL_BOX_1_UP,
+	OBJECT_POSE_HANDLE_VERTICAL_BOX_2_UP
+} object_pose_type_t;
 
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";
@@ -56,7 +85,6 @@ const std::string lwr_5 = "joint5";
 const std::string lwr_6 = "joint6";
 const std::string lwr_7 = "joint7";
 const std::string OBJ_POSE = "obj_pose";
-
 
 #define FREQ 100 //rosnode frequency
 
