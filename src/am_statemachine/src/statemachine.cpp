@@ -1166,7 +1166,7 @@ int Statemachine::parse_yaml_file()
 		std::string &task_yaml_description = start_simulator_srv_.response.description_yaml;
 
 		//parse the yaml file -> content is saved in EurocInput-class
-		if(-1==ein_->parse_yaml_file(task_yaml_description))
+		if(-1==ein_->parse_yaml_file(task_yaml_description, active_task_number_))
 		{
 			msg_error("Error. parse_yaml_file() failed");
 			parse_yaml_file_state_=FINISHEDWITHERROR;
@@ -1203,10 +1203,11 @@ int Statemachine::parse_yaml_file()
 		try
 		{
 			ein_->save_objects_to_parameter_server(node_,false);
+			ein_->save_robot_to_parameter_server(node_,false);
 		}
 		catch(...)
 		{
-			msg_error("Error. could not save object data to parameter server.");
+			msg_error("Error. could not save object and robot data to parameter server.");
 		}
 
 		parse_yaml_file_state_=FINISHED;

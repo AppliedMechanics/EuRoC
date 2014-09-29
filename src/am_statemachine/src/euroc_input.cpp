@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-#undef DBG_OUT
+#define DBG_OUT
 
 
 EurocInput::EurocInput():
@@ -21,7 +21,7 @@ EurocInput::~EurocInput()
 
 }
 
-int EurocInput::parse_yaml_file(std::string task_yaml_description)
+int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_t task_nr)
 {
 	// Parse the explanation/description of the task from the yaml string
 	std::stringstream yaml_stream(task_yaml_description);
@@ -152,24 +152,29 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 			return -1;
 		}
 
-	    const YAML::Node* des = obj->FindValue("description");
-	    if(!des){
-			ROS_ERROR("EurocInput: description not found in object");
-		    return -1;
-		}
-	    try {
-	    	*des >> tmp_obj.description;
-		}catch(YAML::Exception e){
-			ROS_ERROR("EurocInput: Obj error");
-			return -1;
-		}
+	    if(task_nr != 5)
+		{
+			const YAML::Node* des = obj->FindValue("description");
+			if(!des){
+				ROS_ERROR("EurocInput: description not found in object");
+				return -1;
+			}
+			try {
+				*des >> tmp_obj.description;
+			}catch(YAML::Exception e){
+				ROS_ERROR("EurocInput: Obj error");
+				return -1;
+			}
+	    }
 
-	    try {
+	    if((task_nr != 5) && (task_nr != 6))
+	    {
+	    	try {
                 const YAML::Node* sur = obj->FindValue("surface_material");
 
                 if(!sur){
                   ROS_ERROR("EurocInput: surface material not found in object");
-                  //return -1;
+                  return -1;
                 }
                 else
                 {
@@ -181,9 +186,10 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
                     return -1;
                   }
                 }
-	    }catch(YAML::Exception e) {
-	      ROS_ERROR("surface material not found in shape");
-	      //return -1;
+			}catch(YAML::Exception e) {
+			  ROS_ERROR("surface material not found in shape");
+			  return -1;
+			}
 	    }
 
 
@@ -263,18 +269,28 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 				return -1;
 			}
 
-			try{
-				const YAML::Node* dens = (*it2).FindValue("density");
-				(*dens) >> tmp_obj.shape[jj].density;
-			}catch(YAML::Exception e) {
-				ROS_ERROR("density not found in shape");
+			if((task_nr != 4) && (task_nr != 5) && (task_nr != 6))
+			{
+				try{
+					const YAML::Node* dens = (*it2).FindValue("density");
+					(*dens) >> tmp_obj.shape[jj].density;
+				}catch(YAML::Exception e) {
+					ROS_ERROR("density not found in shape");
 
-				tmp_obj.shape[jj].density=7850;
-				//return -1;
+					tmp_obj.shape[jj].density=7850;
+					return -1;
+				}
 			}
+			else
+			{
+				tmp_obj.shape[jj].density=7850;
+			}
+
+
 			jj++;
 
 		} /* for (YAML::Iterator it2 = shapes->begin(); it2 != shapes->end();++it2) */
+
 
 		objects_.push_back(tmp_obj);
 	    ii++;
@@ -293,78 +309,82 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 	//######################################################################################
 	//######################################################################################
 	//Target zones:
-	const YAML::Node *target_zones = task_description_node.FindValue("target_zones");
-	  if(!target_zones){
-	    ROS_ERROR("Target zones not found in task description");
-	    return -1;
-	  }
-	  am_msgs::TargetZone tmp_zone;
-	  ii=0;
-	  nr_zones_ = target_zones->size();
-	  for(YAML::Iterator it = target_zones->begin(); it != target_zones->end(); ++it) {
-
-	    const YAML::Node* zone;
-	    try{
-	      zone = &(it.second());
-	    }catch(YAML::Exception e){
-	      ROS_ERROR("Zone error");
-	      return -1;
-	    }
-	    const YAML::Node* target_position = zone->FindValue("target_position");
-	    if(!target_position){
-	      ROS_ERROR("Target position not found in target zone");
-	      return -1;
-	    }
-	    try{
-	      (*target_position)[0] >> tmp_zone.position.x;
-	      (*target_position)[1] >> tmp_zone.position.y;
-	      (*target_position)[2] >> tmp_zone.position.z;
-	    }catch(YAML::Exception e){
-	      ROS_ERROR("YAML_Exception while parsing target zone position: %s", e.msg.c_str());
-	      return -1;
-	    }
-
-	    const YAML::Node* dist = zone->FindValue("max_distance");
-	    if(!dist){
-	    	ROS_ERROR("max_distance not found in target_zone");
-	    	return -1;
-	    }
-	    try{
-	    	(*dist) >> tmp_zone.max_distance;
-	    }catch(YAML::Exception e){
-		  ROS_ERROR("YAML_Exception while parsing target zone max distance: %s", e.msg.c_str());
-		  return -1;
+    if(task_nr != 5)
+    {
+		const YAML::Node *target_zones = task_description_node.FindValue("target_zones");
+		if(!target_zones){
+		ROS_ERROR("Target zones not found in task description");
+		return -1;
 		}
+		am_msgs::TargetZone tmp_zone;
+		ii=0;
+		nr_zones_ = target_zones->size();
+		for(YAML::Iterator it = target_zones->begin(); it != target_zones->end(); ++it)
+		{
 
-	    const YAML::Node* exp_obj = zone->FindValue("expected_object");
-		if(!exp_obj){
-			ROS_ERROR("expected_object not found in target_zone");
-			return -1;
+			const YAML::Node* zone;
+			try{
+			  zone = &(it.second());
+			}catch(YAML::Exception e){
+			  ROS_ERROR("Zone error");
+			  return -1;
+			}
+			const YAML::Node* target_position = zone->FindValue("target_position");
+			if(!target_position){
+			  ROS_ERROR("Target position not found in target zone");
+			  return -1;
+			}
+			try{
+			  (*target_position)[0] >> tmp_zone.position.x;
+			  (*target_position)[1] >> tmp_zone.position.y;
+			  (*target_position)[2] >> tmp_zone.position.z;
+			}catch(YAML::Exception e){
+			  ROS_ERROR("YAML_Exception while parsing target zone position: %s", e.msg.c_str());
+			  return -1;
+			}
+
+			const YAML::Node* dist = zone->FindValue("max_distance");
+			if(!dist){
+				ROS_ERROR("max_distance not found in target_zone");
+				return -1;
+			}
+			try{
+				(*dist) >> tmp_zone.max_distance;
+			}catch(YAML::Exception e){
+			  ROS_ERROR("YAML_Exception while parsing target zone max distance: %s", e.msg.c_str());
+			  return -1;
+			}
+
+			const YAML::Node* exp_obj = zone->FindValue("expected_object");
+			if(!exp_obj){
+				ROS_ERROR("expected_object not found in target_zone");
+				return -1;
+			}
+			try{
+				(*exp_obj) >> tmp_zone.expected_object;
+			}catch(YAML::Exception e){
+			  ROS_ERROR("YAML_Exception while parsing target zone expected object: %s", e.msg.c_str());
+			  return -1;
+			}
+
+			target_zones_.push_back(tmp_zone);
+			ii++;
+
 		}
-		try{
-			(*exp_obj) >> tmp_zone.expected_object;
-		}catch(YAML::Exception e){
-		  ROS_ERROR("YAML_Exception while parsing target zone expected object: %s", e.msg.c_str());
-		  return -1;
-		}
-
-		target_zones_.push_back(tmp_zone);
-	    ii++;
-
-	  }
 
 #ifdef DBG_OUT
-	  for(unsigned kk=0;kk<nr_zones_;kk++)
-	  {
+		for(unsigned kk=0;kk<nr_zones_;kk++)
+		{
 		  ROS_INFO("======================");
 		  ROS_INFO("Target zone %d:",kk);
 		  ROS_INFO("Expected object: %s",target_zones_[kk].expected_object.c_str());
 		  ROS_INFO("Target position: [%f %f %f]",target_zones_[kk].position.x,
 				  target_zones_[kk].position.y,target_zones_[kk].position.z);
 		  ROS_INFO("Max distance: %f",target_zones_[kk].max_distance);
-	  }
-	  ROS_INFO("");
+		}
+		ROS_INFO("");
 #endif
+    }
 
 	//######################################################################################
 	//######################################################################################
@@ -463,6 +483,25 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description)
 		ROS_ERROR("EurocInput: YAML Error in gripper tcp pose");
 		return -1;
 	}
+
+	ROS_INFO("before two-axes");
+	const YAML::Node* table = task_description_node.FindValue("two_axes_table");
+	if (!table)
+	{
+		ROS_ERROR("EurocInput: two_axes_table not found in task_description_node");
+		return -1;
+	}
+	const YAML::Node* table_lim = table->FindValue("speed_limit");
+	try {
+		robot_.two_axes_speed_limit.resize(2);
+		(*table_lim)[0] >> robot_.two_axes_speed_limit[0];
+		(*table_lim)[1] >> robot_.two_axes_speed_limit[1];
+	}
+	catch (YAML::Exception e) {
+		ROS_ERROR("EurocInput: YAML Error in two_axes speed limit");
+		return -1;
+	}
+	ROS_INFO("after two-axes");
 
 	//######################################################################################
 	//######################################################################################
@@ -691,7 +730,7 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 	}
 }
 
-void EurocInput::save_objects_to_parameter_server(ros::NodeHandle n, bool show_log_messages)
+void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
 {
 	n.setParam("nr_objects_", nr_objects_);
 	if(show_log_messages)
@@ -844,6 +883,34 @@ void EurocInput::save_objects_to_parameter_server(ros::NodeHandle n, bool show_l
 			if(show_log_messages)
 			{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), objects_[ii].shape[jj].pose.orientation.z); }
 		}
+	}
+}
+
+void EurocInput::save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
+{
+	std::stringstream parname;
+
+	for(uint16_t ii=0;ii<robot_.speed_limit.size();ii++)
+	{
+		parname.str("");
+		parname << "joint_speed_limit_" << ii;
+		n.setParam(parname.str(), robot_.speed_limit[ii]);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), robot_.speed_limit[ii]);  }
+	}
+
+	parname.str("gripper_speed_limit");
+	n.setParam(parname.str(), robot_.gripper_speed_limit);
+	if(show_log_messages)
+	{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), robot_.gripper_speed_limit);  }
+
+	for(uint16_t ii=0;ii<robot_.two_axes_speed_limit.size();ii++)
+	{
+		parname.str("");
+		parname << "two_axes_speed_limit_" << ii;
+		n.setParam(parname.str(), robot_.two_axes_speed_limit[ii]);
+		if(show_log_messages)
+		{ ROS_INFO("saved %s=%3.2f to parameter server.", parname.str().c_str(), robot_.two_axes_speed_limit[ii]);  }
 	}
 }
 

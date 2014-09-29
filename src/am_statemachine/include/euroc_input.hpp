@@ -23,7 +23,7 @@ public:
 	EurocInput();
 	~EurocInput();
 
-	int parse_yaml_file(std::string task_yaml_description);
+	int parse_yaml_file(std::string task_yaml_description, const uint16_t task_nr);
 
 	//!select a new object that is not finished (preferred: right after active_object)
 	void select_new_object();
@@ -35,7 +35,9 @@ public:
 	void set_active_object_finished();
 
 	//!save the object data to the ros parameter server
-	void save_objects_to_parameter_server(ros::NodeHandle n, bool show_log_messages);
+	void save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save the robot data to the ros parameter server
+	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
