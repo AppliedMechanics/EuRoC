@@ -108,7 +108,9 @@ private:
 
 	double gripper_maxwidth_;
 	double gripper_height_;
+	double gripper_finger_width;
 	double grip_safety_dist_;
+	double vertical_handle_safe_z_offset;
 	double place_falling_dist_;
 	double vision_distance_object_height_cube_;
 	double vision_distance_object_height_cylinder_;
