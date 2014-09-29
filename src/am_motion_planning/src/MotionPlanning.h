@@ -13,6 +13,7 @@
 // AM
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/goalPoseAction.h>
+#include <am_msgs/CheckPoses.h>
 #include <config.hpp>
 #include <utils.hpp>
 
@@ -46,6 +47,11 @@ private:
 	//! This function is executed, when a new goal goalPoseAction is received
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
 	void getGoalPose_Feedback();
+
+
+	ros::ServiceServer check_poses_service_;
+	// ROS-service function to check ik solution for poses
+	bool return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res);
 
 	//! Services
 	ros::ServiceClient move_along_joint_path_client_;

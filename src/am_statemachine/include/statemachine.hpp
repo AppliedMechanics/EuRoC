@@ -27,6 +27,7 @@
 #include <am_msgs/TakeImage.h>
 #include <am_msgs/VisionAction.h>
 #include <am_msgs/ObjectPickedUp.h>
+#include <am_msgs/CheckPoses.h>
 
 //am includes
 #include <utils.hpp>
@@ -115,6 +116,9 @@ class Statemachine
 		//!state-observer interface
 		ros::ServiceClient state_observer_client_;
 		am_msgs::ObjectPickedUp obj_picked_up_srv_;
+		//!client to check poses service from motion planning
+		ros::ServiceClient check_poses_client_;
+		am_msgs::CheckPoses check_poses_srv_;
 
 
 		//!internal counter for while loop in execute()

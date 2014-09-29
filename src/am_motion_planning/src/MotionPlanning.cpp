@@ -26,6 +26,9 @@ time_at_path_points_(1)
 	goalPose_server_.start();
 	msg_info("goalPose action server started.");
 
+
+	check_poses_service_ = nh_.advertiseService("CheckPoses_srv", &MotionPlanning::return_poses_valid,this);
+
 	feedback_frequency_ = 2;
 
 	mtt_=OPEN;
@@ -333,4 +336,46 @@ void MotionPlanning::moveToTargetCB()
 		std::cout << "Move failed: " + move_error_message << std::endl;
 	}
 	mtt_=FINISHED;
+}
+
+bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res)
+{
+	uint16_t nr_poses = req.poses.size();
+	ROS_INFO("in check poses service call:");
+
+	for(uint16_t ii=0;ii<nr_poses;ii++)
+	{
+		try
+		{
+			if(ros::service::waitForService(search_ik_solution_,ros::Duration(10.0)))
+			{
+				// current_configuration will hold our current joint position data extracted from the measured telemetry
+				current_configuration_.q.resize(7);
+
+				// Select the next desired position of the tcp from the target zone poses and fill
+				// the search inverse kinematic solution request with the current configuration as
+				// start configuration and the desired position
+				search_ik_solution_srv_.request.start = current_configuration_;
+				search_ik_solution_srv_.request.tcp_frame = req.poses[ii];
+
+				search_ik_solution_client_.call(search_ik_solution_srv_);
+				std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+				if(!search_error_message.empty()){
+					msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+
+					res.valid=false;
+					return false;
+				}
+			}
+		} catch(...) {
+			msg_error("failed to find service search ik-solution");
+			return false;
+		}
+
+	}
+
+	res.valid=true;
+	ROS_INFO("finished check poses service call.");
+
+	return true;
 }

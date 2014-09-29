@@ -68,6 +68,7 @@ add_service_files(
   TakeImage.srv
   ObjectPickedUp.srv
   CallSetStopConditions.srv
+  CheckPoses.srv
 )
 
 ## Generate actions in the 'action' folder

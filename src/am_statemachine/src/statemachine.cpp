@@ -69,7 +69,7 @@ Statemachine::~Statemachine()
 int Statemachine::init_sm()
 {
 	//Wait for all services
-	ROS_INFO("checking for services...");
+	ROS_INFO("waiting for services...");
 	uint8_t CheckServiceCounter=0;
 	bool FirstTimeLoop=true;
 	while(CheckServiceCounter<3)	//Loop until all services are available
@@ -108,6 +108,7 @@ int Statemachine::init_sm()
 	take_image_client_ = node_.serviceClient<am_msgs::TakeImage>("TakeImageService");
     state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
     set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
+    check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
 
 	//wait for all action servers
 	ROS_INFO("waiting for action servers...");
@@ -1937,6 +1938,26 @@ void Statemachine::get_grasping_pose_cb()
 		get_grasping_pose_state_=FINISHEDWITHERROR;
 	}
 
+
+	//test check poses service call
+	check_poses_srv_.request.poses = get_grasp_pose_srv_.response.object_grip_pose;
+	if(!check_poses_client_.call(check_poses_srv_))
+	{
+		msg_error("failed to call check_poses_client");
+		//get_grasping_pose_state_=FINISHEDWITHERROR;
+	}
+	else{
+	if(check_poses_srv_.response.valid==false)
+	{
+		ROS_INFO("CheckPoses: poses are valid");
+	}
+	else
+	{
+		ROS_INFO("CheckPoses: poses are invalid");
+	}
+	}
+
+
 	ROS_INFO("get_grasping_pose_cb() finished");
 }
 
@@ -1969,6 +1990,7 @@ int Statemachine::get_grasping_pose()
 //		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
 //		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
 //		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
+
 
 		object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
 		object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;

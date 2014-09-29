@@ -1,0 +1,7 @@
+#vector of poses 
+geometry_msgs/Pose[] poses
+
+
+---
+#  true or false if all poses are valid
+bool valid
