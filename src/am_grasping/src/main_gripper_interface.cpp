@@ -68,18 +68,22 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 	}
 
 	move_along_joint_path_srv_.request.path[0] = commanded_configuration_;
-	move_along_joint_path_client_.call(move_along_joint_path_srv_);
+	bool ret_val=true;
+	if(!move_along_joint_path_client_.call(move_along_joint_path_srv_))
+	{
+		ret_val=false;
+	}
 
 	//
 	//	res.grasp_pose = TCP_target_pose;
 
-	if(true){
+	if(ret_val){
 		res.error_message = "";
 		return true;
 	}
 	else
 	{
-		res.error_message = "Failed to return TCP-pose";
+		res.error_message = "Failed to call client";
 		return false;
 	}
 }
