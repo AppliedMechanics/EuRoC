@@ -39,6 +39,10 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	msg_info("In execution call");
 
 	goal_pose_goal_ = goal;
+	speed_percentage_ = goal_pose_goal_->speed_percentage;
+
+	if (speed_percentage_ <= 0 || speed_percentage_ >100)
+		speed_percentage_ = 50;
 
 	ros::Rate feedback_rate(feedback_frequency_);
 

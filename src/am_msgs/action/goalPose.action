@@ -1,6 +1,7 @@
 #goal definition
 geometry_msgs/Pose goal_pose
 int32 planning_algorithm
+int32 speed_percentage
 ---
 #result definition
 geometry_msgs/Pose reached_pose

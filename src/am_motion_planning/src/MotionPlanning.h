@@ -80,6 +80,8 @@ private:
 
 	double feedback_frequency_;
 
+	int speed_percentage_;
+
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();
 	bool getTelemetry();
