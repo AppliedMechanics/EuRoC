@@ -23,6 +23,8 @@ time_at_path_points_(1)
 	timing_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::GetTimingAlongJointPath>(timing_along_joint_path_);
 	search_ik_solution_client_      = nh_.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 
+	joint_limits_.resize(7);
+
 	goalPose_server_.start();
 	msg_info("goalPose action server started.");
 
@@ -46,6 +48,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 	if (speed_percentage_ <= 0 || speed_percentage_ >100)
 		speed_percentage_ = 50;
+
+	getLimits();
 
 	ros::Rate feedback_rate(feedback_frequency_);
 
@@ -179,10 +183,9 @@ bool MotionPlanning::getIKSolution7DOF()
 			move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
 			// Initialize the velocity and acceleration limits of the joints
 			move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
-			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
-				euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
-				limits.max_velocity = 20 * M_PI / 180.0; // 20 degrees per second
-				limits.max_acceleration = 400 * M_PI / 180.0;
+
+			for(unsigned int i = 0; i < nr_lwr_joints; i++){
+				move_along_joint_path_srv_.request.joint_limits[i] = joint_limits_[i];
 			}
 
 			// current_configuration will hold our current joint position data extracted from the measured telemetry
@@ -250,10 +253,8 @@ bool MotionPlanning::setReset7DOF()
 			move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
 			// Initialize the velocity and acceleration limits of the joints
 			move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
-			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
-				euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
-				limits.max_velocity = 20 * M_PI / 180.0; // 20 degrees per second
-				limits.max_acceleration = 400 * M_PI / 180.0;
+			for(unsigned int i = 0; i < nr_lwr_joints; i++){
+				move_along_joint_path_srv_.request.joint_limits[i] = joint_limits_[i];
 			}
 
 			// current_configuration will hold our current joint position data extracted from the measured telemetry
@@ -378,4 +379,57 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 	ROS_INFO("finished check poses service call.");
 
 	return true;
+}
+
+bool MotionPlanning::getLimits()
+{
+	//! Setting max velocities, getting from parameter server
+	try
+	{
+		if (!ros::param::get("/two_axes_speed_limit_0",table_axis1_limit_.max_velocity))
+			table_axis1_limit_.max_velocity = 0.5;
+		if (!ros::param::get("/two_axes_speed_limit_1",table_axis2_limit_.max_velocity))
+			table_axis2_limit_.max_velocity = 0.5;
+		if (!ros::param::get("/joint_speed_limit_0",joint_limits_[0].max_velocity)){
+			for (int ii=0;ii<7;ii++)
+				joint_limits_[ii].max_velocity = 20 * M_PI / 180.0;
+		}
+		else
+		{
+			ros::param::get("/joint_speed_limit_1",joint_limits_[1].max_velocity);
+			ros::param::get("/joint_speed_limit_2",joint_limits_[2].max_velocity);
+			ros::param::get("/joint_speed_limit_3",joint_limits_[3].max_velocity);
+			ros::param::get("/joint_speed_limit_4",joint_limits_[4].max_velocity);
+			ros::param::get("/joint_speed_limit_5",joint_limits_[5].max_velocity);
+			ros::param::get("/joint_speed_limit_6",joint_limits_[6].max_velocity);
+		}
+		if (!ros::param::get("/gripper_speed_limit",gripper_limit_.max_velocity))
+			gripper_limit_.max_velocity = 0.5;
+	}
+	catch (...)
+	{
+		msg_error("GET LIMITS aborted. Setting default values.");
+		table_axis1_limit_.max_velocity = 0.5;
+		table_axis2_limit_.max_velocity = 0.5;
+		for (int ii=0;ii<7;ii++)
+			joint_limits_[ii].max_velocity = 20 * M_PI / 180.0;
+		gripper_limit_.max_velocity = 0.5;
+	}
+
+	//! Setting max accelerations
+	table_axis1_limit_.max_acceleration = 2.0;
+	table_axis2_limit_.max_acceleration = 2.0;
+	for (int ii=0;ii<7;ii++)
+		joint_limits_[ii].max_acceleration = 400 * M_PI / 180.0;
+	gripper_limit_.max_acceleration = 2.0;
+
+	table_axis1_limit_.max_velocity *= (double)speed_percentage_*0.01;
+	table_axis2_limit_.max_velocity *= (double)speed_percentage_*0.01;
+	gripper_limit_.max_velocity     *= (double)speed_percentage_*0.01;
+	for (int ii=0;ii<7;ii++)
+		joint_limits_[ii].max_velocity *= (double)speed_percentage_*0.01;
+
+
+	return true;
+
 }

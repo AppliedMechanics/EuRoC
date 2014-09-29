@@ -79,6 +79,10 @@ private:
 
 	am_msgs::goalPoseGoal::ConstPtr goal_pose_goal_;
 
+	std::vector<euroc_c2_msgs::Limits> joint_limits_;
+	euroc_c2_msgs::Limits gripper_limit_;
+	euroc_c2_msgs::Limits table_axis1_limit_;
+	euroc_c2_msgs::Limits table_axis2_limit_;
 	//! Variables
 	std::vector<ros::Time> time_at_path_points_;
 	double estimated_motion_time_;
@@ -91,6 +95,7 @@ private:
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();
 	bool getTelemetry();
+	bool getLimits();
 	bool setReset7DOF();
 
 	void moveToTargetCB();
