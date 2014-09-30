@@ -6,7 +6,6 @@
  */
 
 #include "MotionPlanning.h"
-#define STANDARD_IK_7DOF 0
 
 MotionPlanning::MotionPlanning():
 goalPose_server_(nh_, "goalPoseAction", boost::bind(&MotionPlanning::executeGoalPose_CB, this, _1),false),
@@ -18,10 +17,12 @@ time_at_path_points_(1)
 	move_along_joint_path_ = euroc_c2_interface_ + "/move_along_joint_path";
 	timing_along_joint_path_ = euroc_c2_interface_ + "/get_timing_along_joint_path";
 	search_ik_solution_ = euroc_c2_interface_ + "/search_ik_solution";
+	get_dk_solution_ = euroc_c2_interface_ + "/get_forward_kinematics";
 
 	move_along_joint_path_client_   = nh_.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
 	timing_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::GetTimingAlongJointPath>(timing_along_joint_path_);
 	search_ik_solution_client_      = nh_.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
+	get_dk_solution_client_         = nh_.serviceClient<euroc_c2_msgs::GetForwardKinematics>(get_dk_solution_);
 
 	joint_limits_.resize(7);
 
@@ -45,9 +46,10 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
+	inter_steps_ = goal_pose_goal_->inter_steps;
 
 	if (speed_percentage_ <= 0 || speed_percentage_ >100)
-		speed_percentage_ = 50;
+		speed_percentage_ = 40;
 
 	getLimits();
 
@@ -199,24 +201,82 @@ bool MotionPlanning::getIKSolution7DOF()
 				current_configuration_.q[i] = _telemetry.measured.position[telemetry_index];
 			}
 
-			// Select the next desired position of the tcp from the target zone poses and fill
-			// the search inverse kinematic solution request with the current configuration as
-			// start configuration and the desired position
-			search_ik_solution_srv_.request.start = current_configuration_;
-			search_ik_solution_srv_.request.tcp_frame = goal_pose_goal_->goal_pose;
+			if(inter_steps_==0)
+			{
 
-			// Call the search inverse kinematic solution service and check for errors
-			search_ik_solution_client_.call(search_ik_solution_srv_);
-			std::string &search_error_message = search_ik_solution_srv_.response.error_message;
-			if(!search_error_message.empty()){
-				msg_error("Search IK Solution failed: %s", search_error_message.c_str());
-				return false;
+				// Select the next desired position of the tcp from the target zone poses and fill
+				// the search inverse kinematic solution request with the current configuration as
+				// start configuration and the desired position
+				search_ik_solution_srv_.request.start = current_configuration_;
+				search_ik_solution_srv_.request.tcp_frame = goal_pose_goal_->goal_pose;
+
+				// Call the search inverse kinematic solution service and check for errors
+				search_ik_solution_client_.call(search_ik_solution_srv_);
+				std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+				if(!search_error_message.empty()){
+					msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+					return false;
+				}
+
+				// Extract the solution configuration from the response and fill it into the path of the move request
+				euroc_c2_msgs::Configuration &solution_configuration = search_ik_solution_srv_.response.solution;
+				std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
+				path[0] = solution_configuration;
 			}
+			else
+			{
+				get_dk_solution_srv_.request.configuration = current_configuration_;
+				get_dk_solution_client_.call(get_dk_solution_srv_);
 
-			// Extract the solution configuration from the response and fill it into the path of the move request
-			euroc_c2_msgs::Configuration &solution_configuration = search_ik_solution_srv_.response.solution;
-			std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
-			path[0] = solution_configuration;
+				// The error_message field of each service response indicates whether an error occured. An empty string indicates success
+				std::string &ls_error_message = get_dk_solution_srv_.response.error_message;
+				if(!ls_error_message.empty()){
+					ROS_ERROR("Get DK failed: %s", ls_error_message.c_str());
+					return false;
+				}
+				else
+				{
+					geometry_msgs::Pose cur_pose = get_dk_solution_srv_.response.ee_frame;
+
+					double delta_x=goal_pose_goal_->goal_pose.position.x - cur_pose.position.x;
+					double delta_y=goal_pose_goal_->goal_pose.position.y - cur_pose.position.y;
+					double delta_z=goal_pose_goal_->goal_pose.position.z - cur_pose.position.z;
+
+					std::vector<geometry_msgs::Pose> all_poses;
+					all_poses.push_back(cur_pose);
+
+					//necessary to get goal orientation!
+					cur_pose.orientation=goal_pose_goal_->goal_pose.orientation;
+					for(uint16_t ii=0;ii<inter_steps_;ii++)
+					{
+						cur_pose.position.x+=(double)(delta_x/inter_steps_);
+						cur_pose.position.y+=(double)(delta_y/inter_steps_);
+						cur_pose.position.z+=(double)(delta_z/inter_steps_);
+
+						all_poses.push_back(cur_pose);
+
+						ROS_INFO("pose %d: [%4.3f %4.3f %4.3f]",ii,
+								 cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
+					}
+
+					for(uint16_t ii=1;ii<all_poses.size();ii++)
+					{
+						search_ik_solution_srv_.request.start = current_configuration_;
+						search_ik_solution_srv_.request.tcp_frame = all_poses[ii];
+
+						// Call the search inverse kinematic solution service and check for errors
+						search_ik_solution_client_.call(search_ik_solution_srv_);
+						std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+						if(!search_error_message.empty()){
+							msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+							return false;
+						}
+
+						std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
+						path.push_back(search_ik_solution_srv_.response.solution);
+					}
+				}
+			}
 
 			return true;
 		}

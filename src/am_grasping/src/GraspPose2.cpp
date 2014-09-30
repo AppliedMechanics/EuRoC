@@ -539,7 +539,7 @@ void GraspPose2::compute_grasp_poses_()
 	GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 	tmp_GPTCP_pose.position.z=GPTCP_target_pose_.position.z+0.1;
 	GPTCP_target_safe_pose.push_back(tmp_GPTCP_pose);
-	tmp_GPTCP_pose.position.z=GPTCP_target_pose_.position.z+0.3;
+	tmp_GPTCP_pose.position.z=GPTCP_target_pose_.position.z+0.2;
 	GPTCP_target_vision_pose.push_back(tmp_GPTCP_pose);
 	if(object_type_==OBJECT_CUBE)
 	{

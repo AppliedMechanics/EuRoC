@@ -21,6 +21,7 @@
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
 #include <euroc_c2_msgs/GetTimingAlongJointPath.h>
 #include <euroc_c2_msgs/SearchIkSolution.h>
+#include <euroc_c2_msgs/GetForwardKinematics.h>
 
 #include <euroc_c2_msgs/Telemetry.h>
 
@@ -57,6 +58,7 @@ private:
 	ros::ServiceClient move_along_joint_path_client_;
 	ros::ServiceClient timing_along_joint_path_client_;
 	ros::ServiceClient search_ik_solution_client_;
+	ros::ServiceClient get_dk_solution_client_;
 
 	ros::Subscriber telemetry_subscriber_;
 
@@ -67,10 +69,12 @@ private:
 	std::string timing_along_joint_path_;
 	std::string search_ik_solution_;
 	std::string telemetry_;
+	std::string get_dk_solution_;
 
 	euroc_c2_msgs::SearchIkSolution search_ik_solution_srv_;
 	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 	euroc_c2_msgs::GetTimingAlongJointPath timing_along_joint_path_srv_;
+	euroc_c2_msgs::GetForwardKinematics get_dk_solution_srv_;
 
 	euroc_c2_msgs::Configuration commanded_configuration_;
 	euroc_c2_msgs::Configuration current_configuration_;
@@ -90,7 +94,8 @@ private:
 
 	double feedback_frequency_;
 
-	int speed_percentage_;
+	uint32_t speed_percentage_;
+	uint32_t inter_steps_;
 
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();

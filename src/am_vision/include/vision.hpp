@@ -85,6 +85,9 @@ protected:
         actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
 
 public:
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 	Vision();
 	~Vision(){;};
 

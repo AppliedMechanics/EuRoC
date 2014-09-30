@@ -2,6 +2,11 @@
 #include <cmath>
 #include <StaticTFBroadcaster.h>
 
+static const uint32_t slow_moving_speed = 15; // in percent
+static const uint32_t std_moving_speed = 45; // in percent
+static const uint32_t fast_moving_speed = 80; // in percent
+static const uint32_t std_inter_steps = 5;
+
 Statemachine::Statemachine():
 	    scenes_(1),
 		task_active_(false),
@@ -1525,71 +1530,99 @@ int Statemachine::explore_environment_init()
 		goal_queue[0].goal_pose.position.y = 0.232;
 		goal_queue[0].goal_pose.position.z = 0.921;
 		q_temp[0].setRPY(3.14,-0.442,0.786);
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = fast_moving_speed;
 
 		goal_queue[1].goal_pose.position.x = 0.27;
 		goal_queue[1].goal_pose.position.y = 0.27;
 		goal_queue[1].goal_pose.position.z = 0.792;
 		q_temp[1].setRPY(3.14,-0.082,0.786);
+		goal_queue[1].inter_steps = 0;
+		goal_queue[1].speed_percentage = fast_moving_speed;
 
 		goal_queue[2].goal_pose.position.x = 0;
 		goal_queue[2].goal_pose.position.y = 0.381;
 		goal_queue[2].goal_pose.position.z = 0.792;
 		q_temp[2].setRPY(3.14,-0.082,1.571);
+		goal_queue[2].inter_steps = 0;
+		goal_queue[2].speed_percentage = fast_moving_speed;
 
 		goal_queue[3].goal_pose.position.x = -0.232;
 		goal_queue[3].goal_pose.position.y = 0.232;
 		goal_queue[3].goal_pose.position.z = 0.921;
 		q_temp[3].setRPY(3.14,-0.442,2.357);
+		goal_queue[3].inter_steps = 0;
+		goal_queue[3].speed_percentage = fast_moving_speed;
 
 		goal_queue[4].goal_pose.position.x = -0.27;
 		goal_queue[4].goal_pose.position.y = 0.27;
 		goal_queue[4].goal_pose.position.z = 0.792;
 		q_temp[4].setRPY(3.14,-0.082,2.357);
+		goal_queue[4].inter_steps = 0;
+		goal_queue[4].speed_percentage = fast_moving_speed;
 
 		goal_queue[5].goal_pose.position.x = -0.381;
 		goal_queue[5].goal_pose.position.y = 0;
 		goal_queue[5].goal_pose.position.z = 0.792;
 		q_temp[5].setRPY(3.14,-0.082,-3.14);
+		goal_queue[5].inter_steps = 0;
+		goal_queue[5].speed_percentage = fast_moving_speed;
 
 		goal_queue[6].goal_pose.position.x = -0.381;
 		goal_queue[6].goal_pose.position.y = 0;
 		goal_queue[6].goal_pose.position.z = 0.792;
 		q_temp[6].setRPY(-2.7,-0.094,-3.085);
+		goal_queue[6].inter_steps = 0;
+		goal_queue[6].speed_percentage = fast_moving_speed;
 
 		goal_queue[7].goal_pose.position.x = -0.27;
 		goal_queue[7].goal_pose.position.y = -0.27;
 		goal_queue[7].goal_pose.position.z = 0.792;
 		q_temp[7].setRPY(-3.14,-0.082,-2.357);
+		goal_queue[7].inter_steps = 0;
+		goal_queue[7].speed_percentage = fast_moving_speed;
 
 		goal_queue[8].goal_pose.position.x = -0.232;
 		goal_queue[8].goal_pose.position.y = -0.232;
 		goal_queue[8].goal_pose.position.z = 0.921;
 		q_temp[8].setRPY(-3.14,-0.442,-2.357);
+		goal_queue[8].inter_steps = 0;
+		goal_queue[8].speed_percentage = fast_moving_speed;
 
 		goal_queue[9].goal_pose.position.x = 0;
 		goal_queue[9].goal_pose.position.y = -0.381;
 		goal_queue[9].goal_pose.position.z = 0.792;
 		q_temp[9].setRPY(2.7,-0.094,-1.627);
+		goal_queue[9].inter_steps = 0;
+		goal_queue[9].speed_percentage = fast_moving_speed;
 
 		goal_queue[10].goal_pose.position.x = 0;
 		goal_queue[10].goal_pose.position.y = -0.381;
 		goal_queue[10].goal_pose.position.z = 0.792;
 		q_temp[10].setRPY(3.14,-0.082,-1.571);
+		goal_queue[10].inter_steps = 0;
+		goal_queue[10].speed_percentage = fast_moving_speed;
 
 		goal_queue[11].goal_pose.position.x = 0.232;
 		goal_queue[11].goal_pose.position.y = -0.232;
 		goal_queue[11].goal_pose.position.z = 0.921;
 		q_temp[11].setRPY(3.14,-0.442,-0.786);
+		goal_queue[11].inter_steps = 0;
+		goal_queue[11].speed_percentage = fast_moving_speed;
 
 		goal_queue[12].goal_pose.position.x = 0.27;
 		goal_queue[12].goal_pose.position.y = -0.27;
 		goal_queue[12].goal_pose.position.z = 0.792;
 		q_temp[12].setRPY(3.14,-0.082,-0.786);
+		goal_queue[12].inter_steps = 0;
+		goal_queue[12].speed_percentage = fast_moving_speed;
 
 		goal_queue[13].goal_pose.position.x = 0.381;
 		goal_queue[13].goal_pose.position.y = 0;
 		goal_queue[13].goal_pose.position.z = 0.792;
 		q_temp[13].setRPY(3.14,-0.082,0);
+		goal_queue[13].inter_steps = 0;
+		goal_queue[13].speed_percentage = fast_moving_speed;
 
 		for (int i=0;i<nr_goals_;i++)
 		{
@@ -2347,6 +2380,8 @@ int Statemachine::move_to_object_safe()
 
 		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = slow_moving_speed;
 
 		//send first goal
 		move_to_object_safe_state_=RUNNING;
@@ -2459,6 +2494,8 @@ int Statemachine::move_to_object_vision()
 
 		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed;
 
 		//send first goal
 		move_to_object_vision_state_=RUNNING;
@@ -2570,6 +2607,8 @@ int Statemachine::move_to_object()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = std_inter_steps;
+		goal_queue[0].speed_percentage = slow_moving_speed;
 
 		move_to_object_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2640,6 +2679,8 @@ int Statemachine::move_to_target_zone_safe()
 
 		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed;
 
 		move_to_target_zone_safe_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2730,6 +2771,8 @@ int Statemachine::move_to_target_zone_vision()
 
 		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed;
 
 		move_to_target_zone_vision_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2819,6 +2862,8 @@ int Statemachine::move_to_target_zone()
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = slow_moving_speed;
 
 		move_to_target_zone_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2887,6 +2932,8 @@ int Statemachine::homing()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].planning_algorithm = HOMING_7DOF;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed;
 		homing_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
 												boost::bind(&Statemachine::homing_done,this,_1,_2),

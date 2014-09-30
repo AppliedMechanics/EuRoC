@@ -15,6 +15,8 @@
   template<typename PointT> class ShapeGenerator
   {
   public:
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     /*! Empty constructor */
     ShapeGenerator ();
     /*! Empty destructor */
