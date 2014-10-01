@@ -3,7 +3,7 @@
 #include <StaticTFBroadcaster.h>
 
 static const uint32_t slow_moving_speed = 15; // in percent
-static const uint32_t std_moving_speed = 45; // in percent
+static const uint32_t std_moving_speed = 40; // in percent
 static const uint32_t fast_moving_speed = 80; // in percent
 static const uint32_t std_inter_steps = 5;
 
@@ -2862,7 +2862,7 @@ int Statemachine::move_to_target_zone()
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		goal_queue[0].inter_steps = 0;
+		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed;
 
 		move_to_target_zone_state_=RUNNING;
