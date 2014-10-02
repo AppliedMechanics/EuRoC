@@ -52,10 +52,15 @@ typedef enum {
 	//MOVE_WITH_METHOD_A,	//used?
 	//MOVE_WITH_METHOD_B, //used?
 	VISUAL_SERVOING,
+
 	//events
-	OBJECT_NOT_DETECTED, //used?
-	MOTION_PLANNING_ERROR, //used?
-	OBJECT_LOST //used?
+	NOP,
+	RETRY,
+	SKIP_OBJECT,
+	OBJECT_NOT_DETECTED,
+	MOTION_PLANNING_ERROR,
+	OBJECT_LOST,
+
 } fsm_t;
 }
 #endif

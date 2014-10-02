@@ -6,3 +6,4 @@ float64 current_value
 
 ---
 string error_message
+bool limit_reached

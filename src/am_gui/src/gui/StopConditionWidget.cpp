@@ -92,6 +92,11 @@ void StopConditionWidget::updateJointNames()
 
 	for (int i=0;i<8;i++)
 	{
+	        if (i == 7)
+	        {
+	            joint_name_[i]->setText(QString::fromStdString(rosinterface->_telemetry.joint_names[i+2]));
+	            value_[i]->setValue(1.0/security*abs(rosinterface->_telemetry.measured.torque[i+2]-force_limits[i]));
+	        }
 		joint_name_[i]->setText(QString::fromStdString(rosinterface->_telemetry.joint_names[i+2]));
 		value_[i]->setValue(1.0/security*abs(rosinterface->_telemetry.measured.torque[i+2]-force_limits[i]));
 	}

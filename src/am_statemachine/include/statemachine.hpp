@@ -99,6 +99,7 @@ class Statemachine
 
 		//!action client for motionplanning-node (am_motionplanning)
 		actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
+		am_msgs::goalPoseResult motion_planning_result_;
 		//!action client for vision-node (am_vision)
 		actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
 		//!client for grasp-service (am_grasping)
@@ -203,6 +204,10 @@ class Statemachine
 		void scheduler_skip_object();
 		//!properly change to next object
 		void scheduler_next_object();
+		//!schedule grasping sequence
+		void scheduler_grasp_object(bool start);
+		//!schedule placing sequence
+		void scheduler_place_object(bool start);
 
 		//!state for setting the object load in gripper_close() and gripper_release()
 		uint8_t set_object_load_state_;
@@ -325,6 +330,7 @@ class Statemachine
 		void check_object_gripped_cb();
 		//!state of check_object_gripped() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t check_object_gripped_state_;
+		uint8_t check_object_gripped_counter_;
 
 		//!release the gripper
 		int gripper_release();

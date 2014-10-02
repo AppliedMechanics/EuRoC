@@ -2,9 +2,9 @@
 #include <cmath>
 #include <StaticTFBroadcaster.h>
 
-static const uint32_t slow_moving_speed = 15; // in percent
-static const uint32_t std_moving_speed = 40; // in percent
-static const uint32_t fast_moving_speed = 80; // in percent
+static const uint32_t slow_moving_speed = 10; // in percent
+static const uint32_t std_moving_speed = 30; // in percent
+static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 5;
 
 Statemachine::Statemachine():
@@ -32,6 +32,7 @@ Statemachine::Statemachine():
 		locate_object_close_range_state_(OPEN),
 		check_object_finished_state_(OPEN),
 		check_object_gripped_state_(OPEN),
+		check_object_gripped_counter_(0),
 		get_grasping_pose_state_(OPEN),
 		move_to_object_vision_state_(OPEN),
 		move_to_object_safe_state_(OPEN),
@@ -435,29 +436,13 @@ void Statemachine::scheduler_schedule()
 								temp_state.sub.two=fsm::PAUSE;							state_queue.push_back(temp_state);
 							}
 							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-							temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
 							temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
 							temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
 							if (!skip_motion_)
 							{
-								temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::GRAB_OBJECT;
-									temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
-									temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
-									temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
+								scheduler_grasp_object(EXECUTE_LATER);
 								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::PLACE_OBJECT;
-									temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
-									temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-									temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-								temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
+								scheduler_place_object(EXECUTE_LATER);
 							}
 							else
 							{
@@ -587,9 +572,41 @@ void Statemachine::scheduler_schedule()
 						//FOR TESTING!!!!!!!!!!!!
 						//-----------------------
 						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-						check_object_gripped_state_ =OPEN;
-						scheduler_next();
+
+						//scheduler_next();
 						//-----------------------
+
+						if(state_.sub.event_two == fsm::RETRY)
+						{
+							check_object_gripped_state_ =OPEN;
+							//nop
+						}
+						else if(state_.sub.event_two == fsm::OBJECT_LOST)
+						{
+							scheduler_next();
+
+							scheduler_grasp_object(EXECUTE_NOW);
+
+							check_object_gripped_state_ = OPEN;
+							msg_warn("Object lost detected... retrying gripping routine");
+
+							scheduler_printqueue(); //print queue to console for debugging purposes
+							scheduler_next();
+						}
+						else if(state_.sub.event_two == fsm::SKIP_OBJECT)
+						{
+							check_object_gripped_state_ = OPEN;
+							if(ein_->is_active_object_last_object())
+							{
+								state_queue.clear();
+								temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+								scheduler_next();
+							}
+							else
+							{
+								scheduler_skip_object();
+							}
+						}
 					}
 					break;
 				case fsm::GRAB_OBJECT:
@@ -600,7 +617,9 @@ void Statemachine::scheduler_schedule()
 							{
 								//just start the state again
 								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								move_to_object_state_=OPEN;
+
+								//try to close the gripper
+								move_to_object_state_=FINISHED;
 							}
 							break;
 						case fsm::GRIPPER_CLOSE:
@@ -720,6 +739,78 @@ void Statemachine::scheduler_next_object()
 	{
 		cur_object_type_=OBJECT_HANDLE;
 		ROS_INFO("new object-type: HANDLE");
+	}
+}
+
+void Statemachine::scheduler_grasp_object(bool start)
+{
+	ROS_INFO("Scheduler: schedule grasp object sequence");
+
+	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
+
+	if(start)
+	{
+		std::vector<fsm::fsm_state_t>::iterator it = state_queue.begin();
+
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.insert(it,temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.insert(it+1,temp_state);
+		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+2,temp_state);
+		temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(it+3,temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.insert(it+4,temp_state);
+		temp_state.sub.two=fsm::GRAB_OBJECT;
+			temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.insert(it+5,temp_state);
+			temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.insert(it+6,temp_state);
+			temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.insert(it+7,temp_state);
+		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.insert(it+8,temp_state);
+	}
+	else
+	{
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::GRAB_OBJECT;
+			temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
+			temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
+			temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
+	}
+}
+
+void Statemachine::scheduler_place_object(bool start)
+{
+	ROS_INFO("Scheduler: schedule place object sequence");
+
+	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
+
+	if(start)
+	{
+		std::vector<fsm::fsm_state_t>::iterator it = state_queue.begin();
+
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.insert(it+1,temp_state);
+		temp_state.sub.two=fsm::PLACE_OBJECT;
+			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.insert(it+2,temp_state);
+			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(it+3,temp_state);
+			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(it+4,temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.insert(it+5,temp_state);
+		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+6,temp_state);
+		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.insert(it+7,temp_state);
+	}
+	else
+	{
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::PLACE_OBJECT;
+			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
+			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
+			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
 	}
 }
 
@@ -1329,6 +1420,8 @@ int Statemachine::check_object_gripped()
 		{
 			msg_error("Error. obj_picked_up_srv_ failed: %s", op_error_message.c_str());
 			check_object_gripped_state_=FINISHEDWITHERROR;
+
+			state_.sub.event_two = fsm::RETRY;
 			return 0;
 		}
 		else
@@ -1339,8 +1432,10 @@ int Statemachine::check_object_gripped()
 			}
 			else
 			{
-				ROS_INFO("state-observer says, that object is not gripped: NOT OK");
+				ROS_INFO("state-observer says, that object is gripped: NOT OK");
 				check_object_gripped_state_=FINISHEDWITHERROR;
+
+				state_.sub.event_two = fsm::OBJECT_LOST;
 				return 0;
 			}
 		}
@@ -1348,14 +1443,21 @@ int Statemachine::check_object_gripped()
 		//==============================================
 		scheduler_next();
 		//==============================================
-		//reset state
+		//reset state and counter
 		check_object_gripped_state_=OPEN;
+		check_object_gripped_counter_=0;
+		state_.sub.event_two = fsm::NOP;
 
 	}
 	else if(check_object_gripped_state_==FINISHEDWITHERROR)
 	{
 		//destroy thread
 		lsc_.detach();
+
+		//increase error counter
+		check_object_gripped_counter_++;
+		if(check_object_gripped_counter_ > 2)
+			state_.sub.event_two = fsm::SKIP_OBJECT;
 
 		ROS_INFO("check_object_gripped() called: FINISHEDWITHERROR");
 		scheduler_schedule(); //Call for Error-Handling
@@ -2474,6 +2576,7 @@ void Statemachine::move_to_object_safe_done(const actionlib::SimpleClientGoalSta
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_object_safe_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2588,6 +2691,7 @@ void Statemachine::move_to_object_vision_done(const actionlib::SimpleClientGoalS
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_object_vision_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2659,6 +2763,7 @@ void Statemachine::move_to_object_done(const actionlib::SimpleClientGoalState& s
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_object_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2751,6 +2856,7 @@ void Statemachine::move_to_target_zone_safe_done(const actionlib::SimpleClientGo
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_target_zone_safe_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2843,6 +2949,7 @@ void Statemachine::move_to_target_zone_vision_done(const actionlib::SimpleClient
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_target_zone_vision_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2914,6 +3021,7 @@ void Statemachine::move_to_target_zone_done(const actionlib::SimpleClientGoalSta
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			move_to_target_zone_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2983,6 +3091,7 @@ void Statemachine::homing_done(const actionlib::SimpleClientGoalState& state,
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			homing_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;

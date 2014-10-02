@@ -7,7 +7,7 @@
 
 #ifndef MOTIONPLANNING_H_
 #define MOTIONPLANNING_H_
-
+#include <cstdlib>
 #include <ros/ros.h>
 
 // AM
@@ -24,6 +24,7 @@
 #include <euroc_c2_msgs/GetForwardKinematics.h>
 
 #include <euroc_c2_msgs/Telemetry.h>
+#include <am_msgs/CallSetStopConditions.h> //TODO remove (by Anna)
 
 #include <boost/thread.hpp>
 
@@ -59,6 +60,7 @@ private:
 	ros::ServiceClient timing_along_joint_path_client_;
 	ros::ServiceClient search_ik_solution_client_;
 	ros::ServiceClient get_dk_solution_client_;
+	ros::ServiceClient state_observer_client_; //TODO remove (by Anna)
 
 	ros::Subscriber telemetry_subscriber_;
 
@@ -82,6 +84,7 @@ private:
 	euroc_c2_msgs::Telemetry _telemetry;
 
 	am_msgs::goalPoseGoal::ConstPtr goal_pose_goal_;
+	am_msgs::CallSetStopConditions call_set_stop_cond_srv_; //TODO remove (by Anna)
 
 	std::vector<euroc_c2_msgs::Limits> joint_limits_;
 	euroc_c2_msgs::Limits gripper_limit_;
@@ -93,6 +96,7 @@ private:
 	double starting_time_;
 
 	double feedback_frequency_;
+	bool called;  // Keeps track of whether set_stop_conditions service has been called and evaluates as true after first call has been made
 
 	uint32_t speed_percentage_;
 	uint32_t inter_steps_;

@@ -70,11 +70,13 @@ private:
 
 	//publisher to send stop message (bool)
 	ros::Publisher stop_pub;
-//	//publisher to send stop condition message
-//	ros::Publisher stop_condition_pub;
 
 	uint64_t counter;
 	uint64_t stamp_;
+
+	int sim_time_sec_;  // to print simulation time with telemetry info
+	int sim_time_nsec_;
+	float max_torques[8];  //maximum torques got from telemetry saved here.
 
 	float force_limits[8];
         float force_limits_max[8];

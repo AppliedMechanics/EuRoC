@@ -1,5 +1,8 @@
 #include <state_observer.hpp>
 
+static const double std_force_limit = 0.5;
+static const double max_force_limit = 0.9;
+static const double delta_limit = 0.1;
 
 StateObserver::StateObserver()
 {
@@ -8,11 +11,11 @@ StateObserver::StateObserver()
 
 	stop_pub = nh.advertise<std_msgs::Bool>("stop", 1);
 
-        euroc_c2_interface_ = "/euroc_interface_node";
-        telemetry_ = euroc_c2_interface_ + "/telemetry";
-        estimated_external_force_ = euroc_c2_interface_ + "/get_estimated_external_force";
-        set_stop_conditions_ = euroc_c2_interface_ + "/set_stop_conditions";
-        set_object_load_ = euroc_c2_interface_ + "/set_object_load";
+	euroc_c2_interface_ = "/euroc_interface_node";
+	telemetry_ = euroc_c2_interface_ + "/telemetry";
+	estimated_external_force_ = euroc_c2_interface_ + "/get_estimated_external_force";
+	set_stop_conditions_ = euroc_c2_interface_ + "/set_stop_conditions";
+	set_object_load_ = euroc_c2_interface_ + "/set_object_load";
 
 	telemetry_subscriber_= nh.subscribe(telemetry_, 1, &StateObserver::callback, this); // this to point at the object (&so) itself
 	get_estimated_external_force_client_ = nh.serviceClient<euroc_c2_msgs::GetEstimatedExternalForce>(estimated_external_force_);
@@ -21,23 +24,25 @@ StateObserver::StateObserver()
 	object_picked_up_srv = nh.advertiseService("ObjectPickedUp_srv", &StateObserver::ReturnObjectPickedUp, this);
 	call_set_stop_conditions_srv = nh.advertiseService("CallSetStopConditions_srv", &StateObserver::CallSetStopCondition, this);
 
-//	current_configuration.q.resize(7); // Resizing the current_conf vector to fit all joints
+	//	current_configuration.q.resize(7); // Resizing the current_conf vector to fit all joints
 
-	        force_limits_max[0] = 176;
-	        force_limits_max[1] = 176;
-	        force_limits_max[2] = 100;
-	        force_limits_max[3] = 100;
-	        force_limits_max[4] = 100;
-	        force_limits_max[5] = 30;
-	        force_limits_max[6] = 30;
-	        force_limits_max[7] = 200;  // max_gripper_force
+	force_limits_max[0] = 176;
+	force_limits_max[1] = 176;
+	force_limits_max[2] = 100;
+	force_limits_max[3] = 100;
+	force_limits_max[4] = 100;
+	force_limits_max[5] = 30;
+	force_limits_max[6] = 30;
+	force_limits_max[7] = 200;  // max_gripper_force
 
 
-	        for(int i = 0; i < 8; i++) // Initialise the limits to 100 Nm; SetJointTorqueLimits() will have to be called from main
-	                {
-	                  security[i] = 0.95;  // Default security limit sets all force limits to 10 Nm
-	                  force_limits[i] = force_limits_max[i]*0.6; //TODO limits from urdf file? state_observer/src/am_robot_model/kuka_lwr/kuka_lwr_mod.urdf (rosinterface.cpp)
-	                }                          //-> Array erstellen (StopConditionWidget.cpp)
+	for(int i = 0; i < 8; i++) // Initialise the limits to 100 Nm; SetJointTorqueLimits() will have to be called from main
+	{
+		max_torques[i] = 0.0;
+		security[i] = std_force_limit;  // Default security limit sets all force limits to 10 Nm
+		force_limits[i] = force_limits_max[i]*security[i]; //TODO limits from urdf file? state_observer/src/am_robot_model/kuka_lwr/kuka_lwr_mod.urdf (rosinterface.cpp)
+	}                          //-> Array erstellen (StopConditionWidget.cpp)
+
 }
 
 StateObserver::~StateObserver()
@@ -56,39 +61,52 @@ bool StateObserver::check_state()
 	    msg_error("getTelemetry: An Error happened here.");
 	  }
 
-	if(counter%20 == 0) //Rate of messages shown
-	{
+//	if(counter%20 == 0) //Rate of messages shown
+//	{
 
-	  while(joint_num < 8)
+	  while(joint_num < 7)
 	  {
-//		get_estimated_external_force_client_.call(get_estimated_external_force_srv);
+		  //		get_estimated_external_force_client_.call(get_estimated_external_force_srv);
 
 
-		if(stamp_!=0) // If time stamp is not equal to nought, total torque will be compared with the limit
-		{
-		    std_msgs::Bool msg;
+		  if(stamp_!=0) // If time stamp is not equal to nought, total torque will be compared with the limit
+		  {
+			  std_msgs::Bool msg;
+			  sim_time_sec_ = (int)_telemetry.header.stamp.sec;
+			  sim_time_nsec_ = (int)_telemetry.header.stamp.nsec;
 
-		    if((_telemetry.measured.external_torque[joint_num +2] > force_limits[joint_num])
-		        ||(_telemetry.measured.external_torque[joint_num +2] < -force_limits[joint_num]))
-		    {
-			msg.data=true;  // msg.data = true when limit has been exceeded
-			try
-			{
-			    stop_pub.publish(msg);
-			    msg_warn("Published stopping message! Joint %d external torque: %f, limit: %f",(joint_num +1), _telemetry.measured.external_torque[joint_num +2], force_limits[joint_num]);
-			}
-			catch(...)
-			{
-			    msg_error("failed to publish stop message");
-			    return false;
-			}
-		    }
-		}
-		joint_num++;
+			  if(abs(_telemetry.measured.external_torque[joint_num +2]) > max_torques[joint_num])
+			  {
+				  max_torques[joint_num] = _telemetry.measured.external_torque[joint_num +2];
+			  }
 
-          }
+			  if((_telemetry.measured.external_torque[joint_num +2] > force_limits[joint_num])
+					  ||(_telemetry.measured.external_torque[joint_num +2] < -force_limits[joint_num]))
+			  {
+				  msg.data=true;  // msg.data = true when limit has been exceeded
+				  try
+				  {
+					  stop_pub.publish(msg);
+					  msg_warn("Published stopping message! Joint %d external torque: %f, limit: %f at sim. time %d.%d",
+							  (joint_num +1), _telemetry.measured.external_torque[joint_num +2], force_limits[joint_num],
+							  sim_time_sec_, sim_time_nsec_);
+					  //for(int i =0; i < 7; i++)
+					  {
+						  ROS_INFO("joint %d maximum torque: %f", joint_num, max_torques[joint_num]);
+					  }
+				  }
+				  catch(...)
+				  {
+					  msg_error("failed to publish stop message");
+					  return false;
+				  }
+			  }
+		  }
+		  joint_num++;
 
-	}
+	  }
+
+//	}
 
 	return true;
 }
@@ -103,31 +121,48 @@ bool StateObserver::CallSetStopCondition(am_msgs::CallSetStopConditions::Request
 
   // Check estimated external forces at gripper
   if(!(get_estimated_external_force_client_.call(get_estimated_external_force_srv)))
-      {
-        get_estimated_external_force_srv.response.error_message = "Failed to call client to get external force";
-        msg_error("Failed to call client to get external force");
-        return false;
-      }
+  {
+	  get_estimated_external_force_srv.response.error_message = "Failed to call client to get external force";
+	  msg_error("Failed to call client to get external force");
+	  return false;
+  }
 
   if(req.current_value >= force_limits_max[req.joint_nbr] || req.current_value <= -force_limits_max[req.joint_nbr])
   {
-    msg_warn("Current force/torque exceeds maximum limit at joint %d!", (req.joint_nbr +1));
+	  msg_warn("Current force/torque exceeds maximum limit at joint %d!", (req.joint_nbr +1));
   }
-  // Set new force limits
-    if (req.level == 1)
-    {
-//    security[req.joint_nbr] = force_limits_max[req.joint_nbr]/(1.1*force_limits[req.joint_nbr]);  //req.joint_nbr -> take setting security level out of while loop?
-      force_limits[req.joint_nbr] = 1.3*force_limits[req.joint_nbr];  // req.level
-    }
-//    force_limits[req.joint_nbr] = force_limits_max[req.joint_nbr]/security[req.joint_nbr];  // req.level
 
-    if(force_limits[req.joint_nbr] > 0.95*(force_limits_max[req.joint_nbr]))  // Safely limit of 5 Nm
-    {
-      msg_warn("Current force/torque approaching the maximum limit at joint %d!", (req.joint_nbr +1));
-//      security[req.joint_nbr] = force_limits_max[req.joint_nbr]/10.0;  // Default security limit sets all force limits to 10 Nm
-//      force_limits[req.joint_nbr] = force_limits_max[req.joint_nbr]/security[req.joint_nbr];
-      force_limits[req.joint_nbr] = force_limits_max[req.joint_nbr]*0.8;
-    }
+  // Set new force limits
+  if (req.level == 1)
+  {
+	  //    security[req.joint_nbr] = force_limits_max[req.joint_nbr]/(1.1*force_limits[req.joint_nbr]);  //req.joint_nbr -> take setting security level out of while loop?
+	  security[req.joint_nbr] += delta_limit;
+
+	  if(security[req.joint_nbr]>max_force_limit)
+	  {
+		  security[req.joint_nbr]=max_force_limit;
+		  res.limit_reached=true;
+	  }
+	  force_limits[req.joint_nbr] = security[req.joint_nbr]*force_limits_max[req.joint_nbr];  // req.level
+  }
+  else
+  {
+	  for(uint16_t ii=0;ii<lwr_nr;ii++)
+	  {
+		  security[ii]=std_force_limit;
+		  force_limits[ii] = security[ii]*force_limits_max[ii];  // req.level
+	  }
+  }
+
+
+  //old version:
+  //    if(force_limits[req.joint_nbr] > 0.9*(force_limits_max[req.joint_nbr]))  // Safely limit of 5 Nm
+  //    {
+  //      msg_warn("Current force/torque approaching the maximum limit at joint %d!", (req.joint_nbr +1));
+  //      security[req.joint_nbr] = force_limits_max[req.joint_nbr]/10.0;  // Default security limit sets all force limits to 10 Nm
+  //      force_limits[req.joint_nbr] = force_limits_max[req.joint_nbr]/security[req.joint_nbr];
+  //      force_limits[req.joint_nbr] = force_limits_max[req.joint_nbr]*0.8;
+  //    }
 
   // Populate a vector with all the lwr joint names + gripper
   for(unsigned int i = 0; i < lwr_nr; ++i)
@@ -137,7 +172,7 @@ bool StateObserver::CallSetStopCondition(am_msgs::CallSetStopConditions::Request
     name << (i +1);   // Simulation joints start from joint 0!! It was (i + 1) before...
     lwr_names[i] = name.str();
   }
- //lwr_names[7] = "gripper";
+// lwr_names[7] = "gripper";
 
   if (ros::service::waitForService(set_stop_conditions_,ros::Duration(1.0)))
   {
@@ -145,14 +180,14 @@ bool StateObserver::CallSetStopCondition(am_msgs::CallSetStopConditions::Request
     stop_conditions.resize(lwr_nr);
     for (int i = 0 ; i < lwr_nr; i++)
     {
-      if (lwr_names[i].compare("gripper") == 0)  //string::compare returns 0 when compared strings are identical
-      {
-        stop_conditions[i].condition_type = "tool_force_threshold";
-      }
-      else
-      {
+//      if (lwr_names[i].compare("gripper") == 0)  //string::compare returns 0 when compared strings are identical
+//      {
+//        stop_conditions[i].condition_type = "tool_force_threshold";
+//      }
+//      else
+//      {
         stop_conditions[i].condition_type = "joint_ext_torque_threshold";
-      }
+//      }
       // Stop condition operators have to be set!!
       stop_conditions[i].condition_operator = "|>";
       stop_conditions[i].joint_name = lwr_names[i];
@@ -230,21 +265,10 @@ bool StateObserver::ReturnObjectPickedUp(am_msgs::ObjectPickedUp::Request &req, 
   float gravityZ = 9.8;
   ROS_INFO("ObjectPickedUp service called");
 
-//  set_object_load_srv_.request.center_of_gravity = req.CentreOfMass;
-//  set_object_load_srv_.request.mass = 0.0;
-//  if(!set_object_load_client_.call(set_object_load_srv_))
-//      {
-//        set_object_load_srv_.response.error_message = "Failed to call client to set object load";
-//        msg_error("Failed to call client to set object load");
-//        return false;
-//      }
-//
-//  boost::this_thread::sleep (boost::posix_time::milliseconds(2000));
-
   if(!(get_estimated_external_force_client_.call(get_estimated_external_force_srv)))
       {
         get_estimated_external_force_srv.response.error_message = "Failed to call client to get external force";
-        msg_error("Failed to call client to get external force");
+        msg_error("%s", get_estimated_external_force_srv.response.error_message.c_str());
         return false;
       }
 
@@ -255,27 +279,6 @@ bool StateObserver::ReturnObjectPickedUp(am_msgs::ObjectPickedUp::Request &req, 
       && get_estimated_external_force_srv.response.external_force.force.z >= -0.8*(gravityZ*(req.ObjectMass)))
   {
     ROS_INFO("Object picked up successfully!");
-
-//    set_object_load_srv_.request.center_of_gravity = req.CentreOfMass;
-//    set_object_load_srv_.request.mass = req.ObjectMass ;
-
-//    // Call SetObjectLoad
-//    if(!set_object_load_client_.call(set_object_load_srv_))
-//    {
-//      set_object_load_srv_.response.error_message = "Failed to call client to set object load";
-//      msg_error("Failed to call client to set object load");
-//      return false;
-//    }
-//    if(set_object_load_srv_.response.error_message.empty())
-//    {
-//      ROS_INFO("Object mass set successfully.");
-//    }
-//    else
-//    {
-//      ROS_ERROR("Failed to set object load!!");
-//      res.GotObject = false;
-//      return false;
-//    }
 
     res.GotObject = true;
     return true;

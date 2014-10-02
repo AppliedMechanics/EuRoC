@@ -33,6 +33,8 @@ public:
 	void print_object(am_msgs::Object*obj);
 	//!set active_object_ to finished
 	void set_active_object_finished();
+	//!tried every object once
+	bool is_active_object_last_object();
 
 	//!save the object data to the ros parameter server
 	void save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);

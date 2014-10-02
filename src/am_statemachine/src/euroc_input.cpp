@@ -956,6 +956,14 @@ void EurocInput::set_active_object_finished()
 	}
 }
 
+bool EurocInput::is_active_object_last_object()
+{
+	if(active_object_ == nr_objects_-1)
+		return true;
+	else
+		return false;
+}
+
 bool EurocInput::all_finished()
 {
 	uint16_t cnt=0;

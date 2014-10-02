@@ -23,6 +23,7 @@ time_at_path_points_(1)
 	timing_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::GetTimingAlongJointPath>(timing_along_joint_path_);
 	search_ik_solution_client_      = nh_.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 	get_dk_solution_client_         = nh_.serviceClient<euroc_c2_msgs::GetForwardKinematics>(get_dk_solution_);
+	state_observer_client_          = nh_.serviceClient<am_msgs::CallSetStopConditions>("CallSetStopConditions_srv");  //TODO remove (by Anna)
 
 	joint_limits_.resize(7);
 
@@ -35,7 +36,7 @@ time_at_path_points_(1)
 	feedback_frequency_ = 2;
 
 	mtt_=OPEN;
-
+	called = false;
 }
 
 MotionPlanning::~MotionPlanning() {}
@@ -389,11 +390,86 @@ bool MotionPlanning::getTelemetry()
 void MotionPlanning::moveToTargetCB()
 {
 	// Call the move request and check for errors
-	move_along_joint_path_client_.call(move_along_joint_path_srv_);
+	if(!move_along_joint_path_client_.call(move_along_joint_path_srv_)) //TODO CHange back to original
+	{
+	  move_along_joint_path_srv_.response.error_message = "Failed to call client to move along joint path";
+	        msg_error("Failed to call client to move along joint path.");
+	        return;
+	}
+	// Print out stop reason
+	std::string joint = "joint ";
+	std::string tool = "tool force";
+	std::string ext_torque = "ext_torque ";
+	std::string is = "is ";
+	std::string StopReason = move_along_joint_path_srv_.response.stop_reason;
+
+	if( (StopReason != "path finished") && (StopReason != "path finished (already at target)") )
+	{
+		if (StopReason == "")
+		{
+			msg_error("%s", move_along_joint_path_srv_.response.error_message.c_str());
+			return;
+		}
+		else
+		{
+			msg_info("Stop Reason: %s", StopReason.c_str());
+
+			if (StopReason.find(joint) != std::string::npos)
+			{
+				std::string joint_no = StopReason.substr(StopReason.find(joint) + joint.size(), 1);
+
+				//joint_name no is given number plus 1 (in simulation joints start from 0)
+				call_set_stop_cond_srv_.request.joint_nbr = std::atoi(joint_no.c_str());
+
+				//testing atof functionality
+				std::string string_torque = StopReason.substr(StopReason.find(ext_torque) + ext_torque.size(), StopReason.find(" ")); // until next space
+				call_set_stop_cond_srv_.request.current_value = std::atof(string_torque.c_str());
+			}
+			else if (StopReason.find(tool) != std::string::npos)
+			{
+				call_set_stop_cond_srv_.request.joint_nbr = 7; // gripper
+				std::string string_force = StopReason.substr(StopReason.find(is) + is.size(), StopReason.find(" "));
+				call_set_stop_cond_srv_.request.current_value = std::atof(string_force.c_str());
+			}
+			else
+			{
+				msg_error("unknown stop reason!");
+			}
+
+			msg_error("Stop reason: %s", move_along_joint_path_srv_.response.stop_reason.c_str());
+			call_set_stop_cond_srv_.request.level = 1; // level 1 = limits eased
+		}
+
+		if(!state_observer_client_.call(call_set_stop_cond_srv_))
+		{
+			msg_error("Failed to call client to set stop conditions.");
+			return;
+		}
+
+		//check if max limits reached in stop cond. serv.
+		if(call_set_stop_cond_srv_.response.limit_reached)
+		{
+			goalPose_result_.error_reason = MAX_LIMIT_REACHED;
+		}
+		else
+		{
+			goalPose_result_.error_reason = STOP_COND;
+		}
+	}
+	else
+	{
+		call_set_stop_cond_srv_.request.level = 0;
+		if(!state_observer_client_.call(call_set_stop_cond_srv_))
+		{
+			msg_error("Failed to call client to set stop conditions.");
+			return;
+		}
+	}
+	// above by Anna
 
 	std::string &move_error_message = move_along_joint_path_srv_.response.error_message;
 	if(!move_error_message.empty()){
-		msg_error("Move failed.");
+		msg_error("Move failed...");
 		std::cout << "Move failed: " + move_error_message << std::endl;
 	}
 	mtt_=FINISHED;

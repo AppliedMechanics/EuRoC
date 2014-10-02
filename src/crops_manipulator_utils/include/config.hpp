@@ -12,10 +12,23 @@ typedef enum {
 } gripping_mode_t;
 
 typedef enum {
+	EXECUTE_NOW=1,
+	EXECUTE_LATER=0,
+}scheduler_mode_t;
+
+typedef enum {
 	STANDARD_IK_7DOF = 0,
 	MOVE_IT,
 	HOMING_7DOF
 } motion_planning_mode_t;
+
+typedef enum {
+	NO_ERROR = 0,
+	STOP_COND,
+	MAX_LIMIT_REACHED,
+	NO_IK,
+	OTHER
+} motion_planning_error_t;
 
 typedef enum {
 	OPEN=0,
