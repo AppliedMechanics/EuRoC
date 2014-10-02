@@ -7,6 +7,7 @@ uint16 mode
 #result definition
 geometry_msgs/Pose abs_object_pose
 bool object_detected
+bool object_in_zone
 time stamp
 ---
 #feedback definition

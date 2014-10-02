@@ -323,6 +323,9 @@ class Statemachine
 		int check_object_finished();
 		//!state of check_object_finished() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t check_object_finished_state_;
+		//!callbacks for check_object_finished()
+		void check_object_finished_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
+		void check_object_finished_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
 
 		//!check whether the object has been gripped correctly
 		int check_object_gripped();

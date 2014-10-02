@@ -1,6 +1,7 @@
 # A service call that enables exploring of the environment
 # 
 uint16 camera
+am_msgs/Sensor[] sensors
 ---
 # An error message. An empty string indicates success.
 string error_message

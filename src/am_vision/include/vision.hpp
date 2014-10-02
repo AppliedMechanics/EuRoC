@@ -63,31 +63,32 @@ private:
 
 	// Constants
 	static const int CAM_TCP = 0;
-        static const int CAM_SCENE = 1;
-        static const int CLOSE_RANGE_POSE = 2;
-        static const int OBJECT_ON_TARGET_VERIFICATION = 3;
-        static const int HANDLE = 4;
-        static const int CYLINDER = 5;
-        static const int CUBE = 6;
+	static const int CAM_SCENE = 1;
+//	static const int CLOSE_RANGE_POSE = 2;
+//	static const int OBJECT_ON_TARGET_VERIFICATION = 3;
+	static const int HANDLE = 4;
+	static const int CYLINDER = 5;
+	static const int CUBE = 6;
 
-        // topic and service names
-        std::string euroc_c2_interface;
-        std::string camera_scene_rgb_topic;
-        std::string camera_scene_depth_topic;
-        std::string camera_tcp_rgb_topic;
-        std::string camera_tcp_depth_topic;
-        std::string save_log;
+	// topic and service names
+	std::string euroc_c2_interface;
+	std::string camera_scene_rgb_topic;
+	std::string camera_scene_depth_topic;
+	std::string camera_tcp_rgb_topic;
+	std::string camera_tcp_depth_topic;
+	std::string save_log;
 
-        ros::NodeHandle nh_;
+	int task_nr; // store parameter from active_task_number
+	bool isSingleCube; // verifies whether the current object is a single cube
+	ros::NodeHandle nh_;
 
-        std::string vision_action_name_;
+	std::string vision_action_name_;
 protected:
-        actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
+	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
 
 public:
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
+	// Eigen: alignment issues: http://eigen.tuxfamily.org/dox-devel/group__DenseMatrixManipulation__Alignement.html
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	Vision();
 	~Vision(){;};
 
@@ -101,11 +102,11 @@ public:
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &goal);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
 
-	void close_range_pose(int);
-	std::vector<cv::Point2f> find_corners(Mat &);
+	double close_range_pose(string);
 	void sort_corners(std::vector<cv::Point2f>&);
+	std::vector<int> find_perpendicular_lines(std::vector<cv::Vec4i>&);
 	cv::Point2f compute_intersect(cv::Vec4i, cv::Vec4i);
-	std::vector<pcl::PointXYZ> transform_corner_to_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>, ros::Time);
+	std::vector<pcl::PointXYZ> find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>);
 
 	// create messages that are used to published feedback/result
 	am_msgs::VisionFeedback vision_feedback_;
@@ -154,6 +155,7 @@ public:
 	//am_pointcloud *tcpPointCloud;
 
 	tf::Quaternion tfqt;
+	tf::Quaternion tfqtNew;
 	Eigen::Matrix4f transformation;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
@@ -161,9 +163,9 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalBluePC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalGreenPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalRedPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedBluePC;
@@ -173,11 +175,11 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
 
-        //alignemt was successfull
-        bool obj_aligned_;
+	//alignemt was successfull
+	bool obj_aligned_;
 
-        // size of voxels
-        float leaf_size;
+	// size of voxels
+	float leaf_size;
 };
 
 #endif //VISION_HPP__

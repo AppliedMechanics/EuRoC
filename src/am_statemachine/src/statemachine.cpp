@@ -1334,22 +1334,33 @@ int Statemachine::check_object_finished()
 	{
 		ROS_INFO("check_object_finished() called: OPEN");
 
-		check_object_finished_state_=RUNNING;
+		am_msgs::VisionGoal goal;
+		goal.mode = CHECKING_FOR_OBJECT_IN_TARGET_ZONE;
+		goal.object = cur_obj_;
+		goal.sensors.resize(ein_->get_nr_sensors());
+		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
+		{
+			goal.sensors[ii]=ein_->get_sensors(ii);
+		}
+		goal.target_zone=ein_->get_active_target_zone();
 
-		//TODO: Insert service of state_observer here!!!!!!
-		//		compare actual object pose to target zone with tolerance
-		ROS_INFO("TODO: insert service of state_observer here. skipping...");
+		//send goal to vision-node.
+		check_object_finished_state_=RUNNING;
+		vision_action_client_.sendGoal(goal,
+										boost::bind(&Statemachine::check_object_finished_done,this,_1,_2),
+										visionClient::SimpleActiveCallback(),
+										visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::check_object_finished_feedback,this,_1));
+										);
+	}
+	else if(check_object_finished_state_==FINISHED)
+	{
+		ROS_INFO("check_object_finished() called: FINISHED");
 
 		//set current object finished
 		ein_->set_active_object_finished();
 		//and get next one
 		scheduler_next_object();
 
-		check_object_finished_state_=FINISHED;
-	}
-	else if(check_object_finished_state_==FINISHED)
-	{
-		ROS_INFO("check_object_finished() called: FINISHED");
 		//==============================================
 		scheduler_next();
 		//==============================================
@@ -1364,6 +1375,44 @@ int Statemachine::check_object_finished()
 	}
 
 	return 0;
+}
+
+void Statemachine::check_object_finished_feedback(const am_msgs::VisionFeedbackConstPtr feedback)
+{
+	ROS_INFO("check_object_finished_feedback() called");
+}
+
+void Statemachine::check_object_finished_done(const actionlib::SimpleClientGoalState& state,
+		 	 	 	 	 	   const am_msgs::VisionResultConstPtr& result)
+{
+	ROS_INFO("check_object_finished_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+		case actionlib::SimpleClientGoalState::SUCCEEDED:
+			if(result->object_detected==true)
+			{
+				check_object_finished_state_=FINISHED;
+			}
+			else
+			{
+				msg_error("Error. object is not in the target zone");
+				check_object_finished_state_=FINISHEDWITHERROR;
+			}
+			break;
+		case actionlib::SimpleClientGoalState::ACTIVE:
+		case actionlib::SimpleClientGoalState::PENDING:
+		case actionlib::SimpleClientGoalState::RECALLED:
+			break;
+		case actionlib::SimpleClientGoalState::REJECTED:
+		case actionlib::SimpleClientGoalState::LOST:
+		case actionlib::SimpleClientGoalState::PREEMPTED:
+		case actionlib::SimpleClientGoalState::ABORTED:
+			check_object_finished_state_=FINISHEDWITHERROR;
+			break;
+		default:
+			break;
+	}
 }
 
 void Statemachine::check_object_gripped_cb()
@@ -1787,6 +1836,11 @@ int Statemachine::explore_environment_image()
 		ROS_INFO("explore_environment_image() called: OPEN");
 
 		take_image_srv_.request.camera = TCP_CAM;
+		take_image_srv_.request.sensors.resize(ein_->get_nr_sensors());
+		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
+		{
+			take_image_srv_.request.sensors[ii]=ein_->get_sensors(ii);
+		}
 		explore_environment_image_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::explore_environment_image_cb,this);
 		//watch_scene_cb();

@@ -141,7 +141,7 @@ void ImageFilter::morphOps(Mat &thresh)
 	//the element chosen here is a 3px by 3px rectangle
 
 	Mat erodeElement = getStructuringElement( MORPH_RECT,Size(3,3));
-    //dilate with larger element so make sure object is nicely visible
+	//dilate with larger element so make sure object is nicely visible
 	Mat dilateElement = getStructuringElement( MORPH_RECT,Size(8,8));
 
 	erode(thresh,thresh,erodeElement);
@@ -168,9 +168,9 @@ void ImageFilter::trackFilteredObject(Mat threshold, Mat HSV, Mat &cameraFeed)
 	if (hierarchy.size() > 0)
 	{
 		int numObjects = hierarchy.size();
-        //if number of objects greater than MAX_NUM_OBJECTS we have a noisy filter
-        if(numObjects < MAX_NUM_OBJECTS)
-        {
+		//if number of objects greater than MAX_NUM_OBJECTS we have a noisy filter
+		if(numObjects < MAX_NUM_OBJECTS)
+		{
 			for (int index = 0; index >= 0; index = hierarchy[index][0])
 			{
 
@@ -181,18 +181,18 @@ void ImageFilter::trackFilteredObject(Mat threshold, Mat HSV, Mat &cameraFeed)
 				//if the area is the same as the 3/2 of the image size, probably just a bad filter
 				//we only want the object with the largest area so we safe a reference area each
 				//iteration and compare it to the area in the next iteration.
-                if(area>MIN_OBJECT_AREA)
-                {
-                	SimpleColorObj singleObj;
-                	singleObj.setX(moment.m10/area);
-                	singleObj.setY(moment.m01/area);
+				if(area>MIN_OBJECT_AREA)
+				{
+					SimpleColorObj singleObj;
+					singleObj.setX(moment.m10/area);
+					singleObj.setY(moment.m01/area);
 
-                	colorObjects.push_back(singleObj);
+					colorObjects.push_back(singleObj);
 
 					objectFound = true;
 					refArea = area;
 				}
-                else objectFound = false;
+				else objectFound = false;
 			}
 			//let user know you found an object
 			if(objectFound ==true)
@@ -203,7 +203,7 @@ void ImageFilter::trackFilteredObject(Mat threshold, Mat HSV, Mat &cameraFeed)
 			}
 
 		}
-        else putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
+		else putText(cameraFeed,"TOO MUCH NOISE! ADJUST FILTER",Point(0,50),1,2,Scalar(0,0,255),2);
 	}
 }
 

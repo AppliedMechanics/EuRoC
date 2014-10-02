@@ -80,7 +80,7 @@ void VisionDummy::loadScene(int scene)
 		//	      start_pose: [0, 0.5, 0.03, -1.5, 0, 0.4]
 		//red
 		modscene_poses_[0].position.x = -0.3;
-		modscene_poses_[0].position.y = -0.44;
+		modscene_poses_[0].position.y = -0.4;
 		modscene_poses_[0].position.z = 0.025;
 		q_tmp.setRPY(0,0,0);
 		modscene_poses_[0].orientation.w = q_tmp.getW();
