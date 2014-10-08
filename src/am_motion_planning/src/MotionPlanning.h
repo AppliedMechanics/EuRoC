@@ -9,6 +9,8 @@
 #define MOTIONPLANNING_H_
 #include <cstdlib>
 #include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <tf/LinearMath/Transform.h>
 
 // AM
 #include <actionlib/server/simple_action_server.h>
@@ -84,6 +86,10 @@ private:
 	euroc_c2_msgs::Telemetry _telemetry;
 
 	am_msgs::goalPoseGoal::ConstPtr goal_pose_goal_;
+	geometry_msgs::Pose goal_pose_GPTCP_;
+	geometry_msgs::Pose goal_pose_LWRTCP_;
+
+
 	am_msgs::CallSetStopConditions call_set_stop_cond_srv_; //TODO remove (by Anna)
 
 	std::vector<euroc_c2_msgs::Limits> joint_limits_;
@@ -100,12 +106,14 @@ private:
 
 	uint32_t speed_percentage_;
 	uint32_t inter_steps_;
+	std::string planning_frame_;
 
 	bool getIKSolution7DOF();
 	void getTimingAlongJointPath();
 	bool getTelemetry();
 	bool getLimits();
 	bool setReset7DOF();
+	bool transformToLWRFrame();
 
 	void moveToTargetCB();
 	boost::thread moveToTarget;

@@ -43,11 +43,23 @@ MotionPlanning::~MotionPlanning() {}
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
-	msg_info("In execution call");
-
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
 	inter_steps_ = goal_pose_goal_->inter_steps;
+	planning_frame_ = goal_pose_goal_->planning_frame;
+	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
+
+	if (!planning_frame_.compare(GP_TCP)){
+		goal_pose_GPTCP_ = goal_pose_goal_->goal_pose;
+		if (!transformToLWRFrame()){
+			msg_error("Transformation to LWR frame not successful.");
+		}
+	}
+	else if (!planning_frame_.compare(LWR_TCP)){
+		goal_pose_LWRTCP_ = goal_pose_goal_->goal_pose;
+	}
+	else
+		msg_error("Planning frame not properly defined.");
 
 	if (speed_percentage_ <= 0 || speed_percentage_ >100)
 		speed_percentage_ = 40;
@@ -209,7 +221,7 @@ bool MotionPlanning::getIKSolution7DOF()
 				// the search inverse kinematic solution request with the current configuration as
 				// start configuration and the desired position
 				search_ik_solution_srv_.request.start = current_configuration_;
-				search_ik_solution_srv_.request.tcp_frame = goal_pose_goal_->goal_pose;
+				search_ik_solution_srv_.request.tcp_frame = goal_pose_LWRTCP_;
 
 				// Call the search inverse kinematic solution service and check for errors
 				search_ik_solution_client_.call(search_ik_solution_srv_);
@@ -239,15 +251,15 @@ bool MotionPlanning::getIKSolution7DOF()
 				{
 					geometry_msgs::Pose cur_pose = get_dk_solution_srv_.response.ee_frame;
 
-					double delta_x=goal_pose_goal_->goal_pose.position.x - cur_pose.position.x;
-					double delta_y=goal_pose_goal_->goal_pose.position.y - cur_pose.position.y;
-					double delta_z=goal_pose_goal_->goal_pose.position.z - cur_pose.position.z;
+					double delta_x=goal_pose_LWRTCP_.position.x - cur_pose.position.x;
+					double delta_y=goal_pose_LWRTCP_.position.y - cur_pose.position.y;
+					double delta_z=goal_pose_LWRTCP_.position.z - cur_pose.position.z;
 
 					std::vector<geometry_msgs::Pose> all_poses;
 					all_poses.push_back(cur_pose);
 
 					//necessary to get goal orientation!
-					cur_pose.orientation=goal_pose_goal_->goal_pose.orientation;
+					cur_pose.orientation=goal_pose_LWRTCP_.orientation;
 					for(uint16_t ii=0;ii<inter_steps_;ii++)
 					{
 						cur_pose.position.x+=(double)(delta_x/inter_steps_);
@@ -257,7 +269,7 @@ bool MotionPlanning::getIKSolution7DOF()
 						all_poses.push_back(cur_pose);
 
 						ROS_INFO("pose %d: [%4.3f %4.3f %4.3f]",ii,
-								 cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
+								cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
 					}
 
 					for(uint16_t ii=1;ii<all_poses.size();ii++)
@@ -392,9 +404,9 @@ void MotionPlanning::moveToTargetCB()
 	// Call the move request and check for errors
 	if(!move_along_joint_path_client_.call(move_along_joint_path_srv_)) //TODO CHange back to original
 	{
-	  move_along_joint_path_srv_.response.error_message = "Failed to call client to move along joint path";
-	        msg_error("Failed to call client to move along joint path.");
-	        return;
+		move_along_joint_path_srv_.response.error_message = "Failed to call client to move along joint path";
+		msg_error("Failed to call client to move along joint path.");
+		return;
 	}
 	// Print out stop reason
 	std::string joint = "joint ";
@@ -568,4 +580,65 @@ bool MotionPlanning::getLimits()
 
 	return true;
 
+}
+
+bool MotionPlanning::transformToLWRFrame()
+{
+
+	//! This function transforms the goal pose given for the gripper TCP fram in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
+	tf::TransformListener tf_listener;
+	tf::StampedTransform transform_GPTCP_2_LWRTCP, transform_ORIGIN_2_LWR0;
+	tf::Transform tf_tmp,tf_tmp2;
+
+	geometry_msgs::TransformStamped receive_tf;
+	ros::Time now = ros::Time::now();
+
+	//! Transformation from GP TCP frame to LWR TCP frame
+	try{
+		if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,ros::Time(0),ros::Duration(2.0)))
+			tf_listener.lookupTransform(LWR_TCP,GP_TCP,ros::Time(0),transform_GPTCP_2_LWRTCP);
+		else{
+			msg_error("Could not get LWRTCP GPTCP tf.");
+			return false;
+		}
+	}
+	catch(...){
+		ROS_ERROR("Listening to transform was not successful");
+		return false;
+	}
+	//! Transformation from ORIGIN frame to LWR 0 frame
+	try{
+		if (tf_listener.waitForTransform(LWR_0,ORIGIN,ros::Time(0),ros::Duration(2.0)))
+			tf_listener.lookupTransform(LWR_0,ORIGIN,ros::Time(0),transform_ORIGIN_2_LWR0);
+		else{
+			msg_error("Could not get ORIGIN LWR0 tf.");
+			return false;
+		}
+	}
+	catch(...){
+		ROS_ERROR("Listening to transform was not successful");
+		return false;
+	}
+	tf_tmp.setOrigin(tf::Vector3(goal_pose_GPTCP_.position.x,
+			goal_pose_GPTCP_.position.y,
+			goal_pose_GPTCP_.position.z));
+	tf_tmp.setRotation(tf::Quaternion(goal_pose_GPTCP_.orientation.x,
+			goal_pose_GPTCP_.orientation.y,
+			goal_pose_GPTCP_.orientation.z,
+			goal_pose_GPTCP_.orientation.w));
+
+
+	tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
+	tf_tmp2 = transform_ORIGIN_2_LWR0*tf_tmp2;
+
+	goal_pose_LWRTCP_.position.x = tf_tmp2.getOrigin().getX();
+	goal_pose_LWRTCP_.position.y = tf_tmp2.getOrigin().getY();
+	goal_pose_LWRTCP_.position.z = tf_tmp2.getOrigin().getZ();
+
+	goal_pose_LWRTCP_.orientation.x = tf_tmp2.getRotation().getX();
+	goal_pose_LWRTCP_.orientation.y = tf_tmp2.getRotation().getY();
+	goal_pose_LWRTCP_.orientation.z = tf_tmp2.getRotation().getZ();
+	goal_pose_LWRTCP_.orientation.w = tf_tmp2.getRotation().getW();
+
+	return true;
 }

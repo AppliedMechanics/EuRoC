@@ -797,7 +797,7 @@ void Statemachine::scheduler_place_object(bool start)
 			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(it+3,temp_state);
 			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(it+4,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.insert(it+5,temp_state);
-		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+6,temp_state);
+		//temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+6,temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.insert(it+7,temp_state);
 	}
 	else
@@ -809,7 +809,7 @@ void Statemachine::scheduler_place_object(bool start)
 			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
 			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
+		//temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
 	}
 }
@@ -1778,6 +1778,7 @@ int Statemachine::explore_environment_init()
 		for (int i=0;i<nr_goals_;i++)
 		{
 			goal_queue[i].planning_algorithm = STANDARD_IK_7DOF;
+			goal_queue[i].planning_frame = LWR_TCP;
 			goal_queue[i].goal_pose.orientation.x = q_temp[i].getX();
 			goal_queue[i].goal_pose.orientation.y = q_temp[i].getY();
 			goal_queue[i].goal_pose.orientation.z = q_temp[i].getZ();
@@ -2536,6 +2537,7 @@ int Statemachine::move_to_object_safe()
 
 		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = slow_moving_speed;
 
@@ -2651,6 +2653,7 @@ int Statemachine::move_to_object_vision()
 
 		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed;
 
@@ -2765,6 +2768,7 @@ int Statemachine::move_to_object()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed;
 
@@ -2838,6 +2842,7 @@ int Statemachine::move_to_target_zone_safe()
 
 		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed;
 
@@ -2931,6 +2936,7 @@ int Statemachine::move_to_target_zone_vision()
 
 		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed;
 
@@ -3023,6 +3029,7 @@ int Statemachine::move_to_target_zone()
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed;
 

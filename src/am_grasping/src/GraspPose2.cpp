@@ -102,14 +102,14 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 
 	// Save everything to response
 	res.object_mass = object_mass_;
-	res.object_grip_pose=LWRTCP_object_grip_pose;
-	res.object_safe_pose=LWRTCP_object_safe_pose;
-	res.object_vision_pose=LWRTCP_object_vision_pose;
+	res.object_grip_pose=GPTCP_object_grip_pose;
+	res.object_safe_pose=GPTCP_object_safe_pose;
+	res.object_vision_pose=GPTCP_object_vision_pose;
 	res.object_pose_type=object_pose_type;
 	res.object_grasp_width=object_grasp_width;
-	res.target_place_pose=LWRTCP_target_place_pose;
-	res.target_safe_pose=LWRTCP_target_safe_pose;
-	res.target_vision_pose=LWRTCP_target_vision_pose;
+	res.target_place_pose=GPTCP_target_place_pose;
+	res.target_safe_pose=GPTCP_target_safe_pose;
+	res.target_vision_pose=GPTCP_target_vision_pose;
 	res.target_pose_type=target_pose_type;
 	res.object_grip_r_tcp_com=object_grip_r_tcp_com;
 	res.object_grip_r_gp_com=object_grip_r_gp_com;

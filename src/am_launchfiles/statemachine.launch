@@ -25,7 +25,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_vision" type="am_vision" name="am_vision"/>
 
 <!-- Motion Planning  -->
-	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning"/>
+	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen"/>
 	
 <!-- State Observer  -->
 	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver"/>

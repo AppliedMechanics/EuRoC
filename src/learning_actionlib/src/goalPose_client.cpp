@@ -31,6 +31,8 @@ int main (int argc, char **argv)
 
   goal.goal_pose = example_pose;
   goal.planning_algorithm = 0;
+  goal.planning_frame = "GP_TCP";
+  goal.speed_percentage = 30;
   ac.sendGoal(goal);
 
 
