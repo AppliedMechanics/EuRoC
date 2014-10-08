@@ -49,18 +49,18 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	planning_frame_ = goal_pose_goal_->planning_frame;
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
 
-	if (!planning_frame_.compare(GP_TCP)){
-		goal_pose_GPTCP_ = goal_pose_goal_->goal_pose;
-		if (!transformToLWRFrame()){
+	//! If planning frame is given in GP_TCP frame, the LWR_TCP frame is calculated
+	//! If planning frame is chosen as LWR TCP, the GP TCP Pose needs to be calculated
+	if (!planning_frame_.compare(LWR_TCP) || !planning_frame_.compare(GP_TCP)){
+		if (!transformToTCPFrame(planning_frame_)){
 			msg_error("Transformation to LWR frame not successful.");
 		}
 	}
-	else if (!planning_frame_.compare(LWR_TCP)){
-		goal_pose_LWRTCP_ = goal_pose_goal_->goal_pose;
-	}
-	else
+	else if (goal_pose_goal_->planning_algorithm!=HOMING_7DOF)
 		msg_error("Planning frame not properly defined.");
 
+
+	//! Set default speed percentage values for motion velocity
 	if (speed_percentage_ <= 0 || speed_percentage_ >100)
 		speed_percentage_ = 40;
 
@@ -79,6 +79,15 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 		ROS_WARN("STANDARD IK 7DOF planning mode chosen.");
 
+		//! Transform goal pose to LWR0 Base frame
+		if (!transformToLWRBase())
+		{
+			msg_error("Transformation to LWR0 Base failed.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+			break;
+		}
+		//! Find IK solution
 		if (!getIKSolution7DOF())
 		{
 			msg_error("No IK Solution found.");
@@ -582,15 +591,14 @@ bool MotionPlanning::getLimits()
 
 }
 
-bool MotionPlanning::transformToLWRFrame()
+bool MotionPlanning::transformToTCPFrame(std::string frame)
 {
 
 	//! This function transforms the goal pose given for the gripper TCP fram in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
 	tf::TransformListener tf_listener;
-	tf::StampedTransform transform_GPTCP_2_LWRTCP, transform_ORIGIN_2_LWR0;
+	tf::StampedTransform transform_GPTCP_2_LWRTCP;
 	tf::Transform tf_tmp,tf_tmp2;
 
-	geometry_msgs::TransformStamped receive_tf;
 	ros::Time now = ros::Time::now();
 
 	//! Transformation from GP TCP frame to LWR TCP frame
@@ -606,6 +614,56 @@ bool MotionPlanning::transformToLWRFrame()
 		ROS_ERROR("Listening to transform was not successful");
 		return false;
 	}
+
+	tf_tmp.setOrigin(tf::Vector3(goal_pose_goal_->goal_pose.position.x,
+			goal_pose_goal_->goal_pose.position.y,
+			goal_pose_goal_->goal_pose.position.z));
+	tf_tmp.setRotation(tf::Quaternion(goal_pose_goal_->goal_pose.orientation.x,
+			goal_pose_goal_->goal_pose.orientation.y,
+			goal_pose_goal_->goal_pose.orientation.z,
+			goal_pose_goal_->goal_pose.orientation.w));
+
+	if (!frame.compare(GP_TCP)){
+		tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
+		goal_pose_GPTCP_ = goal_pose_goal_->goal_pose;
+
+		goal_pose_LWRTCP_.position.x = tf_tmp2.getOrigin().getX();
+		goal_pose_LWRTCP_.position.y = tf_tmp2.getOrigin().getY();
+		goal_pose_LWRTCP_.position.z = tf_tmp2.getOrigin().getZ();
+
+		goal_pose_LWRTCP_.orientation.x = tf_tmp2.getRotation().getX();
+		goal_pose_LWRTCP_.orientation.y = tf_tmp2.getRotation().getY();
+		goal_pose_LWRTCP_.orientation.z = tf_tmp2.getRotation().getZ();
+		goal_pose_LWRTCP_.orientation.w = tf_tmp2.getRotation().getW();
+	}
+	else if (!frame.compare(LWR_TCP)){
+		tf_tmp2 = transform_GPTCP_2_LWRTCP.inverse()*tf_tmp;
+		goal_pose_LWRTCP_ = goal_pose_goal_->goal_pose;
+
+		goal_pose_GPTCP_.position.x = tf_tmp2.getOrigin().getX();
+		goal_pose_GPTCP_.position.y = tf_tmp2.getOrigin().getY();
+		goal_pose_GPTCP_.position.z = tf_tmp2.getOrigin().getZ();
+
+		goal_pose_GPTCP_.orientation.x = tf_tmp2.getRotation().getX();
+		goal_pose_GPTCP_.orientation.y = tf_tmp2.getRotation().getY();
+		goal_pose_GPTCP_.orientation.z = tf_tmp2.getRotation().getZ();
+		goal_pose_GPTCP_.orientation.w = tf_tmp2.getRotation().getW();
+	}
+
+
+	return true;
+}
+
+bool MotionPlanning::transformToLWRBase()
+{
+
+	//! This function transforms the goal pose given for the gripper TCP fram in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
+	tf::TransformListener tf_listener;
+	tf::StampedTransform transform_ORIGIN_2_LWR0;
+	tf::Transform tf_tmp,tf_tmp2;
+
+	ros::Time now = ros::Time::now();
+
 	//! Transformation from ORIGIN frame to LWR 0 frame
 	try{
 		if (tf_listener.waitForTransform(LWR_0,ORIGIN,ros::Time(0),ros::Duration(2.0)))
@@ -619,17 +677,15 @@ bool MotionPlanning::transformToLWRFrame()
 		ROS_ERROR("Listening to transform was not successful");
 		return false;
 	}
-	tf_tmp.setOrigin(tf::Vector3(goal_pose_GPTCP_.position.x,
-			goal_pose_GPTCP_.position.y,
-			goal_pose_GPTCP_.position.z));
-	tf_tmp.setRotation(tf::Quaternion(goal_pose_GPTCP_.orientation.x,
-			goal_pose_GPTCP_.orientation.y,
-			goal_pose_GPTCP_.orientation.z,
-			goal_pose_GPTCP_.orientation.w));
+	tf_tmp.setOrigin(tf::Vector3(goal_pose_LWRTCP_.position.x,
+			goal_pose_LWRTCP_.position.y,
+			goal_pose_LWRTCP_.position.z));
+	tf_tmp.setRotation(tf::Quaternion(goal_pose_LWRTCP_.orientation.x,
+			goal_pose_LWRTCP_.orientation.y,
+			goal_pose_LWRTCP_.orientation.z,
+			goal_pose_LWRTCP_.orientation.w));
 
-
-	tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
-	tf_tmp2 = transform_ORIGIN_2_LWR0*tf_tmp2;
+	tf_tmp2 = transform_ORIGIN_2_LWR0*tf_tmp;
 
 	goal_pose_LWRTCP_.position.x = tf_tmp2.getOrigin().getX();
 	goal_pose_LWRTCP_.position.y = tf_tmp2.getOrigin().getY();

@@ -113,7 +113,8 @@ private:
 	bool getTelemetry();
 	bool getLimits();
 	bool setReset7DOF();
-	bool transformToLWRFrame();
+	bool transformToTCPFrame(std::string frame);
+	bool transformToLWRBase();
 
 	void moveToTargetCB();
 	boost::thread moveToTarget;

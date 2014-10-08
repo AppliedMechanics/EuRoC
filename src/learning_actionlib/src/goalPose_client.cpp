@@ -25,7 +25,7 @@ int main (int argc, char **argv)
   example_pose.orientation.y = 0.0;
   example_pose.orientation.z = 0.0;
 
-  example_pose.position.x = 0.5;
+  example_pose.position.x = 0.9;
   example_pose.position.y = 0.5;
   example_pose.position.z = 0.3;
 
