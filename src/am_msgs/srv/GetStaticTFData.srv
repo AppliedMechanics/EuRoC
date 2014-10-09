@@ -1,0 +1,10 @@
+# Static TF Data for TF Broadcaster
+
+string child_frame
+string parent_frame
+
+---
+# An error message. An empty string indicates success.
+string error_message
+
+geometry_msgs/TransformStamped transform

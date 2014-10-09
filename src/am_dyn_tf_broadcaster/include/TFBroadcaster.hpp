@@ -13,6 +13,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/LinearMath/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Transform.h>
 
 //! EUROC
 #include <euroc_c2_msgs/Configuration.h>
@@ -22,6 +23,7 @@
 
 //! AM
 #include <am_msgs/SetStaticTFData.h>
+#include <am_msgs/GetStaticTFData.h>
 
 class TFBroadcaster {
 public:
@@ -29,6 +31,8 @@ public:
 	virtual ~TFBroadcaster();
 
 	bool set_static_tf_data(am_msgs::SetStaticTFData::Request &req, am_msgs::SetStaticTFData::Response &res);
+	bool get_static_tf_data(am_msgs::GetStaticTFData::Request &req, am_msgs::GetStaticTFData::Response &res);
+
 	void update_tf();
 
 private:
@@ -71,6 +75,9 @@ private:
 	//! Setting up direct kinematics
 	tf::Quaternion q_lwr_pi_2_;
 	tf::Quaternion q_lwr_m_pi_2_;
+
+	//! Return transform of kinematic chain
+	tf::Transform transform1, transform2, transformRes;
 
 	double la_x_,la_y_,cam_pan_,cam_tilt_;
 

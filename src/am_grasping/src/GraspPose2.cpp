@@ -62,7 +62,8 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 
 
 	ROS_INFO("transforming poses from GPTCP to LWRTCP frame");
-	transform_GPTCP_2_LWRTCP_=get_transform_GPTCP_2_LWRTCP();
+	if (!get_transform_GPTCP_2_LWRTCP())
+		msg_error("Could not get transform GPTCP --> LWRTCP");
 	LWRTCP_object_grip_pose.clear();
 	LWRTCP_object_safe_pose.clear();
 	LWRTCP_object_vision_pose.clear();
@@ -1271,22 +1272,51 @@ void GraspPose2::compute_grasp_poses_()
 	}
 }
 
-tf::StampedTransform GraspPose2::get_transform_GPTCP_2_LWRTCP()
+bool GraspPose2::get_transform_GPTCP_2_LWRTCP()
 {
-	tf::TransformListener tf_listener;
-	tf::StampedTransform tmp_transform_GPTCP_2_LWRTCP;
-
-	ros::Time now = ros::Time::now();
-	try{
-		tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(2.0));
-		tf_listener.lookupTransform(LWR_TCP,GP_TCP,ros::Time(0),tmp_transform_GPTCP_2_LWRTCP);
-		ROS_INFO("Listening to transform was successful");
-	}
-	catch(...)
+//	tf::TransformListener tf_listener;
+//	tf::StampedTransform tmp_transform_GPTCP_2_LWRTCP;
+//
+//	ros::Time now = ros::Time(0);
+//	try{
+//		tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(2.0));
+//		tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,tmp_transform_GPTCP_2_LWRTCP);
+//		ROS_INFO("Listening to transform was successful");
+//	}
+//	catch(...)
+//	{
+//		msg_error("Listening to transform was not successful");
+//	}
+	//check the service call
+	if(ros::service::exists("get_static_tf_data",false)==true)
 	{
-		msg_error("Listening to transform was not successful");
+	    get_static_tf_data_client_ = n.serviceClient<am_msgs::GetStaticTFData>("get_static_tf_data");
 	}
-	return tmp_transform_GPTCP_2_LWRTCP;
+	else
+	{
+		msg_error("Error. get_static_tf_data_client not available");
+		return false;
+	}
+
+	//check object_grip poses
+	get_static_tf_data_srv_.request.child_frame = GP_TCP;
+	get_static_tf_data_srv_.request.parent_frame = LWR_TCP;
+
+	if(!get_static_tf_data_client_.call(get_static_tf_data_srv_))
+	{
+		msg_error("Error. failed to call get_static_tf_data_client_");
+		return false;
+	}
+	else{
+		transform_GPTCP_2_LWRTCP_.setOrigin(tf::Vector3(get_static_tf_data_srv_.response.transform.transform.translation.x,
+				get_static_tf_data_srv_.response.transform.transform.translation.y,
+				get_static_tf_data_srv_.response.transform.transform.translation.z));
+		transform_GPTCP_2_LWRTCP_.setRotation(tf::Quaternion(get_static_tf_data_srv_.response.transform.transform.rotation.x,
+				get_static_tf_data_srv_.response.transform.transform.rotation.y,
+				get_static_tf_data_srv_.response.transform.transform.rotation.z,
+				get_static_tf_data_srv_.response.transform.transform.rotation.w));
+	}
+	return true;
 }
 
 geometry_msgs::Pose GraspPose2::transform_pose_GPTCP_2_LWRTCP_(geometry_msgs::Pose GPTCP_pose)

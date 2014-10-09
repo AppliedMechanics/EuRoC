@@ -69,6 +69,7 @@ add_service_files(
   ObjectPickedUp.srv
   CallSetStopConditions.srv
   CheckPoses.srv
+  GetStaticTFData.srv
   SetStaticTFData.srv
   AttachObject.srv
   DetachObject.srv

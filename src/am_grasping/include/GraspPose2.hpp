@@ -21,6 +21,7 @@
 #include <am_msgs/Object.h>
 #include <am_msgs/GetGraspPose.h>
 #include <am_msgs/CheckPoses.h>
+#include <am_msgs/GetStaticTFData.h>
 
 //am includes
 #include <config.hpp>
@@ -46,6 +47,10 @@ public:
 	//!client to check poses service from motion planning
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
+
+	//!client to get static TF information
+	ros::ServiceClient get_static_tf_data_client_;
+	am_msgs::GetStaticTFData get_static_tf_data_srv_;
 
 	//stamped Transform from GPTCP to LWRTCP
 	tf::StampedTransform transform_GPTCP_2_LWRTCP_;
@@ -124,7 +129,7 @@ private:
 	// "compute_grasp_pose_(prio)" computes the desired gripper pose in the gripper frame
 	void compute_grasp_poses_();
 	// "get_transform_GPTCP_2_LWRTCP()" returns the transform between GPTCP and LWRTCP
-	tf::StampedTransform get_transform_GPTCP_2_LWRTCP();
+	bool get_transform_GPTCP_2_LWRTCP();
 	// "transform_pose_GPTCP_2_LWRTCP_()" returns the desired gripper poses transformed into the LWR-TCP frame
 	geometry_msgs::Pose transform_pose_GPTCP_2_LWRTCP_(geometry_msgs::Pose GPTCP_pose);
 	// "compute_relative_vectors_()" computes the relative vectors (object<->gripper) for object_grip_poses
