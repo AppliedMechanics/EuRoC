@@ -124,7 +124,7 @@ int Statemachine::init_sm()
 	take_image_client_ = node_.serviceClient<am_msgs::TakeImage>("TakeImageService");
     state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
     set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
-    check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
+    //check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
 
 	//wait for all action servers
 	ROS_INFO("waiting for action servers...");
@@ -458,7 +458,6 @@ void Statemachine::scheduler_schedule()
 							{
 								ein_->set_active_object_finished();
 								scheduler_next_object();
-								ros::Duration(5.0).sleep();
 							}
 						temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 					}
@@ -492,8 +491,9 @@ void Statemachine::scheduler_schedule()
 					if(get_grasping_pose_state_==FINISHEDWITHERROR)
 					{
 						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						ROS_INFO("Statemachine-Errorhandler: skipping object");
 						get_grasping_pose_state_=OPEN;
+						scheduler_skip_object();
 					}
 					break;
 				case fsm::GRIPPER_RELEASE:
@@ -2572,25 +2572,6 @@ void Statemachine::get_grasping_pose_cb()
 	}
 
 
-	//test check poses service call
-	check_poses_srv_.request.poses = get_grasp_pose_srv_.response.object_grip_pose;
-	if(!check_poses_client_.call(check_poses_srv_))
-	{
-		msg_error("failed to call check_poses_client");
-		//get_grasping_pose_state_=FINISHEDWITHERROR;
-	}
-	else
-	{
-		if(check_poses_srv_.response.valid==false)
-		{
-			ROS_INFO("CheckPoses: poses are valid");
-		}
-		else
-		{
-			ROS_INFO("CheckPoses: poses are invalid");
-		}
-	}
-
 
 	ROS_INFO("get_grasping_pose_cb() finished");
 }
@@ -2626,33 +2607,52 @@ int Statemachine::get_grasping_pose()
 //		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
 
 
+		object_grip_pose.clear();
+		object_safe_pose.clear();
+		object_vision_pose.clear();
+		grip_pose_type.clear();
+		object_skip_vision.clear();
+		object_grasp_width.clear();
+		target_place_pose.clear();
+		target_safe_pose.clear();
+		target_vision_pose.clear();
+		place_pose_type.clear();
+		target_skip_vision.clear();
+		object_grip_r_tcp_com.clear();
+		object_grip_r_gp_com.clear();
+		object_grip_r_gp_obj.clear();
+
 		object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
 		object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
 		object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
-		object_pose_type=get_grasp_pose_srv_.response.object_pose_type;
+		grip_pose_type=get_grasp_pose_srv_.response.grip_pose_type;
+
+		object_skip_vision=get_grasp_pose_srv_.response.object_skip_vision;
+
 		object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
+
 		target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
 		target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
 		target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
-		target_pose_type=get_grasp_pose_srv_.response.target_pose_type;
+
+		place_pose_type=get_grasp_pose_srv_.response.place_pose_type;
+
+		target_skip_vision=get_grasp_pose_srv_.response.target_skip_vision;
+
 		object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
 		object_grip_r_gp_com=get_grasp_pose_srv_.response.object_grip_r_gp_com;
 		object_grip_r_gp_obj=get_grasp_pose_srv_.response.object_grip_r_gp_obj;
-		switch (cur_object_type_)
+
+		if(-1==find_pose_set())
 		{
-			case OBJECT_HANDLE:
-				selected_object_pose_=1;
-				selected_target_pose_=0;
-				break;
-			case OBJECT_CYLINDER:
-				selected_object_pose_=1;
-				selected_target_pose_=1;
-				break;
-			case OBJECT_CUBE:
-				selected_object_pose_=1;
-				selected_target_pose_=1;
-				break;
+			msg_error("no feasible pose set found!");
+			get_grasping_pose_state_=FINISHEDWITHERROR;
+			return 0;
 		}
+		ROS_INFO("Found pose set: ");
+		ROS_INFO("selected grip pose: %d",selected_object_pose_);
+		ROS_INFO("selected target pose: %d",selected_target_pose_);
+
 
 		if (object_grip_pose.size()<1)
 		{
@@ -2672,7 +2672,7 @@ int Statemachine::get_grasping_pose()
 			checksizes=false;
 		if (object_vision_pose.size()!=object_grip_pose.size())
 			checksizes=false;
-		if (object_pose_type.size()!=object_grip_pose.size())
+		if (grip_pose_type.size()!=object_grip_pose.size())
 			checksizes=false;
 		if (object_grasp_width.size()!=object_grip_pose.size())
 			checksizes=false;
@@ -2680,7 +2680,7 @@ int Statemachine::get_grasping_pose()
 			checksizes=false;
 		if (target_vision_pose.size()!=target_place_pose.size())
 			checksizes=false;
-		if (target_pose_type.size()!=target_place_pose.size())
+		if (place_pose_type.size()!=target_place_pose.size())
 			checksizes=false;
 		if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
 			checksizes=false;
@@ -2693,12 +2693,48 @@ int Statemachine::get_grasping_pose()
 		{
 			msg_error("Error. received vectors of grasping poses have invalid sizes! (check nr. %d failed)",checksizes);
 			ROS_INFO("vector-sizes: %d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",object_grip_pose.size(),object_safe_pose.size(),
-					object_vision_pose.size(),object_pose_type.size(),object_grasp_width.size(),target_place_pose.size(),
-					target_safe_pose.size(),target_vision_pose.size(),target_pose_type.size(),object_grip_r_tcp_com.size(),
+					object_vision_pose.size(),grip_pose_type.size(),object_grasp_width.size(),target_place_pose.size(),
+					target_safe_pose.size(),target_vision_pose.size(),place_pose_type.size(),object_grip_r_tcp_com.size(),
 					object_grip_r_gp_com.size(),object_grip_r_gp_obj.size());
 			get_grasping_pose_state_=FINISHEDWITHERROR;
 			return 0;
 		}
+
+		//
+		if(object_skip_vision[selected_object_pose_]==1)
+		{
+			ROS_INFO("Skip vision=1 for this pose -> skip move to object vision!");
+
+			uint16_t iter=state_queue.size()-2;
+			for(uint16_t ii=0;ii<iter;ii++)
+			{
+				if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+						(state_queue[ii].sub.two == fsm::MOVE_TO_OBJECT_VISION))
+				{
+					state_queue.erase(state_queue.begin()+ii);
+					state_queue.erase(state_queue.begin()+ii);
+					state_queue.erase(state_queue.begin()+ii);
+					break;
+				}
+			}
+		}
+		if(target_skip_vision[selected_target_pose_]==1)
+		{
+			ROS_INFO("Skip vision=1 for this pose -> skip move to target zone vision!");
+
+			uint16_t iter=state_queue.size()-2;
+			for(uint16_t ii=0;ii<iter;ii++)
+			{
+				if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+						(state_queue[ii].sub.two == fsm::MOVE_TO_TARGET_ZONE_VISION))
+				{
+					state_queue.erase(state_queue.begin()+ii);
+					state_queue.erase(state_queue.begin()+ii);
+					break;
+				}
+			}
+		}
+
 
 		//==============================================
 		scheduler_next();
@@ -2716,6 +2752,68 @@ int Statemachine::get_grasping_pose()
 	}
 
 	return 0;
+}
+
+int Statemachine::find_pose_set()
+{
+	uint16_t obj_sz=object_grip_pose.size();
+	uint16_t tag_sz=target_place_pose.size();
+
+	switch (cur_object_type_)
+	{
+	case OBJECT_HANDLE:
+		for(uint16_t oo=0;oo<obj_sz;oo++)
+			{
+				for(uint16_t tt=0;tt<tag_sz;tt++)
+				{
+					switch(grip_pose_type[oo])
+					{
+					case GRIP_POSE_HANDLE_CYLINDER_ZEQX_YPOSZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_CYLINDER_ZEQX_YNEGZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_CYLINDER_ZEQY_YPOSZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_CYLINDER_ZEQY_YNEGZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					default:
+						break;
+					}
+				}
+			}
+
+			break;
+		case OBJECT_CYLINDER:
+			selected_object_pose_=0;
+			selected_target_pose_=0;
+			return 0;
+		case OBJECT_CUBE:
+			selected_object_pose_=0;
+			selected_target_pose_=0;
+			return 0;
+	}
+
+	return -1;
 }
 
 void Statemachine::set_object_load_cb()

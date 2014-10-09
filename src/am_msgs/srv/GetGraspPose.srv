@@ -21,12 +21,14 @@ geometry_msgs/Vector3 r_gp_obj
 geometry_msgs/Pose[] object_grip_pose
 geometry_msgs/Pose[] object_safe_pose
 geometry_msgs/Pose[] object_vision_pose
-uint16[] object_pose_type
+uint16[] object_skip_vision
+uint16[] grip_pose_type
 float64[] object_grasp_width
 geometry_msgs/Pose[] target_place_pose
 geometry_msgs/Pose[] target_safe_pose
 geometry_msgs/Pose[] target_vision_pose
-uint16[] target_pose_type
+uint16[] target_skip_vision
+uint16[] place_pose_type
 geometry_msgs/Vector3[] object_grip_r_tcp_com
 geometry_msgs/Vector3[] object_grip_r_gp_com
 geometry_msgs/Vector3[] object_grip_r_gp_obj

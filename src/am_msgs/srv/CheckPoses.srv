@@ -3,5 +3,5 @@ geometry_msgs/Pose[] poses
 
 
 ---
-#  true or false if all poses are valid
-bool valid
+#  return priority of poses (invalid=0, lower number is better)
+uint16[] priority

@@ -548,6 +548,8 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 	uint16_t nr_poses = req.poses.size();
 	ROS_INFO("in check poses service call:");
 
+	res.priority.resize(nr_poses);
+
 	for(uint16_t ii=0;ii<nr_poses;ii++)
 	{
 		try
@@ -566,11 +568,11 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 				search_ik_solution_client_.call(search_ik_solution_srv_);
 				std::string &search_error_message = search_ik_solution_srv_.response.error_message;
 				if(!search_error_message.empty()){
-					msg_error("Search IK Solution failed: %s", search_error_message.c_str());
-
-					res.valid=false;
-					return false;
+					//ROS_INFO("Search IK Solution failed: %s", search_error_message.c_str());
+					res.priority[ii]=0;
 				}
+				else
+					res.priority[ii]=1;
 			}
 		} catch(...) {
 			msg_error("failed to find service search ik-solution");
@@ -579,7 +581,6 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 
 	}
 
-	res.valid=true;
 	ROS_INFO("finished check poses service call.");
 
 	return true;

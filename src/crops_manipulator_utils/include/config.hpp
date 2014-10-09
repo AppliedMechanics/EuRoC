@@ -65,16 +65,33 @@ typedef enum {
 	OBJECT_POSE_CUBE_X_UP=0,
 	OBJECT_POSE_CUBE_Y_UP,
 	OBJECT_POSE_CUBE_Z_UP,
-	OBJECT_POSE_CYLINDER_VERTICAL,
 	OBJECT_POSE_CYLINDER_HORIZONTAL,
-	OBJECT_POSE_HANDLE_HORIZONTAL,
-	OBJECT_POSE_HANDLE_HORIZONTAL_CYLINDER,
-	OBJECT_POSE_HANDLE_HORIZONTAL_BOX_1,
-	OBJECT_POSE_HANDLE_HORIZONTAL_BOX_2,
-	OBJECT_POSE_HANDLE_VERTICAL,
-	OBJECT_POSE_HANDLE_VERTICAL_BOX_1_UP,
-	OBJECT_POSE_HANDLE_VERTICAL_BOX_2_UP
+	OBJECT_POSE_CYLINDER_VERTICAL,
+	OBJECT_POSE_HANDLE_HORIZONTAL_XUP,	//x-axis of cylinder shape points upwards
+	OBJECT_POSE_HANDLE_HORIZONTAL_YUP,	//y-axis of cylinder shape points upwards
+	OBJECT_POSE_HANDLE_VERTICAL_ZUP,	//z-axis of cylinder shape points upwards
+	OBJECT_POSE_HANDLE_VERTICAL_ZDOWN, 	//z-axis of cylinder shape points downwards
 } object_pose_type_t;
+
+typedef enum {
+	GRIP_POSE_CUBE_X_UP=0,
+	GRIP_POSE_CUBE_Y_UP,
+	GRIP_POSE_CUBE_Z_UP,
+	GRIP_POSE_CYLINDER_VERTICAL,
+	GRIP_POSE_HANDLE_CYLINDER_ZEQX_YPOSZ,	//z-axis of gripper points in (+-) x-direction of cylinder y-axis of gripper points in positive z-direction of cylinder
+	GRIP_POSE_HANDLE_CYLINDER_ZEQX_YNEGZ,	//z-axis of gripper points in (+-) x-direction of cylinder y-axis of gripper points in negative z-direction of cylinder
+	GRIP_POSE_HANDLE_CYLINDER_ZEQY_YPOSZ,	//z-axis of gripper points in (+-) y-direction of cylinder y-axis of gripper points in positive z-direction of cylinder
+	GRIP_POSE_HANDLE_CYLINDER_ZEQY_YNEGZ,	//z-axis of gripper points in (+-) y-direction of cylinder y-axis of gripper points in negative z-direction of cylinder
+} grip_pose_type_t;
+
+typedef enum {
+	PLACE_POSE_CUBE_X_UP,
+	PLACE_POSE_CUBE_Y_UP,
+	PLACE_POSE_CUBE_Z_UP,
+	PLACE_POSE_CYLINDER_VERTICAL,
+	PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL,
+	PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL,
+} place_pose_type_t;
 
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";

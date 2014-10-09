@@ -156,13 +156,15 @@ class Statemachine
 		std::vector<geometry_msgs::Pose> object_grip_pose;
 		std::vector<geometry_msgs::Pose> object_safe_pose;
 		std::vector<geometry_msgs::Pose> object_vision_pose;
-		std::vector<uint16_t> object_pose_type;
+		std::vector<uint16_t> grip_pose_type;
+		std::vector<uint16_t> object_skip_vision;
 		std::vector<double> object_grasp_width;
 		uint16_t selected_target_pose_;
 		std::vector<geometry_msgs::Pose> target_place_pose;
 		std::vector<geometry_msgs::Pose> target_safe_pose;
 		std::vector<geometry_msgs::Pose> target_vision_pose;
-		std::vector<uint16_t> target_pose_type;
+		std::vector<uint16_t> place_pose_type;
+		std::vector<uint16_t> target_skip_vision;
 		std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
 		std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
 		std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
@@ -309,6 +311,8 @@ class Statemachine
 		void get_grasping_pose_cb();
 		//!state of get_grasping_pose() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t get_grasping_pose_state_;
+		//!find a feasible pose set
+		int find_pose_set();
 
 		//!move to object safe
 		int move_to_object_safe();

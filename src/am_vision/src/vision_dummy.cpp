@@ -102,7 +102,7 @@ void VisionDummy::loadScene(int scene)
 		modscene_poses_[2].position.x = 0;
 		modscene_poses_[2].position.y = 0.5;
 		modscene_poses_[2].position.z = 0.025;
-		q_tmp.setRPY(-1.5, 0, 0.4);
+		q_tmp.setRPY(-1.5708, 0, 0.4);
 		modscene_poses_[2].orientation.w = q_tmp.getW();
 		modscene_poses_[2].orientation.x = q_tmp.getX();
 		modscene_poses_[2].orientation.y = q_tmp.getY();
