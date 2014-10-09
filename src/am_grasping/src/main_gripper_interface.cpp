@@ -68,23 +68,41 @@ bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperCo
 	}
 
 	move_along_joint_path_srv_.request.path[0] = commanded_configuration_;
-	bool ret_val=true;
 	if(!move_along_joint_path_client_.call(move_along_joint_path_srv_))
 	{
-		ret_val=false;
+		res.error_reason = fsm::GRIPPING_ERROR;
+		return false;
 	}
 
 	//
 	//	res.grasp_pose = TCP_target_pose;
 
-	if(ret_val){
-		res.error_message = "";
-		return true;
+	// Print out stop reason
+	std::string joint = "joint ";
+	std::string tool = "tool force";
+	std::string ext_torque = "ext_torque ";
+	std::string is = "is ";
+	std::string StopReason = move_along_joint_path_srv_.response.stop_reason;
+
+	if( (StopReason != "path finished") && (StopReason != "path finished (already at target)") )
+	{
+		if (StopReason == "")
+		{
+			msg_error("%s", move_along_joint_path_srv_.response.error_message.c_str());
+			res.error_reason = fsm::GRIPPING_ERROR;
+			return false;
+		}
+		else
+		{
+			msg_info("Stop Reason: %s", StopReason.c_str());
+
+			res.error_reason = fsm::STOP_COND;
+			return false;
+		}
 	}
 	else
 	{
-		res.error_message = "Failed to call client";
-		return false;
+		return true;
 	}
 }
 

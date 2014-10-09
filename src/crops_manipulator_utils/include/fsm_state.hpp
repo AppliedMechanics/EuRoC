@@ -65,7 +65,10 @@ typedef enum {
 	NO_IK_SOL,
 	NO_DK_SOL,
 	MAX_LIMIT_REACHED,
-	STOP_COND
+	STOP_COND,
+
+	//gripper error events:
+	GRIPPING_ERROR
 } fsm_t;
 }
 #endif

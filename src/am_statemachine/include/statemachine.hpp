@@ -221,6 +221,8 @@ class Statemachine
 		void scheduler_error_move_to_target_zone_safe();
 		void scheduler_error_move_to_target_zone();
 		void scheduler_error_check_object_gripped();
+		void scheduler_error_gripper_close();
+		void scheduler_error_gripper_release();
 
 		//!state for setting the object load in gripper_close() and gripper_release()
 		uint8_t set_object_load_state_;
@@ -357,6 +359,7 @@ class Statemachine
 		void gripper_release_cb();
 		//!state of gripper_release() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t gripper_release_state_;
+		uint8_t gripper_release_counter;
 
 		//!release the gripper
 		int gripper_close();
@@ -364,6 +367,7 @@ class Statemachine
 		void gripper_close_cb();
 		//!state of gripper_close() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t gripper_close_state_;
+		uint8_t gripper_close_counter;
 
 		//!move to target zone safe
 		int move_to_target_zone_safe();

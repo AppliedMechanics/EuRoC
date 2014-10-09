@@ -42,7 +42,9 @@ Statemachine::Statemachine():
 		move_to_object_state_(OPEN),
 		move_to_object_counter(0),
 		gripper_release_state_(OPEN),
+		gripper_release_counter(0),
 		gripper_close_state_(OPEN),
+		gripper_close_counter(0),
 		move_to_target_zone_safe_state_(OPEN),
 		move_to_target_zone_safe_counter(0),
 		move_to_target_zone_vision_state_(OPEN),
@@ -497,9 +499,7 @@ void Statemachine::scheduler_schedule()
 				case fsm::GRIPPER_RELEASE:
 					if(gripper_release_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						gripper_release_state_=OPEN;
+						scheduler_error_gripper_release();
 					}
 					if(set_object_load_state_==FINISHEDWITHERROR)
 					{
@@ -511,9 +511,7 @@ void Statemachine::scheduler_schedule()
 				case fsm::GRIPPER_CLOSE:
 					if(gripper_close_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						gripper_close_state_=OPEN;
+						scheduler_error_gripper_close();
 					}
 					if(set_object_load_state_==FINISHEDWITHERROR)
 					{
@@ -587,9 +585,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::GRIPPER_CLOSE:
 							if(gripper_close_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								gripper_close_state_=OPEN;
+								scheduler_error_gripper_close();
 							}
 							if(set_object_load_state_==FINISHEDWITHERROR)
 							{
@@ -620,9 +616,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::GRIPPER_RELEASE:
 							if(gripper_release_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								gripper_release_state_=OPEN;
+								scheduler_error_gripper_release();
 							}
 							if(set_object_load_state_==FINISHEDWITHERROR)
 							{
@@ -1110,7 +1104,7 @@ void Statemachine::scheduler_error_move_to_object()
 //			move_to_object_safe_state_=FINISHED;
 
 		//try to close the gripper
-		move_to_object_safe_state_=FINISHED;
+		move_to_object_state_=FINISHED;
 		break;
 	default:
 		break;
@@ -1177,12 +1171,6 @@ void Statemachine::scheduler_error_check_object_gripped()
 	if(check_object_gripped_counter_ > 1)
 		state_.sub.event_two = fsm::SKIP_OBJECT;
 
-	//FOR TESTING!!!!!!!!!!!!
-	//-----------------------
-	ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-
-	//scheduler_next();
-	//-----------------------
 
 	if(state_.sub.event_two == fsm::RETRY)
 	{
@@ -1205,6 +1193,72 @@ void Statemachine::scheduler_error_check_object_gripped()
 	{
 		check_object_gripped_state_ = OPEN;
 		scheduler_skip_object();
+	}
+}
+void Statemachine::scheduler_error_gripper_close()
+{
+	switch(state_.sub.event_three)
+	{
+	case fsm::SIM_SRV_NA:
+	case fsm::GRIPPING_ERROR:
+
+		gripper_close_counter++;
+		if(gripper_close_counter > 1)
+		{
+			gripper_close_counter=0;
+			gripper_close_state_=OPEN;
+
+			scheduler_skip_object();
+		}
+		break;
+	case fsm::STOP_COND:
+		//set object load and continue
+		gripper_close_state_=FINISHED;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_gripper_release()
+{
+	switch(state_.sub.event_three)
+	{
+	case fsm::SIM_SRV_NA:
+	case fsm::GRIPPING_ERROR:
+	{
+		gripper_close_counter++;
+		gripper_close_state_=OPEN;
+		if(gripper_close_counter > 1)
+		{
+			gripper_close_counter=0;
+			gripper_close_state_=FINISHED;
+
+			//insert gripper release after move_to_target_zone_safe
+			fsm::fsm_state_t temp_state;
+			std::vector<fsm::fsm_state_t>::iterator it = state_queue.begin();
+
+			temp_state.sub.one=fsm::SOLVE_TASK;
+			temp_state.sub.two=fsm::PLACE_OBJECT;
+				temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(it+1,temp_state);
+		}
+		break;
+	}
+	case fsm::STOP_COND:
+	{
+		//set object load and continue
+		gripper_close_state_=FINISHED;
+
+		//insert gripper release after move_to_target_zone_safe
+		fsm::fsm_state_t temp_state;
+		std::vector<fsm::fsm_state_t>::iterator it = state_queue.begin();
+
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::PLACE_OBJECT;
+			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(it+1,temp_state);
+		break;
+	}
+	default:
+		break;
 	}
 }
 
@@ -2703,12 +2757,14 @@ void Statemachine::gripper_release_cb()
 		{
 			msg_error("Error. call of gripper_control_client_ failed");
 			gripper_release_state_=FINISHEDWITHERROR;
+			state_.sub.event_three=gripper_control_srv_.response.error_reason;
 		}
 	}
 	else
 	{
 		msg_error("Error. gripper_control_client_ is not available");
 		gripper_release_state_=FINISHEDWITHERROR;
+		state_.sub.event_three=fsm::SIM_SRV_NA;
 	}
 
 	ROS_INFO("gripper_release_cb() finished");
@@ -2773,6 +2829,7 @@ int Statemachine::gripper_release()
 		//reset state
 		gripper_release_state_=OPEN;
 		set_object_load_state_=OPEN;
+		gripper_release_counter=0;
 	}
 	else if(gripper_release_state_==FINISHEDWITHERROR)
 	{
@@ -2787,7 +2844,7 @@ int Statemachine::gripper_release()
 		//destroy thread
 		lsc_.detach();
 
-		ROS_INFO("gripper_close() called: FINISHEDWITHERROR (set object load)");
+		ROS_INFO("gripper_release() called: FINISHEDWITHERROR (set object load)");
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2807,12 +2864,14 @@ void Statemachine::gripper_close_cb()
 		{
 			msg_error("Error. call of gripper_control_client_ failed");
 			gripper_close_state_=FINISHEDWITHERROR;
+			state_.sub.event_three=gripper_control_srv_.response.error_reason;
 		}
 	}
 	else
 	{
 		msg_error("Error. gripper_control_client_ is not available");
 		gripper_close_state_=FINISHEDWITHERROR;
+		state_.sub.event_three=fsm::SIM_SRV_NA;
 	}
 
 	ROS_INFO("gripper_close_cb() finished");
@@ -2893,6 +2952,7 @@ int Statemachine::gripper_close()
 		//reset state
 		gripper_close_state_=OPEN;
 		set_object_load_state_=OPEN;
+		gripper_close_counter=0;
 	}
 	else if(gripper_close_state_==FINISHEDWITHERROR)
 	{

@@ -10,3 +10,4 @@ float64 gripper_position
 # An error message. An empty string indicates success.
 string error_message
 float64 current_force
+int32 error_reason
