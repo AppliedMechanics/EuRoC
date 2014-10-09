@@ -1,0 +1,8 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: am_robot_model
+    relative_path: kuka_lwr_combined/kuka_lwr_combined.urdf
+  SRDF:
+    relative_path: config/kuka_lwr_ee.srdf
+  CONFIG:
+    generated_timestamp: 1410962135

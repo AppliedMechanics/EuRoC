@@ -1,0 +1,6 @@
+# no request required
+
+
+---
+# true or false if object has been detached from the gripper
+bool successful

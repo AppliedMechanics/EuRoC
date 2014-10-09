@@ -16,8 +16,19 @@
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/goalPoseAction.h>
 #include <am_msgs/CheckPoses.h>
+#include <am_msgs/AttachObject.h>
+#include <am_msgs/DetachObject.h>
 #include <config.hpp>
 #include <utils.hpp>
+
+// MOVEIT
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/move_group_interface/move_group.h>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+
+//#include <moveit/planning_scene/planning_scene.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit_msgs/RobotState.h>
 
 // EUROC
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
@@ -29,6 +40,9 @@
 #include <am_msgs/CallSetStopConditions.h> //TODO remove (by Anna)
 
 #include <boost/thread.hpp>
+
+
+#define MOVEIT
 
 
 class MotionPlanning {
@@ -92,6 +106,35 @@ private:
 
 	am_msgs::CallSetStopConditions call_set_stop_cond_srv_; //TODO remove (by Anna)
 
+
+// MOVEIT
+#ifdef MOVEIT
+
+	move_group_interface::MoveGroup *group_7DOF;
+	move_group_interface::MoveGroup *group_9DOF;
+	move_group_interface::MoveGroup *group;
+
+	planning_scene_monitor::PlanningSceneMonitor *planning_scene_monitor;
+
+	std::vector<euroc_c2_msgs::Configuration> planned_path_;
+
+	bool getMoveItSolution();
+	void setPlanningConstraints();
+	bool setPlanningTarget(planning_target_type_t target_type);
+
+
+	ros::ServiceServer attach_object_service_;
+	// ROS-service function to attach a gripped object
+	bool return_object_attached(am_msgs::AttachObject::Request &req, am_msgs::AttachObject::Response &res);
+
+	ros::ServiceServer detach_object_service_;
+	// ROS_service function to detach a release object
+	bool return_object_detached(am_msgs::DetachObject::Request &req, am_msgs::DetachObject::Response &res);
+
+#endif
+
+
+
 	std::vector<euroc_c2_msgs::Limits> joint_limits_;
 	euroc_c2_msgs::Limits gripper_limit_;
 	euroc_c2_msgs::Limits table_axis1_limit_;
@@ -115,6 +158,9 @@ private:
 	bool setReset7DOF();
 	bool transformToTCPFrame(std::string frame);
 	bool transformToLWRBase();
+
+	void setMoveRequestJointLimits();
+	void setMoveRequestTCPLimits();
 
 	void moveToTargetCB();
 	boost::thread moveToTarget;

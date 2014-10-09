@@ -69,6 +69,8 @@ add_service_files(
   ObjectPickedUp.srv
   CallSetStopConditions.srv
   CheckPoses.srv
+  AttachObject.srv
+  DetachObject.srv
 )
 
 ## Generate actions in the 'action' folder

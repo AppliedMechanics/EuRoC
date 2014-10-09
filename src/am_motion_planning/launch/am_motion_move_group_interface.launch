@@ -1,0 +1,8 @@
+<launch>
+
+  <include file="$(find lwr_moveit_config)/launch/demo_.launch"/>
+
+  <!--node name="am_motion_planning" pkg="am_motion_planning" type="am_motion_planning" respawn="false" output="screen"-->
+  <!--/node-->
+
+</launch>

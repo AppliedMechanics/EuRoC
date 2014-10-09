@@ -1,0 +1,25 @@
+controller_list:
+  - name: fake_LWR_controller
+    joints:
+      - axis_x
+      - axis_y
+      - lwr_joint_1
+      - lwr_joint_2
+      - lwr_joint_3
+      - lwr_joint_4
+      - lwr_joint_5
+      - lwr_joint_6
+      - lwr_joint_7
+  - name: fake_gripper_controller
+    joints:
+      - joint_before_finger1
+      - joint_before_finger2
+  - name: fake_LWR_7DOF_controller
+    joints:
+      - lwr_joint_1
+      - lwr_joint_2
+      - lwr_joint_3
+      - lwr_joint_4
+      - lwr_joint_5
+      - lwr_joint_6
+      - lwr_joint_7

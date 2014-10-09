@@ -37,9 +37,52 @@ time_at_path_points_(1)
 
 	mtt_=OPEN;
 	called = false;
+
+
+#ifdef MOVEIT
+
+	// arm group
+	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
+	// arm + table axes
+	group_9DOF = new move_group_interface::MoveGroup("LWR");
+//	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
+
+	// planning algorithm for arm group
+	group_7DOF->setPlannerId("RRTConnectkConfigDefault");
+	// planning algorithm for entire group
+    group_9DOF->setPlannerId("RRTConnectkConfigDefault");
+
+
+	// planning algorithm for entire group
+//        group->setPlannerId("SBLkConfigDefault");
+//        group->setPlannerId("ESTkConfigDefault");
+//		  group->setPlannerId("LBKPIECEkConfigDefault");  // default
+//        group->setPlannerId("BKPIECEkConfigDefault");
+//        group->setPlannerId("KPIECEkConfigDefault");
+//        group->setPlannerId("RRTkConfigDefault");
+//        group->setPlannerId("RRTConnectkConfigDefault");
+//        group->setPlannerId("RRTstarkConfigDefault");
+//        group->setPlannerId("TRRTkConfigDefault");
+//        group->setPlannerId("PRMkConfigDefault");
+//        group->setPlannerId("PRMstarkConfigDefault");
+
+
+    planning_scene_monitor = new planning_scene_monitor::PlanningSceneMonitor("robot_description");
+
+    attach_object_service_ = nh_.advertiseService("AttachObject_srv", &MotionPlanning::return_object_attached, this);
+    detach_object_service_ = nh_.advertiseService("DetachObject_srv", &MotionPlanning::return_object_detached, this);
+
+#endif
 }
 
-MotionPlanning::~MotionPlanning() {}
+MotionPlanning::~MotionPlanning() 
+{
+#ifdef MOVEIT
+	delete planning_scene_monitor;
+	delete group_9DOF;
+	delete group_7DOF;
+#endif
+}
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
@@ -121,6 +164,31 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			return;
 		}
 
+		break;
+
+	case (MOVE_IT_7DOF)		:
+	case (MOVE_IT_9DOF)		:
+		ROS_WARN("Planning mode based on MoveIt! chosen.");
+
+		if(goal->planning_algorithm == MOVE_IT_9DOF)
+			group = group_9DOF;
+		else if(goal->planning_algorithm == MOVE_IT_7DOF)
+			group = group_7DOF;
+		else
+		{
+			msg_error("Unknown move group name.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
+			break;
+		}
+
+		if (!getMoveItSolution())
+		{
+			msg_error("No MoveIT Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+			return;
+		}
 		break;
 
 	default:
@@ -383,6 +451,308 @@ bool MotionPlanning::setReset7DOF()
 	return true;
 }
 
+bool MotionPlanning::getMoveItSolution()
+{
+
+  try
+  {
+	if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+	{
+
+
+	  // print telemetry data
+	  ROS_WARN("Measured telemetry: ");
+	  for (unsigned idx = 0; idx < _telemetry.joint_names.size(); ++idx)
+	  {
+	    ROS_INFO_STREAM(_telemetry.joint_names[idx] << "  " << _telemetry.measured.position[idx]);
+	  }
+
+
+
+	  // store the joint names of the move group in a vector
+	  std::vector<std::string> joint_namesMI = group->getActiveJoints();
+
+	  // print the joint names of the move group
+	  ROS_INFO("Joint names of the current move group:");
+	  if (!joint_namesMI.empty())
+	  {
+	    for(unsigned idx = 0; idx < joint_namesMI.size(); ++idx)
+	    {
+	      ROS_INFO_STREAM("MoveitJoint: "<< joint_namesMI[idx]);
+	    }
+	  }
+	  else
+	  {
+	    ROS_INFO("Vector of joint names empty.");
+	    return false;
+	  }
+
+
+
+		// set start state equal to measured telemetry positions and velocities = 0;
+		ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
+		moveit_msgs::RobotState start_state;
+
+		// declare joint positions and velocities
+		std::vector<double> joint_positionsMI;
+		std::vector<double> joint_velocitiesMI;
+
+
+		unsigned matchCounter = 0;
+
+		for (unsigned idxMI = 0; idxMI < joint_namesMI.size(); ++ idxMI)
+		{
+
+			unsigned idxTELE = 0;
+
+			while (joint_namesMI.at(idxMI).compare(_telemetry.joint_names.at(idxTELE)))
+			{
+
+				idxTELE++;
+				if (idxTELE > _telemetry.joint_names.size()-1)
+				{
+					ROS_WARN("MoveIt! joint not found in telemetry");
+					return false;
+				}
+			}
+
+			// print idx of the matching joint in the telemetry
+			ROS_INFO_STREAM("telemetry idx of the current joint: " << idxTELE);
+
+			// store the telemetry joint positions in the corresponding order of the move group
+			joint_positionsMI.push_back(_telemetry.measured.position[idxTELE]);
+			joint_velocitiesMI.push_back(0.0);
+
+			// increase counter of matches between telemetry joints and MoveIt joints
+			ROS_INFO_STREAM("number of joint matches: " << joint_positionsMI.size());
+
+		}
+
+		if (joint_positionsMI.size() == joint_namesMI.size())
+		{
+		  ROS_INFO("All MoveIt! joints found in the telemetry.");
+
+		  start_state.joint_state.name = joint_namesMI;
+		  start_state.joint_state.position = joint_positionsMI;
+		  start_state.joint_state.velocity = joint_velocitiesMI;
+
+		  group->setStartState(start_state);
+
+		}
+		else
+		{
+		  ROS_ERROR("Setting start state failed");
+		  return false;
+		}
+
+
+		// print joint names, positions and velocities
+		for (unsigned idx = 0; idx < start_state.joint_state.name.size(); ++idx)
+		{
+				ROS_INFO_STREAM(start_state.joint_state.name[idx] << "  " << start_state.joint_state.position[idx] << "  " << start_state.joint_state.velocity[idx]);
+		}
+
+
+
+		ROS_INFO_STREAM("Default goal joint tolerance: " << group->getGoalJointTolerance());
+		ROS_INFO_STREAM("Default goal position tolerance: " << group->getGoalPositionTolerance());
+		ROS_INFO_STREAM("Default goal orientation tolerance: " << group->getGoalOrientationTolerance());
+//		group->setGoalTolerance(1);
+//		group->setGoalPositionTolerance(0.1);
+//		group->setGoalOrientationTolerance(0.1);
+//		ROS_INFO_STREAM("Goal tolerance set to 1");
+		ROS_INFO_STREAM("Current goal joint tolerance: " << group->getGoalJointTolerance());
+		ROS_INFO_STREAM("Current goal position tolerance: " << group->getGoalPositionTolerance());
+		ROS_INFO_STREAM("Current goal orientation tolerance: " << group->getGoalOrientationTolerance());
+
+
+
+
+		// print the planning interface description
+		moveit_msgs::PlannerInterfaceDescription plintdesc;
+		group->getInterfaceDescription(plintdesc);
+		ROS_INFO_STREAM("Name of the planner interface: " << plintdesc.name);
+		ROS_INFO("Names of the planner ID's within the interface:");
+		for (unsigned idx = 0; idx < plintdesc.planner_ids.size(); ++idx)
+		{
+			ROS_INFO_STREAM(idx << ": " << plintdesc.planner_ids[idx]);
+		}
+
+
+
+		// print the planning reference frame
+		ROS_INFO_STREAM("Planning frame:" << group->getPlanningFrame());
+		// print the pose reference frame
+		ROS_INFO_STREAM("Pose reference frame: " << group->getPoseReferenceFrame());
+		// print default planning time
+		ROS_INFO_STREAM("Default planning time: " << group->getPlanningTime() << " seconds.");
+		group->setPlanningTime(20);
+		ROS_INFO_STREAM("Planning time set to " << group->getPlanningTime() << " seconds.");
+		// print the name of the end effector
+		ROS_INFO_STREAM("End effector: " << group->getEndEffector());
+		// print the name of the end effector link
+		ROS_INFO_STREAM("End effector link: " << group->getEndEffectorLink());
+
+
+
+		// get the robot model
+		robot_model::RobotModelConstPtr robot_model = planning_scene_monitor->getRobotModel();
+
+
+		const robot_model::JointModelGroup* joint_model_group_LWR = robot_model->getJointModelGroup("LWR");
+
+
+
+		ROS_WARN("JOINT BOUNDS");
+		moveit::core::JointBoundsVector joint_bounds = joint_model_group_LWR->getActiveJointModelsBounds();
+
+
+		for (unsigned idx = 0; idx < joint_bounds.size(); ++idx)
+		{
+			ROS_INFO_STREAM("position bounded: " << joint_bounds.at(idx)->at(0).position_bounded_);
+			ROS_INFO_STREAM("min position: " << joint_bounds.at(idx)->at(0).min_position_);
+			ROS_INFO_STREAM("max position: " << joint_bounds.at(idx)->at(0).max_position_);
+
+			ROS_INFO_STREAM("velocity bounded: " << joint_bounds.at(idx)->at(0).velocity_bounded_);
+			ROS_INFO_STREAM("min velocity: " << joint_bounds.at(idx)->at(0).min_velocity_);
+			ROS_INFO_STREAM("max velocity: " << joint_bounds.at(idx)->at(0).max_velocity_);
+
+			ROS_INFO_STREAM("acceleration bounded: " << joint_bounds.at(idx)->at(0).acceleration_bounded_);
+			ROS_INFO_STREAM("min acceleration: " << joint_bounds.at(idx)->at(0).min_acceleration_);
+			ROS_INFO_STREAM("max acceleration: " << joint_bounds.at(idx)->at(0).max_acceleration_);
+		}
+
+
+
+
+
+
+//		setPlanningConstraints();
+
+
+		if (!setPlanningTarget(POSE_TARGET)) // POSE_TARGET / JOINT_VALUE_TARGET / APPROXIMATE_JOINT_VALUE_TARGET
+		{
+			ROS_ERROR("Setting planning target failed.");
+			return false;
+		}
+
+
+
+
+
+		moveit::planning_interface::MoveGroup::Plan my_plan;
+
+		if (group->plan(my_plan))
+		{
+			ROS_WARN("Planning successful!");
+
+			ROS_INFO_STREAM("Planning time: " << my_plan.planning_time_);
+
+			ROS_INFO_STREAM("Number of trajectory points: " << my_plan.trajectory_.joint_trajectory.points.size());
+
+			planned_path_.clear();
+
+			ROS_INFO("Planned Configurations:");
+
+			// for each configuration of the trajectory except from the start configuration
+			for (unsigned configIdx = 0; configIdx < my_plan.trajectory_.joint_trajectory.points.size(); ++configIdx)
+			{
+				// current configuration
+				euroc_c2_msgs::Configuration current_config;
+
+				ROS_INFO_STREAM("Config: " << configIdx);
+
+				// for each joint at the current configuration
+				for (unsigned jointIdx = 0; jointIdx < joint_namesMI.size(); ++ jointIdx)
+				{
+					current_config.q.push_back(my_plan.trajectory_.joint_trajectory.points[configIdx].positions[jointIdx]);
+					ROS_INFO_STREAM("Joint " << jointIdx << ": " << current_config.q[jointIdx]);
+				}
+
+				planned_path_.push_back(current_config);
+			}
+
+			current_configuration_ = planned_path_[0];
+
+
+
+			move_along_joint_path_srv_.request.joint_names = joint_namesMI;
+
+
+			move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+			for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+			{
+				move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
+			}
+
+			// set the joint limits (velocities/accelerations) of the move along joint path service request
+			setMoveRequestJointLimits();
+			// set the TCP limits of the move along joint path service
+			setMoveRequestTCPLimits();
+
+		  return true;
+		}
+		else	// if planning unsuccessful
+		{
+			return false;
+		}
+	}
+	else	// if (!ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+	  return false;
+
+  } // end try
+
+  catch(...)
+  {
+    msg_error("MotionPlanning::Error in MoveIt! Planning.");
+    return false;
+  }
+  return true;
+
+
+}
+
+bool MotionPlanning::setPlanningTarget(planning_target_type_t planning_target)
+{
+	ROS_WARN("Set planning target");
+
+	switch (planning_target)
+	{
+
+	case POSE_TARGET:
+		ROS_INFO("Planning for a pose target chosen.");
+
+		ROS_INFO_STREAM(goal_pose_GPTCP_);
+
+		if (!group->setPoseTarget(goal_pose_GPTCP_))
+		{
+			ROS_ERROR("Setting pose target failed.");
+			return false;
+		}
+		break;
+
+	case JOINT_VALUE_TARGET:
+		ROS_INFO("Planning for a joint value target chosen.");
+		ROS_ERROR("Planning for a joint value target not implemented.");
+		return false;
+
+	case APPROXIMATE_JOINT_VALUE_TARGET:
+		ROS_INFO("Planning for an approximate joint value target chosen.");
+		if (!group->setApproximateJointValueTarget(goal_pose_goal_->goal_pose))
+		{
+			ROS_ERROR("Setting approximate joint value target failed.");
+			return false;
+		}
+		break;
+
+	default:
+		ROS_ERROR("False planning target type.");
+		return false;
+
+	}
+
+}
+
 void MotionPlanning::getTimingAlongJointPath()
 {
 	if (ros::service::waitForService(timing_along_joint_path_,ros::Duration(1.0)))
@@ -586,6 +956,60 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 	return true;
 }
 
+bool MotionPlanning::return_object_attached(am_msgs::AttachObject::Request &req, am_msgs::AttachObject::Response &res)
+{
+//	ROS_WARN("ATTACH OBJECT CALLBACK STARTED");
+//
+//	moveit_msgs::CollisionObject collision_object;
+//	collision_object.header.frame_id = group->getPlanningFrame();
+//
+//	/* The id of the object is used to identify it. */
+//	collision_object.id = "box1";
+//
+//	/* Define a box to add to the world. */
+//	shape_msgs::SolidPrimitive primitive;
+//	primitive.type = primitive.BOX;
+//	primitive.dimensions.resize(3);
+//	primitive.dimensions[0] = 0.4;
+//	primitive.dimensions[1] = 0.1;
+//	primitive.dimensions[2] = 0.4;
+//
+//	/* A pose for the box (specified relative to frame_id) */
+//	geometry_msgs::Pose box_pose;
+//	box_pose.orientation.w = 1.0;
+//	box_pose.position.x =  0.6;
+//	box_pose.position.y = -0.4;
+//	box_pose.position.z =  1.2;
+//
+//	collision_object.primitives.push_back(primitive);
+//	collision_object.primitive_poses.push_back(box_pose);
+//	collision_object.operation = collision_object.ADD;
+//
+//	std::vector<moveit_msgs::CollisionObject> collision_objects;
+//	collision_objects.push_back(collision_object);
+//
+//	ROS_INFO("Add an object into the world");
+//	planning_scene_interface.addCollisionObjects(collision_objects);
+//
+//	/* Sleep so we have time to see the object in RViz */
+//	sleep(2.0);
+//
+//
+//	ROS_INFO("Attach the object to the robot");
+//	group->attachObject(collision_object.id);
+//	/* Sleep to give Rviz time to show the object attached (different color). */
+//	sleep(4.0);
+
+	res.successful = true;
+	return true;
+}
+
+bool MotionPlanning::return_object_detached(am_msgs::DetachObject::Request &req, am_msgs::DetachObject::Response &res)
+{
+	res.successful = true;
+	return true;
+}
+
 bool MotionPlanning::getLimits()
 {
 	//! Setting max velocities, getting from parameter server
@@ -637,6 +1061,47 @@ bool MotionPlanning::getLimits()
 
 	return true;
 
+}
+
+
+void MotionPlanning::setMoveRequestJointLimits()
+{
+
+  move_along_joint_path_srv_.request.joint_limits.resize(group->getActiveJoints().size());
+
+  unsigned joint_counter = 0;
+
+  if (move_along_joint_path_srv_.request.joint_limits.size() == 9)
+  {
+
+    move_along_joint_path_srv_.request.joint_limits[0].max_velocity = table_axis1_limit_.max_velocity;
+    move_along_joint_path_srv_.request.joint_limits[0].max_acceleration = table_axis1_limit_.max_acceleration;
+
+    move_along_joint_path_srv_.request.joint_limits[1].max_velocity = table_axis2_limit_.max_velocity;
+    move_along_joint_path_srv_.request.joint_limits[1].max_acceleration = table_axis2_limit_.max_acceleration;
+
+    joint_counter = 2;
+  }
+
+  unsigned jointIdx = 0;
+  for(unsigned idx = joint_counter; idx < joint_counter+7; ++idx)
+  {
+    move_along_joint_path_srv_.request.joint_limits[idx].max_velocity = joint_limits_[jointIdx].max_velocity;
+    move_along_joint_path_srv_.request.joint_limits[idx].max_acceleration = joint_limits_[jointIdx].max_acceleration;
+
+    jointIdx++;
+  }
+
+}
+
+
+void MotionPlanning::setMoveRequestTCPLimits()
+{
+	move_along_joint_path_srv_.request.tcp_limits.translational.max_velocity = table_axis1_limit_.max_velocity;
+	move_along_joint_path_srv_.request.tcp_limits.translational.max_acceleration = table_axis1_limit_.max_acceleration;
+
+	move_along_joint_path_srv_.request.tcp_limits.rotational.max_velocity = 20 * M_PI / 180.0;;
+	move_along_joint_path_srv_.request.tcp_limits.rotational.max_acceleration = 400 * M_PI / 180.0;;
 }
 
 bool MotionPlanning::transformToTCPFrame(std::string frame)

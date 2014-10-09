@@ -3084,7 +3084,22 @@ int Statemachine::move_to_object_safe()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
+
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
+
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -3184,7 +3199,22 @@ int Statemachine::move_to_object_vision()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
+
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3282,7 +3312,22 @@ int Statemachine::move_to_object()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
+
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
+
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -3358,7 +3403,20 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3454,7 +3512,20 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3549,7 +3620,20 @@ int Statemachine::move_to_target_zone()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
+#ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+#else//MOVEIT
+		switch (active_task_number_)
+		{
+		case 1:
+		case 2:
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+			break;
+		default:
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+			break;
+		}
+#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);

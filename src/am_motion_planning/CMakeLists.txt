@@ -9,7 +9,14 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   roscpp
   crops_manipulator_utils
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface	
+  pluginlib
+  cmake_modules
 )
+find_package(Boost REQUIRED system filesystem date_time thread)
+find_package(Eigen REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

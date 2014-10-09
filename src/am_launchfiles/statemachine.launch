@@ -14,6 +14,11 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
  <param name="skip_motion" type="bool" value="$(arg skip_motion)" />
  <param name="pause_in_loop" type="bool" value="$(arg pause_in_loop)" />
  <param name="task_nr" type="int" value="$(arg task_nr)" />
+ 
+ 
+<!-- MoveIt!  -->
+	 <include file="$(find lwr_moveit_config)/launch/demo_.launch"/>
+		
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
 	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen"/>

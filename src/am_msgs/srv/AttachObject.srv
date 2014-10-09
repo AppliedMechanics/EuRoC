@@ -1,0 +1,7 @@
+# object to be attached to the gripper
+am_msgs/Object object
+
+
+---
+# true or false if object has been attached to the gripper
+bool successful

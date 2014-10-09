@@ -1,6 +1,8 @@
 #ifndef __STATEMACHINE_HPP__
 #define __STATEMACHINE_HPP__
 
+#define STANDARD_IK
+
 //ros includes
 #include <ros/ros.h>
 #include "std_msgs/String.h"
