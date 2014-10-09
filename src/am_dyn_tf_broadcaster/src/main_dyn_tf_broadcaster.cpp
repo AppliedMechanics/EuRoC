@@ -18,7 +18,10 @@
 #include <config.hpp>
 #include <utils.hpp>
 
-//! Init Transformations
+//! AM
+#include <am_msgs/SetStaticTFData.h>
+
+//! Init Dynamic Transformations
 geometry_msgs::TransformStamped T_LA;
 geometry_msgs::TransformStamped T_PT;
 //! Inner LWR Transformations
@@ -33,6 +36,19 @@ geometry_msgs::TransformStamped A_LWR_TCP7;
 
 geometry_msgs::Quaternion  q_t;
 geometry_msgs::Vector3 t_t;
+
+//! Static TF Data
+geometry_msgs::TransformStamped T_LA_Base;
+geometry_msgs::TransformStamped T_GP;
+geometry_msgs::TransformStamped T_GP_TCP;
+geometry_msgs::TransformStamped T_TRGB;
+geometry_msgs::TransformStamped T_TDEPTH;
+geometry_msgs::TransformStamped T_CM;
+geometry_msgs::TransformStamped T_PT_Base;
+geometry_msgs::TransformStamped T_SRGB;
+geometry_msgs::TransformStamped T_SDEPTH;
+
+bool static_data_set=false;
 
 void init_tf()
 {
@@ -83,15 +99,34 @@ void init_tf()
 
 }
 
-void update_tf(const ros::TimerEvent& event)
+// ROS-Service Function
+bool set_static_tf_data(am_msgs::SetStaticTFData::Request &req, am_msgs::SetStaticTFData::Response &res)
 {
-	ros::NodeHandle nh;
+	T_LA_Base = req.T_LA_Base;
+	T_GP      = req.T_GP;
+	T_GP_TCP  = req.T_GP_TCP;
+	T_TRGB    = req.T_TRGB;
+	T_TDEPTH  = req.T_TDEPTH;
+	T_CM      = req.T_CM;
+	T_PT_Base = req.T_PT_Base;
+	T_SRGB    = req.T_SRGB;
+	T_SDEPTH  = req.T_SDEPTH;
+
+	res.success = true;
+
+	static_data_set = true;
+	return true;
+}
+
+void update_dyn_tf(const ros::TimerEvent& event)
+{
+	//	ros::NodeHandle nh;
 	static tf2_ros::TransformBroadcaster br;
 	std::string euroc_c2_interface = "/euroc_interface_node";
 	std::string telemetry = euroc_c2_interface + "/telemetry";
-	std::string forward_kin = euroc_c2_interface + "/get_forward_kinematics";
-
-	ros::ServiceClient forward_kin_client = nh.serviceClient<euroc_c2_msgs::GetForwardKinematics>(forward_kin);
+	//	std::string forward_kin = euroc_c2_interface + "/get_forward_kinematics";
+	//
+	//	ros::ServiceClient forward_kin_client = nh.serviceClient<euroc_c2_msgs::GetForwardKinematics>(forward_kin);
 
 	tf2::Quaternion q_cam;
 	tf2::Quaternion q_lwr;
@@ -249,6 +284,29 @@ void update_tf(const ros::TimerEvent& event)
 		br.sendTransform(A_LWR_65);
 		br.sendTransform(A_LWR_76);
 		//br.sendTransform(tf::StampedTransform(A_LWR_TCP7, ros::Time::now(),lwr_7,LWR_TCP));
+
+		if (static_data_set)
+		{
+			T_LA_Base.header.stamp = now;
+			T_GP.header.stamp = now;
+			T_GP_TCP.header.stamp = now;
+			T_TRGB.header.stamp = now;
+			T_TDEPTH.header.stamp = now;
+			T_CM.header.stamp = now;
+			T_PT_Base.header.stamp = now;
+			T_SRGB.header.stamp = now;
+			T_SDEPTH.header.stamp = now;
+
+			br.sendTransform(T_LA_Base);
+			br.sendTransform(T_GP);
+			br.sendTransform(T_GP_TCP);
+			br.sendTransform(T_TRGB);
+			br.sendTransform(T_TDEPTH);
+			br.sendTransform(T_CM);
+			br.sendTransform(T_PT_Base);
+			br.sendTransform(T_SRGB);
+			br.sendTransform(T_SDEPTH);
+		}
 	}
 	catch (...)
 	{
@@ -261,10 +319,11 @@ void update_tf(const ros::TimerEvent& event)
 int main(int argc, char** argv) {
 
 	ros::init(argc, argv, "am_dyn_tf_broadcaster");
-
 	ros::NodeHandle node;
-	ros::Timer br_timer_ = node.createTimer(ros::Duration(0.1),update_tf,false,true);
 
+	ros::ServiceServer service = node.advertiseService("set_static_tf_data", set_static_tf_data);
+
+	ros::Timer br_timer_      = node.createTimer(ros::Duration(0.1),update_dyn_tf,false,true);
 
 	std::string euroc_c2_interface = "/euroc_interface_node";
 	std::string telemetry = euroc_c2_interface + "/telemetry";

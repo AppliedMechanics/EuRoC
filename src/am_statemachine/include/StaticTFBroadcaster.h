@@ -9,7 +9,7 @@
 #define STATICTFBROADCASTER_H_
 
 #include <ros/ros.h>
-#include <tf2_ros/static_transform_broadcaster.h>
+#include <am_msgs/SetStaticTFData.h>
 #include <config.hpp>
 #include <utils.hpp>
 
@@ -26,21 +26,10 @@ public:
 
 private:
 	ros::NodeHandle nh_;
-	tf2_ros::StaticTransformBroadcaster sbr_;
 
-	geometry_msgs::TransformStamped T_LA_Base;
-	geometry_msgs::TransformStamped T_GP;
-	geometry_msgs::TransformStamped T_GP_TCP;
-	geometry_msgs::TransformStamped T_TRGB;
-	geometry_msgs::TransformStamped T_TDEPTH;
-	geometry_msgs::TransformStamped T_CM;
-	geometry_msgs::TransformStamped T_PT_Base;
-	geometry_msgs::TransformStamped T_SRGB;
-	geometry_msgs::TransformStamped T_SDEPTH;
-
-
-
-
+	ros::ServiceClient set_static_tf_data_client_;
+	std::string set_static_tf_data_;
+	am_msgs::SetStaticTFData set_static_tf_data_srv_;
 };
 
 #endif /* STATICTFBROADCASTER_H_ */

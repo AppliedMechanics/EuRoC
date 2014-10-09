@@ -1112,14 +1112,16 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 	tf::StampedTransform transform_GPTCP_2_LWRTCP;
 	tf::Transform tf_tmp,tf_tmp2;
 
-	ros::Time now = ros::Time::now();
-
+	ros::Time now = ros::Time(0);
+	//! TODO remove debug_tf
+	std::string debug_tf;
 	//! Transformation from GP TCP frame to LWR TCP frame
 	try{
-		if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,ros::Time(0),ros::Duration(2.0)))
-			tf_listener.lookupTransform(LWR_TCP,GP_TCP,ros::Time(0),transform_GPTCP_2_LWRTCP);
+		if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(1.0),ros::Duration(3.0),&debug_tf))
+			tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,transform_GPTCP_2_LWRTCP);
 		else{
 			msg_error("Could not get LWRTCP GPTCP tf.");
+			std::cout<<debug_tf<<std::endl;
 			return false;
 		}
 	}
@@ -1175,12 +1177,12 @@ bool MotionPlanning::transformToLWRBase()
 	tf::StampedTransform transform_ORIGIN_2_LWR0;
 	tf::Transform tf_tmp,tf_tmp2;
 
-	ros::Time now = ros::Time::now();
+	ros::Time now = ros::Time(0);
 
 	//! Transformation from ORIGIN frame to LWR 0 frame
 	try{
-		if (tf_listener.waitForTransform(LWR_0,ORIGIN,ros::Time(0),ros::Duration(2.0)))
-			tf_listener.lookupTransform(LWR_0,ORIGIN,ros::Time(0),transform_ORIGIN_2_LWR0);
+		if (tf_listener.waitForTransform(LWR_0,ORIGIN,now,ros::Duration(2.0)))
+			tf_listener.lookupTransform(LWR_0,ORIGIN,now,transform_ORIGIN_2_LWR0);
 		else{
 			msg_error("Could not get ORIGIN LWR0 tf.");
 			return false;
