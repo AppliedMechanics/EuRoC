@@ -10,7 +10,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp 
   roslib 
   std_msgs
+  actionlib
+  actionlib_msgs
   am_msgs
+  sensor_msgs
   crops_manipulator_utils)
 
 
@@ -22,6 +25,9 @@ find_package(catkin REQUIRED COMPONENTS
 # generate_messages(
 #    DEPENDENCIES std_msgs  # Or other packages containing msgs
 # )
+generate_messages(
+  DEPENDENCIES am_msgs actionlib_msgs std_msgs # Or other packages containing msgs
+)
 
 catkin_package(
   CATKIN_DEPENDS crops_manipulator_utils

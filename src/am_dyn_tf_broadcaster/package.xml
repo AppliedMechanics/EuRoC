@@ -40,13 +40,14 @@
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
   <build_depend>am_msgs</build_depend>
   <build_depend>crops_manipulator_utils</build_depend>
   <build_depend>euroc_c2_msgs</build_depend>
-  <build_depend>message_generation</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>roslib</build_depend>
   <build_depend>std_msgs</build_depend>
+  <run_depend>message_generation</run_depend>
   <run_depend>am_msgs</run_depend>
   <run_depend>crops_manipulator_utils</run_depend>
   <run_depend>euroc_c2_msgs</run_depend>

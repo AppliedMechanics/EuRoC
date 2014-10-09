@@ -6,8 +6,6 @@ project(am_statemachine)
 ## is used, also find other catkin packages
 
 find_package(catkin REQUIRED COMPONENTS 
-  actionlib
-  actionlib_msgs
   message_generation
   roscpp 
   roslib 
@@ -15,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   actionlib_msgs
   am_msgs
+  sensor_msgs
   crops_manipulator_utils)
 
 

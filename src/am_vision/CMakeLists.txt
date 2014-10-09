@@ -5,11 +5,14 @@ project(am_vision)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
+  std_msgs
+  actionlib
+  actionlib_msgs
   am_msgs
   cv_bridge
   octomap_ros
   pcl_ros
-  actionlib
   roscpp
   crops_manipulator_utils
 )
@@ -73,7 +76,9 @@ find_package(catkin REQUIRED COMPONENTS
 #   DEPENDENCIES
 #   am_msgs
 # )
-
+generate_messages(
+  DEPENDENCIES am_msgs actionlib_msgs std_msgs # Or other packages containing msgs
+)
 ###################################
 ## catkin specific configuration ##
 ###################################
