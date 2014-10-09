@@ -1,0 +1,15 @@
+# Static TF Data for TF Broadcaster
+
+geometry_msgs/TransformStamped T_LA_Base
+geometry_msgs/TransformStamped T_GP
+geometry_msgs/TransformStamped T_GP_TCP
+geometry_msgs/TransformStamped T_TRGB
+geometry_msgs/TransformStamped T_TDEPTH
+geometry_msgs/TransformStamped T_CM
+geometry_msgs/TransformStamped T_PT_Base
+geometry_msgs/TransformStamped T_SRGB
+geometry_msgs/TransformStamped T_SDEPTH
+
+---
+#  returns success
+bool success
