@@ -64,6 +64,9 @@ class Statemachine
 		fsm::fsm_state_t state_;
 		std::vector<fsm::fsm_state_t> state_queue;
 
+		//!speed modification due to stop condition event
+		double speed_mod_;
+
 		//!node handle for this node
 		ros::NodeHandle node_;
 
@@ -209,6 +212,16 @@ class Statemachine
 		//!schedule placing sequence
 		void scheduler_place_object(bool start);
 
+		//!error handling for each state
+		void scheduler_error_homing();
+		void scheduler_error_move_to_object_vision();
+		void scheduler_error_move_to_object_safe();
+		void scheduler_error_move_to_object();
+		void scheduler_error_move_to_target_zone_vision();
+		void scheduler_error_move_to_target_zone_safe();
+		void scheduler_error_move_to_target_zone();
+		void scheduler_error_check_object_gripped();
+
 		//!state for setting the object load in gripper_close() and gripper_release()
 		uint8_t set_object_load_state_;
 		//!callback for gripper_release() and gripper_close()
@@ -297,27 +310,30 @@ class Statemachine
 
 		//!move to object safe
 		int move_to_object_safe();
-		//!state of move_to_object_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_object_safe_state_;
 		//!callbacks for move_to_object_safe()
 		void move_to_object_safe_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_object_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_object_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_safe_state_;
+		uint8_t move_to_object_safe_counter;
 
 		//!move to object vision
 		int move_to_object_vision();
-		//!state of move_to_object_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_object_vision_state_;
 		//!callbacks for move_to_object_vision()
 		void move_to_object_vision_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_object_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_object_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_vision_state_;
+		uint8_t move_to_object_vision_counter;
 
 		//!move to object
 		int move_to_object();
-		//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_object_state_;
 		//!callbacks for move_to_object()
 		void move_to_object_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_object_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_object_state_;
+		uint8_t move_to_object_counter;
 
 		//!check whether the object has been placed correctly
 		int check_object_finished();
@@ -351,35 +367,39 @@ class Statemachine
 
 		//!move to target zone safe
 		int move_to_target_zone_safe();
-		//!state of move_to_target_zone_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_target_zone_safe_state_;
 		//!callbacks for move_to_target_zone_safe()
 		void move_to_target_zone_safe_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_target_zone_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_target_zone_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_safe_state_;
+		uint8_t move_to_target_zone_safe_counter;
 
 		//!move to target zone vision
 		int move_to_target_zone_vision();
-		//!state of move_to_target_zone_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_target_zone_vision_state_;
 		//!callbacks for move_to_target_zone_vision()
 		void move_to_target_zone_vision_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_target_zone_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_target_zone_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_vision_state_;
+		uint8_t move_to_target_zone_vision_counter;
 
 		//!move to target zone
 		int move_to_target_zone();
-		//!state of move_to_target_zone() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t move_to_target_zone_state_;
 		//!callbacks for move_to_target_zone()
 		void move_to_target_zone_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void move_to_target_zone_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of move_to_target_zone() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t move_to_target_zone_state_;
+		uint8_t move_to_target_zone_counter;
 
 		//!homing function (goto upright pose)
 		int homing();
-		//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t homing_state_;
 		//!callbacks of homing()
 		void homing_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void homing_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t homing_state_;
+		uint8_t homing_counter;
 };
 
 //Methods of main programm

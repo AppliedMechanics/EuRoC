@@ -1,8 +1,11 @@
 #include <state_observer.hpp>
 
+//standard force limit factor
 static const double std_force_limit = 0.5;
+//maximum force limit factor
 static const double max_force_limit = 0.9;
-static const double delta_limit = 0.1;
+//increment to increase the limit factor
+static const double delta_limit = 0.2;
 
 StateObserver::StateObserver()
 {

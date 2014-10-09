@@ -54,6 +54,12 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	if (!planning_frame_.compare(LWR_TCP) || !planning_frame_.compare(GP_TCP)){
 		if (!transformToTCPFrame(planning_frame_)){
 			msg_error("Transformation to LWR frame not successful.");
+
+			goalPose_result_.reached_goal = false;
+			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+			goalPose_server_.setPreempted(goalPose_result_,"Got no telemetry.");
+
+			return;
 		}
 	}
 	else if (goal_pose_goal_->planning_algorithm!=HOMING_7DOF)
@@ -71,21 +77,27 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	if (!getTelemetry()){
 		msg_error("getTelemetry: An Error happened here.");
 		goalPose_result_.reached_goal = false;
+		goalPose_result_.error_reason = fsm::SIM_SRV_NA;
 		goalPose_server_.setPreempted(goalPose_result_,"Got no telemetry.");
+
+		return;
 	}
+
 	switch (goal->planning_algorithm)
 	{
 	case STANDARD_IK_7DOF:
 
-		ROS_WARN("STANDARD IK 7DOF planning mode chosen.");
+		ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
 
 		//! Transform goal pose to LWR0 Base frame
 		if (!transformToLWRBase())
 		{
-			msg_error("Transformation to LWR0 Base failed.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
-			break;
+			msg_warn("Transformation to LWR0 Base failed.");
+
+//			goalPose_result_.reached_goal = false;
+//			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+//			goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+//			return;
 		}
 		//! Find IK solution
 		if (!getIKSolution7DOF())
@@ -93,86 +105,60 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			msg_error("No IK Solution found.");
 			goalPose_result_.reached_goal = false;
 			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-			break;
+			return;
 		}
-
-		getTimingAlongJointPath();
-
-		starting_time_ = ros::Time::now().toSec();
-		getGoalPose_Feedback();
-
-		goalPose_server_.publishFeedback(goalPose_feedback_);
-
-		moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
-
-		mtt_=RUNNING;
-		//while (!goalPose_result_.reached_goal)
-		while(mtt_==RUNNING)
-		{
-			getGoalPose_Feedback();
-			goalPose_server_.publishFeedback(goalPose_feedback_);
-
-			feedback_rate.sleep();
-		}
-
-		moveToTarget.detach();
-		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
-		if(mtt_==FINISHED)
-		{
-			goalPose_result_.reached_goal = true;
-			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-		}
-		else
-		{
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
-		}
-
 		break;
 
 	case HOMING_7DOF:
-		ROS_WARN("HOMING 7DOF planning mode chosen.");
+
+		ROS_INFO("HOMING 7DOF planning mode chosen.");
 
 		if (!setReset7DOF())
-			msg_error("Problem at HOMING");
-		getTimingAlongJointPath();
-		starting_time_ = ros::Time::now().toSec();
-		getGoalPose_Feedback();
-
-		goalPose_server_.publishFeedback(goalPose_feedback_);
-
-		moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
-
-		mtt_=RUNNING;
-		//while (!goalPose_result_.reached_goal)
-		while(mtt_==RUNNING)
 		{
-			getGoalPose_Feedback();
-			goalPose_server_.publishFeedback(goalPose_feedback_);
-
-			feedback_rate.sleep();
-		}
-
-		moveToTarget.detach();
-		//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
-		if(mtt_==FINISHED)
-		{
-			goalPose_result_.reached_goal = true;
-			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-		}
-		else
-		{
+			msg_error("No IK Solution found.");
 			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"Something strange happend");
+			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+			return;
 		}
-
 
 		break;
 
 	default:
-		break;
+		msg_warn("unkown Mode in MotionPlanning!");
+		return;
 	}
 
+	getTimingAlongJointPath();
+
+	starting_time_ = ros::Time::now().toSec();
+	getGoalPose_Feedback();
+
+	goalPose_server_.publishFeedback(goalPose_feedback_);
+
+	moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
+
+	mtt_=RUNNING;
+	//while (!goalPose_result_.reached_goal)
+	while(mtt_==RUNNING)
+	{
+		getGoalPose_Feedback();
+		goalPose_server_.publishFeedback(goalPose_feedback_);
+
+		feedback_rate.sleep();
+	}
+
+	moveToTarget.detach();
+	//if (goalPose_feedback_.execution_time >= (goalPose_feedback_.estimated_motion_time+2.0))
+	if(mtt_==FINISHED)
+	{
+		goalPose_result_.reached_goal = true;
+		goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+	}
+	else
+	{
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
+	}
 }
 
 void MotionPlanning::getGoalPose_Feedback()
@@ -233,10 +219,18 @@ bool MotionPlanning::getIKSolution7DOF()
 				search_ik_solution_srv_.request.tcp_frame = goal_pose_LWRTCP_;
 
 				// Call the search inverse kinematic solution service and check for errors
-				search_ik_solution_client_.call(search_ik_solution_srv_);
+				if(!search_ik_solution_client_.call(search_ik_solution_srv_))
+				{
+					msg_error("Search IK Solution call failed");
+
+					goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+					return false;
+				}
 				std::string &search_error_message = search_ik_solution_srv_.response.error_message;
 				if(!search_error_message.empty()){
 					msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+
+					goalPose_result_.error_reason = fsm::NO_IK_SOL;
 					return false;
 				}
 
@@ -248,12 +242,20 @@ bool MotionPlanning::getIKSolution7DOF()
 			else
 			{
 				get_dk_solution_srv_.request.configuration = current_configuration_;
-				get_dk_solution_client_.call(get_dk_solution_srv_);
+				if(!get_dk_solution_client_.call(get_dk_solution_srv_))
+				{
+					msg_error("Search DK Solution call failed");
+
+					goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+					return false;
+				}
 
 				// The error_message field of each service response indicates whether an error occured. An empty string indicates success
 				std::string &ls_error_message = get_dk_solution_srv_.response.error_message;
 				if(!ls_error_message.empty()){
 					ROS_ERROR("Get DK failed: %s", ls_error_message.c_str());
+
+					goalPose_result_.error_reason = fsm::NO_DK_SOL;
 					return false;
 				}
 				else
@@ -287,10 +289,18 @@ bool MotionPlanning::getIKSolution7DOF()
 						search_ik_solution_srv_.request.tcp_frame = all_poses[ii];
 
 						// Call the search inverse kinematic solution service and check for errors
-						search_ik_solution_client_.call(search_ik_solution_srv_);
+						if(!search_ik_solution_client_.call(search_ik_solution_srv_))
+						{
+							msg_error("Search IK Solution call failed");
+
+							goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+							return false;
+						}
 						std::string &search_error_message = search_ik_solution_srv_.response.error_message;
 						if(!search_error_message.empty()){
 							msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+
+							goalPose_result_.error_reason = fsm::NO_IK_SOL;
 							return false;
 						}
 
@@ -303,11 +313,15 @@ bool MotionPlanning::getIKSolution7DOF()
 			return true;
 		}
 		else
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
 			return false;
+		}
 	}
 	catch (...)
 	{
-		msg_error("MotionPlanning::Error at searchforIK service.");
+		msg_error("MotionPlanning::Error at searchforIK function.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
 		return false;
 	}
 	return true;
@@ -355,11 +369,15 @@ bool MotionPlanning::setReset7DOF()
 			return true;
 		}
 		else
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
 			return false;
+		}
 	}
 	catch (...)
 	{
-		msg_error("MotionPlanning::Error at HOMING service.");
+		msg_error("MotionPlanning::Error at searchforIK function.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
 		return false;
 	}
 	return true;
@@ -380,7 +398,13 @@ void MotionPlanning::getTimingAlongJointPath()
 
 		timing_along_joint_path_srv_.request.start_pose = current_configuration_;
 
-		timing_along_joint_path_client_.call(timing_along_joint_path_srv_);
+		if(!timing_along_joint_path_client_.call(timing_along_joint_path_srv_))
+		{
+			msg_error("get timing along joint path call failed");
+
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+			return;
+		}
 
 		time_at_path_points_.resize(timing_along_joint_path_srv_.response.time_at_via_point.size());
 		time_at_path_points_ = timing_along_joint_path_srv_.response.time_at_via_point;
@@ -393,7 +417,13 @@ void MotionPlanning::getTimingAlongJointPath()
 		}
 	}
 	else
+	{
 		msg_warn("Timing service has not been advertised.");
+
+		goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+		return;
+	}
+
 }
 
 bool MotionPlanning::getTelemetry()
@@ -415,8 +445,13 @@ void MotionPlanning::moveToTargetCB()
 	{
 		move_along_joint_path_srv_.response.error_message = "Failed to call client to move along joint path";
 		msg_error("Failed to call client to move along joint path.");
+
+		mtt_=FINISHEDWITHERROR;
+		goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+
 		return;
 	}
+
 	// Print out stop reason
 	std::string joint = "joint ";
 	std::string tool = "tool force";
@@ -428,6 +463,7 @@ void MotionPlanning::moveToTargetCB()
 	{
 		if (StopReason == "")
 		{
+			mtt_=FINISHEDWITHERROR;
 			msg_error("%s", move_along_joint_path_srv_.response.error_message.c_str());
 			return;
 		}
@@ -459,22 +495,30 @@ void MotionPlanning::moveToTargetCB()
 
 			msg_error("Stop reason: %s", move_along_joint_path_srv_.response.stop_reason.c_str());
 			call_set_stop_cond_srv_.request.level = 1; // level 1 = limits eased
+
 		}
 
 		if(!state_observer_client_.call(call_set_stop_cond_srv_))
 		{
 			msg_error("Failed to call client to set stop conditions.");
+
+			mtt_=FINISHEDWITHERROR;
+			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
 			return;
 		}
 
 		//check if max limits reached in stop cond. serv.
 		if(call_set_stop_cond_srv_.response.limit_reached)
 		{
-			goalPose_result_.error_reason = MAX_LIMIT_REACHED;
+			mtt_=FINISHEDWITHERROR;
+			goalPose_result_.error_reason = fsm::MAX_LIMIT_REACHED;
+			return;
 		}
 		else
 		{
-			goalPose_result_.error_reason = STOP_COND;
+			mtt_=FINISHEDWITHERROR;
+			goalPose_result_.error_reason = fsm::STOP_COND;
+			return;
 		}
 	}
 	else
@@ -483,6 +527,9 @@ void MotionPlanning::moveToTargetCB()
 		if(!state_observer_client_.call(call_set_stop_cond_srv_))
 		{
 			msg_error("Failed to call client to set stop conditions.");
+
+			mtt_=FINISHEDWITHERROR;
+			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
 			return;
 		}
 	}

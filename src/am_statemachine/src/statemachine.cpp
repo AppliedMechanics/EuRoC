@@ -11,6 +11,7 @@ Statemachine::Statemachine():
 	    scenes_(1),
 		task_active_(false),
 		sim_running_(false),
+		speed_mod_(0),
 		nr_scenes_(0),
 		active_scene_(-1),
 		motion_planning_action_client_("goalPoseAction", true),
@@ -35,14 +36,21 @@ Statemachine::Statemachine():
 		check_object_gripped_counter_(0),
 		get_grasping_pose_state_(OPEN),
 		move_to_object_vision_state_(OPEN),
+		move_to_object_vision_counter(0),
 		move_to_object_safe_state_(OPEN),
+		move_to_object_safe_counter(0),
 		move_to_object_state_(OPEN),
+		move_to_object_counter(0),
 		gripper_release_state_(OPEN),
 		gripper_close_state_(OPEN),
 		move_to_target_zone_safe_state_(OPEN),
+		move_to_target_zone_safe_counter(0),
 		move_to_target_zone_vision_state_(OPEN),
+		move_to_target_zone_vision_counter(0),
 		move_to_target_zone_state_(OPEN),
-		homing_state_(OPEN)
+		move_to_target_zone_counter(0),
+		homing_state_(OPEN),
+		homing_counter(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -462,14 +470,14 @@ void Statemachine::scheduler_schedule()
 						pause_state_=FINISHED;
 					}
 					break;
+
 				case fsm::HOMING:
 					if(homing_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						homing_state_=OPEN;
+						scheduler_error_homing();
 					}
 					break;
+
 				case fsm::LOCATE_OBJECT_GLOBAL:
 					if(locate_object_global_state_==FINISHEDWITHERROR)
 					{
@@ -514,36 +522,31 @@ void Statemachine::scheduler_schedule()
 						set_object_load_state_=OPEN;
 					}
 					break;
+
 				case fsm::MOVE_TO_OBJECT_VISION:
 					if(move_to_object_vision_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_object_vision_state_ =OPEN;
+						scheduler_error_move_to_object_vision();
 					}
 					break;
+
 				case fsm::MOVE_TO_OBJECT_SAFE:
 					if(move_to_object_safe_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_object_safe_state_ =OPEN;
+						scheduler_error_move_to_object_safe();
 					}
 					break;
+
 				case fsm::MOVE_TO_TARGET_ZONE_VISION:
 					if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_target_zone_vision_state_ =OPEN;
+						scheduler_error_move_to_target_zone_vision();
 					}
 					break;
 				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
 					if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						move_to_target_zone_safe_state_ =OPEN;
+						scheduler_error_move_to_target_zone_safe();
 					}
 					break;
 				case fsm::CHECK_OBJECT_FINISHED:
@@ -569,44 +572,7 @@ void Statemachine::scheduler_schedule()
 				case fsm::CHECK_OBJECT_GRIPPED:
 					if(check_object_gripped_state_==FINISHEDWITHERROR)
 					{
-						//FOR TESTING!!!!!!!!!!!!
-						//-----------------------
-						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-
-						//scheduler_next();
-						//-----------------------
-
-						if(state_.sub.event_two == fsm::RETRY)
-						{
-							check_object_gripped_state_ =OPEN;
-							//nop
-						}
-						else if(state_.sub.event_two == fsm::OBJECT_LOST)
-						{
-							scheduler_next();
-
-							scheduler_grasp_object(EXECUTE_NOW);
-
-							check_object_gripped_state_ = OPEN;
-							msg_warn("Object lost detected... retrying gripping routine");
-
-							scheduler_printqueue(); //print queue to console for debugging purposes
-							scheduler_next();
-						}
-						else if(state_.sub.event_two == fsm::SKIP_OBJECT)
-						{
-							check_object_gripped_state_ = OPEN;
-							if(ein_->is_active_object_last_object())
-							{
-								state_queue.clear();
-								temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
-								scheduler_next();
-							}
-							else
-							{
-								scheduler_skip_object();
-							}
-						}
+						scheduler_error_check_object_gripped();
 					}
 					break;
 				case fsm::GRAB_OBJECT:
@@ -615,11 +581,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::MOVE_TO_OBJECT:
 							if(move_to_object_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-
-								//try to close the gripper
-								move_to_object_state_=FINISHED;
+								scheduler_error_move_to_object();
 							}
 							break;
 						case fsm::GRIPPER_CLOSE:
@@ -639,9 +601,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::MOVE_TO_OBJECT_SAFE:
 							if(move_to_object_safe_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								move_to_object_safe_state_ =OPEN;
+								scheduler_error_move_to_object_safe();
 							}
 							break;
 						default:
@@ -654,9 +614,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::MOVE_TO_TARGET_ZONE:
 							if(move_to_target_zone_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								move_to_target_zone_state_=OPEN;
+								scheduler_error_move_to_target_zone();
 							}
 							break;
 						case fsm::GRIPPER_RELEASE:
@@ -676,9 +634,7 @@ void Statemachine::scheduler_schedule()
 						case fsm::MOVE_TO_TARGET_ZONE_SAFE:
 							if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
 							{
-								//just start the state again
-								ROS_INFO("Statemachine-Errorhandler: restarting state");
-								move_to_target_zone_safe_state_=OPEN;
+								scheduler_error_move_to_target_zone_safe();
 							}
 							break;
 						default:
@@ -705,16 +661,27 @@ void Statemachine::scheduler_skip_object()
 {
 	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
 
-	ROS_INFO("Scheduler: skipping object");
-	scheduler_next_object();
+	if(ein_->is_active_object_last_object())
+	{
+		ROS_INFO("Scheduler: skipping object -> last object reached -> back to vision");
 
-	//clear the queue
-	state_queue.clear();
-	temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
-	scheduler_next();
+		state_queue.clear();
+		temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+		scheduler_next();
+	}
+	else
+	{
+		ROS_INFO("Scheduler: skipping object -> next object");
+		scheduler_next_object();
+
+		//clear the queue
+		state_queue.clear();
+		temp_state.sub.one=fsm::SOLVE_TASK;
+			temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
+			temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+			temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
+		scheduler_next();
+	}
 }
 
 void Statemachine::scheduler_next_object()
@@ -740,6 +707,9 @@ void Statemachine::scheduler_next_object()
 		cur_object_type_=OBJECT_HANDLE;
 		ROS_INFO("new object-type: HANDLE");
 	}
+
+	//reset speed modification
+	speed_mod_=0;
 }
 
 void Statemachine::scheduler_grasp_object(bool start)
@@ -797,7 +767,6 @@ void Statemachine::scheduler_place_object(bool start)
 			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(it+3,temp_state);
 			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(it+4,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.insert(it+5,temp_state);
-		//temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+6,temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.insert(it+7,temp_state);
 	}
 	else
@@ -809,8 +778,433 @@ void Statemachine::scheduler_place_object(bool start)
 			temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
 			temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
-		//temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
+	}
+}
+
+void Statemachine::scheduler_error_homing()
+{
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry once, otherwise skip homing:
+		homing_state_=OPEN;
+		homing_counter++;
+
+		if(homing_counter > 1)
+		{
+			homing_counter=0;
+			scheduler_next();
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		homing_state_=OPEN;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		//temporary:
+		scheduler_skip_object();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		homing_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_object_vision()
+{
+	//move_to_object_vision_state_ =OPEN;
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_object_vision_state_=OPEN;
+		move_to_object_vision_counter++;
+
+		if(move_to_object_vision_counter > 1)
+		{
+			move_to_object_vision_counter=0;
+			scheduler_next();
+			//skip locate object close range
+			scheduler_next();
+			//skip get grasping pose
+			scheduler_next();
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_object_pose_ < object_vision_pose.size()-1)
+		{
+			move_to_object_vision_state_=OPEN;
+			selected_object_pose_++;
+		}
+		else
+		{
+			//skip vision pose and try to grasp the object
+
+			move_to_object_vision_state_=OPEN;
+			selected_object_pose_=0;
+			scheduler_next();
+			//skip locate object close range
+			scheduler_next();
+			//skip get grasping pose
+			scheduler_next();
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_object_vision_state_=OPEN;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		//temporary:
+		scheduler_skip_object();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		move_to_object_vision_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_object_safe()
+{
+	//move_to_object_safe_state_ =OPEN;
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_object_safe_state_=OPEN;
+		move_to_object_safe_counter++;
+
+		if(move_to_object_safe_counter > 1)
+		{
+			move_to_object_safe_counter=0;
+			scheduler_skip_object();
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_object_pose_ < object_safe_pose.size()-1)
+		{
+			move_to_object_safe_state_=OPEN;
+			selected_object_pose_++;
+		}
+		else
+		{
+			//skip vision pose and try to grasp the object
+			move_to_object_safe_state_=OPEN;
+			scheduler_skip_object();
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_object_safe_state_=OPEN;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		//temporary:
+		scheduler_skip_object();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		move_to_object_safe_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_target_zone_vision()
+{
+	//move_to_target_zone_vision_state_ =OPEN;
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_target_zone_vision_state_=OPEN;
+		move_to_target_zone_vision_counter++;
+
+		if(move_to_target_zone_vision_counter > 1)
+		{
+			move_to_target_zone_vision_counter=0;
+			//skip final vision check
+			check_object_finished_state_=FINISHED;
+			scheduler_next();
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_target_pose_ < target_vision_pose.size()-1)
+		{
+			move_to_target_zone_vision_state_=OPEN;
+			selected_target_pose_++;
+		}
+		else
+		{
+			//skip vision pose
+			move_to_target_zone_vision_state_=OPEN;
+			//skip final vision check
+			check_object_finished_state_=FINISHED;
+			scheduler_next();
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_target_zone_vision_state_=OPEN;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		//temporary:
+		scheduler_skip_object();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		move_to_target_zone_vision_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_target_zone_safe()
+{
+	//move_to_target_zone_safe_state_ =OPEN;
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_target_zone_safe_state_=OPEN;
+		move_to_target_zone_safe_counter++;
+
+		if(move_to_target_zone_safe_counter > 1)
+		{
+			move_to_target_zone_safe_counter=0;
+			scheduler_skip_object();
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_target_pose_ < target_safe_pose.size()-1)
+		{
+			move_to_target_zone_safe_state_=OPEN;
+			selected_target_pose_++;
+		}
+		else
+		{
+			//skip vision pose and try to grasp the object
+			move_to_target_zone_safe_state_=OPEN;
+			scheduler_skip_object();
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_target_zone_safe_state_=OPEN;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		//temporary:
+		scheduler_skip_object();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		move_to_target_zone_safe_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_object()
+{
+	switch(state_.sub.event_three)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_object_state_=OPEN;
+		move_to_object_counter++;
+
+		if(move_to_object_counter > 1)
+		{
+			move_to_object_counter=0;
+			//try to close the gripper
+			move_to_object_state_=FINISHED;
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_object_pose_ < object_vision_pose.size()-1)
+		{
+			move_to_object_state_=OPEN;
+			selected_object_pose_++;
+		}
+		else
+		{
+			//skip vision pose and try to grasp the object
+			move_to_object_state_=FINISHED;
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_object_state_=FINISHED;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		//not smart?!
+//		move_to_object_safe_state_=OPEN;
+//		if(speed_mod_ < 0.66)
+//			speed_mod_+=0.33;
+//		else
+//			move_to_object_safe_state_=FINISHED;
+
+		//try to close the gripper
+		move_to_object_safe_state_=FINISHED;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_move_to_target_zone()
+{
+	//move_to_target_zone_state_=OPEN;
+	switch(state_.sub.event_three)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+		ROS_INFO("Statemachine-Errorhandler: gen. motion planning error -> retry");
+		//retry:
+		move_to_target_zone_state_=OPEN;
+		move_to_target_zone_counter++;
+
+		if(move_to_target_zone_counter > 1)
+		{
+			move_to_target_zone_counter=0;
+			//try to close the gripper
+			move_to_target_zone_state_=FINISHED;
+		}
+		break;
+
+	case fsm::NO_IK_SOL:
+		ROS_INFO("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+		if(selected_object_pose_ < object_vision_pose.size()-1)
+		{
+			move_to_target_zone_state_=OPEN;
+			selected_object_pose_++;
+		}
+		else
+		{
+			//skip vision pose and try to grasp the object
+			move_to_target_zone_state_=FINISHED;
+		}
+		break;
+
+	case fsm::MAX_LIMIT_REACHED:
+		move_to_target_zone_state_=FINISHED;
+		msg_error("IMPLEMENT ME!!!!!!!!");
+
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		move_to_target_zone_safe_state_=OPEN;
+		if(speed_mod_ < 0.66)
+			speed_mod_+=0.33;
+		else
+			move_to_target_zone_safe_state_=FINISHED;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_check_object_gripped()
+{
+	//increase error counter
+	check_object_gripped_counter_++;
+	if(check_object_gripped_counter_ > 1)
+		state_.sub.event_two = fsm::SKIP_OBJECT;
+
+	//FOR TESTING!!!!!!!!!!!!
+	//-----------------------
+	ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+
+	//scheduler_next();
+	//-----------------------
+
+	if(state_.sub.event_two == fsm::RETRY)
+	{
+		check_object_gripped_state_ =OPEN;
+		//nop
+	}
+	else if(state_.sub.event_two == fsm::OBJECT_LOST)
+	{
+		scheduler_next();
+
+		scheduler_grasp_object(EXECUTE_NOW);
+
+		check_object_gripped_state_ = OPEN;
+		msg_warn("Object lost detected... retrying gripping routine");
+
+		scheduler_printqueue(); //print queue to console for debugging purposes
+		scheduler_next();
+	}
+	else if(state_.sub.event_two == fsm::SKIP_OBJECT)
+	{
+		check_object_gripped_state_ = OPEN;
+		scheduler_skip_object();
 	}
 }
 
@@ -1503,11 +1897,6 @@ int Statemachine::check_object_gripped()
 		//destroy thread
 		lsc_.detach();
 
-		//increase error counter
-		check_object_gripped_counter_++;
-		if(check_object_gripped_counter_ > 2)
-			state_.sub.event_two = fsm::SKIP_OBJECT;
-
 		ROS_INFO("check_object_gripped() called: FINISHEDWITHERROR");
 		scheduler_schedule(); //Call for Error-Handling
 	}
@@ -2136,15 +2525,16 @@ void Statemachine::get_grasping_pose_cb()
 		msg_error("failed to call check_poses_client");
 		//get_grasping_pose_state_=FINISHEDWITHERROR;
 	}
-	else{
-	if(check_poses_srv_.response.valid==false)
-	{
-		ROS_INFO("CheckPoses: poses are valid");
-	}
 	else
 	{
-		ROS_INFO("CheckPoses: poses are invalid");
-	}
+		if(check_poses_srv_.response.valid==false)
+		{
+			ROS_INFO("CheckPoses: poses are valid");
+		}
+		else
+		{
+			ROS_INFO("CheckPoses: poses are invalid");
+		}
 	}
 
 
@@ -2539,7 +2929,7 @@ int Statemachine::move_to_object_safe()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = slow_moving_speed;
+		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 
 		//send first goal
 		move_to_object_safe_state_=RUNNING;
@@ -2553,25 +2943,6 @@ int Statemachine::move_to_object_safe()
 	{
 		reached_active_goal_=false;
 		active_goal_++;
-
-
-//		//check object picked up:
-//          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_SAFE))
-//          {
-//              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
-//              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
-//
-//              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
-//              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
-//              if(state_observer_client_.call(obj_picked_up_srv_))
-//              {
-//                ROS_INFO("got object!");
-//              }
-//              else
-//              {
-//                ROS_INFO("lost object!");
-//              }
-//           }
 
 
 		if(active_goal_==nr_goals_)
@@ -2599,10 +2970,13 @@ int Statemachine::move_to_object_safe()
 		//==============================================
 		//reset state
 		move_to_object_safe_state_=OPEN;
+		//reset retry counter
+		move_to_object_safe_counter=0;
 	}
 	else if(move_to_object_safe_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_object_safe() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2655,7 +3029,7 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed;
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
 		//send first goal
 		move_to_object_vision_state_=RUNNING;
@@ -2669,25 +3043,6 @@ int Statemachine::move_to_object_vision()
 	{
 		reached_active_goal_=false;
 		active_goal_++;
-
-
-//		//check object picked up:
-//          if((active_goal_==1)&&(state_.sub.three==fsm::MOVE_TO_OBJECT_vision))
-//          {
-//              ROS_INFO("Object mass: %f, checking picked up...",cur_obj_mass_);
-//              ROS_INFO("Object com: [%f %f %f]",r_tcp_curobjcom_.x,r_tcp_curobjcom_.y,r_tcp_curobjcom_.z);
-//
-//              obj_picked_up_srv_.request.ObjectMass=cur_obj_mass_;
-//              obj_picked_up_srv_.request.CentreOfMass=r_tcp_curobjcom_;
-//              if(state_observer_client_.call(obj_picked_up_srv_))
-//              {
-//                ROS_INFO("got object!");
-//              }
-//              else
-//              {
-//                ROS_INFO("lost object!");
-//              }
-//           }
 
 
 		if(active_goal_==nr_goals_)
@@ -2715,10 +3070,12 @@ int Statemachine::move_to_object_vision()
 		//==============================================
 		//reset state
 		move_to_object_vision_state_=OPEN;
+		move_to_object_vision_counter=0;
 	}
 	else if(move_to_object_vision_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_object_vision() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2770,7 +3127,7 @@ int Statemachine::move_to_object()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
-		goal_queue[0].speed_percentage = slow_moving_speed;
+		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 
 		move_to_object_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2788,10 +3145,12 @@ int Statemachine::move_to_object()
 		//==============================================
 		//reset state
 		move_to_object_state_=OPEN;
+		move_to_object_counter=0;
 	}
 	else if(move_to_object_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_object() called: FINISHEDWITHERROR");
+		state_.sub.event_three = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2844,7 +3203,7 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed;
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
 		move_to_target_zone_safe_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2882,10 +3241,12 @@ int Statemachine::move_to_target_zone_safe()
 		//==============================================
 		//reset state
 		move_to_target_zone_safe_state_=OPEN;
+		move_to_target_zone_safe_counter=0;
 	}
 	else if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_target_zone_safe() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2938,7 +3299,7 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed;
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
 		move_to_target_zone_vision_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -2976,10 +3337,12 @@ int Statemachine::move_to_target_zone_vision()
 		//==============================================
 		//reset state
 		move_to_target_zone_vision_state_=OPEN;
+		move_to_target_zone_vision_counter=0;
 	}
 	else if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_target_zone_vision() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -3031,7 +3394,7 @@ int Statemachine::move_to_target_zone()
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
-		goal_queue[0].speed_percentage = slow_moving_speed;
+		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 
 		move_to_target_zone_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
@@ -3049,10 +3412,12 @@ int Statemachine::move_to_target_zone()
 		//==============================================
 		//reset state
 		move_to_target_zone_state_=OPEN;
+		move_to_target_zone_counter=0;
 	}
 	else if(move_to_target_zone_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("move_to_target_zone() called: FINISHEDWITHERROR");
+		state_.sub.event_three = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -3102,7 +3467,7 @@ int Statemachine::homing()
 
 		goal_queue[0].planning_algorithm = HOMING_7DOF;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed;
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		homing_state_=RUNNING;
 		motion_planning_action_client_.sendGoal(goal_queue[0],
 												boost::bind(&Statemachine::homing_done,this,_1,_2),
@@ -3119,10 +3484,12 @@ int Statemachine::homing()
 		//==============================================
 		//reset state
 		homing_state_=OPEN;
+		homing_counter=0;
 	}
 	else if(homing_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("homing() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;

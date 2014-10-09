@@ -56,11 +56,16 @@ typedef enum {
 	//events
 	NOP,
 	RETRY,
+	SIM_SRV_NA,
 	SKIP_OBJECT,
-	OBJECT_NOT_DETECTED,
-	MOTION_PLANNING_ERROR,
 	OBJECT_LOST,
 
+	//motion planning error events:
+	MOTION_PLANNING_ERROR,
+	NO_IK_SOL,
+	NO_DK_SOL,
+	MAX_LIMIT_REACHED,
+	STOP_COND
 } fsm_t;
 }
 #endif
