@@ -317,7 +317,8 @@ void Statemachine::scheduler_schedule()
 			if (!skip_vision_)
 			{
 				//schedule for task 1 to 4
-				if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 || active_task_number_==4)
+				if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 ||
+						active_task_number_==4 || active_task_number_==5)
 				{
 					temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
 					temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
@@ -330,7 +331,7 @@ void Statemachine::scheduler_schedule()
 						}
 						temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				}
-				else if(active_task_number_==5 || active_task_number_==6) //schedule for task 5 and 6
+				else if(active_task_number_==6) //schedule for task 5 and 6
 				{
 					//Nothing special right now
 				}
@@ -2997,10 +2998,12 @@ int Statemachine::gripper_close()
 		if (object_grasp_width.size()>0)
 		{
 			gripper_control_srv_.request.object_width = object_grasp_width[selected_object_pose_];
+			gripper_control_srv_.request.gripper_position = 0.0;  //TODO Delete?
 		}
 		else
 		{
-			gripper_control_srv_.request.object_width = 0;
+			gripper_control_srv_.request.object_width = 0.0;
+			gripper_control_srv_.request.gripper_position = 0.0; //TODO Delete?
 		}
 		gripper_control_srv_.request.gripping_mode = FF_FORCE;
 		gripper_close_state_=RUNNING;
