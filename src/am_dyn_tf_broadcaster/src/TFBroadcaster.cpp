@@ -103,34 +103,6 @@ bool TFBroadcaster::set_static_tf_data(am_msgs::SetStaticTFData::Request &req, a
 	return true;
 }
 
-bool TFBroadcaster::get_static_tf_data(am_msgs::GetStaticTFData::Request &req, am_msgs::GetStaticTFData::Response &res)
-{
-	if (!T_GP_.header.frame_id.compare(req.parent_frame) || !T_GP_TCP_.child_frame_id.compare(req.child_frame)){
-
-		transform1.setOrigin(tf::Vector3(T_GP_.transform.translation.x,T_GP_.transform.translation.y,T_GP_.transform.translation.z));
-		transform1.setRotation(tf::Quaternion(T_GP_.transform.rotation.x,T_GP_.transform.rotation.y,T_GP_.transform.rotation.z,T_GP_.transform.rotation.w));
-		transform2.setOrigin(tf::Vector3(T_GP_TCP_.transform.translation.x,T_GP_TCP_.transform.translation.y,T_GP_TCP_.transform.translation.z));
-		transform2.setRotation(tf::Quaternion(T_GP_TCP_.transform.rotation.x,T_GP_TCP_.transform.rotation.y,T_GP_TCP_.transform.rotation.z,T_GP_TCP_.transform.rotation.w));
-
-		transformRes = transform1*transform2;
-
-		res.transform.transform.translation.x = transformRes.getOrigin().x();
-		res.transform.transform.translation.y = transformRes.getOrigin().y();
-		res.transform.transform.translation.z = transformRes.getOrigin().z();
-
-		res.transform.transform.rotation.x = transformRes.getRotation().x();
-		res.transform.transform.rotation.y = transformRes.getRotation().y();
-		res.transform.transform.rotation.z = transformRes.getRotation().z();
-		res.transform.transform.rotation.w = transformRes.getRotation().w();
-
-	}
-	else {
-		res.error_message = "No other static TFs can be given. If needed, add me!";
-		return false;
-	}
-
-	return true;
-}
 
 void TFBroadcaster::update_tf()
 {

@@ -23,7 +23,7 @@
 
 //! AM
 #include <am_msgs/SetStaticTFData.h>
-#include <am_msgs/GetStaticTFData.h>
+
 
 class TFBroadcaster {
 public:
@@ -31,7 +31,6 @@ public:
 	virtual ~TFBroadcaster();
 
 	bool set_static_tf_data(am_msgs::SetStaticTFData::Request &req, am_msgs::SetStaticTFData::Response &res);
-	bool get_static_tf_data(am_msgs::GetStaticTFData::Request &req, am_msgs::GetStaticTFData::Response &res);
 
 	void update_tf();
 

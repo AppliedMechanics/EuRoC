@@ -1274,84 +1274,40 @@ void GraspPose2::compute_grasp_poses_()
 
 bool GraspPose2::get_transform_GPTCP_2_LWRTCP()
 {
-//	tf::TransformListener tf_listener;
+	tf::TransformListener tf_listener;
 //	tf::StampedTransform tmp_transform_GPTCP_2_LWRTCP;
-//
-//	ros::Time now = ros::Time(0);
-//	try{
-//		tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(2.0));
-//		tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,tmp_transform_GPTCP_2_LWRTCP);
-//		ROS_INFO("Listening to transform was successful");
-//	}
-//	catch(...)
-//	{
-//		msg_error("Listening to transform was not successful");
-//	}
-	//check the service call
-	if(ros::service::exists("get_static_tf_data",false)==true)
-	{
-	    get_static_tf_data_client_ = n.serviceClient<am_msgs::GetStaticTFData>("get_static_tf_data");
+
+	ros::Time now = ros::Time(0);
+	try{
+		tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(2.0));
+		tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,transform_GPTCP_2_LWRTCP_);
+		ROS_INFO("Listening to transform was successful");
 	}
-	else
+	catch(...)
 	{
-		msg_error("Error. get_static_tf_data_client not available");
-		return false;
+		msg_error("Listening to transform was not successful");
 	}
 
-	//check object_grip poses
-	get_static_tf_data_srv_.request.child_frame = GP_TCP;
-	get_static_tf_data_srv_.request.parent_frame = LWR_TCP;
-
-	if(!get_static_tf_data_client_.call(get_static_tf_data_srv_))
-	{
-		msg_error("Error. failed to call get_static_tf_data_client_");
-		return false;
-	}
-	else{
-		transform_GPTCP_2_LWRTCP_.setOrigin(tf::Vector3(get_static_tf_data_srv_.response.transform.transform.translation.x,
-				get_static_tf_data_srv_.response.transform.transform.translation.y,
-				get_static_tf_data_srv_.response.transform.transform.translation.z));
-		transform_GPTCP_2_LWRTCP_.setRotation(tf::Quaternion(get_static_tf_data_srv_.response.transform.transform.rotation.x,
-				get_static_tf_data_srv_.response.transform.transform.rotation.y,
-				get_static_tf_data_srv_.response.transform.transform.rotation.z,
-				get_static_tf_data_srv_.response.transform.transform.rotation.w));
-	}
 	return true;
 }
 
 geometry_msgs::Pose GraspPose2::transform_pose_GPTCP_2_LWRTCP_(geometry_msgs::Pose GPTCP_pose)
 {
 	geometry_msgs::Pose LWRTCP_pose;
-	tf::Transform tf_tmp1, tf_tmp2, tf_tmp3;
+	tf::Transform tf_tmp1, tf_tmp2;
 
 	tf_tmp1.setOrigin(tf::Vector3(GPTCP_pose.position.x,GPTCP_pose.position.y,GPTCP_pose.position.z));
 	tf_tmp1.setRotation(tf::Quaternion(GPTCP_pose.orientation.x,GPTCP_pose.orientation.y,GPTCP_pose.orientation.z,GPTCP_pose.orientation.w));
 
-#warning FIX_TRANFORMATION!!!
-//	tf_tmp3 = transform_GPTCP_2_LWRTCP_*tf_tmp1;
-//
-//	LWRTCP_pose.position.x = tf_tmp3.getOrigin().getX();
-//	LWRTCP_pose.position.y = tf_tmp3.getOrigin().getY();
-//	LWRTCP_pose.position.z = tf_tmp3.getOrigin().getZ();
-//	LWRTCP_pose.orientation.x = tf_tmp3.getRotation().getX();
-//	LWRTCP_pose.orientation.y = tf_tmp3.getRotation().getY();
-//	LWRTCP_pose.orientation.z = tf_tmp3.getRotation().getZ();
-//	LWRTCP_pose.orientation.w = tf_tmp3.getRotation().getW();
+	tf_tmp2.mult(tf_tmp1,transform_GPTCP_2_LWRTCP_.inverse());
 
-	//DUMMY-CODE
-	tf::Vector3 gripper_z_axis, tmp_origin;
-	double distance_GPTCP_to_LWRTCP;
-	distance_GPTCP_to_LWRTCP = 0.173;
-	gripper_z_axis=tf_tmp1.getBasis().getColumn(2);
-	tmp_origin=tf_tmp1.getOrigin()-gripper_z_axis*distance_GPTCP_to_LWRTCP;
-
-	LWRTCP_pose.position.x = tmp_origin.getX();
-	LWRTCP_pose.position.y = tmp_origin.getY();
-	LWRTCP_pose.position.z = tmp_origin.getZ();
-	LWRTCP_pose.orientation.x = tf_tmp1.getRotation().getX();
-	LWRTCP_pose.orientation.y = tf_tmp1.getRotation().getY();
-	LWRTCP_pose.orientation.z = tf_tmp1.getRotation().getZ();
-	LWRTCP_pose.orientation.w = tf_tmp1.getRotation().getW();
+	LWRTCP_pose.position.x 		= tf_tmp2.getOrigin().getX();
+	LWRTCP_pose.position.y 		= tf_tmp2.getOrigin().getY();
+	LWRTCP_pose.position.z 		= tf_tmp2.getOrigin().getZ();
+	LWRTCP_pose.orientation.x 	= tf_tmp2.getRotation().getX();
+	LWRTCP_pose.orientation.y 	= tf_tmp2.getRotation().getY();
+	LWRTCP_pose.orientation.z 	= tf_tmp2.getRotation().getZ();
+	LWRTCP_pose.orientation.w 	= tf_tmp2.getRotation().getW();
 	return LWRTCP_pose;
 }
 

@@ -21,7 +21,6 @@
 #include <am_msgs/Object.h>
 #include <am_msgs/GetGraspPose.h>
 #include <am_msgs/CheckPoses.h>
-#include <am_msgs/GetStaticTFData.h>
 
 //am includes
 #include <config.hpp>
@@ -48,9 +47,6 @@ public:
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
 
-	//!client to get static TF information
-	ros::ServiceClient get_static_tf_data_client_;
-	am_msgs::GetStaticTFData get_static_tf_data_srv_;
 
 	//stamped Transform from GPTCP to LWRTCP
 	tf::StampedTransform transform_GPTCP_2_LWRTCP_;

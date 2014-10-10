@@ -38,7 +38,6 @@
 
 #include <euroc_c2_msgs/Telemetry.h>
 #include <am_msgs/CallSetStopConditions.h>
-#include <am_msgs/GetStaticTFData.h>
 
 #include <boost/thread.hpp>
 
@@ -78,7 +77,6 @@ private:
 	ros::ServiceClient search_ik_solution_client_;
 	ros::ServiceClient get_dk_solution_client_;
 	ros::ServiceClient state_observer_client_;
-	ros::ServiceClient get_static_tf_data_client_;
 
 	ros::Subscriber telemetry_subscriber_;
 
@@ -107,8 +105,6 @@ private:
 
 
 	am_msgs::CallSetStopConditions call_set_stop_cond_srv_;
-	am_msgs::GetStaticTFData get_static_tf_data_srv_;
-
 
 // MOVEIT
 #ifdef MOVEIT

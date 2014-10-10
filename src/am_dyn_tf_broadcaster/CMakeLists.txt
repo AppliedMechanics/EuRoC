@@ -61,9 +61,6 @@ include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 
 ## Declare a cpp executable
-add_executable(am_dyn_tf_broadcaster src/main_dyn_tf_broadcaster.cpp)
-target_link_libraries(am_dyn_tf_broadcaster ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(am_dyn_tf_broadcaster am_dyn_tf_broadcaster_generate_messages_cpp)
 
 add_executable(am_tf_broadcaster src/TFBroadcaster.cpp src/main_tf_broadcaster.cpp)
 target_link_libraries(am_tf_broadcaster ${catkin_LIBRARIES} ${Boost_LIBRARIES})

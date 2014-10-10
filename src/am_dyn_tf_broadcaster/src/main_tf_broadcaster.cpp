@@ -21,7 +21,6 @@ int main(int argc, char **argv)
 
 	TFBroadcaster tf_broadcaster;
 	ros::ServiceServer serviceSet = n.advertiseService("set_static_tf_data", &TFBroadcaster::set_static_tf_data, &tf_broadcaster);
-	ros::ServiceServer serviceGet = n.advertiseService("get_static_tf_data", &TFBroadcaster::get_static_tf_data, &tf_broadcaster);
 
 	double loop_rate;
 
