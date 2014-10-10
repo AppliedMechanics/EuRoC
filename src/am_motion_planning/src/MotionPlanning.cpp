@@ -23,7 +23,8 @@ time_at_path_points_(1)
 	timing_along_joint_path_client_ = nh_.serviceClient<euroc_c2_msgs::GetTimingAlongJointPath>(timing_along_joint_path_);
 	search_ik_solution_client_      = nh_.serviceClient<euroc_c2_msgs::SearchIkSolution>(search_ik_solution_);
 	get_dk_solution_client_         = nh_.serviceClient<euroc_c2_msgs::GetForwardKinematics>(get_dk_solution_);
-	state_observer_client_          = nh_.serviceClient<am_msgs::CallSetStopConditions>("CallSetStopConditions_srv");  //TODO remove (by Anna)
+	state_observer_client_          = nh_.serviceClient<am_msgs::CallSetStopConditions>("CallSetStopConditions_srv");
+	get_static_tf_data_client_      = nh_.serviceClient<am_msgs::GetStaticTFData>("get_static_tf_data");
 
 	joint_limits_.resize(7);
 
@@ -1107,7 +1108,7 @@ void MotionPlanning::setMoveRequestTCPLimits()
 bool MotionPlanning::transformToTCPFrame(std::string frame)
 {
 
-	//! This function transforms the goal pose given for the gripper TCP fram in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
+	//! This function transforms the goal pose given for the gripper TCP frme in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
 	tf::TransformListener tf_listener;
 	tf::StampedTransform transform_GPTCP_2_LWRTCP;
 	tf::Transform tf_tmp,tf_tmp2;
@@ -1115,7 +1116,9 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 	ros::Time now = ros::Time(0);
 	//! TODO remove debug_tf
 	std::string debug_tf;
+
 	//! Transformation from GP TCP frame to LWR TCP frame
+#if 0
 	try{
 		if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(1.0),ros::Duration(3.0),&debug_tf))
 			tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,transform_GPTCP_2_LWRTCP);
@@ -1129,6 +1132,33 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 		ROS_ERROR("Listening to transform was not successful");
 		return false;
 	}
+#else
+	try{
+		//
+		//check object_grip poses
+		get_static_tf_data_srv_.request.child_frame = GP_TCP;
+		get_static_tf_data_srv_.request.parent_frame = LWR_TCP;
+
+		if(!get_static_tf_data_client_.call(get_static_tf_data_srv_))
+		{
+			msg_error("Error. failed to call get_static_tf_data_client_");
+			return false;
+		}
+		else{
+			transform_GPTCP_2_LWRTCP.setOrigin(tf::Vector3(get_static_tf_data_srv_.response.transform.transform.translation.x,
+					get_static_tf_data_srv_.response.transform.transform.translation.y,
+					get_static_tf_data_srv_.response.transform.transform.translation.z));
+			transform_GPTCP_2_LWRTCP.setRotation(tf::Quaternion(get_static_tf_data_srv_.response.transform.transform.rotation.x,
+					get_static_tf_data_srv_.response.transform.transform.rotation.y,
+					get_static_tf_data_srv_.response.transform.transform.rotation.z,
+					get_static_tf_data_srv_.response.transform.transform.rotation.w));
+		}
+	}
+	catch(...){
+		msg_error("Listening to transform was not successful");
+		return false;
+	}
+#endif
 
 	tf_tmp.setOrigin(tf::Vector3(goal_pose_goal_->goal_pose.position.x,
 			goal_pose_goal_->goal_pose.position.y,
@@ -1139,6 +1169,7 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 			goal_pose_goal_->goal_pose.orientation.w));
 
 	if (!frame.compare(GP_TCP)){
+#if 0
 		tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
 		goal_pose_GPTCP_ = goal_pose_goal_->goal_pose;
 
@@ -1150,6 +1181,32 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 		goal_pose_LWRTCP_.orientation.y = tf_tmp2.getRotation().getY();
 		goal_pose_LWRTCP_.orientation.z = tf_tmp2.getRotation().getZ();
 		goal_pose_LWRTCP_.orientation.w = tf_tmp2.getRotation().getW();
+
+#else
+		tf_tmp.setOrigin(tf::Vector3(goal_pose_goal_->goal_pose.position.x,goal_pose_goal_->goal_pose.position.y,goal_pose_goal_->goal_pose.position.z));
+		tf_tmp.setRotation(tf::Quaternion(goal_pose_goal_->goal_pose.orientation.x,goal_pose_goal_->goal_pose.orientation.y,goal_pose_goal_->goal_pose.orientation.z,goal_pose_goal_->goal_pose.orientation.w));
+		//DUMMY-CODE
+		tf::Vector3 gripper_z_axis, tmp_origin;
+		double distance_GPTCP_to_LWRTCP = 0.173;
+		gripper_z_axis=tf_tmp.getBasis().getColumn(2);
+		tmp_origin=tf_tmp.getOrigin()-gripper_z_axis*distance_GPTCP_to_LWRTCP;
+		goal_pose_LWRTCP_.position.x = tmp_origin.getX();
+		goal_pose_LWRTCP_.position.y = tmp_origin.getY();
+		goal_pose_LWRTCP_.position.z = tmp_origin.getZ();
+
+		goal_pose_LWRTCP_.orientation.x = tf_tmp.getRotation().getX();
+		goal_pose_LWRTCP_.orientation.y = tf_tmp.getRotation().getY();
+		goal_pose_LWRTCP_.orientation.z = tf_tmp.getRotation().getZ();
+		goal_pose_LWRTCP_.orientation.w = tf_tmp.getRotation().getW();
+#endif
+		ROS_INFO("transform_GPTCP_2_LWRTCP: [%f %f %f .. %f %f %f %f] ",transform_GPTCP_2_LWRTCP.getOrigin().getX(),
+				transform_GPTCP_2_LWRTCP.getOrigin().getY(),transform_GPTCP_2_LWRTCP.getOrigin().getZ(),
+				transform_GPTCP_2_LWRTCP.getRotation().getX(),transform_GPTCP_2_LWRTCP.getRotation().getY(),
+				transform_GPTCP_2_LWRTCP.getRotation().getZ(),transform_GPTCP_2_LWRTCP.getRotation().getW());
+
+		ROS_INFO("LWRTCP Pose in MotionPlanning: [%f %f %f .. %f %f %f %f]" , goal_pose_LWRTCP_.position.x,
+				goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z,goal_pose_LWRTCP_.orientation.x,
+				goal_pose_LWRTCP_.orientation.y,goal_pose_LWRTCP_.orientation.z,goal_pose_LWRTCP_.orientation.w);
 	}
 	else if (!frame.compare(LWR_TCP)){
 		tf_tmp2 = transform_GPTCP_2_LWRTCP.inverse()*tf_tmp;
@@ -1189,7 +1246,7 @@ bool MotionPlanning::transformToLWRBase()
 		}
 	}
 	catch(...){
-		ROS_ERROR("Listening to transform was not successful");
+		msg_error("Listening to transform was not successful");
 		return false;
 	}
 	tf_tmp.setOrigin(tf::Vector3(goal_pose_LWRTCP_.position.x,

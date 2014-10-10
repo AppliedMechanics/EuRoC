@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-#define DBG_OUT
+#undef DBG_OUT
 
 
 EurocInput::EurocInput():

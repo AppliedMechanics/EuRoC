@@ -1778,6 +1778,11 @@ int Statemachine::parse_yaml_file()
 
 int Statemachine::check_object_finished()
 {
+	if(target_skip_vision[selected_target_pose_]==1)
+	{
+		check_object_finished_state_==FINISHED;
+		ROS_INFO("skip move to target zone vision pose");
+	}
 	if(check_object_finished_state_==OPEN)
 	{
 		ROS_INFO("check_object_finished() called: OPEN");
@@ -2729,7 +2734,7 @@ int Statemachine::get_grasping_pose()
 						(state_queue[ii].sub.two == fsm::MOVE_TO_TARGET_ZONE_VISION))
 				{
 					state_queue.erase(state_queue.begin()+ii);
-					state_queue.erase(state_queue.begin()+ii);
+					//state_queue.erase(state_queue.begin()+ii);
 					break;
 				}
 			}

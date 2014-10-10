@@ -107,12 +107,12 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	res.object_grip_r_gp_com=object_grip_r_gp_com;
 	res.object_grip_r_gp_obj=object_grip_r_gp_obj;
 
-	int sz=res.target_place_pose.size();
-	ROS_INFO("target_place_pose.size(): %d",sz);
-	sz=res.target_safe_pose.size();
-	ROS_INFO("target_safe_pose.size(): %d",sz);
-	sz=res.target_vision_pose.size();
-	ROS_INFO("target_vision_pose.size(): %d",sz);
+//	int sz=res.target_place_pose.size();
+//	ROS_INFO("target_place_pose.size(): %d",sz);
+//	sz=res.target_safe_pose.size();
+//	ROS_INFO("target_safe_pose.size(): %d",sz);
+//	sz=res.target_vision_pose.size();
+//	ROS_INFO("target_vision_pose.size(): %d",sz);
 
 	//Print results of service call
 	print_results();
