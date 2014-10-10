@@ -23,6 +23,7 @@ public:
 	void handle(const am_msgs::VisionGoal::ConstPtr &goal);
 
 	std::vector<geometry_msgs::Pose> modscene_poses_;
+	std::vector<std::string> modscene_colors_;
 
 	int mod_scene_;
 	void loadScene(int scene);
