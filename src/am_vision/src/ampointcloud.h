@@ -58,7 +58,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
-	pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	static pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	octomath::Vector3 getSensorOriginScene (int cameraType);
 
 

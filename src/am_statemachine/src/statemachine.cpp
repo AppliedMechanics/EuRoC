@@ -1841,10 +1841,13 @@ void Statemachine::check_object_finished_done(const actionlib::SimpleClientGoalS
 {
 	ROS_INFO("check_object_finished_done() called, state: %s",state.toString().c_str());
 
+	ROS_INFO("Result: object detected: %s, object in zone: %s",
+			result->object_detected ? "true":"false",result->object_in_zone ? "true":"false");
+
 	switch(state.state_)
 	{
 		case actionlib::SimpleClientGoalState::SUCCEEDED:
-			if(result->object_detected==true)
+			if((result->object_detected==true) && (result->object_in_zone == true))
 			{
 				check_object_finished_state_=FINISHED;
 			}

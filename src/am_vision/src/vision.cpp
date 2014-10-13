@@ -95,6 +95,8 @@ Vision::Vision():
   finalVoxelizedCyanPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
   finalVoxelizedMagentaPC.reset (new pcl::PointCloud<pcl::PointXYZ>());
 
+  object_model.reset (new pcl::PointCloud<pcl::PointXYZ>);
+
   // leaf size voxels
   leaf_size = 0.0025;
 
@@ -198,6 +200,40 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       isSingleCube = true;
     }
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
+
+  if(!goal->object.color.compare("ff0000"))
+  {
+	  // Goal: Red object
+	  *targetPC += *finalVoxelizedRedPC;
+  }
+  else if (!goal->object.color.compare("00ff00"))
+  {
+	  // Goal: Green object
+	  *targetPC += *finalVoxelizedGreenPC;
+  }
+  else if (!goal->object.color.compare("0000ff"))
+  {
+	  // Goal: Blue object
+	  *targetPC += *finalVoxelizedBluePC;
+  }
+  else if (!goal->object.color.compare("00ffff"))
+  {
+	  // Goal: Cyan object
+	  *targetPC += *finalVoxelizedCyanPC;
+  }
+  else if (!goal->object.color.compare("ff00ff"))
+  {
+	  // Goal: Magenta object
+	  *targetPC += *finalVoxelizedMagentaPC;
+  }
+  else if (!goal->object.color.compare("ffff00"))
+  {
+	  // Goal: Yellow object
+	  *targetPC += *finalVoxelizedYellowPC;
+  }
+
+
   if(goal->mode == GLOBAL_POSE_ESTIMATION) {
 
     std::cout<<"[VISION]Entered Vision::handle()..."<<std::endl;
@@ -208,39 +244,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 #endif
 
     obj_aligned_=false;
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
-
-    if(!goal->object.color.compare("ff0000"))
-    {
-      // Goal: Red object
-      *targetPC += *finalVoxelizedRedPC;
-    }
-    else if (!goal->object.color.compare("00ff00"))
-    {
-      // Goal: Green object
-      *targetPC += *finalVoxelizedGreenPC;
-    }
-    else if (!goal->object.color.compare("0000ff"))
-    {
-      // Goal: Blue object
-      *targetPC += *finalVoxelizedBluePC;
-    }
-    else if (!goal->object.color.compare("00ffff"))
-    {
-      // Goal: Cyan object
-      *targetPC += *finalVoxelizedCyanPC;
-    }
-    else if (!goal->object.color.compare("ff00ff"))
-    {
-      // Goal: Magenta object
-      *targetPC += *finalVoxelizedMagentaPC;
-    }
-    else if (!goal->object.color.compare("ffff00"))
-    {
-      // Goal: Yellow object
-      *targetPC += *finalVoxelizedYellowPC;
-    }
 
     std::cout<<"[VISION]Looking for: "<<goal->object.name<<std::endl;
 
@@ -259,7 +262,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
     // Generate PointClouds from the given obstacles
     ShapeGenerator<pcl::PointXYZ> shape_generator;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr object_model (new pcl::PointCloud<pcl::PointXYZ>);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr object_model (new pcl::PointCloud<pcl::PointXYZ>);
+    object_model->clear();
     pcl::PointCloud<pcl::PointXYZ>::Ptr shape_model (new pcl::PointCloud<pcl::PointXYZ>);
     float step_size = 0.005;
     Eigen::Quaternion<double> q;
@@ -381,13 +385,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
     }
 
-    //-------------------------------- Clean Up ----------------------------------------//
     targetPC->clear();
 
   }
   else if(goal->mode == CLOSE_RANGE_POSE_ESTIMATION)
   {
-    std::cout<<"[VISION]Attempt: close range pose est."<<std::endl;
+    std::cout<<"[VISION]initialize close range pose estimation"<<std::endl;
 
     // check object type
     if(isSingleCube)
@@ -426,14 +429,55 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
                              0					  				, 			0						  			  , 1);
         // get the quaternion representation from the rotation matrix
         optRotation.getRotation(tfqtNew);
-        std::cout<<"[VISION]Passing the new pose to grasping node"<<std::endl;
-        vision_result_.abs_object_pose.position.x = transformation(0,3);
-        vision_result_.abs_object_pose.position.y = transformation(1,3);
-        vision_result_.abs_object_pose.position.z = transformation(2,3);
-        vision_result_.abs_object_pose.orientation.w = tfqtNew.getW();
-        vision_result_.abs_object_pose.orientation.x = tfqtNew.getX();
-        vision_result_.abs_object_pose.orientation.y = tfqtNew.getY();
-        vision_result_.abs_object_pose.orientation.z = tfqtNew.getZ();
+
+        Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
+        transform_1 (0,0) = std::cos(OptRotationRadians);
+        transform_1 (0,1) = (-1)*std::sin(OptRotationRadians);
+        transform_1 (1,0) = std::sin(OptRotationRadians);
+        transform_1 (1,1) = std::cos(OptRotationRadians);
+        transform_1 (0,3) = transformation (0,3);
+        transform_1 (1,3) = transformation (1,3);
+        transform_1 (2,3) = transformation (2,3);
+
+        std::cout<<"[VISION]show aligned point cloud based on close range image"<<std::endl;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*object_model, *closeRangePC);
+        pcl::transformPointCloud(*closeRangePC, *closeRangePC, transform_1);
+        pcl::toROSMsg (*closeRangePC, msg);
+        msg.header.frame_id = "LWR_0";
+        msg.header.stamp = ros::Time::now();
+        pub_2.publish (msg);
+
+        pcl::transformPointCloud(*object_model, *object_model, transformation);
+
+        int diffOldPose = verify_close_range_pose(targetPC, object_model);
+        int diffNewPose = verify_close_range_pose(targetPC, closeRangePC);
+        std::cout<<"Diff = "<<std::abs( diffOldPose - diffNewPose )<<std::endl;
+        // check which transformed model fits better on the observed point cloud
+        if ( std::abs( diffOldPose - diffNewPose ) < 15 )
+        {
+        	std::cout<<"[VISION]new pose is better!"<<std::endl;
+        	std::cout<<"[VISION]Passing the new pose to grasping node"<<std::endl;
+        	vision_result_.abs_object_pose.position.x = transformation(0,3);
+        	vision_result_.abs_object_pose.position.y = transformation(1,3);
+        	vision_result_.abs_object_pose.position.z = transformation(2,3);
+        	vision_result_.abs_object_pose.orientation.w = tfqtNew.getW();
+        	vision_result_.abs_object_pose.orientation.x = tfqtNew.getX();
+        	vision_result_.abs_object_pose.orientation.y = tfqtNew.getY();
+        	vision_result_.abs_object_pose.orientation.z = tfqtNew.getZ();
+        }
+        else
+        {
+            std::cout<<"[VISION]new pose is a mess!!"<<std::endl;
+            std::cout<<"[VISION]Passing the initial estimated pose"<<std::endl;
+            vision_result_.abs_object_pose.position.x = transformation(0,3);
+            vision_result_.abs_object_pose.position.y = transformation(1,3);
+            vision_result_.abs_object_pose.position.z = transformation(2,3);
+            vision_result_.abs_object_pose.orientation.w = tfqt.getW();
+            vision_result_.abs_object_pose.orientation.x = tfqt.getX();
+            vision_result_.abs_object_pose.orientation.y = tfqt.getY();
+            vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
+        }
       }
     }
     else // for objects other than cube, the inital pose will be sent back
@@ -456,10 +500,39 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
   }
   else if (goal->mode == CHECKING_FOR_OBJECT_IN_TARGET_ZONE)
   {
+    // Wait as usual!!
+    std::cout<<"[VISION]Wait for 4 sec..."<<std::endl;
+    ros::Duration(4.0).sleep();
+    std::cout<<"[VISION]Done!"<<std::endl;
+    std::cout<<"[VISION]check if object is on target zone"<<std::endl;
 
-    vision_result_.object_in_zone = true; // Object is placed correctly on the target zone
-    vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+//    bool isObjectInZone = verify_object_inside_zone(goal->object.color);
+    pcl::PointXYZ targetZone;
+    targetZone.x = goal->target_zone.position.x;
+    targetZone.y = goal->target_zone.position.y;
+    targetZone.z = goal->target_zone.position.z;
+    int objectInZone = verify_object_inside_zone(goal->object.color, targetZone, goal->target_zone.max_distance);
+    // TODO: Revision needed, ask Phillip
+    if (objectInZone == 1)
+    {
+    	std::cout<<"[VISION]Object_On_Target Verification: PASSED."<<std::endl;
+    	vision_result_.object_in_zone = true; // TODO: change to three-way result code
+    	vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+    }
+    else
+    {
+    	std::cout<<"[VISION]Object_On_Target Verification: FAILED!"<<std::endl;
+    	if (objectInZone == 0)
+    		std::cout<<"Reason: object not visible in camera view"<<std::endl;
+    	if (objectInZone == -1)
+    	std::cout<<"Reason: object placed far away from target zone"<<std::endl;
+
+    	vision_result_.object_in_zone = false; // TODO: change to three-way result code
+    	vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+    }
   }
+  else
+    msg_warn("unkown mode!");
 
 }
 
@@ -496,7 +569,7 @@ void Vision::scan_with_pan_tilt()
     double tilt[8] = {1.250,  0.800, 0.700, 0.800, 0.800, 0.300,  0.300, 0.300};
 
     std::cout<<"[VISION]Scanning the scene with pan tilt cam..."<<std::endl;
-    while(panTiltCounter < 8)
+	while(panTiltCounter < 8)
     {
 
       // temporary variables for each sweep
@@ -1557,4 +1630,240 @@ std::vector<pcl::PointXYZ> Vision::find_points_world(pcl::PointCloud<pcl::PointX
    */
 
   return foundPoints;
+}
+
+
+int Vision::verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC, pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC)
+{
+
+	// Octree resolution - side length of octree voxels
+	float resolution = 0.005f;
+
+	// Instantiate octree-based point cloud change detection class
+	pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree (resolution);
+
+	// Add points from targetPC to octree
+	octree.setInputCloud (targetPC);
+	octree.addPointsFromInputCloud ();
+
+	// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+	octree.switchBuffers ();
+
+	// Add points from cloudB to octree
+	octree.setInputCloud (closeRangePC);
+	octree.addPointsFromInputCloud ();
+
+	std::vector<int> newPointIdxVector;
+
+	// Get vector of point indices from octree voxels which did not exist in previous buffer
+	octree.getPointIndicesFromNewVoxels (newPointIdxVector);
+
+	// Output points
+	std::cout<<"vector size"<<newPointIdxVector.size()<<std::endl;
+//	std::cout << "Output from getPointIndicesFromNewVoxels:" << std::endl;
+//	for (size_t i = 0; i < newPointIdxVector.size (); ++i)
+//		std::cout << i << "# Index:" << newPointIdxVector[i]
+//				  << "  Point:" << closeRangePC->points[newPointIdxVector[i]].x << " "
+//				  << closeRangePC->points[newPointIdxVector[i]].y << " "
+//				  << closeRangePC->points[newPointIdxVector[i]].z << std::endl;
+
+	return newPointIdxVector.size();
+}
+
+
+int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, float radius)
+{
+  /*
+   * Initialzation: point cloud
+   */
+  am_pointcloud *closeRangePointCloud;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr initialPC;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr alignedPC;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr colorFilteredPC;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr worldPC;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr threshPC;
+
+  ros::Time stepTimeStampRGB;
+  ros::Time stepTimeStampDepth;
+
+  _tcp_rgb_image = *(ros::topic::waitForMessage<sensor_msgs::Image>(camera_tcp_rgb_topic, ros::Duration(1.0)));
+  _tcp_depth_image = *(ros::topic::waitForMessage<sensor_msgs::Image>(camera_tcp_depth_topic, ros::Duration(1.0)));
+  // Convert ROS RGB image to OpenCV format
+  try
+  {
+    stepTimeStampRGB = _tcp_rgb_image.header.stamp;
+    _cv_image = cv_bridge::toCvCopy(_tcp_rgb_image, enc::BGR8);
+  }
+  catch (cv_bridge::Exception &e)
+  {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    failed = true;
+    return false;
+  }
+
+  // Convert ROS Depth image to OpencV format
+  try
+  {
+    stepTimeStampDepth = _tcp_depth_image.header.stamp;
+    _cv_depthptr = cv_bridge::toCvCopy(_tcp_depth_image, enc::TYPE_32FC1);
+  }
+  catch (cv_bridge::Exception& e)
+  {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    failed = true;
+    return false; // SHOULD stop node
+  }
+
+  // TODO: remove hardcoded Field-of-View values
+  float fov_horizontal_tcp_depth = 1.048;
+  float fov_horizontal_tcp_rgb = 1.048;
+
+  closeRangePointCloud = new am_pointcloud(_cv_depthptr->image, fov_horizontal_tcp_depth, _cv_image->image, fov_horizontal_tcp_rgb);
+  // create the initial point cloud based on depth image data
+  initialPC = closeRangePointCloud->createInitialPointCloud();
+  // align the initial point cloud with the RGB camera
+  alignedPC = closeRangePointCloud->alignWithRGB(initialPC, CAM_TCP, _tcp_rgb_image.header.stamp);
+  worldPC = closeRangePointCloud->transformToWorld(alignedPC, CAM_TCP, _tcp_depth_image.header.stamp);
+  threshPC = closeRangePointCloud->xyzTheresholdCloud(worldPC, 0.005);
+
+  // filter point cloud by color --> check if we are looking at the correct point cloud
+  cv::Mat threshold;
+  ImageFilter hsvFilter(_cv_image->image);
+  hsvFilter.setHsvValues(color);
+  threshold = hsvFilter.getFilteredImage();
+  hsvFilter.morphOps(threshold);
+
+  colorFilteredPC = closeRangePointCloud->filterPointCloudByColor(threshPC, threshold);
+
+  int nanCounter = 0;
+  int cloudSize = colorFilteredPC->height * colorFilteredPC->width;
+  std::cout<<"colorfiltercloud size = "<<cloudSize<<std::endl;
+  for(int i=0; i<colorFilteredPC->height; i++)
+	  for(int j=0; j<colorFilteredPC->width; j++)
+	  {
+		  if( !pcl_isfinite(colorFilteredPC->at(j,i).x) )
+		  {
+			  nanCounter++;
+			  continue;
+			  //std::cout<<"X: "<<colorFilteredPC->at(j,i).x<<", Y: "<<colorFilteredPC->at(j,i).y<<" Z: "<<colorFilteredPC->at(j,i).z<<std::endl;
+		  }
+		  if( colorFilteredPC->at(j,i).x == 0 && colorFilteredPC->at(j,i).y == 0 && colorFilteredPC->at(j,i).z == 0 )
+		  {
+			  nanCounter++;
+			  continue;
+		  }
+	  }
+  std::cout<<"NanCounter = "<<nanCounter<<std::endl;
+  if (nanCounter == cloudSize)
+  {
+	  std::cout<<"cloud is empty!!"<<std::endl;
+	  return 0;
+  }
+
+
+  /*
+   * END Initialzation: point cloud
+   */
+
+  /*
+   * 2D Image Proc.: find circle (target zone)
+   */
+//  // Apply HSV filtering
+//  cv::Mat threshold, src, src_gray;
+//  src = _cv_image->image;
+//
+//  ImageFilter hsvFilter(src);
+//  hsvFilter.setHsvValues(color);
+//  threshold = hsvFilter.getFilteredImage();
+//  hsvFilter.morphOps(threshold);
+//  threshold.convertTo(src_gray, CV_8U);
+//
+//  // Convert it to gray
+////  cvtColor(src, src_gray, CV_BGR2GRAY );
+//
+//  // Reduce the noise so we avoid false circle detection
+//  cv::GaussianBlur(src_gray, src_gray, Size(9, 9), 2, 2);
+//
+//  vector<Vec3f> circles;
+//  // Apply the Hough Transform to find the circles
+//  cv::HoughCircles( src_gray, circles, CV_HOUGH_GRADIENT, 1, 30, 200, 50, 0, 0 );
+//
+//
+//  std::cout<<"circles: "<<circles.size()<<std::endl;
+//  Point center( cvRound(circles[0][0]), cvRound(circles[0][1]) );
+//  int radius;
+//  // Draw the circles detected
+//  for( size_t i = 0; i < circles.size(); i++ )
+//  {
+//    Point center( cvRound(circles[i][0]), cvRound(circles[i][1]) );
+//    radius = cvRound(circles[i][2]);
+//    // circle center
+//    circle(src, center, 3, Scalar(0,255,0), -1, 8, 0 );
+//    // circle outline
+//    circle(src, center, radius, Scalar(0,0,255), 3, 8, 0 );
+//  }
+//
+////  cv::imshow( "Threshold", src_gray);
+////  cv::imshow( "Circles", src);
+////  cv::waitKey();
+////  ros::Duration(5.0).sleep();
+//
+//
+//  if (circles.size() == 0)
+//  {
+//    std::cout<<"[VISION]could not find any circle..."<<std::endl;
+//    return false;
+//  }
+//  else if (circles.size() > 1)
+//  {
+//    std::cout<<"[VISION]error: found more than one circle"<<std::endl;
+//    return false;
+//  }
+
+  // look inside the target zone to find the object
+  if ( search_for_object_on_zone(threshPC, zone_center, radius) )
+    return 1;
+
+  return -1;
+}
+
+/*
+ * This function receives a point cloud, a center point and a radius as reference. It then looks for any point inside that
+ * point cloud within a rectangular region, centered at "center point", which has a Z value greater than 0.01
+ */
+bool Vision::search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr inputCloud, pcl::PointXYZ zoneCenter, float radius)
+{
+	// calculate center of mass
+	pcl::PointXYZ centerOfMass;
+	centerOfMass = am_pointcloud::calculateCenterOfMass(inputCloud);
+
+	std::cout<<"Center of Mass:  X= "<<centerOfMass.x<<",  Y= "<<centerOfMass.y<<",  Z="<<centerOfMass.z<<std::endl;
+
+	float distanceX = std::abs(centerOfMass.x - zoneCenter.x);
+	float distanceY = std::abs(centerOfMass.y - zoneCenter.y);
+
+	if ( distanceX < radius+0.005 && distanceY < radius+0.005 )
+	{
+		std::cout<<"Object placed within the correct radius."<<std::endl;
+		return true;
+	}
+
+//	pcl::PointXYZ p;
+//	for (int i=(-1)*radius; i<radius; i++)
+//	{
+//		for (int j=(-1)*radius; j<radius; j++)
+//		{
+//			p.z = inputCloud->at( center.x-i , center.y-j).z;
+//			if(pcl_isfinite(p.z))
+//				if (p.z > 0.005)
+//				{
+//					std::cout<<"found a point with Z > 0.05"<<std::endl;
+//					return true;
+//				}
+//		}
+
+  // could not find any point with Z > 0.01
+  // object is not placed on the target zone
+  std::cout<<"Object is far away from the target zone"<<std::endl;
+  return false;
 }

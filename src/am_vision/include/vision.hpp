@@ -41,6 +41,7 @@
 #include <pcl-1.7/pcl/visualization/cloud_viewer.h>
 #include <pcl-1.7/pcl/pcl_macros.h>
 #include <pcl/keypoints/uniform_sampling.h>
+#include <pcl/octree/octree.h>
 
 // Includes for received topic messages
 #include <euroc_c2_msgs/Telemetry.h>
@@ -89,8 +90,9 @@ protected:
 public:
 	// Eigen: alignment issues: http://eigen.tuxfamily.org/dox-devel/group__DenseMatrixManipulation__Alignement.html
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 	Vision();
-	~Vision(){;};
+	virtual ~Vision(){;};
 
 	void on_camera_scene_rgb_CB(const sensor_msgs::Image &image);
 	void on_camera_scene_depth_CB(const sensor_msgs::Image &image);
@@ -107,6 +109,9 @@ public:
 	std::vector<int> find_perpendicular_lines(std::vector<cv::Vec4i>&);
 	cv::Point2f compute_intersect(cv::Vec4i, cv::Vec4i);
 	std::vector<pcl::PointXYZ> find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>);
+	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
+	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
 
 	// create messages that are used to published feedback/result
 	am_msgs::VisionFeedback vision_feedback_;
@@ -174,6 +179,10 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedYellowPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
+
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
+
 
 	//alignemt was successfull
 	bool obj_aligned_;
