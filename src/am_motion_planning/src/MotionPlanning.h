@@ -43,7 +43,7 @@
 
 
 #define MOVEIT
-
+//#undef MOVEIT
 
 class MotionPlanning {
 public:

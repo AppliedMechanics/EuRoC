@@ -113,7 +113,7 @@ void TFBroadcaster::update_tf()
 		{
 			//! Get Current Telemetry data
 			telemetry_msg_ = *(ros::topic::waitForMessage<euroc_c2_msgs::Telemetry>(telemetry_,ros::Duration(1.0)));
-			now_ = ros::Time(0);
+			now_ = ros::Time::now();
 
 			// Get the current configuration from the telemetry message
 			for(unsigned int i = 0; i < 7; ++i){

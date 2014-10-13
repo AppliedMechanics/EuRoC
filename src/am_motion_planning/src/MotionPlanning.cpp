@@ -165,7 +165,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		}
 
 		break;
-
+#ifdef MOVEIT
 	case (MOVE_IT_7DOF)		:
 	case (MOVE_IT_9DOF)		:
 		ROS_WARN("Planning mode based on MoveIt! chosen.");
@@ -190,7 +190,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			return;
 		}
 		break;
-
+#endif
 	default:
 		msg_warn("unkown Mode in MotionPlanning!");
 		return;
@@ -450,7 +450,7 @@ bool MotionPlanning::setReset7DOF()
 	}
 	return true;
 }
-
+#ifdef MOVEIT
 bool MotionPlanning::getMoveItSolution()
 {
 
@@ -752,6 +752,7 @@ bool MotionPlanning::setPlanningTarget(planning_target_type_t planning_target)
 	}
 
 }
+#endif
 
 void MotionPlanning::getTimingAlongJointPath()
 {
@@ -955,7 +956,7 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 
 	return true;
 }
-
+#ifdef MOVEIT
 bool MotionPlanning::return_object_attached(am_msgs::AttachObject::Request &req, am_msgs::AttachObject::Response &res)
 {
 //	ROS_WARN("ATTACH OBJECT CALLBACK STARTED");
@@ -1009,7 +1010,7 @@ bool MotionPlanning::return_object_detached(am_msgs::DetachObject::Request &req,
 	res.successful = true;
 	return true;
 }
-
+#endif
 bool MotionPlanning::getLimits()
 {
 	//! Setting max velocities, getting from parameter server
@@ -1063,7 +1064,7 @@ bool MotionPlanning::getLimits()
 
 }
 
-
+#ifdef MOVEIT
 void MotionPlanning::setMoveRequestJointLimits()
 {
 
@@ -1103,6 +1104,7 @@ void MotionPlanning::setMoveRequestTCPLimits()
 	move_along_joint_path_srv_.request.tcp_limits.rotational.max_velocity = 20 * M_PI / 180.0;;
 	move_along_joint_path_srv_.request.tcp_limits.rotational.max_acceleration = 400 * M_PI / 180.0;;
 }
+#endif
 
 bool MotionPlanning::transformToTCPFrame(std::string frame)
 {
