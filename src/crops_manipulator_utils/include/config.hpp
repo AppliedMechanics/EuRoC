@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <fsm_state.hpp>
+#include <utils.hpp>
 
 typedef enum {
 	POSITION=0,

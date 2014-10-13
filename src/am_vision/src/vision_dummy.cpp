@@ -26,7 +26,7 @@ void VisionDummy::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 	ROS_INFO("Entered VisionDummy::handle()...");
 
 	obj_aligned_=false;
-	int obj_idx=0;
+	int obj_idx=-1;
 
 //	if(!goal->object.color.compare("ff0000"))
 //		obj_idx = 0;
@@ -49,25 +49,32 @@ void VisionDummy::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 			break;
 		}
 	}
-
+	if(obj_idx==-1)
+	{
+		msg_error("error in vision dummy!!");
+		failed=true;
+	}
+	else
+	{
+		vision_result_.abs_object_pose = modscene_poses_[obj_idx];
+		failed=false;
+	}
 	// ==========================================================================================
 
 	//-------------------------------- SEND RESULT ----------------------------------------//
 
-	vision_result_.abs_object_pose = modscene_poses_[obj_idx];
-
-	vision_feedback_.execution_time = ros::Time::now().sec;
-	vision_server_.publishFeedback(vision_feedback_);
 
 
 	if(failed)
 	{
 		vision_result_.object_detected=false;
+		vision_result_.object_in_zone=false;
 		vision_server_.setPreempted(vision_result_,"Got no telemetry.");
 	}
 	else
 	{
 		vision_result_.object_detected=true;
+		vision_result_.object_in_zone=true;
 		vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
 	}
 

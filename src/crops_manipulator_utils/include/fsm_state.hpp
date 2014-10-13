@@ -68,7 +68,13 @@ typedef enum {
 	STOP_COND,
 
 	//gripper error events:
-	GRIPPING_ERROR
+	GRIPPING_ERROR,
+
+	//vision error events:
+	DATA_ERROR,
+	VISION_ERROR,
+	POSE_NOT_FOUND
+
 } fsm_t;
 }
 #endif

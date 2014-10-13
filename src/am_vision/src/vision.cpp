@@ -9,7 +9,6 @@
 #include <cxcore.h>
 #include <highgui.h>
 #include <tf2_ros/transform_listener.h>
-#include <config.hpp>
 #include <tf/transform_listener.h>
 
 
@@ -159,16 +158,17 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
     case SCENE_CAM:
       std::cout<<"[VISION]callback: SCENE CAM!"<<std::endl;
       std::cout<<"[VISION]SCENE Pointcloud updated."<<std::endl;
-      scan_with_pan_tilt();
+      scan_with_pan_tilt(res);
       break;
     case TCP_CAM:
       std::cout<<"[VISION]callback: TCP CAM!"<<std::endl;
       ros::Duration(1.0).sleep();
-      scan_with_tcp();
+      scan_with_tcp(res);
       std::cout<<"[VISION]TCP Pointcloud updated"<<std::endl;
       break;
     default:
       ROS_WARN("Unknown camera type!");
+      res.error_reason=fsm::VISION_ERROR;
       return false;
   }
   return true;
@@ -317,6 +317,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
         shape_model->clear();
       }
+      else
+      {
+          vision_server_.setPreempted(vision_result_,"Alignment failed.");
+    	  vision_result_.error_reason=fsm::SKIP_OBJECT;
+    	  return;
+      }
     }
 
 #ifdef POINTCLOUD_OUTPUT
@@ -336,6 +342,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     if(obj_aligned_==false)
     {
       vision_server_.setPreempted(vision_result_,"Alignment failed.");
+	  vision_result_.error_reason=fsm::POSE_NOT_FOUND;
+	  return;
     }
 
     //Publish aligned PointCloud
@@ -370,23 +378,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     // TODO: fix the timestamp problem
     vision_result_.stamp = finalTimeStamp;
 
-    vision_feedback_.execution_time = ros::Time::now().sec;
-    vision_server_.publishFeedback(vision_feedback_);
-
-
-    if(failed)
-    {
-      vision_result_.object_detected=false;
-      vision_server_.setPreempted(vision_result_,"Got no telemetry.");
-    }
-    else
-    {
-      vision_result_.object_detected=true;
-      vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
-    }
+    vision_result_.object_detected=true;
+    vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
 
     targetPC->clear();
-
+    return;
   }
   else if(goal->mode == CLOSE_RANGE_POSE_ESTIMATION)
   {
@@ -402,13 +398,16 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       std::cout<<"[VISION]Done!"<<std::endl;
 
       OptRotationRadians = close_range_pose(goal->object.color);
-      if(OptRotationRadians == -1)
+      if(OptRotationRadians == -5)
       {
         // close range pose estimation failed.
         // possibilities:
         //     - could not find enough corners/lines to compute angle difference
         //     - vision node failed/threw exception
         std::cout<<"[VISION]Could not find a better pose, returning the initial value again"<<std::endl;
+
+        vision_result_.object_detected=false;
+
         vision_result_.abs_object_pose.position.x = transformation(0,3);
         vision_result_.abs_object_pose.position.y = transformation(1,3);
         vision_result_.abs_object_pose.position.z = transformation(2,3);
@@ -419,6 +418,16 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       }
       else
       {
+    	double roll,pitch,yaw;
+		tf::Matrix3x3 dcm;
+		dcm.setRotation(tfqt);
+		dcm.getRPY(roll,pitch,yaw);
+
+    	if ( (std::abs(OptRotationRadians-yaw) > M_PI_4) && (std::abs(OptRotationRadians-yaw) < 3*M_PI_4))
+    	{
+    		OptRotationRadians = OptRotationRadians - ((M_PI_2)*(sgn(OptRotationRadians-yaw)));
+    	}
+
         // New optimum pose found, return the new one to the StateMachine
         tf::Matrix3x3 optRotation;
         std::cout<<"[VISION]rotation around z-axis of table: "<<OptRotationRadians<<std::endl;
@@ -458,6 +467,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
         {
         	std::cout<<"[VISION]new pose is better!"<<std::endl;
         	std::cout<<"[VISION]Passing the new pose to grasping node"<<std::endl;
+
+        	vision_result_.object_detected=true;
+
         	vision_result_.abs_object_pose.position.x = transformation(0,3);
         	vision_result_.abs_object_pose.position.y = transformation(1,3);
         	vision_result_.abs_object_pose.position.z = transformation(2,3);
@@ -470,6 +482,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
         {
             std::cout<<"[VISION]new pose is a mess!!"<<std::endl;
             std::cout<<"[VISION]Passing the initial estimated pose"<<std::endl;
+
+            vision_result_.object_detected=false;
+
             vision_result_.abs_object_pose.position.x = transformation(0,3);
             vision_result_.abs_object_pose.position.y = transformation(1,3);
             vision_result_.abs_object_pose.position.z = transformation(2,3);
@@ -482,6 +497,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     }
     else // for objects other than cube, the inital pose will be sent back
     {
+
+      vision_result_.object_detected=false;
+
       std::cout<<"[VISION]Object is not a CUBE. No additional pose estimation necessary."<<std::endl;
       vision_result_.abs_object_pose.position.x = transformation(0,3);
       vision_result_.abs_object_pose.position.y = transformation(1,3);
@@ -491,10 +509,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       vision_result_.abs_object_pose.orientation.y = tfqt.getY();
       vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
     }
-    vision_feedback_.execution_time = ros::Time::now().sec;
-    vision_server_.publishFeedback(vision_feedback_);
 
-    vision_result_.object_detected=true;
     vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
 
   }
@@ -546,7 +561,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
  * All point clouds are voxelized at the end of the process for memory and performance purposes.
  *
  */
-void Vision::scan_with_pan_tilt()
+void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 {
 
   std::cout<<"[VISION]Entered Vision::scan_with_pan_tilt()..."<<std::endl;
@@ -608,6 +623,7 @@ void Vision::scan_with_pan_tilt()
       {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         failed = true;
+        res.error_reason=fsm::DATA_ERROR;
         //return false; // SHOULD stop node
       }
       // Get Depth image
@@ -620,6 +636,7 @@ void Vision::scan_with_pan_tilt()
       {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         failed = true;
+        res.error_reason=fsm::DATA_ERROR;
         //return false; // SHOULD stop node
       }
 
@@ -737,7 +754,10 @@ void Vision::scan_with_pan_tilt()
     } // END While
 
     // Move camera to initial configuration
-    mpt->move_pan_tilt_abs(pan_zero, tilt_zero);
+    if(false == mpt->move_pan_tilt_abs(pan_zero, tilt_zero))
+    {
+    	res.error_reason=fsm::VISION_ERROR;
+    }
     std::cout<<"[VISION]pan camera scan complete."<<std::endl;
 
     // Voxelize result point clouds
@@ -784,7 +804,8 @@ void Vision::scan_with_pan_tilt()
   } // END if
 
   else {
-    ROS_WARN("Waiting for camera msgs failed!");
+    msg_error("Waiting for camera msgs failed!");
+    res.error_reason=fsm::DATA_ERROR;
   }
 
 }
@@ -797,7 +818,7 @@ void Vision::scan_with_pan_tilt()
  * All point clouds are voxelized at the end of the process for memory and performance purposes.
  *
  */
-void Vision::scan_with_tcp()
+void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 {
   am_pointcloud *scenePointCloud;
   pcl::PointCloud<pcl::PointXYZ>::Ptr initialPC;
@@ -1129,7 +1150,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
 
   Eigen::Matrix4f transform;
   uint16_t nmbr_tries=0;
-  while(nmbr_tries<5)
+  while(nmbr_tries<2)
   {
     pcl::ScopeTime t("Alignment");
     align.align (*object_aligned);
@@ -1295,7 +1316,7 @@ double Vision::close_range_pose(string color)
       // return the initial pose to StateMachine
       houghLineCounter = 0; // reset counter
       std::cout<<"[VISION]failed to find enough lines. return initial pose"<<std::endl;
-      return -1;
+      return -5;
     }
 
     houghLineCounter++;
@@ -1319,7 +1340,7 @@ double Vision::close_range_pose(string color)
   if(idx[0] == -1 || idx[1] == -1)
   {
     std::cout<<"[VISION]could not find perpendicular lines."<<std::endl;
-    return -1;
+    return -5;
   }
 
   std::cout<<"[VISION]perpendicular lines are: "<<idx[0]<<", "<<idx[1]<<std::endl;

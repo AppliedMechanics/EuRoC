@@ -5,3 +5,4 @@ am_msgs/Sensor[] sensors
 ---
 # An error message. An empty string indicates success.
 string error_message
+uint16 error_reason

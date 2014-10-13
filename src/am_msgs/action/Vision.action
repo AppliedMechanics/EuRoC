@@ -3,12 +3,14 @@ am_msgs/Object object
 am_msgs/TargetZone target_zone
 am_msgs/Sensor[] sensors
 uint16 mode
+uint16 precision
 ---
 #result definition
 geometry_msgs/Pose abs_object_pose
 bool object_detected
 bool object_in_zone
 time stamp
+uint16 error_reason
 ---
 #feedback definition
 float64 execution_time

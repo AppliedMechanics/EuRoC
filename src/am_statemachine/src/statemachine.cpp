@@ -26,10 +26,13 @@ Statemachine::Statemachine():
 		parse_yaml_file_state_(OPEN),
 		stop_sim_state_(OPEN),
 		watch_scene_state_(OPEN),
+		watch_scene_counter(0),
 		explore_environment_init_state_(OPEN),
 		explore_environment_motion_state_(OPEN),
 		explore_environment_image_state_(OPEN),
+		explore_environment_image_counter(0),
 		locate_object_global_state_(OPEN),
+		locate_object_global_counter(0),
 		locate_object_close_range_state_(OPEN),
 		check_object_finished_state_(OPEN),
 		check_object_gripped_state_(OPEN),
@@ -385,9 +388,7 @@ void Statemachine::scheduler_schedule()
 		case fsm::WATCH_SCENE:
 			if(watch_scene_state_==FINISHEDWITHERROR)	//something went wrong
 			{
-				//just start the state again
-				ROS_INFO("Statemachine-Errorhandler: restarting state");
-				watch_scene_state_=OPEN;
+				scheduler_error_watch_scene();
 			}
 			break;
 		case fsm::EXPLORE_ENVIRONMENT:
@@ -396,33 +397,31 @@ void Statemachine::scheduler_schedule()
 				case fsm::HOMING:
 					if(homing_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						homing_state_=OPEN;
+						scheduler_error_homing();
 					}
 					break;
 				case fsm::EXPLORE_ENVIRONMENT_INIT:
 					if(explore_environment_init_state_==FINISHEDWITHERROR)	//something went wrong
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						msg_error("Error in explore environment init -> skipping exploration");
 						explore_environment_init_state_=OPEN;
+
+						//skip explore environment:
+						state_queue.clear();
+						temp_state.sub.one=fsm::SOLVE_TASK;
+							temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 					}
 					break;
 				case fsm::EXPLORE_ENVIRONMENT_MOTION:
 					if(explore_environment_motion_state_==FINISHEDWITHERROR)	//something went wrong
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						explore_environment_motion_state_=OPEN;
+						scheduler_error_explore_environment_motion();
 					}
 					break;
 				case fsm::EXPLORE_ENVIRONMENT_IMAGE:
 					if(explore_environment_image_state_==FINISHEDWITHERROR)	//something went wrong
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						explore_environment_image_state_=OPEN;
+						scheduler_error_explore_environment_image();
 					}
 					break;
 				default:
@@ -444,7 +443,7 @@ void Statemachine::scheduler_schedule()
 						temp_state.sub.one=fsm::SOLVE_TASK;
 							if(pause_in_loop_==true)
 							{
-								temp_state.sub.two=fsm::PAUSE;							state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::PAUSE;						state_queue.push_back(temp_state);
 							}
 							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 							temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
@@ -452,7 +451,7 @@ void Statemachine::scheduler_schedule()
 							if (!skip_motion_)
 							{
 								scheduler_grasp_object(EXECUTE_LATER);
-								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+								temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 								scheduler_place_object(EXECUTE_LATER);
 							}
 							else
@@ -483,9 +482,7 @@ void Statemachine::scheduler_schedule()
 				case fsm::LOCATE_OBJECT_GLOBAL:
 					if(locate_object_global_state_==FINISHEDWITHERROR)
 					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						locate_object_global_state_=OPEN;
+						scheduler_error_locate_object_global();
 					}
 					break;
 				case fsm::GET_GRASPING_POSE:
@@ -551,7 +548,6 @@ void Statemachine::scheduler_schedule()
 				case fsm::CHECK_OBJECT_FINISHED:
 					if(check_object_finished_state_==FINISHEDWITHERROR)
 					{
-						//FOR TESTING!!!!!!!!!!!!
 						//-----------------------
 						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
 						check_object_finished_state_ =FINISHED;
@@ -561,7 +557,6 @@ void Statemachine::scheduler_schedule()
 				case fsm::LOCATE_OBJECT_CLOSE_RANGE:
 					if(locate_object_close_range_state_==FINISHEDWITHERROR)
 					{
-						//FOR TESTING!!!!!!!!!!!!
 						//-----------------------
 						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
 						locate_object_close_range_state_ =FINISHED;
@@ -721,7 +716,7 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.insert(it,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.insert(it+1,temp_state);
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+2,temp_state);
-		temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(it+3,temp_state);
+		//temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(it+3,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.insert(it+4,temp_state);
 		temp_state.sub.two=fsm::GRAB_OBJECT;
 			temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.insert(it+5,temp_state);
@@ -735,7 +730,7 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
+		//temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::GRAB_OBJECT;
 			temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
@@ -1262,6 +1257,111 @@ void Statemachine::scheduler_error_gripper_release()
 		break;
 	}
 }
+void Statemachine::scheduler_error_watch_scene()
+{
+	switch(state_.sub.event_one)
+	{
+	case fsm::DATA_ERROR:
+		//try again (once)
+		watch_scene_state_=OPEN;
+
+		watch_scene_counter++;
+		if(watch_scene_counter>1)
+		{
+			scheduler_next();
+			watch_scene_counter=0;
+			msg_error("JUSTIN please plug in the cameras! =)");
+		}
+		break;
+
+	case fsm::VISION_ERROR:
+	case fsm::SIM_SRV_NA:
+		watch_scene_state_=OPEN;
+		scheduler_next();
+		break;
+
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_explore_environment_motion()
+{
+	switch(state_.sub.event_two)
+	{
+	case fsm::NO_DK_SOL:
+	case fsm::MOTION_PLANNING_ERROR:
+	case fsm::MAX_LIMIT_REACHED:
+		scheduler_next();
+		scheduler_next();
+		break;
+
+	case fsm::STOP_COND:
+		ROS_INFO("Statemachine-Errorhandler: stop cond -> try slower");
+
+		explore_environment_motion_state_=OPEN;
+		if(speed_mod_< 0.66)
+			speed_mod_+=0.33;
+		else
+			speed_mod_= 0.8;
+		break;
+	default:
+		break;
+	}
+}
+void Statemachine::scheduler_error_explore_environment_image()
+{
+	switch(state_.sub.event_one)
+	{
+	case fsm::DATA_ERROR:
+		//try again (once)
+		explore_environment_image_state_=OPEN;
+
+		explore_environment_image_counter++;
+		if(explore_environment_image_counter>1)
+		{
+			scheduler_next();
+			explore_environment_image_counter=0;
+			msg_error("JUSTIN please plug in the cameras! =)");
+		}
+		break;
+
+	case fsm::VISION_ERROR:
+	case fsm::SIM_SRV_NA:
+		explore_environment_image_state_=OPEN;
+		scheduler_next();
+		break;
+
+	default:
+		explore_environment_image_state_=OPEN;
+		break;
+	}
+}
+void Statemachine::scheduler_error_locate_object_global()
+{
+	switch(state_.sub.event_two)
+	{
+	case fsm::SKIP_OBJECT:
+		locate_object_global_state_=OPEN;
+		locate_object_global_counter=0;
+		scheduler_skip_object();
+		break;
+
+	case fsm::POSE_NOT_FOUND:
+		//try it again with lower precision
+		locate_object_global_state_=OPEN;
+		locate_object_global_counter++;
+		if(locate_object_global_counter>3)
+		{
+			locate_object_global_counter=0;
+			scheduler_skip_object();
+		}
+		break;
+
+	default:
+		locate_object_global_state_=OPEN;
+		break;
+	}
+}
 
 int Statemachine::tick()
 {
@@ -1781,7 +1881,7 @@ int Statemachine::check_object_finished()
 {
 	if(target_skip_vision[selected_target_pose_]==1)
 	{
-		check_object_finished_state_==FINISHED;
+		check_object_finished_state_=FINISHED;
 		ROS_INFO("skip move to target zone vision pose");
 	}
 	if(check_object_finished_state_==OPEN)
@@ -1847,7 +1947,7 @@ void Statemachine::check_object_finished_done(const actionlib::SimpleClientGoalS
 	switch(state.state_)
 	{
 		case actionlib::SimpleClientGoalState::SUCCEEDED:
-			if((result->object_detected==true) && (result->object_in_zone == true))
+			if(result->object_in_zone == true)
 			{
 				check_object_finished_state_=FINISHED;
 			}
@@ -2068,12 +2168,14 @@ void Statemachine::watch_scene_cb()
 		{
 			msg_error("Error. call of take_image_client_ failed");
 			watch_scene_state_=FINISHEDWITHERROR;
+			state_.sub.event_one=take_image_srv_.response.error_reason;
 		}
 	}
 	else
 	{
 		msg_error("Error. take_image_client_ is not available");
 		watch_scene_state_=FINISHEDWITHERROR;
+		state_.sub.event_one=fsm::SIM_SRV_NA;
 	}
 
 	ROS_INFO("watch_scene_cb() finished");
@@ -2102,6 +2204,7 @@ int Statemachine::watch_scene()
 		//==============================================
 		//reset state
 		watch_scene_state_=OPEN;
+		watch_scene_counter=0;
 	}
 	else if(watch_scene_state_==FINISHEDWITHERROR)
 	{
@@ -2271,12 +2374,14 @@ void Statemachine::explore_environment_image_cb()
 		{
 			msg_error("Error. call of take_image_client_ failed");
 			explore_environment_image_state_=FINISHEDWITHERROR;
+			state_.sub.event_one=take_image_srv_.response.error_reason;
 		}
 	}
 	else
 	{
 		msg_error("Error. take_image_client_ is not available");
 		explore_environment_image_state_=FINISHEDWITHERROR;
+		state_.sub.event_one=fsm::SIM_SRV_NA;
 	}
 
 	ROS_INFO("explore_environment_image_cb() finished");
@@ -2310,6 +2415,7 @@ int Statemachine::explore_environment_image()
 		//==============================================
 		//reset state
 		explore_environment_image_state_=OPEN;
+		explore_environment_image_counter=0;
 	}
 	else if(explore_environment_image_state_==FINISHEDWITHERROR)
 	{
@@ -2349,6 +2455,7 @@ int Statemachine::explore_environment_motion()
 	else if(explore_environment_motion_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("explore_environment_motion() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2380,6 +2487,7 @@ void Statemachine::explore_environment_motion_done(const actionlib::SimpleClient
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			explore_environment_motion_state_=FINISHEDWITHERROR;
+			motion_planning_result_ = *result;
 			break;
 		default:
 			break;
@@ -2398,6 +2506,7 @@ int Statemachine::locate_object_global()
 
 		am_msgs::VisionGoal goal;
 		goal.mode = GLOBAL_POSE_ESTIMATION;
+		goal.precision = locate_object_global_counter;
 		goal.object = cur_obj_;
 		goal.sensors.resize(ein_->get_nr_sensors());
 		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
@@ -2423,10 +2532,12 @@ int Statemachine::locate_object_global()
 		//==============================================
 		//reset state
 		locate_object_global_state_=OPEN;
+		locate_object_global_counter=0;
 	}
 	else if(locate_object_global_state_==FINISHEDWITHERROR)
 	{
 		ROS_INFO("locate_object_global() called: FINISHEDWITHERROR");
+		state_.sub.event_two = vision_result_.error_reason;
 		scheduler_schedule(); //Call for Error-Handling
 	}
 	return 0;
@@ -2454,6 +2565,7 @@ void Statemachine::locate_object_global_done(const actionlib::SimpleClientGoalSt
 			{
 				msg_error("Error. vision node could not locate object");
 				locate_object_global_state_=FINISHEDWITHERROR;
+				vision_result_=*result;
 				//todo: set event here to skip object
 			}
 			break;
@@ -2466,6 +2578,7 @@ void Statemachine::locate_object_global_done(const actionlib::SimpleClientGoalSt
 		case actionlib::SimpleClientGoalState::PREEMPTED:
 		case actionlib::SimpleClientGoalState::ABORTED:
 			locate_object_global_state_=FINISHEDWITHERROR;
+			vision_result_ = *result;
 			break;
 		default:
 			break;
@@ -2484,6 +2597,7 @@ int Statemachine::locate_object_close_range()
 
 		am_msgs::VisionGoal goal;
 		goal.mode = CLOSE_RANGE_POSE_ESTIMATION;
+		goal.precision = 0;
 		goal.object = cur_obj_;
 		goal.sensors.resize(ein_->get_nr_sensors());
 		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
@@ -2504,6 +2618,15 @@ int Statemachine::locate_object_close_range()
 	{
 		ROS_INFO("locate_object_close_range() called: FINISHED");
 
+		if(vision_result_.object_detected==true)
+		{
+			cur_obj_.abs_pose=vision_result_.abs_object_pose;
+
+			//calc grasping pose again, if there's a new object pose:
+			fsm::fsm_state_t temp_state;
+			temp_state.sub.one=fsm::SOLVE_TASK;
+			temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(state_queue.begin(),temp_state);
+		}
 		//==============================================
 		scheduler_next();
 		//==============================================
@@ -2531,17 +2654,8 @@ void Statemachine::locate_object_close_range_done(const actionlib::SimpleClientG
 	switch(state.state_)
 	{
 		case actionlib::SimpleClientGoalState::SUCCEEDED:
-			cur_obj_.abs_pose=result->abs_object_pose;
-			if(result->object_detected==true)
-			{
-				locate_object_close_range_state_=FINISHED;
-			}
-			else
-			{
-				msg_error("Error. vision node could not locate object");
-				locate_object_close_range_state_=FINISHEDWITHERROR;
-				//todo: set event here to skip object
-			}
+			locate_object_close_range_state_=FINISHED;
+			vision_result_=*result;
 			break;
 		case actionlib::SimpleClientGoalState::ACTIVE:
 		case actionlib::SimpleClientGoalState::PENDING:

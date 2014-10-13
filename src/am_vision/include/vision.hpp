@@ -99,8 +99,8 @@ public:
 	void on_camera_tcp_rgb_CB(const sensor_msgs::Image &image);
 	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
 	bool on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeImage::Response &res);
-	void scan_with_pan_tilt();
-	void scan_with_tcp();
+	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res);
+	void scan_with_tcp(am_msgs::TakeImage::Response &res);
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &goal);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
 

@@ -107,6 +107,7 @@ class Statemachine
 		am_msgs::goalPoseResult motion_planning_result_;
 		//!action client for vision-node (am_vision)
 		actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
+		am_msgs::VisionResult vision_result_;
 		//!client for grasp-service (am_grasping)
 		ros::ServiceClient get_grasp_pose_client_;
 		//!grasp message
@@ -227,6 +228,10 @@ class Statemachine
 		void scheduler_error_check_object_gripped();
 		void scheduler_error_gripper_close();
 		void scheduler_error_gripper_release();
+		void scheduler_error_watch_scene();
+		void scheduler_error_explore_environment_motion();
+		void scheduler_error_explore_environment_image();
+		void scheduler_error_locate_object_global();
 
 		//!state for setting the object load in gripper_close() and gripper_release()
 		uint8_t set_object_load_state_;
@@ -270,6 +275,7 @@ class Statemachine
 		void watch_scene_cb();
 		//!state of watch_scene() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t watch_scene_state_;
+		uint8_t watch_scene_counter;
 
 		//!Explore the environment (initial part)
 		int explore_environment_init();
@@ -290,22 +296,24 @@ class Statemachine
 		void explore_environment_image_cb();
 		//!state of explore_environment_image() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t explore_environment_image_state_;
+		uint8_t explore_environment_image_counter;
 
 		//!locate object in a global manner
 		int locate_object_global();
-		//!state of locate_object_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t locate_object_global_state_;
 		//!callbacks for locate_object_global()
 		void locate_object_global_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
 		void locate_object_global_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+		//!state of locate_object_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t locate_object_global_state_;
+		uint8_t locate_object_global_counter;
 
 		//!locate object from short distance with TCP CAM
 		int locate_object_close_range();
-		//!state of locate_object_close_range() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t locate_object_close_range_state_;
 		//!callbacks for locate_object_close_range()
 		void locate_object_close_range_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
 		void locate_object_close_range_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+		//!state of locate_object_close_range() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t locate_object_close_range_state_;
 
 		//!get grasping pose
 		int get_grasping_pose();

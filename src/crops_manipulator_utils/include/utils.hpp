@@ -13,5 +13,7 @@
 #define msg_dbg(format,...) \
 			ROS_DEBUG("%s - l:%d: "format,__FUNCTION__,__LINE__,##__VA_ARGS__)
 
-
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
 #endif /* __UTILS_HPP__ */
