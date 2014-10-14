@@ -199,6 +199,7 @@ private:
 	double feedback_frequency_;
 	bool called;  // Keeps track of whether set_stop_conditions service has been called and evaluates as true after first call has been made
 
+	int active_task_nr_;
 	uint32_t speed_percentage_;
 	uint32_t inter_steps_;
 	std::string planning_frame_;

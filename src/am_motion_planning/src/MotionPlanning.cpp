@@ -10,7 +10,8 @@
 MotionPlanning::MotionPlanning():
 goalPose_server_(nh_, "goalPoseAction", boost::bind(&MotionPlanning::executeGoalPose_CB, this, _1),false),
 goalPose_action_name_("goalPoseAction"),
-time_at_path_points_(1)
+time_at_path_points_(1),
+active_task_nr_(1)
 {
 	euroc_c2_interface_ = "/euroc_interface_node";
 	telemetry_ = euroc_c2_interface_ + "/telemetry";
@@ -1111,6 +1112,8 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 	ROS_INFO("in check poses service call:");
 	ROS_INFO_STREAM(req.poses.size() << " poses to be checked.");
 
+	ros::param::get("/active_task_number_", active_task_nr_);
+
 	res.priority.resize(nr_poses);
 
 	for(uint16_t ii=0;ii<nr_poses;ii++)
@@ -1118,11 +1121,17 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 		ROS_INFO_STREAM("Pose " << ii << " of " << req.poses.size()-1);
 
 		// first check via kdl inverse kinematics solver
-		valid_kdl_ik(req.poses[ii], res.priority[ii]);
+		// valid_kdl_ik(req.poses[ii], res.priority[ii]);
 
 		// then check via EUROC's IK service
-//		valid_euroc_ik(req.poses[ii], res.priority[ii]);
-
+		if(active_task_nr_ == 1 || active_task_nr_ == 2)
+		{
+			valid_euroc_ik(req.poses[ii], res.priority[ii]);
+		}
+		else
+		{
+			res.priority[ii] = 1;
+		}
 	}
 
 	ROS_INFO("finished check poses service call.");
@@ -1171,10 +1180,9 @@ bool MotionPlanning::valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned in
 
 bool MotionPlanning::valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority)
 {
-	int active_task_number;
-	ros::param::get("/active_task_number_", active_task_number);
+	ros::param::get("/active_task_number_", active_task_nr_);
 
-	if (active_task_number == 1 || active_task_number == 2)
+	if (active_task_nr_ == 1 || active_task_nr_ == 2)
 	{
 		joint_model_group_ = joint_model_group_7DOF_;
 
@@ -1192,7 +1200,7 @@ bool MotionPlanning::valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int&
 			priority = 0;
 		}
 	}
-	else if (active_task_number == 3 || active_task_number == 4 || active_task_number == 5)
+	else if (active_task_nr_ == 3 || active_task_nr_ == 4 || active_task_nr_ == 5)
 	{
 		joint_model_group_ = joint_model_group_9DOF_;
 
