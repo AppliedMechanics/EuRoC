@@ -9,7 +9,7 @@
     <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
-    <group name="LWR">
+    <group name="LWR_9DOF">
         <joint name="axis_x" />
         <joint name="axis_y" />
         <joint name="la_tcp" />
@@ -46,7 +46,16 @@
         <joint name="gp_tcp_joint" />
     </group>
     <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
-    <group_state name="homing" group="LWR">
+    <group_state name="homing_7DOF" group="LWR_7DOF">
+        <joint name="lwr_joint_1" value="0" />
+        <joint name="lwr_joint_2" value="0" />
+        <joint name="lwr_joint_3" value="0" />
+        <joint name="lwr_joint_4" value="0" />
+        <joint name="lwr_joint_5" value="0" />
+        <joint name="lwr_joint_6" value="0" />
+        <joint name="lwr_joint_7" value="0" />
+    </group_state>
+	<group_state name="homing" group="LWR_9DOF">
         <joint name="axis_x" value="0" />
         <joint name="axis_y" value="0" />
         <joint name="lwr_joint_1" value="0" />
@@ -67,6 +76,7 @@
     <disable_collisions link1="base" link2="link2" reason="Never" />
     <disable_collisions link1="base" link2="link3" reason="Never" />
     <disable_collisions link1="base" link2="link4" reason="Never" />
+    <disable_collisions link1="base" link2="link7" reason="Never" />
     <disable_collisions link1="finger1" link2="finger2" reason="Never" />
     <disable_collisions link1="finger1" link2="gripper_base" reason="Adjacent" />
     <disable_collisions link1="finger1" link2="link2" reason="Never" />
@@ -76,7 +86,6 @@
     <disable_collisions link1="finger1" link2="link6" reason="Never" />
     <disable_collisions link1="finger1" link2="link7" reason="Never" />
     <disable_collisions link1="finger2" link2="gripper_base" reason="Adjacent" />
-    <disable_collisions link1="finger2" link2="link1" reason="Never" />
     <disable_collisions link1="finger2" link2="link2" reason="Never" />
     <disable_collisions link1="finger2" link2="link3" reason="Never" />
     <disable_collisions link1="finger2" link2="link4" reason="Never" />

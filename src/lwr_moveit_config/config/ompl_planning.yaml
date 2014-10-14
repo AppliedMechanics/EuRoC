@@ -21,7 +21,7 @@ planner_configs:
     type: geometric::PRM
   PRMstarkConfigDefault:
     type: geometric::PRMstar
-LWR:
+LWR_9DOF:
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault

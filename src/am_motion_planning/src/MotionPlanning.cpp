@@ -40,7 +40,6 @@ active_task_nr_(1)
 	called = false;
 
 
-#ifdef MOVEIT
 
 	 // vector of ompl planners
 	 ompl_planners.push_back("SBLkConfigDefault");
@@ -62,7 +61,7 @@ active_task_nr_(1)
 	 group_7DOF->setPlannerId(ompl_planners[6]);
 
 	 // arm + table axes
-	 group_9DOF = new move_group_interface::MoveGroup("LWR");
+	 group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	 // planning algorithm for arm + table axes
 	 group_9DOF->setPlannerId(ompl_planners[6]);
 
@@ -72,7 +71,7 @@ active_task_nr_(1)
 	 kinematic_model_ = robot_model_loader_.getModel();
 
 	 joint_model_group_7DOF_ = kinematic_model_->getJointModelGroup("LWR_7DOF");
-	 joint_model_group_9DOF_ = kinematic_model_->getJointModelGroup("LWR");
+	 joint_model_group_9DOF_ = kinematic_model_->getJointModelGroup("LWR_9DOF");
 
 
 	 // planning scene monitor
@@ -92,16 +91,13 @@ active_task_nr_(1)
 	 octomap_ = "/octomap_binary";
 	 octomap_client_ = nh_.serviceClient<octomap_msgs::GetOctomap>(octomap_);
 
-#endif
 }
 
 MotionPlanning::~MotionPlanning() 
 {
-#ifdef MOVEIT
 	delete planning_scene_monitor;
 	delete group_9DOF;
 	delete group_7DOF;
-#endif
 }
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
@@ -185,7 +181,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		}
 
 		break;
-#ifdef MOVEIT
 	case (MOVE_IT_7DOF)		:
 	case (MOVE_IT_9DOF)		:
 		ROS_WARN("Planning mode based on MoveIt! chosen.");
@@ -221,7 +216,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			return;
 		}
 		break;
-#endif
 	default:
 		msg_warn("unkown Mode in MotionPlanning!");
 		return;
@@ -481,7 +475,6 @@ bool MotionPlanning::setReset7DOF()
 	}
 	return true;
 }
-#ifdef MOVEIT
 bool MotionPlanning::getOctomap()
 {
 	ros::service::waitForService(octomap_,ros::Duration(10.0));
@@ -643,7 +636,7 @@ bool MotionPlanning::getMoveItSolution()
 
 	    // get the robot model
 	    robot_model::RobotModelConstPtr robot_model = planning_scene_monitor->getRobotModel();
-	    const robot_model::JointModelGroup* joint_model_group_LWR = robot_model->getJointModelGroup("LWR");
+	    const robot_model::JointModelGroup* joint_model_group_LWR = robot_model->getJointModelGroup("LWR_9DOF");
 	    ROS_WARN("JOINT BOUNDS");
 	    moveit::core::JointBoundsVector joint_bounds = joint_model_group_LWR->getActiveJointModelsBounds();
 
@@ -916,7 +909,6 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	return true;
 }
 
-#endif
 
 void MotionPlanning::getTimingAlongJointPath()
 {
@@ -1078,7 +1070,8 @@ void MotionPlanning::moveToTargetCB()
 	mtt_=FINISHED;
 }
 
-#ifndef MOVEIT
+#if 0
+
 bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res)
 {
 	uint16_t nr_poses = req.poses.size();
@@ -1103,9 +1096,8 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 
 	return true;
 }
-#endif
+#else
 
-#ifdef MOVEIT
 bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res)
 {
 	uint16_t nr_poses = req.poses.size();
@@ -1138,7 +1130,7 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 
 	return true;
 }
-
+#endif
 bool MotionPlanning::valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority)
 {
 	try
@@ -1277,7 +1269,7 @@ bool MotionPlanning::return_object_detached(am_msgs::DetachObject::Request &req,
 	res.successful = true;
 	return true;
 }
-#endif
+
 bool MotionPlanning::getLimits()
 {
 	//! Setting max velocities, getting from parameter server
@@ -1331,7 +1323,6 @@ bool MotionPlanning::getLimits()
 
 }
 
-#ifdef MOVEIT
 void MotionPlanning::setMoveRequestJointLimits()
 {
 
@@ -1371,7 +1362,6 @@ void MotionPlanning::setMoveRequestTCPLimits()
 	move_along_joint_path_srv_.request.tcp_limits.rotational.max_velocity = 20 * M_PI / 180.0;;
 	move_along_joint_path_srv_.request.tcp_limits.rotational.max_acceleration = 400 * M_PI / 180.0;;
 }
-#endif
 
 bool MotionPlanning::transformToTCPFrame(std::string frame)
 {

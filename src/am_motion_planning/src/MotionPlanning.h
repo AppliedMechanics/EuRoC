@@ -59,9 +59,6 @@
 #include <octomap_server/OctomapServer.h>
 
 
-#define MOVEIT
-//#undef MOVEIT
-
 class MotionPlanning {
 public:
 	MotionPlanning();
@@ -124,8 +121,6 @@ private:
 	am_msgs::CallSetStopConditions call_set_stop_cond_srv_;
 
 // MOVEIT
-#ifdef MOVEIT
-
 	std::vector<std::string> ompl_planners;
 
 	move_group_interface::MoveGroup *group_7DOF;
@@ -183,7 +178,6 @@ private:
 
 	bool getOctomap();
 
-#endif
 
 
 
