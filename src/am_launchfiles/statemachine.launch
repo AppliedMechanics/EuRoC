@@ -48,7 +48,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
     <param name="resolution" value="0.01" />
 
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
-    <param name="frame_id" type="string" value="LWR_0" />
+    <param name="frame_id" type="string" value="/Origin" />
 
     <!-- maximum range to integrate (speedup!) -->
     <param name="max_sensor_range" value="5.0" />

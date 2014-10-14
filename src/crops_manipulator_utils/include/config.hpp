@@ -34,7 +34,8 @@ typedef enum {
 
 typedef enum {
 	POSE_TARGET = 0,
-	JOINT_VALUE_TARGET,
+	JOINT_VALUE_TARGET_KDL_IK,
+	JOINT_VALUE_TARGET_EUROC_IK,
 	APPROXIMATE_JOINT_VALUE_TARGET
 } planning_target_type_t;
 

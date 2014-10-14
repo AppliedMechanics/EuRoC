@@ -1,7 +1,8 @@
 #ifndef __STATEMACHINE_HPP__
 #define __STATEMACHINE_HPP__
 
-#define STANDARD_IK
+//#define STANDARD_IK
+#undef STANDARD_IK
 
 //ros includes
 #include <ros/ros.h>
@@ -68,6 +69,9 @@ class Statemachine
 
 		//!speed modification due to stop condition event
 		double speed_mod_;
+
+		//! motion planning algorithm
+		uint32_t planning_mode_;
 
 		//!node handle for this node
 		ros::NodeHandle node_;

@@ -12,6 +12,7 @@ Statemachine::Statemachine():
 		task_active_(false),
 		sim_running_(false),
 		speed_mod_(0),
+		planning_mode_(STANDARD_IK_7DOF),
 		nr_scenes_(0),
 		active_scene_(-1),
 		motion_planning_action_client_("goalPoseAction", true),
@@ -316,7 +317,23 @@ void Statemachine::scheduler_schedule()
 
 			//clear the queue
 			state_queue.clear();
-
+#ifdef STANDARD_IK
+			planning_mode_ = STANDARD_IK_7DOF;
+#else //Move
+			switch(active_task_number_)
+			{
+			case 1:
+			case 2:
+				ROS_INFO("USE MOVE_IT_7DOF");
+				planning_mode_ = MOVE_IT_7DOF;
+				break;
+			case 3:
+			case 4:
+				ROS_INFO("USE MOVE_IT_9DOF");
+				planning_mode_ = MOVE_IT_9DOF;
+				break;
+			}
+#endif
 			if (!skip_vision_)
 			{
 				//schedule for task 1 to 4
@@ -445,13 +462,17 @@ void Statemachine::scheduler_schedule()
 							{
 								temp_state.sub.two=fsm::PAUSE;						state_queue.push_back(temp_state);
 							}
+#ifdef STANDARD_IK_7DOF
 							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+#endif
 							temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
 							temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
 							if (!skip_motion_)
 							{
 								scheduler_grasp_object(EXECUTE_LATER);
-								temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
+#ifdef STANDARD_IK_7DOF
+								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+#endif
 								scheduler_place_object(EXECUTE_LATER);
 							}
 							else
@@ -3213,15 +3234,22 @@ int Statemachine::move_to_object_safe()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
 			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
 			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
 #endif
 
@@ -3328,15 +3356,22 @@ int Statemachine::move_to_object_vision()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
 			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
 			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
 #endif
 
@@ -3441,15 +3476,23 @@ int Statemachine::move_to_object()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+#warning TO_DISCUSS
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
 			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
 			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
 #endif
 
@@ -3531,16 +3574,24 @@ int Statemachine::move_to_target_zone_safe()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+
 #endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
@@ -3640,16 +3691,24 @@ int Statemachine::move_to_target_zone_vision()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
+			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
+			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+
 #endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
@@ -3748,15 +3807,22 @@ int Statemachine::move_to_target_zone()
 #ifdef STANDARD_IK
 		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 #else//MOVEIT
-		switch (active_task_number_)
+		if(planning_mode_ == STANDARD_IK_7DOF)
 		{
-		case 1:
-		case 2:
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		}
+		else if (planning_mode_ == MOVE_IT_7DOF)
+		{
+
 			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-			break;
-		default:
+		}
+		else if (planning_mode_ == MOVE_IT_9DOF)
+		{
 			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-			break;
+		}
+		else
+		{
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		}
 #endif
 		goal_queue[0].planning_frame = GP_TCP;

@@ -23,12 +23,20 @@
 
 // MOVEIT
 #include <moveit/robot_model/robot_model.h>
+#include <string>
 #include <moveit/move_group_interface/move_group.h>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
-
-//#include <moveit/planning_scene/planning_scene.h>
-#include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit_msgs/RobotState.h>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+#include <moveit/planning_scene/planning_scene.h>
+#include <moveit/planning_interface/planning_interface.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit_msgs/PlanningScene.h>
+
+#include <moveit_msgs/AttachedCollisionObject.h>
+#include <moveit_msgs/GetStateValidity.h>
+#include <moveit_msgs/DisplayRobotState.h>
+
 
 // EUROC
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
@@ -40,6 +48,15 @@
 #include <am_msgs/CallSetStopConditions.h>
 
 #include <boost/thread.hpp>
+
+// OCTOMAP
+#include <octomap/octomap.h>
+#include <octomap_msgs/Octomap.h>
+#include <octomap_msgs/GetOctomap.h>
+#include <octomap_msgs/conversions.h>
+#include <octomap_ros/conversions.h>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+#include <octomap_server/OctomapServer.h>
 
 
 #define MOVEIT
@@ -109,17 +126,34 @@ private:
 // MOVEIT
 #ifdef MOVEIT
 
+	std::vector<std::string> ompl_planners;
+
 	move_group_interface::MoveGroup *group_7DOF;
 	move_group_interface::MoveGroup *group_9DOF;
 	move_group_interface::MoveGroup *group;
 
-	planning_scene_monitor::PlanningSceneMonitor *planning_scene_monitor;
+	robot_model_loader::RobotModelLoader robot_model_loader_;
+	robot_model::RobotModelPtr kinematic_model_;
+
+	robot_state::RobotStatePtr kinematic_state_;
+
+	const robot_state::JointModelGroup* joint_model_group_7DOF_;
+	const robot_state::JointModelGroup* joint_model_group_9DOF_;
+	const robot_state::JointModelGroup* joint_model_group_;
+
+	planning_scene_monitor::PlanningSceneMonitor* planning_scene_monitor;
+
+
+	unsigned max_setTarget_attempts_;
+	moveit::planning_interface::MoveGroup::Plan motion_plan_;
 
 	std::vector<euroc_c2_msgs::Configuration> planned_path_;
 
 	bool getMoveItSolution();
 	void setPlanningConstraints();
-	bool setPlanningTarget(planning_target_type_t target_type);
+	bool setPlanningTarget(unsigned algorithm);
+	bool valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
+	moveit::planning_interface::PlanningSceneInterface PlanInterOcto;
 
 
 	ros::ServiceServer attach_object_service_;
@@ -129,6 +163,25 @@ private:
 	ros::ServiceServer detach_object_service_;
 	// ROS_service function to detach a release object
 	bool return_object_detached(am_msgs::DetachObject::Request &req, am_msgs::DetachObject::Response &res);
+
+	// OCTOMAP
+	// Topic
+	ros::Subscriber octomap_subscriber_;
+	std::string octomap2_;
+	octomap_msgs::Octomap _octomap;
+	// Service
+	ros::Publisher octo_pub;
+	ros::ServiceClient octomap_client_;
+	std::string octomap_;
+	octomap_msgs::GetOctomap octomap_srv_;
+	octomap_msgs::Octomap _octree;
+
+	octomap_msgs::Octomap bmap_msg;
+
+	moveit_msgs::PlanningScene planning_scene_octo;
+
+
+	bool getOctomap();
 
 #endif
 
@@ -164,6 +217,8 @@ private:
 	void moveToTargetCB();
 	boost::thread moveToTarget;
 	uint8_t mtt_;
+
+	bool valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 
 
 };
