@@ -95,12 +95,13 @@ int main(int argc, char **argv)
 
 #warning "INCLUDE A FINAL SCAN AT THE END TO CHECK WHETHER ALL OBJECTS ARE PLACED CORRECTLY"
 
-//	ROS_INFO("Press Enter to exit Statemachine");
-//	int something=0;
-//	std::cin>>something;
-
 	//quit properly
 	exitstatemachine();
+
+	ROS_INFO("Press Enter to exit Statemachine");
+	int something=0;
+	std::cin>>something;
+
 	return 0;
 }
 

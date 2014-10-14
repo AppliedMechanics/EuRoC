@@ -25,59 +25,62 @@ void VisionDummy::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
 	ROS_INFO("Entered VisionDummy::handle()...");
 
-	obj_aligned_=false;
 	int obj_idx=-1;
-
-//	if(!goal->object.color.compare("ff0000"))
-//		obj_idx = 0;
-//	else if (!goal->object.color.compare("00ff00"))
-//		obj_idx = 1;
-//	else if (!goal->object.color.compare("0000ff"))
-//		obj_idx = 2;
-//	else if (!goal->object.color.compare("00ffff"))
-//		obj_idx = 3;
-//	else if (!goal->object.color.compare("ff00ff"))
-//		obj_idx = 4;
-//	else if (!goal->object.color.compare("ffff00"))
-//		obj_idx = 5;
-
-	for(uint16_t ii=0;ii<modscene_colors_.size();ii++)
+	switch(goal->mode)
 	{
-		if(!modscene_colors_[ii].compare(goal->object.color))
+	case GLOBAL_POSE_ESTIMATION:
+
+		for(uint16_t ii=0;ii<modscene_colors_.size();ii++)
 		{
-			obj_idx = ii;
-			break;
+			if(!modscene_colors_[ii].compare(goal->object.color))
+			{
+				obj_idx = ii;
+				break;
+			}
 		}
-	}
-	if(obj_idx==-1)
-	{
-		msg_error("error in vision dummy!!");
+		if(obj_idx==-1)
+		{
+			msg_error("error in vision dummy!!");
+			failed=true;
+		}
+		else
+		{
+			vision_result_.abs_object_pose = modscene_poses_[obj_idx];
+			failed=false;
+		}
+		break;
+
+	case CLOSE_RANGE_POSE_ESTIMATION:
 		failed=true;
-	}
-	else
-	{
-		vision_result_.abs_object_pose = modscene_poses_[obj_idx];
+		break;
+
+	case CHECKING_FOR_OBJECT_IN_TARGET_ZONE:
 		failed=false;
+//	    static bool first=true;
+//	    if(first)
+//	    {
+//	    	first=false;
+//	    	failed=true;
+//	    }
+	    break;
 	}
+
 	// ==========================================================================================
-
 	//-------------------------------- SEND RESULT ----------------------------------------//
-
-
 
 	if(failed)
 	{
 		vision_result_.object_detected=false;
 		vision_result_.object_in_zone=false;
-		vision_server_.setPreempted(vision_result_,"Got no telemetry.");
+		vision_server_.setPreempted(vision_result_,"Object not detected.");
 	}
 	else
 	{
 		vision_result_.object_detected=true;
 		vision_result_.object_in_zone=true;
-		vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+		vision_server_.setSucceeded(vision_result_, "Object detected");
 	}
-
+	return;
 }
 
 
@@ -492,9 +495,9 @@ void VisionDummy::loadScene(int scene)
 
 		//red
 		modscene_poses_[0].position.x = -0.0597;
-		modscene_poses_[0].position.y = -0.4767;
+		modscene_poses_[0].position.y = -0.5;//-0.4767;
 		modscene_poses_[0].position.z = 0.025;
-		q_tmp.setRPY(0.8, 0.1, 0);
+		q_tmp.setRPY(0.0, 0.1, 0); //(0.8, 0.1, 0);
 		modscene_poses_[0].orientation.w = q_tmp.getW();
 		modscene_poses_[0].orientation.x = q_tmp.getX();
 		modscene_poses_[0].orientation.y = q_tmp.getY();

@@ -398,16 +398,14 @@ void GraspPose2::compute_grasp_poses_()
 			//--------------------------GRIPPING OBJECT------------------------
 			//=================================================================
 			//find upward pointing axis
-			dot_product = x_obj.dot(z_axis);
-			if (am_abs(dot_product) > 0.9)
-			{
-				upward_pointing_axis=0;			//x-axis points up
-				object_pose_type_=OBJECT_POSE_CUBE_X_UP;
-				grip_pose_type_=GRIP_POSE_CUBE_X_UP;
-				place_pose_type_=PLACE_POSE_CUBE_X_UP;
-				object_height_=bbox_x_;
-			}
+
+			upward_pointing_axis=0;			//x-axis points up
+			object_pose_type_=OBJECT_POSE_CUBE_X_UP;
+			grip_pose_type_=GRIP_POSE_CUBE_X_UP;
+			place_pose_type_=PLACE_POSE_CUBE_X_UP;
+			object_height_=bbox_x_;
 			dot_product = y_obj.dot(z_axis);
+
 			if (am_abs(dot_product) > 0.9)
 			{
 				upward_pointing_axis=1;			//y-axis points up
