@@ -1,8 +1,9 @@
 #ifndef __STATEMACHINE_HPP__
 #define __STATEMACHINE_HPP__
 
-//#define STANDARD_IK
-#undef STANDARD_IK
+
+// If you want to use homing state also with moveit
+#undef WITH_HOMING
 
 //ros includes
 #include <ros/ros.h>

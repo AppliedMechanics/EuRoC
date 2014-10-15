@@ -446,7 +446,7 @@ void Statemachine::scheduler_schedule()
 							{
 								temp_state.sub.two=fsm::PAUSE;						state_queue.push_back(temp_state);
 							}
-#ifdef STANDARD_IK_7DOF
+#ifdef WITH_HOMING
 							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 #else
 							if(planning_mode_ == STANDARD_IK_7DOF)
@@ -459,7 +459,7 @@ void Statemachine::scheduler_schedule()
 							if (!skip_motion_)
 							{
 								scheduler_grasp_object(EXECUTE_LATER);
-#ifdef STANDARD_IK_7DOF
+#ifdef WITH_HOMING
 							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 #else
 							if(planning_mode_ == STANDARD_IK_7DOF)
@@ -1713,9 +1713,7 @@ int Statemachine::request_task()
 		}
 
 
-#ifdef STANDARD_IK
-		planning_mode_ = STANDARD_IK_7DOF;
-#else //Move
+
 		switch(active_task_number_)
 		{
 		case 1:
@@ -1729,7 +1727,6 @@ int Statemachine::request_task()
 			planning_mode_ = MOVE_IT_9DOF;
 			break;
 		}
-#endif
 
 		//save the task number to the parameter server of the ROS master
 		try
@@ -3258,27 +3255,7 @@ int Statemachine::move_to_object_safe()
 
 		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
 
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
-
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-#endif
+		goal_queue[0].planning_algorithm = planning_mode_;
 
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
@@ -3380,27 +3357,8 @@ int Statemachine::move_to_object_vision()
 
 		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
 
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
+		goal_queue[0].planning_algorithm = planning_mode_;
 
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-#endif
 
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
@@ -3500,28 +3458,10 @@ int Statemachine::move_to_object()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-#warning TO_DISCUSS
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
 
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-#endif
+#warning TO_DISCUSS
+		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_algorithm = planning_mode_;
 
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
@@ -3598,28 +3538,9 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
 
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
+		goal_queue[0].planning_algorithm = planning_mode_;
 
-#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3715,28 +3636,9 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
 
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
+		goal_queue[0].planning_algorithm = planning_mode_;
 
-#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3831,27 +3733,10 @@ int Statemachine::move_to_target_zone()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
-#ifdef STANDARD_IK
-		goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-#else//MOVEIT
-		if(planning_mode_ == STANDARD_IK_7DOF)
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_7DOF)
-		{
+#warning TO_DISCUSS
+		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_algorithm = planning_mode_;
 
-			goal_queue[0].planning_algorithm = MOVE_IT_7DOF;
-		}
-		else if (planning_mode_ == MOVE_IT_9DOF)
-		{
-			goal_queue[0].planning_algorithm = MOVE_IT_9DOF;
-		}
-		else
-		{
-			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		}
-#endif
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
