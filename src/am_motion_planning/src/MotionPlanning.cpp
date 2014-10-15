@@ -1101,8 +1101,8 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res)
 {
 	uint16_t nr_poses = req.poses.size();
-	ROS_INFO("in check poses service call:");
-	ROS_INFO_STREAM(req.poses.size() << " poses to be checked.");
+	//ROS_INFO("in check poses service call:");
+	//ROS_INFO_STREAM(req.poses.size() << " poses to be checked.");
 
 	ros::param::get("/active_task_number_", active_task_nr_);
 
@@ -1110,7 +1110,7 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 
 	for(uint16_t ii=0;ii<nr_poses;ii++)
 	{
-		ROS_INFO_STREAM("Pose " << ii << " of " << req.poses.size()-1);
+		//ROS_INFO_STREAM("Pose " << ii << " of " << req.poses.size()-1);
 
 		// first check via kdl inverse kinematics solver
 		// valid_kdl_ik(req.poses[ii], res.priority[ii]);
@@ -1126,7 +1126,7 @@ bool MotionPlanning::return_poses_valid(am_msgs::CheckPoses::Request &req, am_ms
 		}
 	}
 
-	ROS_INFO("finished check poses service call.");
+	//ROS_INFO("finished check poses service call.");
 
 	return true;
 }
@@ -1165,7 +1165,7 @@ bool MotionPlanning::valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned in
 		return false;
 	}
 
-	ROS_INFO_STREAM("valid via IK service: " << priority);
+	//ROS_INFO_STREAM("valid via IK service: " << priority);
 	return true;
 
 }

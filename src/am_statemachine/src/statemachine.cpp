@@ -1714,11 +1714,12 @@ int Statemachine::request_task()
 		{
 		case 1:
 		case 2:
-			ROS_INFO("USE MOVE_IT_7DOF");
+			ROS_INFO("USE STANDARD_IK_7DOF");
 			planning_mode_ = STANDARD_IK_7DOF;
+//			ROS_INFO("USE MOVE_IT_7DOF");
+//			planning_mode_ = MOVE_IT_7DOF;
 			break;
-		case 3:
-		case 4:
+		default:
 			ROS_INFO("USE MOVE_IT_9DOF");
 			planning_mode_ = MOVE_IT_9DOF;
 			break;
