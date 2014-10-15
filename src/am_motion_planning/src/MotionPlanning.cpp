@@ -34,6 +34,9 @@ active_task_nr_(1)
 
 	check_poses_service_ = nh_.advertiseService("CheckPoses_srv", &MotionPlanning::return_poses_valid,this);
 
+	obj_state_sub_ = nh_.subscribe("obj_state", 1000, &MotionPlanning::get_object_state_cb, this);
+	obj_data_loaded_=false;
+
 	feedback_frequency_ = 2;
 
 	mtt_=OPEN;
@@ -1482,4 +1485,35 @@ bool MotionPlanning::transformToLWRBase()
 	goal_pose_LWRTCP_.orientation.w = tf_tmp2.getRotation().getW();
 
 	return true;
+}
+
+void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
+{
+	if(!obj_data_loaded_)
+	{
+		obj_data_loaded_=true;
+
+		int nr_obj;
+		ros::param::get("/nr_objects_",nr_obj);
+		obj_state_.resize(nr_obj);
+	}
+	ROS_INFO("get object state cb called! ");
+	switch(msg->obj_state)
+	{
+	case OBJ_LOCATED:
+		ROS_INFO("state: OBJ_LOCATED");
+		obj_state_[msg->obj_index]=*msg;
+		break;
+	case OBJ_GRABED:
+		ROS_INFO("state: OBJ_GRABED");
+		obj_state_[msg->obj_index]=*msg;
+		break;
+	case OBJ_PLACED:
+		ROS_INFO("state: OBJ_PLACED");
+		obj_state_[msg->obj_index]=*msg;
+		break;
+	default:
+		msg_error("Unknown object state !!!");
+		break;
+	}
 }

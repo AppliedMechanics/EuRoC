@@ -60,10 +60,12 @@ Statemachine::Statemachine():
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
+
 	//==============================================
 	//state:
 	state_.sub.one = fsm::INITIAL_STATE;
 	//==============================================
+
 	task_selector_ = "/euroc_c2_task_selector";
 	list_scenes_ = (task_selector_ + "/list_scenes");
 	start_simulator_ = (task_selector_ + "/start_simulator");
@@ -75,11 +77,15 @@ Statemachine::Statemachine():
 	ros::param::get("/skip_vision",skip_vision_);
 	ros::param::get("/skip_motion",skip_motion_);
 	ros::param::get("/pause_in_loop",pause_in_loop_);
+
+	obj_state_ = node_.advertise<am_msgs::ObjState>("obj_state", 1000);
 }
 
 Statemachine::~Statemachine()
 {
 	ROS_INFO("destructor called");
+	delete ein_;
+
 	if(sim_running_)
 	{
 		stop_sim();
@@ -2077,6 +2083,8 @@ int Statemachine::check_object_gripped()
 			if (obj_picked_up_srv_.response.GotObject==true)
 			{
 				ROS_INFO("state-observer says, that object is gripped: OK");
+				//publish object state for motion planning
+				publish_obj_state(OBJ_GRABED);
 			}
 			else
 			{
@@ -2568,6 +2576,9 @@ int Statemachine::locate_object_global()
 	{
 		ROS_INFO("locate_object_global() called: FINISHED");
 
+		//publish object state for motion planning
+		publish_obj_state(OBJ_LOCATED);
+
 		//==============================================
 		scheduler_next();
 		//==============================================
@@ -2863,6 +2874,7 @@ int Statemachine::get_grasping_pose()
 			get_grasping_pose_state_=FINISHEDWITHERROR;
 			return 0;
 		}
+
 
 		//
 		if(object_skip_vision[selected_object_pose_]==1)
@@ -3843,6 +3855,9 @@ int Statemachine::move_to_target_zone()
 	{
 		ROS_INFO("move_to_target_zone() called: FINISHED");
 
+		//publish object state for motion planning
+		publish_obj_state(OBJ_PLACED);
+
 		//==============================================
 		scheduler_next();
 		//==============================================
@@ -3960,4 +3975,28 @@ void Statemachine::homing_done(const actionlib::SimpleClientGoalState& state,
 		default:
 			break;
 	}
+}
+
+void Statemachine::publish_obj_state(uint16_t state)
+{
+	obj_state_msg_.obj_index=ein_->get_active_object_idx();
+	obj_state_msg_.obj_state=state;
+
+	switch(state)
+	{
+	case OBJ_LOCATED:
+		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+		break;
+	case OBJ_GRABED:
+		obj_state_msg_.obj_pose=object_safe_pose[selected_object_pose_];
+		break;
+	case OBJ_PLACED:
+		obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
+		break;
+	default:
+		msg_error("Unknown object state !!!");
+		break;
+	}
+
+	obj_state_.publish(obj_state_msg_);
 }

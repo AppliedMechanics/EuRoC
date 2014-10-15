@@ -47,6 +47,7 @@ public:
 	//!interface for sensors
 	uint16_t get_nr_sensors(){return nr_sensors;};
 	am_msgs::Sensor get_sensors(uint16_t nr){return sensors_[nr];};
+	uint16_t get_active_object_idx(){return active_object_;};
 
 	//!all objects finished
 	bool all_finished();

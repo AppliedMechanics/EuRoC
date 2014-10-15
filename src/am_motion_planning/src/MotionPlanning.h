@@ -18,6 +18,8 @@
 #include <am_msgs/CheckPoses.h>
 #include <am_msgs/AttachObject.h>
 #include <am_msgs/DetachObject.h>
+#include <am_msgs/ObjState.h>
+#include <am_msgs/CallSetStopConditions.h>
 #include <config.hpp>
 #include <utils.hpp>
 
@@ -45,7 +47,6 @@
 #include <euroc_c2_msgs/GetForwardKinematics.h>
 
 #include <euroc_c2_msgs/Telemetry.h>
-#include <am_msgs/CallSetStopConditions.h>
 
 #include <boost/thread.hpp>
 
@@ -75,6 +76,13 @@ private:
 	// create messages that are used to published feedback/result
 	am_msgs::goalPoseFeedback goalPose_feedback_;
 	am_msgs::goalPoseResult   goalPose_result_;
+
+	// object state message subscriber
+	ros::Subscriber obj_state_sub_;
+
+	void get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg);
+	std::vector<am_msgs::ObjState> obj_state_;
+	bool obj_data_loaded_;
 
 	//! This function is executed, when a new goal goalPoseAction is received
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);

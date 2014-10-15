@@ -29,6 +29,7 @@
 #include <am_msgs/VisionAction.h>
 #include <am_msgs/ObjectPickedUp.h>
 #include <am_msgs/CheckPoses.h>
+#include <am_msgs/ObjState.h>
 
 //am includes
 #include <utils.hpp>
@@ -129,6 +130,12 @@ class Statemachine
 		ros::ServiceClient check_poses_client_;
 		am_msgs::CheckPoses check_poses_srv_;
 
+		//!publisher for motion planning (object state)
+		ros::Publisher obj_state_;
+		am_msgs::ObjState obj_state_msg_;
+		void publish_obj_state(uint16_t state);
+
+
 
 		//!internal counter for while loop in execute()
 		uint64_t counter;
@@ -151,12 +158,6 @@ class Statemachine
 		double cur_obj_mass_;
 
 		//grasping poses
-		//old
-//		geometry_msgs::Pose object_grip_pose_old_;
-//		geometry_msgs::Vector3 r_tcp_curobjcom_;
-//		geometry_msgs::Vector3 r_gp_curobjcom_;
-//		geometry_msgs::Vector3 r_gp_curobj_;
-
 		uint16_t selected_object_pose_;
 		std::vector<geometry_msgs::Pose> object_grip_pose;
 		std::vector<geometry_msgs::Pose> object_safe_pose;

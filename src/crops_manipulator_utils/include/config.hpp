@@ -13,6 +13,13 @@ typedef enum {
 } gripping_mode_t;
 
 typedef enum {
+	OBJ_NOT_LOCATED=0,
+	OBJ_LOCATED,
+	OBJ_GRABED,
+	OBJ_PLACED
+} object_state_t;
+
+typedef enum {
 	EXECUTE_NOW=1,
 	EXECUTE_LATER=0,
 }scheduler_mode_t;

@@ -54,6 +54,7 @@ add_message_files(
   FILES
   Shape.msg
   Object.msg
+  ObjState.msg
   Robot.msg
   TargetZone.msg
   Camera.msg
