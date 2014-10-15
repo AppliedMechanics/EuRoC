@@ -724,7 +724,6 @@ void Statemachine::scheduler_grasp_object(bool start)
 		std::vector<fsm::fsm_state_t>::iterator it = state_queue.begin();
 
 		temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.one=fsm::SOLVE_TASK;
 		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.insert(it,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(++it,temp_state);

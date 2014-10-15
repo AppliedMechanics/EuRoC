@@ -9,6 +9,7 @@
 
 
 EurocInput::EurocInput():
+	task_nr_(1),
 	nr_objects_(0),
 	active_object_(-1),
 	nr_zones_(0),
@@ -23,6 +24,8 @@ EurocInput::~EurocInput()
 
 int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_t task_nr)
 {
+	//save active task number
+	task_nr_=task_nr;
 	// Parse the explanation/description of the task from the yaml string
 	std::stringstream yaml_stream(task_yaml_description);
 
@@ -152,7 +155,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 			return -1;
 		}
 
-	    if(task_nr != 5)
+	    if(task_nr_ != 5)
 		{
 			const YAML::Node* des = obj->FindValue("description");
 			if(!des){
@@ -167,7 +170,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 			}
 	    }
 
-	    if((task_nr != 5) && (task_nr != 6))
+	    if((task_nr_ != 5) && (task_nr_ != 6))
 	    {
 	    	try {
                 const YAML::Node* sur = obj->FindValue("surface_material");
@@ -269,7 +272,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 				return -1;
 			}
 
-			if((task_nr != 4) && (task_nr != 5) && (task_nr != 6))
+			if((task_nr_ != 4) && (task_nr_ != 5) && (task_nr_ != 6))
 			{
 				try{
 					const YAML::Node* dens = (*it2).FindValue("density");
@@ -309,7 +312,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 	//######################################################################################
 	//######################################################################################
 	//Target zones:
-    if(task_nr != 5)
+    if(task_nr_ != 5)
     {
 		const YAML::Node *target_zones = task_description_node.FindValue("target_zones");
 		if(!target_zones){
@@ -666,6 +669,104 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 
 	//######################################################################################
 	//######################################################################################
+	//Puzzle:
+	geometry_msgs::Pose tmp_pose;
+	if(task_nr_ == 5)
+	{
+		const YAML::Node* puzzle = task_description_node.FindValue("puzzle_fixture");
+		if (!puzzle)
+		{
+			ROS_ERROR("EurocInput: puzzle_fixture not found in task_description_node");
+			return -1;
+		}
+		else
+		{
+			const YAML::Node* fix_pose = puzzle->FindValue("pose");
+			if (!fix_pose)
+			{
+				ROS_ERROR("EurocInput: pose not found in puzzle_fixture");
+				return -1;
+			}
+			try {
+				(*fix_pose)[0] >> tmp_pose.position.x;
+				(*fix_pose)[1] >> tmp_pose.position.y;
+				(*fix_pose)[2] >> tmp_pose.position.z;
+				(*fix_pose)[3] >> rpy[0];
+				(*fix_pose)[4] >> rpy[1];
+				(*fix_pose)[5] >> rpy[2];
+				q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+				tmp_pose.orientation.w=q_tf_ros.getW();
+				tmp_pose.orientation.x=q_tf_ros.getX();
+				tmp_pose.orientation.y=q_tf_ros.getY();
+				tmp_pose.orientation.z=q_tf_ros.getZ();
+
+				fixture_pose_=tmp_pose;
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in puzzle pose");
+				return -1;
+			}
+		}
+
+		const YAML::Node* rel_puzzle = task_description_node.FindValue("relative_puzzle_part_target_poses");
+		if (!rel_puzzle)
+		{
+			ROS_ERROR("EurocInput: relative_puzzle_part_targt_poses not found in task_description_node");
+			return -1;
+		}
+		else
+		{
+			puzzle_target_poses_.resize(nr_objects_);
+			for(uint16_t ii=0;ii<nr_objects_;ii++)
+			{
+				const YAML::Node* puzzle_fix = rel_puzzle->FindValue(objects_[ii].name.c_str());
+				if (!puzzle_fix)
+				{
+					msg_error("EurocInput: object %s not found in puzzle_fixture",objects_[ii].name.c_str());
+					return -1;
+				}
+				try {
+					(*puzzle_fix)[0] >> tmp_pose.position.x;
+					(*puzzle_fix)[1] >> tmp_pose.position.y;
+					(*puzzle_fix)[2] >> tmp_pose.position.z;
+					(*puzzle_fix)[3] >> rpy[0];
+					(*puzzle_fix)[4] >> rpy[1];
+					(*puzzle_fix)[5] >> rpy[2];
+					q_tf_ros.setRPY(rpy[0],rpy[1],rpy[2]);
+					tmp_pose.orientation.w=q_tf_ros.getW();
+					tmp_pose.orientation.x=q_tf_ros.getX();
+					tmp_pose.orientation.y=q_tf_ros.getY();
+					tmp_pose.orientation.z=q_tf_ros.getZ();
+
+					puzzle_target_poses_[ii]=tmp_pose;
+
+				} catch (YAML::Exception e) {
+					ROS_ERROR("EurocInput: YAML Error in puzzle pose");
+					return -1;
+				}
+			}
+		}
+
+#ifdef DBG_OUT
+		//print puzzle info:
+		ROS_INFO("Fixture pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
+				  fixture_pose_.position.x,fixture_pose_.position.y,fixture_pose_.position.z,
+				  fixture_pose_.orientation.w,fixture_pose_.orientation.x,fixture_pose_.orientation.y,
+				  fixture_pose_.orientation.z);
+
+		for(uint16_t ii=0;ii<nr_objects_;ii++)
+		{
+			ROS_INFO("Object %s pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
+					objects_[ii].name.c_str(),
+					  puzzle_target_poses_[ii].position.x,puzzle_target_poses_[ii].position.y,puzzle_target_poses_[ii].position.z,
+					  puzzle_target_poses_[ii].orientation.w,puzzle_target_poses_[ii].orientation.x,puzzle_target_poses_[ii].orientation.y,
+					  puzzle_target_poses_[ii].orientation.z);
+		}
+
+#endif
+	} //if(task_nr_ == 5)
+
+	//######################################################################################
+	//######################################################################################
 
 	return 0;
 }
@@ -720,7 +821,9 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 {
 	if(active_zone_<0 || active_zone_ >= nr_zones_)
 	{
-		msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
+		if(task_nr_ != 5)
+			msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
+
 		am_msgs::TargetZone empty_zone;
 		return empty_zone;
 	}

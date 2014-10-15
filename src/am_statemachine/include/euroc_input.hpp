@@ -52,6 +52,8 @@ public:
 	bool all_finished();
 
 private:
+	//!task number of active task
+	uint16_t task_nr_;
 	//!task description
 	std::string description_;
 
@@ -99,6 +101,12 @@ private:
 
 	//!number of sensors
 	uint16_t nr_sensors;
+
+	//!puzzle fixture pose
+	geometry_msgs::Pose fixture_pose_;
+
+	//!relative puzzle fixture target poses
+	std::vector<geometry_msgs::Pose> puzzle_target_poses_;
 };
 
 #endif //#define __EUROC_INPUT_HPP__
