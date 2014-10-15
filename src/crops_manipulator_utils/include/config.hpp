@@ -15,6 +15,7 @@ typedef enum {
 typedef enum {
 	OBJ_NOT_LOCATED=0,
 	OBJ_LOCATED,
+	OBJ_GRIPPING,
 	OBJ_GRABED,
 	OBJ_PLACED
 } object_state_t;

@@ -156,6 +156,8 @@ class Statemachine
 		am_msgs::TargetZone cur_zone_;
 		//!current object mass
 		double cur_obj_mass_;
+                //!robot has cur obj gripped
+                bool cur_obj_gripped_;
 
 		//grasping poses
 		uint16_t selected_object_pose_;

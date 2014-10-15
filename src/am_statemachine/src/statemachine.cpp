@@ -61,6 +61,8 @@ Statemachine::Statemachine():
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
 
+        cur_obj_gripped_=false;
+
 	//==============================================
 	//state:
 	state_.sub.one = fsm::INITIAL_STATE;
@@ -1318,7 +1320,9 @@ void Statemachine::scheduler_error_explore_environment_motion()
 	case fsm::NO_DK_SOL:
 	case fsm::MOTION_PLANNING_ERROR:
 	case fsm::MAX_LIMIT_REACHED:
+	case fsm::NO_IK_SOL:
 		//skip this explore pose
+		explore_environment_motion_state_=OPEN;
 		scheduler_next();
 		scheduler_next();
 		break;
@@ -2083,8 +2087,7 @@ int Statemachine::check_object_gripped()
 			if (obj_picked_up_srv_.response.GotObject==true)
 			{
 				ROS_INFO("state-observer says, that object is gripped: OK");
-				//publish object state for motion planning
-				publish_obj_state(OBJ_GRABED);
+				cur_obj_gripped_=true;
 			}
 			else
 			{
@@ -2092,6 +2095,12 @@ int Statemachine::check_object_gripped()
 				check_object_gripped_state_=FINISHEDWITHERROR;
 
 				state_.sub.event_two = fsm::OBJECT_LOST;
+
+	
+				//publish object state for motion planning
+				publish_obj_state(OBJ_LOCATED);
+				cur_obj_gripped_=false;
+
 				return 0;
 			}
 		}
@@ -2274,6 +2283,84 @@ int Statemachine::explore_environment_init()
 
 		explore_environment_init_state_=RUNNING;
 
+#if 0
+		std::vector<tf::Quaternion> q_temp;
+		active_goal_=0;
+		nr_goals_=10;
+		goal_queue.resize(nr_goals_);
+		q_temp.resize(nr_goals_);
+
+		goal_queue[0].goal_pose.position.x = 0.336+0.92;
+		goal_queue[0].goal_pose.position.y = 0.39+0;
+		goal_queue[0].goal_pose.position.z = 0.525;
+		q_temp[0].setRPY(3.14,0.86,-0.003);
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed;
+
+		goal_queue[1].goal_pose.position.x = 0.336+0.92;
+		goal_queue[1].goal_pose.position.y = -0.39+0.4;
+		goal_queue[1].goal_pose.position.z = 0.526;
+		q_temp[1].setRPY(3.14,-0.87,3.141);
+		goal_queue[1].inter_steps = 0;
+		goal_queue[1].speed_percentage = std_moving_speed;
+
+		goal_queue[2].goal_pose.position.x = 0.336+0.92;
+		goal_queue[2].goal_pose.position.y = -0.39+0;
+		goal_queue[2].goal_pose.position.z = 0.526;
+		q_temp[2].setRPY(3.14,-0.87,3.141);
+		goal_queue[2].inter_steps = 0;
+		goal_queue[2].speed_percentage = std_moving_speed;
+
+		goal_queue[3].goal_pose.position.x = 0.336+0.92;
+		goal_queue[3].goal_pose.position.y = -0.39-0.4;
+		goal_queue[3].goal_pose.position.z = 0.526;
+		q_temp[3].setRPY(3.14,-0.87,3.141);
+		goal_queue[3].inter_steps = 0;
+		goal_queue[3].speed_percentage = std_moving_speed;
+
+		goal_queue[4].goal_pose.position.x = -0.245+0.92;
+		goal_queue[4].goal_pose.position.y = -0.37-0.92;
+		goal_queue[4].goal_pose.position.z = 0.785;
+		q_temp[4].setRPY(-2.659,-0.82,1.759);
+		goal_queue[4].inter_steps = 0;
+		goal_queue[4].speed_percentage = std_moving_speed;
+
+		goal_queue[5].goal_pose.position.x = 0.39+0;
+		goal_queue[5].goal_pose.position.y = 0.336+0.92;
+		goal_queue[5].goal_pose.position.z = 0.526;
+		q_temp[5].setRPY(3.14,-0.87,-1.57);
+		goal_queue[5].inter_steps = 0;
+		goal_queue[5].speed_percentage = std_moving_speed;
+
+		goal_queue[6].goal_pose.position.x = -0.39+0.4;
+		goal_queue[6].goal_pose.position.y = 0.336+0.92;
+		goal_queue[6].goal_pose.position.z = 0.525;
+		q_temp[6].setRPY(3.14,0.86,1.57);
+		goal_queue[6].inter_steps = 0;
+		goal_queue[6].speed_percentage = std_moving_speed;
+
+		goal_queue[7].goal_pose.position.x = -0.39+0;
+		goal_queue[7].goal_pose.position.y = 0.336+0.92;
+		goal_queue[7].goal_pose.position.z = 0.525;
+		q_temp[7].setRPY(3.14,0.86,1.57);
+		goal_queue[7].inter_steps = 0;
+		goal_queue[7].speed_percentage = std_moving_speed;
+
+		goal_queue[8].goal_pose.position.x = -0.39-0.4;
+		goal_queue[8].goal_pose.position.y = 0.336+0.92;
+		goal_queue[8].goal_pose.position.z = 0.525;
+		q_temp[8].setRPY(3.14,0.86,1.57);
+		goal_queue[8].inter_steps = 0;
+		goal_queue[8].speed_percentage = std_moving_speed;
+
+		goal_queue[9].goal_pose.position.x = -0.374-0.92;
+		goal_queue[9].goal_pose.position.y = -0.245+0.92;
+		goal_queue[9].goal_pose.position.z = 0.785;
+		q_temp[9].setRPY(-2.66,0.82,2.952);
+		goal_queue[9].inter_steps = 0;
+		goal_queue[9].speed_percentage = std_moving_speed;
+
+#else
 		std::vector<tf::Quaternion> q_temp;
 		active_goal_=0;
 		nr_goals_=14;
@@ -2378,10 +2465,11 @@ int Statemachine::explore_environment_init()
 		q_temp[13].setRPY(3.14,-0.082,0);
 		goal_queue[13].inter_steps = 0;
 		goal_queue[13].speed_percentage = fast_moving_speed;
+#endif
 
 		for (int i=0;i<nr_goals_;i++)
 		{
-			goal_queue[i].planning_algorithm = STANDARD_IK_7DOF;
+			goal_queue[i].planning_algorithm = planning_mode_;
 			goal_queue[i].planning_frame = LWR_TCP;
 			goal_queue[i].goal_pose.orientation.x = q_temp[i].getX();
 			goal_queue[i].goal_pose.orientation.y = q_temp[i].getY();
@@ -3302,6 +3390,7 @@ int Statemachine::gripper_close()
 	else if(gripper_close_state_==FINISHED && set_object_load_state_==FINISHED)
 	{
 		ROS_INFO("gripper_close() called: FINISHED (close) FINISHED (set object load)");
+		cur_obj_gripped_=true;
 
 		//destroy thread
 		lsc_.detach();
@@ -3350,6 +3439,11 @@ int Statemachine::move_to_object_safe()
 	{
 		ROS_INFO("move_to_object_safe() called: OPEN");
 
+
+		//publish object state for motion planning
+		if(cur_obj_gripped_==true)
+		  publish_obj_state(OBJ_GRABED);
+
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -3397,6 +3491,7 @@ int Statemachine::move_to_object_safe()
 	else if(move_to_object_safe_state_==FINISHED)
 	{
 		ROS_INFO("move_to_object_safe() called: FINISHED");
+
 
 		//==============================================
 		scheduler_next();
@@ -3553,6 +3648,11 @@ int Statemachine::move_to_object()
 	if(move_to_object_state_==OPEN)
 	{
 		ROS_INFO("move_to_object() called: OPEN");
+
+
+		//publish object state for motion planning
+		if(cur_obj_gripped==false)
+		  publish_obj_state(OBJ_GRIPPING);
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -3857,6 +3957,7 @@ int Statemachine::move_to_target_zone()
 
 		//publish object state for motion planning
 		publish_obj_state(OBJ_PLACED);
+		cur_obj_gripped_=false;
 
 		//==============================================
 		scheduler_next();
@@ -3987,11 +4088,14 @@ void Statemachine::publish_obj_state(uint16_t state)
 	case OBJ_LOCATED:
 		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
 		break;
+	case OBJ_GRIPPING:
+	        obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+	        break;
 	case OBJ_GRABED:
-		obj_state_msg_.obj_pose=object_safe_pose[selected_object_pose_];
+	        obj_state_msg_.obj_pose=cur_obj_.abs_pose;
 		break;
 	case OBJ_PLACED:
-		obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
+	        obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
 		break;
 	default:
 		msg_error("Unknown object state !!!");
