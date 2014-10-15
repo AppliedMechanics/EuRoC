@@ -3651,7 +3651,7 @@ int Statemachine::move_to_object()
 
 
 		//publish object state for motion planning
-		if(cur_obj_gripped==false)
+		if(cur_obj_gripped_==false)
 		  publish_obj_state(OBJ_GRIPPING);
 
 		//send goals to motion-planning
