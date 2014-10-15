@@ -2878,7 +2878,7 @@ int Statemachine::get_grasping_pose()
 				{
 					state_queue.erase(state_queue.begin()+ii);
 					state_queue.erase(state_queue.begin()+ii);
-					state_queue.erase(state_queue.begin()+ii);
+					//state_queue.erase(state_queue.begin()+ii);
 					break;
 				}
 			}
@@ -2969,13 +2969,108 @@ int Statemachine::find_pose_set()
 
 			break;
 		case OBJECT_CYLINDER:
-			selected_object_pose_=0;
-			selected_target_pose_=0;
-			return 0;
+			for(uint16_t oo=0;oo<obj_sz;oo++)
+			{
+				for(uint16_t tt=0;tt<tag_sz;tt++)
+				{
+					switch(grip_pose_type[oo])
+					{
+					case GRIP_POSE_CYLINDER_VERTICAL:
+						if(place_pose_type[tt]==PLACE_POSE_CYLINDER_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CYLINDER_VERTICAL_45:
+						if(place_pose_type[tt]==PLACE_POSE_CYLINDER_VERTICAL_45)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					default:
+						break;
+					}
+				}
+			}
+			break;
 		case OBJECT_CUBE:
-			selected_object_pose_=0;
-			selected_target_pose_=0;
-			return 0;
+			for(uint16_t oo=0;oo<obj_sz;oo++)
+			{
+				for(uint16_t tt=0;tt<tag_sz;tt++)
+				{
+					switch(grip_pose_type[oo])
+					{
+					case GRIP_POSE_CUBE_X_UP:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_X_UP)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Y_UP:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Y_UP)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Z_UP:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Z_UP)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_X_UP_45byY:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_X_UP_45byY)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_X_UP_45byZ:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_X_UP_45byZ)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Y_UP_45byX:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Y_UP_45byX)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Y_UP_45byZ:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Y_UP_45byZ)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Z_UP_45byX:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Z_UP_45byX)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_CUBE_Z_UP_45byY:
+						if(place_pose_type[tt]==PLACE_POSE_CUBE_Z_UP_45byY)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					default:
+						break;
+					}
+				}
+			}
+			break;
 	}
 
 	return -1;

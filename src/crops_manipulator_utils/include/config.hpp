@@ -84,9 +84,16 @@ typedef enum {
 
 typedef enum {
 	GRIP_POSE_CUBE_X_UP=0,
+	GRIP_POSE_CUBE_X_UP_45byY,			//rotated 45° by y-axis of object
+	GRIP_POSE_CUBE_X_UP_45byZ,			//rotated 45° by z-axis of object
 	GRIP_POSE_CUBE_Y_UP,
+	GRIP_POSE_CUBE_Y_UP_45byX,			//rotated 45° by x-axis of object
+	GRIP_POSE_CUBE_Y_UP_45byZ,			//rotated 45° by z-axis of object
 	GRIP_POSE_CUBE_Z_UP,
+	GRIP_POSE_CUBE_Z_UP_45byX,			//rotated 45° by x-axis of object
+	GRIP_POSE_CUBE_Z_UP_45byY,			//rotated 45° by y-axis of object
 	GRIP_POSE_CYLINDER_VERTICAL,
+	GRIP_POSE_CYLINDER_VERTICAL_45,
 	GRIP_POSE_HANDLE_CYLINDER_ZEQX_YPOSZ,	//z-axis of gripper points in (+-) x-direction of cylinder y-axis of gripper points in positive z-direction of cylinder
 	GRIP_POSE_HANDLE_CYLINDER_ZEQX_YNEGZ,	//z-axis of gripper points in (+-) x-direction of cylinder y-axis of gripper points in negative z-direction of cylinder
 	GRIP_POSE_HANDLE_CYLINDER_ZEQY_YPOSZ,	//z-axis of gripper points in (+-) y-direction of cylinder y-axis of gripper points in positive z-direction of cylinder
@@ -94,10 +101,17 @@ typedef enum {
 } grip_pose_type_t;
 
 typedef enum {
-	PLACE_POSE_CUBE_X_UP,
+	PLACE_POSE_CUBE_X_UP=0,
+	PLACE_POSE_CUBE_X_UP_45byY,
+	PLACE_POSE_CUBE_X_UP_45byZ,
 	PLACE_POSE_CUBE_Y_UP,
+	PLACE_POSE_CUBE_Y_UP_45byX,
+	PLACE_POSE_CUBE_Y_UP_45byZ,
 	PLACE_POSE_CUBE_Z_UP,
+	PLACE_POSE_CUBE_Z_UP_45byX,
+	PLACE_POSE_CUBE_Z_UP_45byY,
 	PLACE_POSE_CYLINDER_VERTICAL,
+	PLACE_POSE_CYLINDER_VERTICAL_45,
 	PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL,
 	PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL,
 } place_pose_type_t;

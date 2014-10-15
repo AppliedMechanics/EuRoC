@@ -100,6 +100,8 @@ private:
 	std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
 	std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
 
+	double gripping_angle_deg_;
+	double gripping_angle_rad_;
 	double gripper_maxwidth_;
 	double gripper_height_;
 	double gripper_finger_width;
@@ -110,6 +112,7 @@ private:
 	double vision_distance_object_height_cube_;
 	double vision_distance_object_height_cylinder_;
 	double vision_distance_object_height_handle_;
+	double pi;
 
 	// ------------------------- Class Methods ----------------------------
 	// "set_object_data_()" sets the properties "object_", "quat_02obj", "A_obj20_", and calls method "compute_abs_shape_positions_()"
@@ -138,6 +141,8 @@ private:
 	void print_results();
 	// "send_poses_to_tf_broadcaster()" sends the whole poses to the tf broadcaster (for rviz)
 	void send_poses_to_tf_broadcaster();
+	// "get_rotationmatrixfromaxis()" returns a transformation matrix to rotate around an axis (with given angle)
+	tf::Matrix3x3 get_rotationmatrixfromaxis(tf::Vector3 axis, double angle);
 
 	//old stuff
 	//geometry_msgs::Pose GPTCP_target_pose_;
