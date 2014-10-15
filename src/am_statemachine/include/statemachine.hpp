@@ -2,9 +2,6 @@
 #define __STATEMACHINE_HPP__
 
 
-// If you want to use homing state also with moveit
-#undef WITH_HOMING
-
 //ros includes
 #include <ros/ros.h>
 #include "std_msgs/String.h"

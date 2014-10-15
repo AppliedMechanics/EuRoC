@@ -446,27 +446,23 @@ void Statemachine::scheduler_schedule()
 							{
 								temp_state.sub.two=fsm::PAUSE;						state_queue.push_back(temp_state);
 							}
-#ifdef WITH_HOMING
-							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-#else
+
 							if(planning_mode_ == STANDARD_IK_7DOF)
 							{
 								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 							}
-#endif
+
 							temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
 							temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
 							if (!skip_motion_)
 							{
 								scheduler_grasp_object(EXECUTE_LATER);
-#ifdef WITH_HOMING
-							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-#else
+
 							if(planning_mode_ == STANDARD_IK_7DOF)
 							{
 								temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 							}
-#endif
+
 								scheduler_place_object(EXECUTE_LATER);
 							}
 							else
@@ -1719,7 +1715,7 @@ int Statemachine::request_task()
 		case 1:
 		case 2:
 			ROS_INFO("USE MOVE_IT_7DOF");
-			planning_mode_ = MOVE_IT_7DOF;
+			planning_mode_ = STANDARD_IK_7DOF;
 			break;
 		case 3:
 		case 4:
