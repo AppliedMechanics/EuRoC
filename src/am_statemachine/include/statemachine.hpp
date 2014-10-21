@@ -7,6 +7,7 @@
 #include "std_msgs/String.h"
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
+#include <octomap_msgs/BoundingBoxQuery.h>
 
 //general includes
 #include <sstream>
@@ -136,6 +137,10 @@ private:
 	//!client to check poses service from motion planning
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
+
+	//!client to remove area in octomap
+	ros::ServiceClient rm_grasping_area_collision_client_;
+	octomap_msgs::BoundingBoxQuery rm_grasping_area_collision_srv_;
 
 	//!publisher for motion planning (object state)
 	ros::Publisher obj_state_;

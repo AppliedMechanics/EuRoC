@@ -8,57 +8,57 @@ static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 5;
 
 Statemachine::Statemachine():
-	    		scenes_(1),
-	    		task_active_(false),
-	    		sim_running_(false),
-	    		speed_mod_(0),
-	    		nr_scenes_(0),
-	    		active_scene_(-1),
-	    		motion_planning_action_client_("goalPoseAction", true),
-	    		vision_action_client_("VisionAction", true),
-	    		active_goal_(0),
-	    		nr_goals_(0),
-	    		skip_vision_(false),
-	    		skip_motion_(false),
-	    		pause_in_loop_(0),
-	    		reached_active_goal_(false),
-	    		request_task_state_(OPEN),
-	    		start_sim_state_(OPEN),
-	    		set_object_load_state_(OPEN),
-	    		pause_state_(OPEN),
-	    		parse_yaml_file_state_(OPEN),
-	    		stop_sim_state_(OPEN),
-	    		watch_scene_state_(OPEN),
-	    		watch_scene_counter_(0),
-	    		explore_environment_init_state_(OPEN),
-	    		explore_environment_motion_state_(OPEN),
-	    		explore_environment_image_state_(OPEN),
-	    		explore_environment_image_counter_(0),
-	    		locate_object_global_state_(OPEN),
-	    		locate_object_global_counter_(0),
-	    		locate_object_close_range_state_(OPEN),
-	    		check_object_finished_state_(OPEN),
-	    		check_object_gripped_state_(OPEN),
-	    		check_object_gripped_counter_(0),
-	    		get_grasping_pose_state_(OPEN),
-	    		move_to_object_vision_state_(OPEN),
-	    		move_to_object_vision_counter_(0),
-	    		move_to_object_safe_state_(OPEN),
-	    		move_to_object_safe_counter_(0),
-	    		move_to_object_state_(OPEN),
-	    		move_to_object_counter_(0),
-	    		gripper_release_state_(OPEN),
-	    		gripper_release_counter_(0),
-	    		gripper_close_state_(OPEN),
-	    		gripper_close_counter_(0),
-	    		move_to_target_zone_safe_state_(OPEN),
-	    		move_to_target_zone_safe_counter_(0),
-	    		move_to_target_zone_vision_state_(OPEN),
-	    		move_to_target_zone_vision_counter_(0),
-	    		move_to_target_zone_state_(OPEN),
-	    		move_to_target_zone_counter_(0),
-	    		homing_state_(OPEN),
-	    		homing_counter_(0)
+	    						scenes_(1),
+	    						task_active_(false),
+	    						sim_running_(false),
+	    						speed_mod_(0),
+	    						nr_scenes_(0),
+	    						active_scene_(-1),
+	    						motion_planning_action_client_("goalPoseAction", true),
+	    						vision_action_client_("VisionAction", true),
+	    						active_goal_(0),
+	    						nr_goals_(0),
+	    						skip_vision_(false),
+	    						skip_motion_(false),
+	    						pause_in_loop_(0),
+	    						reached_active_goal_(false),
+	    						request_task_state_(OPEN),
+	    						start_sim_state_(OPEN),
+	    						set_object_load_state_(OPEN),
+	    						pause_state_(OPEN),
+	    						parse_yaml_file_state_(OPEN),
+	    						stop_sim_state_(OPEN),
+	    						watch_scene_state_(OPEN),
+	    						watch_scene_counter_(0),
+	    						explore_environment_init_state_(OPEN),
+	    						explore_environment_motion_state_(OPEN),
+	    						explore_environment_image_state_(OPEN),
+	    						explore_environment_image_counter_(0),
+	    						locate_object_global_state_(OPEN),
+	    						locate_object_global_counter_(0),
+	    						locate_object_close_range_state_(OPEN),
+	    						check_object_finished_state_(OPEN),
+	    						check_object_gripped_state_(OPEN),
+	    						check_object_gripped_counter_(0),
+	    						get_grasping_pose_state_(OPEN),
+	    						move_to_object_vision_state_(OPEN),
+	    						move_to_object_vision_counter_(0),
+	    						move_to_object_safe_state_(OPEN),
+	    						move_to_object_safe_counter_(0),
+	    						move_to_object_state_(OPEN),
+	    						move_to_object_counter_(0),
+	    						gripper_release_state_(OPEN),
+	    						gripper_release_counter_(0),
+	    						gripper_close_state_(OPEN),
+	    						gripper_close_counter_(0),
+	    						move_to_target_zone_safe_state_(OPEN),
+	    						move_to_target_zone_safe_counter_(0),
+	    						move_to_target_zone_vision_state_(OPEN),
+	    						move_to_target_zone_vision_counter_(0),
+	    						move_to_target_zone_state_(OPEN),
+	    						move_to_target_zone_counter_(0),
+	    						homing_state_(OPEN),
+	    						homing_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -144,7 +144,7 @@ int Statemachine::init_sm()
 	state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
 	set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
 	//check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
-
+	rm_grasping_area_collision_client_ = node_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
 	//wait for all action servers
 	ROS_INFO("waiting for action servers...");
 	uint8_t CheckActionServerCounter=0;
@@ -3690,6 +3690,19 @@ int Statemachine::move_to_object()
 		//publish object state for motion planning
 		if(cur_obj_gripped_==false)
 			publish_obj_state(OBJ_GRIPPING);
+
+#warning remove area from octomap
+		rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.04;
+		rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.04;
+		rm_grasping_area_collision_srv_.request.max.z = 1.0;
+		rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.04;
+		rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.04;
+		rm_grasping_area_collision_srv_.request.min.z = 0.0;
+		if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+			msg_warn("Grasping error clearing failed.");
+		else
+			msg_warn("Grasping error clearing succeeded.");
+
 
 		//send goals to motion-planning
 		active_goal_=0;
