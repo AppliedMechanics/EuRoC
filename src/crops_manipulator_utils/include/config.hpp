@@ -29,7 +29,8 @@ typedef enum {
 	STANDARD_IK_7DOF = 0,
 	MOVE_IT_7DOF,
 	MOVE_IT_9DOF,
-	HOMING_7DOF
+	HOMING_7DOF,
+	HOMING_MOVE_IT
 } motion_planning_mode_t;
 
 typedef enum {
@@ -41,10 +42,12 @@ typedef enum {
 } motion_planning_error_t;
 
 typedef enum {
-	POSE_TARGET = 0,
+	SINGLE_POSE_TARGET=0,
+	POSE_TARGET,
 	JOINT_VALUE_TARGET_KDL_IK,
+	APPROXIMATE_JOINT_VALUE_TARGET,
 	JOINT_VALUE_TARGET_EUROC_IK,
-	APPROXIMATE_JOINT_VALUE_TARGET
+	HOMING
 } planning_target_type_t;
 
 typedef enum {

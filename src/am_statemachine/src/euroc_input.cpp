@@ -272,23 +272,16 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 				return -1;
 			}
 
-			if((task_nr_ != 4) && (task_nr_ != 5) && (task_nr_ != 6))
-			{
-				try{
-					const YAML::Node* dens = (*it2).FindValue("density");
-					(*dens) >> tmp_obj.shape[jj].density;
-				}catch(YAML::Exception e) {
-					ROS_ERROR("density not found in shape");
 
-					tmp_obj.shape[jj].density=7850;
-					return -1;
-				}
-			}
-			else
-			{
+			try{
+				const YAML::Node* dens = (*it2).FindValue("density");
+				(*dens) >> tmp_obj.shape[jj].density;
+			}catch(YAML::Exception e) {
+				ROS_ERROR("density not found in shape");
+
 				tmp_obj.shape[jj].density=7850;
+				return -1;
 			}
-
 
 			jj++;
 

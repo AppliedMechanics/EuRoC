@@ -792,6 +792,240 @@ void VisionDummy::loadScene(int scene)
 		modscene_poses_[2].orientation.z = q_tmp.getZ();
 		break;
 
+	case 411:
+				modscene_poses_.resize(3);
+				modscene_colors_.resize(3);
+
+				modscene_colors_[0]="ff0000"; //red
+				modscene_colors_[1]="00ff00"; //green
+				modscene_colors_[2]="00ffff"; //cyan
+
+				//red_cube:
+				modscene_poses_[0].position.x = 0.1858;
+				modscene_poses_[0].position.y = -0.772;
+				modscene_poses_[0].position.z = 0.04;
+				q_tmp.setRPY(0.4, 0.1, 0);
+				modscene_poses_[0].orientation.w = q_tmp.getW();
+				modscene_poses_[0].orientation.x = q_tmp.getX();
+				modscene_poses_[0].orientation.y = q_tmp.getY();
+				modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+				//green_cylinder:
+				modscene_poses_[1].position.x = 0.7648;
+				modscene_poses_[1].position.y = 0.1677;
+				modscene_poses_[1].position.z = 0.051;
+				q_tmp.setRPY(0.0, 0, 1.8);
+				modscene_poses_[1].orientation.w = q_tmp.getW();
+				modscene_poses_[1].orientation.x = q_tmp.getX();
+				modscene_poses_[1].orientation.y = q_tmp.getY();
+				modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+				//blue_handle:
+				modscene_poses_[2].position.x = -0.8231;
+				modscene_poses_[2].position.y = 0.4563;
+				modscene_poses_[2].position.z = 0.04;
+				q_tmp.setRPY(-1.5, 0, 0.4);
+				modscene_poses_[2].orientation.w = q_tmp.getW();
+				modscene_poses_[2].orientation.x = q_tmp.getX();
+				modscene_poses_[2].orientation.y = q_tmp.getY();
+				modscene_poses_[2].orientation.z = q_tmp.getZ();
+				break;
+
+	case 412:
+				modscene_poses_.resize(3);
+				modscene_colors_.resize(3);
+
+				modscene_colors_[0]="ff0000"; //red
+				modscene_colors_[1]="00ff00"; //green
+				modscene_colors_[2]="00ffff"; //cyan
+
+				//red_cube:
+				modscene_poses_[0].position.x = 0.1858;
+				modscene_poses_[0].position.y = -0.772;
+				modscene_poses_[0].position.z = 0.04;
+				q_tmp.setRPY(0.4, 0.1, 0);
+				modscene_poses_[0].orientation.w = q_tmp.getW();
+				modscene_poses_[0].orientation.x = q_tmp.getX();
+				modscene_poses_[0].orientation.y = q_tmp.getY();
+				modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+				//green_cylinder:
+				modscene_poses_[1].position.x = 0.7648;
+				modscene_poses_[1].position.y = 0.1677;
+				modscene_poses_[1].position.z = 0.051;
+				q_tmp.setRPY(0.0, 0, 1.8);
+				modscene_poses_[1].orientation.w = q_tmp.getW();
+				modscene_poses_[1].orientation.x = q_tmp.getX();
+				modscene_poses_[1].orientation.y = q_tmp.getY();
+				modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+				//blue_handle:
+				modscene_poses_[2].position.x = -0.8231;
+				modscene_poses_[2].position.y = 0.4563;
+				modscene_poses_[2].position.z = 0.04;
+				q_tmp.setRPY(-1.5, 0, 0.4);
+				modscene_poses_[2].orientation.w = q_tmp.getW();
+				modscene_poses_[2].orientation.x = q_tmp.getX();
+				modscene_poses_[2].orientation.y = q_tmp.getY();
+				modscene_poses_[2].orientation.z = q_tmp.getZ();
+				break;
+
+	case 413:
+				modscene_poses_.resize(3);
+				modscene_colors_.resize(3);
+
+				modscene_colors_[0]="ff0000"; //red
+				modscene_colors_[1]="00ff00"; //green
+				modscene_colors_[2]="00ffff"; //cyan
+
+				//red_cube:
+				modscene_poses_[0].position.x = 0.1858;
+				modscene_poses_[0].position.y = -0.772;
+				modscene_poses_[0].position.z = 0.04;
+				q_tmp.setRPY(0.4, 0.1, 0);
+				modscene_poses_[0].orientation.w = q_tmp.getW();
+				modscene_poses_[0].orientation.x = q_tmp.getX();
+				modscene_poses_[0].orientation.y = q_tmp.getY();
+				modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+				//green_cylinder:
+				modscene_poses_[1].position.x = 0.7648;
+				modscene_poses_[1].position.y = 0.1677;
+				modscene_poses_[1].position.z = 0.051;
+				q_tmp.setRPY(0.0, 0, 1.8);
+				modscene_poses_[1].orientation.w = q_tmp.getW();
+				modscene_poses_[1].orientation.x = q_tmp.getX();
+				modscene_poses_[1].orientation.y = q_tmp.getY();
+				modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+				//blue_handle:
+				modscene_poses_[2].position.x = -0.8231;
+				modscene_poses_[2].position.y = 0.4563;
+				modscene_poses_[2].position.z = 0.04;
+				q_tmp.setRPY(-1.5, 0, 0.4);
+				modscene_poses_[2].orientation.w = q_tmp.getW();
+				modscene_poses_[2].orientation.x = q_tmp.getX();
+				modscene_poses_[2].orientation.y = q_tmp.getY();
+				modscene_poses_[2].orientation.z = q_tmp.getZ();
+				break;
+
+	case 421:
+				modscene_poses_.resize(3);
+				modscene_colors_.resize(3);
+
+				modscene_colors_[0]="ff0000"; //red
+				modscene_colors_[1]="00ff00"; //green
+				modscene_colors_[2]="00ffff"; //cyan
+
+				//cube:
+				modscene_poses_[0].position.x = -0.8171897;
+				modscene_poses_[0].position.y = -0.8570212;
+				modscene_poses_[0].position.z = 0.04;
+				q_tmp.setRPY(-1.5, 0, 0.8177691);
+				modscene_poses_[0].orientation.w = q_tmp.getW();
+				modscene_poses_[0].orientation.x = q_tmp.getX();
+				modscene_poses_[0].orientation.y = q_tmp.getY();
+				modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+				//cyan_cylinder:
+				modscene_poses_[1].position.x = 0.85;
+				modscene_poses_[1].position.y = -0.35;
+				modscene_poses_[1].position.z = 0.061;
+				q_tmp.setRPY(0.0, 0, 1.8);
+				modscene_poses_[1].orientation.w = q_tmp.getW();
+				modscene_poses_[1].orientation.x = q_tmp.getX();
+				modscene_poses_[1].orientation.y = q_tmp.getY();
+				modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+				//blue_handle:
+				modscene_poses_[2].position.x = -0.5295025;
+				modscene_poses_[2].position.y = 0.9574671;
+				modscene_poses_[2].position.z = 0.03;
+				q_tmp.setRPY(-1.5707963, 0.0000003, -2.6646021);
+				modscene_poses_[2].orientation.w = q_tmp.getW();
+				modscene_poses_[2].orientation.x = q_tmp.getX();
+				modscene_poses_[2].orientation.y = q_tmp.getY();
+				modscene_poses_[2].orientation.z = q_tmp.getZ();
+				break;
+
+	case 422:
+					modscene_poses_.resize(3);
+					modscene_colors_.resize(3);
+
+					modscene_colors_[0]="ff0000"; //red
+					modscene_colors_[1]="00ff00"; //green
+					modscene_colors_[2]="00ffff"; //cyan
+
+					//cube:
+					modscene_poses_[0].position.x = -0.7019217;
+					modscene_poses_[0].position.y = 0.3823656;
+					modscene_poses_[0].position.z = 0.035;
+					q_tmp.setRPY(-1.5707962, 0, 0.4767284);
+					modscene_poses_[0].orientation.w = q_tmp.getW();
+					modscene_poses_[0].orientation.x = q_tmp.getX();
+					modscene_poses_[0].orientation.y = q_tmp.getY();
+					modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+					//cyan_cylinder:
+					modscene_poses_[1].position.x = 0.3674228;
+					modscene_poses_[1].position.y = -0.423946;
+					modscene_poses_[1].position.z = 0.0601196;
+					q_tmp.setRPY(0.0, 0.0, 0.4688798);
+					modscene_poses_[1].orientation.w = q_tmp.getW();
+					modscene_poses_[1].orientation.x = q_tmp.getX();
+					modscene_poses_[1].orientation.y = q_tmp.getY();
+					modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+					//blue_handle:
+					modscene_poses_[2].position.x = -0.3652547;
+					modscene_poses_[2].position.y = 0.6396476;
+					modscene_poses_[2].position.z = 0.03;
+					q_tmp.setRPY(-1.5707966, -0.0000006, -1.4266464);
+					modscene_poses_[2].orientation.w = q_tmp.getW();
+					modscene_poses_[2].orientation.x = q_tmp.getX();
+					modscene_poses_[2].orientation.y = q_tmp.getY();
+					modscene_poses_[2].orientation.z = q_tmp.getZ();
+					break;
+
+	case 423:
+						modscene_poses_.resize(3);
+						modscene_colors_.resize(3);
+
+						modscene_colors_[0]="ff0000"; //red
+						modscene_colors_[1]="00ff00"; //green
+						modscene_colors_[2]="00ffff"; //cyan
+
+						//cube:
+						modscene_poses_[0].position.x = -0.8036147;
+						modscene_poses_[0].position.y = 0.6958399;
+						modscene_poses_[0].position.z = 0.03;
+						q_tmp.setRPY(1.5707962, 0, 0.4669556);
+						modscene_poses_[0].orientation.w = q_tmp.getW();
+						modscene_poses_[0].orientation.x = q_tmp.getX();
+						modscene_poses_[0].orientation.y = q_tmp.getY();
+						modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+						//cyan_cylinder:
+						modscene_poses_[1].position.x = -0.6954471;
+						modscene_poses_[1].position.y = 0.5402952;
+						modscene_poses_[1].position.z = 0.0604867;
+						q_tmp.setRPY(0.0, 0.0, 0.1227309);
+						modscene_poses_[1].orientation.w = q_tmp.getW();
+						modscene_poses_[1].orientation.x = q_tmp.getX();
+						modscene_poses_[1].orientation.y = q_tmp.getY();
+						modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+						//blue_handle:
+						modscene_poses_[2].position.x = -0.5538481;
+						modscene_poses_[2].position.y = 0.3278301;
+						modscene_poses_[2].position.z = 0.025;
+						q_tmp.setRPY(-1.5707963, -0.0000002, -2.210385);
+						modscene_poses_[2].orientation.w = q_tmp.getW();
+						modscene_poses_[2].orientation.x = q_tmp.getX();
+						modscene_poses_[2].orientation.y = q_tmp.getY();
+						modscene_poses_[2].orientation.z = q_tmp.getZ();
+						break;
+
 	default:
 		msg_error("scene not implemented in vision dummy!");
 		break;

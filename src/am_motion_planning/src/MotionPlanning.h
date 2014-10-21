@@ -11,6 +11,8 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Transform.h>
+#include <string>
+#include <boost/thread.hpp>
 
 // AM
 #include <actionlib/server/simple_action_server.h>
@@ -25,7 +27,6 @@
 
 // MOVEIT
 #include <moveit/robot_model/robot_model.h>
-#include <string>
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit_msgs/RobotState.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
@@ -33,31 +34,51 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/collision_detection/collision_robot.h>	// probably required for self collision checking
 #include <moveit_msgs/PlanningScene.h>
-
 #include <moveit_msgs/AttachedCollisionObject.h>
 #include <moveit_msgs/GetStateValidity.h>
 #include <moveit_msgs/DisplayRobotState.h>
+#include <moveit_msgs/MoveItErrorCodes.h>
 
+// GEOMETRY
+#include <geometry_msgs/Vector3.h>
+#include <shape_msgs/SolidPrimitive.h>
 
 // EUROC
 #include <euroc_c2_msgs/MoveAlongJointPath.h>
 #include <euroc_c2_msgs/GetTimingAlongJointPath.h>
 #include <euroc_c2_msgs/SearchIkSolution.h>
 #include <euroc_c2_msgs/GetForwardKinematics.h>
-
 #include <euroc_c2_msgs/Telemetry.h>
-
-#include <boost/thread.hpp>
 
 // OCTOMAP
 #include <octomap/octomap.h>
+#include <octomap/OcTree.h>
+#include <octomap_ros/conversions.h>
+#include <octomap_server/OctomapServer.h>
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/GetOctomap.h>
 #include <octomap_msgs/conversions.h>
-#include <octomap_ros/conversions.h>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
-#include <octomap_server/OctomapServer.h>
+
+
+
+
+
+
+struct ObjectInformation
+{
+	int nr_shapes;
+	std::vector<int> shape_types;
+	std::vector<geometry_msgs::Pose> shape_poses;
+	std::vector<geometry_msgs::Vector3> shape_sizes;
+	std::vector<double> shape_lengths;
+	std::vector<double> shape_radii;
+	geometry_msgs::Pose obj_pose;
+};
+
+
+
 
 
 class MotionPlanning {
@@ -90,6 +111,7 @@ private:
 
 
 	ros::ServiceServer check_poses_service_;
+
 	// ROS-service function to check ik solution for poses
 	bool return_poses_valid(am_msgs::CheckPoses::Request &req, am_msgs::CheckPoses::Response &res);
 
@@ -100,10 +122,13 @@ private:
 	ros::ServiceClient get_dk_solution_client_;
 	ros::ServiceClient state_observer_client_;
 
+
+	//! Subscribers
 	ros::Subscriber telemetry_subscriber_;
 
 	ros::Timer feedback_timer_;
 
+	//! Strings
 	std::string euroc_c2_interface_;
 	std::string move_along_joint_path_;
 	std::string timing_along_joint_path_;
@@ -115,20 +140,22 @@ private:
 	euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 	euroc_c2_msgs::GetTimingAlongJointPath timing_along_joint_path_srv_;
 	euroc_c2_msgs::GetForwardKinematics get_dk_solution_srv_;
-
 	euroc_c2_msgs::Configuration commanded_configuration_;
 	euroc_c2_msgs::Configuration current_configuration_;
-
 	euroc_c2_msgs::Telemetry _telemetry;
 
+
+	am_msgs::CallSetStopConditions call_set_stop_cond_srv_;
 	am_msgs::goalPoseGoal::ConstPtr goal_pose_goal_;
+
+
 	geometry_msgs::Pose goal_pose_GPTCP_;
 	geometry_msgs::Pose goal_pose_LWRTCP_;
 
 
-	am_msgs::CallSetStopConditions call_set_stop_cond_srv_;
 
-// MOVEIT
+
+	// MOVEIT
 	std::vector<std::string> ompl_planners;
 
 	move_group_interface::MoveGroup *group_7DOF;
@@ -138,7 +165,7 @@ private:
 	robot_model_loader::RobotModelLoader robot_model_loader_;
 	robot_model::RobotModelPtr kinematic_model_;
 
-	robot_state::RobotStatePtr kinematic_state_;
+	robot_state::RobotState* kinematic_state_;
 
 	const robot_state::JointModelGroup* joint_model_group_7DOF_;
 	const robot_state::JointModelGroup* joint_model_group_9DOF_;
@@ -152,39 +179,47 @@ private:
 
 	std::vector<euroc_c2_msgs::Configuration> planned_path_;
 
+
+	moveit_msgs::PlanningScene planning_scene_;
+	std::vector<moveit_msgs::CollisionObject> collision_objects_;
+
+
+	bool homingMoveIt();
 	bool getMoveItSolution();
+	bool initializeMoveGroup();
 	void setPlanningConstraints();
 	bool setPlanningTarget(unsigned algorithm);
 	bool valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
-	moveit::planning_interface::PlanningSceneInterface PlanInterOcto;
+
+	bool objectExists(int idx);
+	void createObject(int idx, geometry_msgs::Pose obj_pose);
+	void readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
+	void addObjectToWorld(int obj_index);
+	void attachObject(int idx);
+	void detachObject(int idx);
+	bool attachRandomObject();
+
+	sensor_msgs::JointState getCurrentJointState();
 
 
-	ros::ServiceServer attach_object_service_;
-	// ROS-service function to attach a gripped object
-	bool return_object_attached(am_msgs::AttachObject::Request &req, am_msgs::AttachObject::Response &res);
 
-	ros::ServiceServer detach_object_service_;
-	// ROS_service function to detach a release object
-	bool return_object_detached(am_msgs::DetachObject::Request &req, am_msgs::DetachObject::Response &res);
 
-	// OCTOMAP
-	// Topic
-	ros::Subscriber octomap_subscriber_;
-	std::string octomap2_;
-	octomap_msgs::Octomap _octomap;
-	// Service
-	ros::Publisher octo_pub;
+
+	//! OCTOMAP
+	// used for publishing planning scene
+	ros::Publisher planning_scene_diff_publisher_;
+	// used for calling service
 	ros::ServiceClient octomap_client_;
+	// used for storing path
 	std::string octomap_;
+	// used for storing data received from service
 	octomap_msgs::GetOctomap octomap_srv_;
+	// used for storing octomap data
 	octomap_msgs::Octomap _octree;
-
-	octomap_msgs::Octomap bmap_msg;
-
-	moveit_msgs::PlanningScene planning_scene_octo;
+	// used to manually load binary octomap.bt
+	octomap::OcTree octree_file;
 
 
-	bool getOctomap();
 
 
 
@@ -193,36 +228,37 @@ private:
 	euroc_c2_msgs::Limits gripper_limit_;
 	euroc_c2_msgs::Limits table_axis1_limit_;
 	euroc_c2_msgs::Limits table_axis2_limit_;
+
+
 	//! Variables
 	std::vector<ros::Time> time_at_path_points_;
 	double estimated_motion_time_;
 	double starting_time_;
-
 	double feedback_frequency_;
 	bool called;  // Keeps track of whether set_stop_conditions service has been called and evaluates as true after first call has been made
-
+	bool skip_vision_;
 	int active_task_nr_;
 	uint32_t speed_percentage_;
 	uint32_t inter_steps_;
 	std::string planning_frame_;
+	boost::thread moveToTarget;
+	uint8_t mtt_;
 
+
+	bool getOctomap();
 	bool getIKSolution7DOF();
-	void getTimingAlongJointPath();
 	bool getTelemetry();
 	bool getLimits();
 	bool setReset7DOF();
 	bool transformToTCPFrame(std::string frame);
 	bool transformToLWRBase();
-
-	void setMoveRequestJointLimits();
-	void setMoveRequestTCPLimits();
-
-	void moveToTargetCB();
-	boost::thread moveToTarget;
-	uint8_t mtt_;
-
 	bool valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 
+	void getTimingAlongJointPath();
+	void getCurrentConfiguration();
+	void setMoveRequestJointLimits();
+	void setMoveRequestTCPLimits();
+	void moveToTargetCB();
 
 };
 

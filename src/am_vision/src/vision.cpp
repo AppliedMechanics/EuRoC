@@ -697,11 +697,18 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-      pcl::toROSMsg (*initialPC, msg);
-      msg.header.frame_id = "S_DEPTH";
+  	  pcl::toROSMsg (*threshPC, msg);
+      msg.header.frame_id = "/Origin";
       msg.header.stamp = ros::Time::now();
       pub_3.publish (msg);
 #endif
+
+//#ifdef OCTOMAP_SERVER
+//      pcl::toROSMsg (*initialPC, msg);
+//      msg.header.frame_id = "S_DEPTH";
+//      msg.header.stamp = ros::Time::now();
+//      pub_3.publish (msg);
+//#endif
 
 #ifdef OCTOMAP_REDUCED_OLD
       // Create Octomap without robot and things outside the table
@@ -926,11 +933,18 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-  pcl::toROSMsg (*initialPC, msg);
-  msg.header.frame_id = "T_DEPTH";
-  msg.header.stamp = ros::Time::now();
-  pub_3.publish (msg);
+  	  pcl::toROSMsg (*threshPC, msg);
+      msg.header.frame_id = "/Origin";
+      msg.header.stamp = ros::Time::now();
+      pub_3.publish (msg);
 #endif
+
+//#ifdef OCTOMAP_SERVER
+//  pcl::toROSMsg (*initialPC, msg);
+//  msg.header.frame_id = "T_DEPTH";
+//  msg.header.stamp = ros::Time::now();
+//  pub_3.publish (msg);
+//#endif
 
 #ifdef OCTOMAP_REDUCED_OLD
   // Create Octomap without robot and things outside the table
