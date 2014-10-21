@@ -222,6 +222,7 @@ class Statemachine
 		//!schedule placing sequence
 		void scheduler_place_object(bool start);
 
+
 		//!error handling for each state
 		void scheduler_error_homing();
 		void scheduler_error_move_to_object_vision();
@@ -280,7 +281,7 @@ class Statemachine
 		void watch_scene_cb();
 		//!state of watch_scene() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t watch_scene_state_;
-		uint8_t watch_scene_counter;
+		uint8_t watch_scene_counter_;
 
 		//!Explore the environment (initial part)
 		int explore_environment_init();
@@ -289,11 +290,11 @@ class Statemachine
 
 		//!Explore the environment (motion part)
 		int explore_environment_motion();
-		//!state of explore_environment_motion() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
-		uint8_t explore_environment_motion_state_;
 		//!callbacks for explore_environment_motion()
 		void explore_environment_motion_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
 		void explore_environment_motion_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+		//!state of explore_environment_motion() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+		uint8_t explore_environment_motion_state_;
 
 		//!Explore the environment (image part)
 		int explore_environment_image();
@@ -301,7 +302,7 @@ class Statemachine
 		void explore_environment_image_cb();
 		//!state of explore_environment_image() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t explore_environment_image_state_;
-		uint8_t explore_environment_image_counter;
+		uint8_t explore_environment_image_counter_;
 
 		//!locate object in a global manner
 		int locate_object_global();
@@ -310,7 +311,7 @@ class Statemachine
 		void locate_object_global_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
 		//!state of locate_object_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t locate_object_global_state_;
-		uint8_t locate_object_global_counter;
+		uint8_t locate_object_global_counter_;
 
 		//!locate object from short distance with TCP CAM
 		int locate_object_close_range();
@@ -336,7 +337,7 @@ class Statemachine
 		void move_to_object_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_object_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_object_safe_state_;
-		uint8_t move_to_object_safe_counter;
+		uint8_t move_to_object_safe_counter_;
 
 		//!move to object vision
 		int move_to_object_vision();
@@ -345,7 +346,7 @@ class Statemachine
 		void move_to_object_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_object_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_object_vision_state_;
-		uint8_t move_to_object_vision_counter;
+		uint8_t move_to_object_vision_counter_;
 
 		//!move to object
 		int move_to_object();
@@ -354,7 +355,7 @@ class Statemachine
 		void move_to_object_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_object_state_;
-		uint8_t move_to_object_counter;
+		uint8_t move_to_object_counter_;
 
 		//!check whether the object has been placed correctly
 		int check_object_finished();
@@ -378,7 +379,7 @@ class Statemachine
 		void gripper_release_cb();
 		//!state of gripper_release() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t gripper_release_state_;
-		uint8_t gripper_release_counter;
+		uint8_t gripper_release_counter_;
 
 		//!release the gripper
 		int gripper_close();
@@ -386,7 +387,7 @@ class Statemachine
 		void gripper_close_cb();
 		//!state of gripper_close() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t gripper_close_state_;
-		uint8_t gripper_close_counter;
+		uint8_t gripper_close_counter_;
 
 		//!move to target zone safe
 		int move_to_target_zone_safe();
@@ -395,7 +396,7 @@ class Statemachine
 		void move_to_target_zone_safe_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_target_zone_safe() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_target_zone_safe_state_;
-		uint8_t move_to_target_zone_safe_counter;
+		uint8_t move_to_target_zone_safe_counter_;
 
 		//!move to target zone vision
 		int move_to_target_zone_vision();
@@ -404,7 +405,7 @@ class Statemachine
 		void move_to_target_zone_vision_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_target_zone_vision() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_target_zone_vision_state_;
-		uint8_t move_to_target_zone_vision_counter;
+		uint8_t move_to_target_zone_vision_counter_;
 
 		//!move to target zone
 		int move_to_target_zone();
@@ -413,7 +414,7 @@ class Statemachine
 		void move_to_target_zone_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of move_to_target_zone() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t move_to_target_zone_state_;
-		uint8_t move_to_target_zone_counter;
+		uint8_t move_to_target_zone_counter_;
 
 		//!homing function (goto upright pose)
 		int homing();
@@ -422,7 +423,7 @@ class Statemachine
 		void homing_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
 		//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 		uint8_t homing_state_;
-		uint8_t homing_counter;
+		uint8_t homing_counter_;
 };
 
 //Methods of main programm

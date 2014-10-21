@@ -19,6 +19,9 @@ Statemachine::Statemachine():
 		vision_action_client_("VisionAction", true),
 		active_goal_(0),
 		nr_goals_(0),
+		skip_vision_(false),
+		skip_motion_(false),
+		pause_in_loop_(0),
 		reached_active_goal_(false),
 		request_task_state_(OPEN),
 		start_sim_state_(OPEN),
@@ -27,36 +30,36 @@ Statemachine::Statemachine():
 		parse_yaml_file_state_(OPEN),
 		stop_sim_state_(OPEN),
 		watch_scene_state_(OPEN),
-		watch_scene_counter(0),
+		watch_scene_counter_(0),
 		explore_environment_init_state_(OPEN),
 		explore_environment_motion_state_(OPEN),
 		explore_environment_image_state_(OPEN),
-		explore_environment_image_counter(0),
+		explore_environment_image_counter_(0),
 		locate_object_global_state_(OPEN),
-		locate_object_global_counter(0),
+		locate_object_global_counter_(0),
 		locate_object_close_range_state_(OPEN),
 		check_object_finished_state_(OPEN),
 		check_object_gripped_state_(OPEN),
 		check_object_gripped_counter_(0),
 		get_grasping_pose_state_(OPEN),
 		move_to_object_vision_state_(OPEN),
-		move_to_object_vision_counter(0),
+		move_to_object_vision_counter_(0),
 		move_to_object_safe_state_(OPEN),
-		move_to_object_safe_counter(0),
+		move_to_object_safe_counter_(0),
 		move_to_object_state_(OPEN),
-		move_to_object_counter(0),
+		move_to_object_counter_(0),
 		gripper_release_state_(OPEN),
-		gripper_release_counter(0),
+		gripper_release_counter_(0),
 		gripper_close_state_(OPEN),
-		gripper_close_counter(0),
+		gripper_close_counter_(0),
 		move_to_target_zone_safe_state_(OPEN),
-		move_to_target_zone_safe_counter(0),
+		move_to_target_zone_safe_counter_(0),
 		move_to_target_zone_vision_state_(OPEN),
-		move_to_target_zone_vision_counter(0),
+		move_to_target_zone_vision_counter_(0),
 		move_to_target_zone_state_(OPEN),
-		move_to_target_zone_counter(0),
+		move_to_target_zone_counter_(0),
 		homing_state_(OPEN),
-		homing_counter(0)
+		homing_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -810,11 +813,11 @@ void Statemachine::scheduler_error_homing()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry once, otherwise skip homing:
 		homing_state_=OPEN;
-		homing_counter++;
+		homing_counter_++;
 
-		if(homing_counter > 1)
+		if(homing_counter_ > 1)
 		{
-			homing_counter=0;
+			homing_counter_=0;
 			scheduler_next();
 		}
 		break;
@@ -850,11 +853,11 @@ void Statemachine::scheduler_error_move_to_object_vision()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_object_vision_state_=OPEN;
-		move_to_object_vision_counter++;
+		move_to_object_vision_counter_++;
 
-		if(move_to_object_vision_counter > 1)
+		if(move_to_object_vision_counter_ > 1)
 		{
-			move_to_object_vision_counter=0;
+			move_to_object_vision_counter_=0;
 			scheduler_next();
 			//skip locate object close range
 			scheduler_next();
@@ -916,11 +919,11 @@ void Statemachine::scheduler_error_move_to_object_safe()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_object_safe_state_=OPEN;
-		move_to_object_safe_counter++;
+		move_to_object_safe_counter_++;
 
-		if(move_to_object_safe_counter > 1)
+		if(move_to_object_safe_counter_ > 1)
 		{
-			move_to_object_safe_counter=0;
+			move_to_object_safe_counter_=0;
 			scheduler_skip_object();
 		}
 		break;
@@ -972,11 +975,11 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_target_zone_vision_state_=OPEN;
-		move_to_target_zone_vision_counter++;
+		move_to_target_zone_vision_counter_++;
 
-		if(move_to_target_zone_vision_counter > 1)
+		if(move_to_target_zone_vision_counter_ > 1)
 		{
-			move_to_target_zone_vision_counter=0;
+			move_to_target_zone_vision_counter_=0;
 			//skip final vision check
 			check_object_finished_state_=FINISHED;
 			scheduler_next();
@@ -1032,11 +1035,11 @@ void Statemachine::scheduler_error_move_to_target_zone_safe()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_target_zone_safe_state_=OPEN;
-		move_to_target_zone_safe_counter++;
+		move_to_target_zone_safe_counter_++;
 
-		if(move_to_target_zone_safe_counter > 1)
+		if(move_to_target_zone_safe_counter_ > 1)
 		{
-			move_to_target_zone_safe_counter=0;
+			move_to_target_zone_safe_counter_=0;
 			scheduler_skip_object();
 		}
 		break;
@@ -1087,11 +1090,11 @@ void Statemachine::scheduler_error_move_to_object()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_object_state_=OPEN;
-		move_to_object_counter++;
+		move_to_object_counter_++;
 
-		if(move_to_object_counter > 1)
+		if(move_to_object_counter_ > 1)
 		{
-			move_to_object_counter=0;
+			move_to_object_counter_=0;
 			//try to close the gripper
 			move_to_object_state_=FINISHED;
 		}
@@ -1145,11 +1148,11 @@ void Statemachine::scheduler_error_move_to_target_zone()
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_target_zone_state_=OPEN;
-		move_to_target_zone_counter++;
+		move_to_target_zone_counter_++;
 
-		if(move_to_target_zone_counter > 1)
+		if(move_to_target_zone_counter_ > 1)
 		{
-			move_to_target_zone_counter=0;
+			move_to_target_zone_counter_=0;
 			//try to close the gripper
 			move_to_target_zone_state_=FINISHED;
 		}
@@ -1227,10 +1230,10 @@ void Statemachine::scheduler_error_gripper_close()
 	case fsm::SIM_SRV_NA:
 	case fsm::GRIPPING_ERROR:
 
-		gripper_close_counter++;
-		if(gripper_close_counter > 1)
+		gripper_close_counter_++;
+		if(gripper_close_counter_ > 1)
 		{
-			gripper_close_counter=0;
+			gripper_close_counter_=0;
 			gripper_close_state_=OPEN;
 
 			scheduler_skip_object();
@@ -1251,11 +1254,11 @@ void Statemachine::scheduler_error_gripper_release()
 	case fsm::SIM_SRV_NA:
 	case fsm::GRIPPING_ERROR:
 	{
-		gripper_close_counter++;
+		gripper_close_counter_++;
 		gripper_close_state_=OPEN;
-		if(gripper_close_counter > 1)
+		if(gripper_close_counter_ > 1)
 		{
-			gripper_close_counter=0;
+			gripper_close_counter_=0;
 			gripper_close_state_=FINISHED;
 
 			//insert gripper release after move_to_target_zone_safe
@@ -1294,11 +1297,11 @@ void Statemachine::scheduler_error_watch_scene()
 		//try again (once)
 		watch_scene_state_=OPEN;
 
-		watch_scene_counter++;
-		if(watch_scene_counter>1)
+		watch_scene_counter_++;
+		if(watch_scene_counter_>1)
 		{
 			scheduler_next();
-			watch_scene_counter=0;
+			watch_scene_counter_=0;
 			msg_error("JUSTIN please plug in the cameras! =)");
 		}
 		break;
@@ -1349,11 +1352,11 @@ void Statemachine::scheduler_error_explore_environment_image()
 		//try again (once)
 		explore_environment_image_state_=OPEN;
 
-		explore_environment_image_counter++;
-		if(explore_environment_image_counter>1)
+		explore_environment_image_counter_++;
+		if(explore_environment_image_counter_>1)
 		{
 			scheduler_next();
-			explore_environment_image_counter=0;
+			explore_environment_image_counter_=0;
 			msg_error("JUSTIN please plug in the cameras! =)");
 		}
 		break;
@@ -1376,7 +1379,7 @@ void Statemachine::scheduler_error_locate_object_global()
 	case fsm::SKIP_OBJECT:
 		msg_warn("Statemachine-Errorhandler: skip object");
 		locate_object_global_state_=OPEN;
-		locate_object_global_counter=0;
+		locate_object_global_counter_=0;
 		scheduler_skip_object();
 		break;
 
@@ -1384,10 +1387,10 @@ void Statemachine::scheduler_error_locate_object_global()
 		msg_warn("Statemachine-Errorhandler: pose not found -> decrease precision and try again");
 		//try it again with lower precision
 		locate_object_global_state_=OPEN;
-		locate_object_global_counter++;
-		if(locate_object_global_counter>3)
+		locate_object_global_counter_++;
+		if(locate_object_global_counter_>3)
 		{
-			locate_object_global_counter=0;
+			locate_object_global_counter_=0;
 			scheduler_skip_object();
 		}
 		break;
@@ -2262,7 +2265,7 @@ int Statemachine::watch_scene()
 		//==============================================
 		//reset state
 		watch_scene_state_=OPEN;
-		watch_scene_counter=0;
+		watch_scene_counter_=0;
 	}
 	else if(watch_scene_state_==FINISHEDWITHERROR)
 	{
@@ -2552,7 +2555,7 @@ int Statemachine::explore_environment_image()
 		//==============================================
 		//reset state
 		explore_environment_image_state_=OPEN;
-		explore_environment_image_counter=0;
+		explore_environment_image_counter_=0;
 	}
 	else if(explore_environment_image_state_==FINISHEDWITHERROR)
 	{
@@ -2643,7 +2646,7 @@ int Statemachine::locate_object_global()
 
 		am_msgs::VisionGoal goal;
 		goal.mode = GLOBAL_POSE_ESTIMATION;
-		goal.precision = locate_object_global_counter;
+		goal.precision = locate_object_global_counter_;
 		goal.object = cur_obj_;
 		goal.sensors.resize(ein_->get_nr_sensors());
 		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
@@ -2672,7 +2675,7 @@ int Statemachine::locate_object_global()
 		//==============================================
 		//reset state
 		locate_object_global_state_=OPEN;
-		locate_object_global_counter=0;
+		locate_object_global_counter_=0;
 	}
 	else if(locate_object_global_state_==FINISHEDWITHERROR)
 	{
@@ -3033,19 +3036,6 @@ int Statemachine::find_pose_set()
 					switch(grip_pose_type[oo])
 					{
 					case GRIP_POSE_HANDLE_CYLINDER_ZEQX_YPOSZ:
-						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL)
-						{
-							selected_object_pose_=oo;
-							selected_target_pose_=tt;
-							return 0;
-						}
-					case GRIP_POSE_HANDLE_CYLINDER_ZEQX_YNEGZ:
-						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL)
-						{
-							selected_object_pose_=oo;
-							selected_target_pose_=tt;
-							return 0;
-						}
 					case GRIP_POSE_HANDLE_CYLINDER_ZEQY_YPOSZ:
 						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YPOSZ_VERTICAL)
 						{
@@ -3053,8 +3043,41 @@ int Statemachine::find_pose_set()
 							selected_target_pose_=tt;
 							return 0;
 						}
+					case GRIP_POSE_HANDLE_CYLINDER_ZEQX_YNEGZ:
 					case GRIP_POSE_HANDLE_CYLINDER_ZEQY_YNEGZ:
 						if(place_pose_type[tt]==PLACE_POSE_HANDLE_CYLINDER_YNEGZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_BOX1_ZEQX_YPOSZ:
+					case GRIP_POSE_HANDLE_BOX1_ZEQY_YPOSZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_BOX1_YPOSZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_BOX1_ZEQX_YNEGZ:
+					case GRIP_POSE_HANDLE_BOX1_ZEQY_YNEGZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_BOX1_YNEGZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_BOX2_ZEQX_YPOSZ:
+					case GRIP_POSE_HANDLE_BOX2_ZEQY_YPOSZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_BOX2_YPOSZ_VERTICAL)
+						{
+							selected_object_pose_=oo;
+							selected_target_pose_=tt;
+							return 0;
+						}
+					case GRIP_POSE_HANDLE_BOX2_ZEQX_YNEGZ:
+					case GRIP_POSE_HANDLE_BOX2_ZEQY_YNEGZ:
+						if(place_pose_type[tt]==PLACE_POSE_HANDLE_BOX2_YNEGZ_VERTICAL)
 						{
 							selected_object_pose_=oo;
 							selected_target_pose_=tt;
@@ -3286,7 +3309,7 @@ int Statemachine::gripper_release()
 		//reset state
 		gripper_release_state_=OPEN;
 		set_object_load_state_=OPEN;
-		gripper_release_counter=0;
+		gripper_release_counter_=0;
 	}
 	else if(gripper_release_state_==FINISHEDWITHERROR)
 	{
@@ -3412,7 +3435,7 @@ int Statemachine::gripper_close()
 		//reset state
 		gripper_close_state_=OPEN;
 		set_object_load_state_=OPEN;
-		gripper_close_counter=0;
+		gripper_close_counter_=0;
 	}
 	else if(gripper_close_state_==FINISHEDWITHERROR)
 	{
@@ -3499,7 +3522,7 @@ int Statemachine::move_to_object_safe()
 		//reset state
 		move_to_object_safe_state_=OPEN;
 		//reset retry counter
-		move_to_object_safe_counter=0;
+		move_to_object_safe_counter_=0;
 	}
 	else if(move_to_object_safe_state_==FINISHEDWITHERROR)
 	{
@@ -3601,7 +3624,7 @@ int Statemachine::move_to_object_vision()
 		//==============================================
 		//reset state
 		move_to_object_vision_state_=OPEN;
-		move_to_object_vision_counter=0;
+		move_to_object_vision_counter_=0;
 	}
 	else if(move_to_object_vision_state_==FINISHEDWITHERROR)
 	{
@@ -3686,7 +3709,7 @@ int Statemachine::move_to_object()
 		//==============================================
 		//reset state
 		move_to_object_state_=OPEN;
-		move_to_object_counter=0;
+		move_to_object_counter_=0;
 	}
 	else if(move_to_object_state_==FINISHEDWITHERROR)
 	{
@@ -3784,7 +3807,7 @@ int Statemachine::move_to_target_zone_safe()
 		//==============================================
 		//reset state
 		move_to_target_zone_safe_state_=OPEN;
-		move_to_target_zone_safe_counter=0;
+		move_to_target_zone_safe_counter_=0;
 	}
 	else if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
 	{
@@ -3882,7 +3905,7 @@ int Statemachine::move_to_target_zone_vision()
 		//==============================================
 		//reset state
 		move_to_target_zone_vision_state_=OPEN;
-		move_to_target_zone_vision_counter=0;
+		move_to_target_zone_vision_counter_=0;
 	}
 	else if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
 	{
@@ -3964,7 +3987,7 @@ int Statemachine::move_to_target_zone()
 		//==============================================
 		//reset state
 		move_to_target_zone_state_=OPEN;
-		move_to_target_zone_counter=0;
+		move_to_target_zone_counter_=0;
 	}
 	else if(move_to_target_zone_state_==FINISHEDWITHERROR)
 	{
@@ -4036,7 +4059,7 @@ int Statemachine::homing()
 		//==============================================
 		//reset state
 		homing_state_=OPEN;
-		homing_counter=0;
+		homing_counter_=0;
 	}
 	else if(homing_state_==FINISHEDWITHERROR)
 	{
