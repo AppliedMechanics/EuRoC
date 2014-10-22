@@ -40,6 +40,8 @@ public:
 	void save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 	//!save the robot data to the ros parameter server
 	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save target zone data to parameter server
+	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
@@ -48,9 +50,13 @@ public:
 	uint16_t get_nr_sensors(){return nr_sensors;};
 	am_msgs::Sensor get_sensors(uint16_t nr){return sensors_[nr];};
 	uint16_t get_active_object_idx(){return active_object_;};
+	double get_time_limit(){return time_limit_;};
 
 	//!all objects finished
 	bool all_finished();
+
+	//!reset all variables
+	void reset();
 
 private:
 	//!task number of active task

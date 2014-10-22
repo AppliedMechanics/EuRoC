@@ -5,6 +5,7 @@
 //ros includes
 #include <ros/ros.h>
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <octomap_msgs/BoundingBoxQuery.h>
@@ -50,6 +51,18 @@ public:
 	Statemachine();
 	//!Destructor
 	~Statemachine();
+
+	//!init statemachine
+	int init_sm();
+
+	//!returns current state
+	fsm::fsm_state_t get_state()	{ return state_; };
+
+	//! returns the name of the given state-tree as a string
+	std::string get_state_name(fsm::fsm_state_t parstate);
+
+	//!main function that is called every timestep
+	int tick();
 
 	//!true if a task is actually running
 	bool task_active_;
@@ -147,6 +160,8 @@ private:
 	am_msgs::ObjState obj_state_msg_;
 	void publish_obj_state(uint16_t state);
 
+	ros::Publisher reset_pub_;
+
 
 
 	//!internal counter for while loop in execute()
@@ -205,20 +220,7 @@ private:
 	bool skip_motion_;
 	bool pause_in_loop_;
 
-public:
-	//!init statemachine
-	int init_sm();
 
-	//!returns current state
-	fsm::fsm_state_t get_state()	{ return state_; };
-
-	//! returns the name of the given state-tree as a string
-	std::string get_state_name(fsm::fsm_state_t parstate);
-
-	//!main function that is called every timestep
-	int tick();
-
-private:
 	//! move to next state
 	void scheduler_next();
 	//! make a new schedule, or modify the existing one
@@ -436,6 +438,11 @@ private:
 	//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t homing_state_;
 	uint8_t homing_counter_;
+
+
+	//utililty functions:
+	int check_time();
+	void reset();
 };
 
 //Methods of main programm

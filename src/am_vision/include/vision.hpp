@@ -6,6 +6,7 @@
 
 // Local includes
 #include <actionlib/server/simple_action_server.h>
+#include "std_msgs/Bool.h"
 #include <am_msgs/VisionAction.h>
 #include "MovePantilt.h"
 #include <ampointcloud.h>
@@ -87,12 +88,16 @@ private:
 protected:
 	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
 
+	ros::Subscriber reset_subscriber_;
+
 public:
 	// Eigen: alignment issues: http://eigen.tuxfamily.org/dox-devel/group__DenseMatrixManipulation__Alignement.html
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	Vision();
 	virtual ~Vision(){;};
+
+	void reset(const std_msgs::BoolConstPtr& rst);
 
 	void on_camera_scene_rgb_CB(const sensor_msgs::Image &image);
 	void on_camera_scene_depth_CB(const sensor_msgs::Image &image);

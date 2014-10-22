@@ -88,6 +88,7 @@ Statemachine::Statemachine():
 	planning_mode_.homing	= STANDARD_IK_7DOF;
 
 	obj_state_ = node_.advertise<am_msgs::ObjState>("obj_state", 1000);
+	reset_pub_ = node_.advertise<std_msgs::Bool>("reset", 1000);
 }
 
 Statemachine::~Statemachine()
@@ -575,9 +576,24 @@ void Statemachine::scheduler_schedule()
 				if(check_object_finished_state_==FINISHEDWITHERROR)
 				{
 					//-----------------------
-					ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					check_object_finished_state_ =FINISHED;
+//						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+//						check_object_finished_state_ =FINISHED;
 					//-----------------------
+					//skip current object and try next one
+
+					msg_warn("Statemachine-Errorhandler: object not in target zone -> try next object");
+					//and get next one
+					scheduler_next_object();
+
+
+					//publish object state for motion planning
+					publish_obj_state(OBJ_NOT_LOCATED);
+
+					//==============================================
+					scheduler_next();
+					//==============================================
+					//reset state
+					check_object_finished_state_=OPEN;
 				}
 				break;
 			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
@@ -1409,6 +1425,13 @@ void Statemachine::scheduler_error_locate_object_global()
 int Statemachine::tick()
 {
 	counter++; 	//tick counter (only for debugging)
+
+	//check simulation time if sim is running
+	if(-1 == check_time())
+	{
+
+	}
+
 	switch(state_.sub.one)
 	{
 	case fsm::INITIAL_STATE:
@@ -1918,6 +1941,7 @@ int Statemachine::parse_yaml_file()
 		try
 		{
 			ein_->save_objects_to_parameter_server(node_,false);
+			ein_->save_target_zone_to_parameter_server(node_,false);
 			ein_->save_robot_to_parameter_server(node_,false);
 		}
 		catch(...)
@@ -2205,15 +2229,15 @@ int Statemachine::stop_sim()
 		ROS_INFO("simulator stopped");
 		task_active_=false;
 		sim_running_=false;
-
-		//reset states:
-		request_task_state_=OPEN;
-		start_sim_state_=OPEN;
-		stop_sim_state_=OPEN;
+		reset();
 
 		//==============================================
 		//Don't call scheduler_next()! The state has to be set manually to be able to quit in any situation.
 		state_.sub.one = fsm::FINISHED;
+
+		//test neu:
+//		state_.sub.one = fsm::INITIAL_STATE;
+//		scheduler_schedule();
 		//==============================================
 		//reset state
 		stop_sim_state_=OPEN;
@@ -3476,7 +3500,6 @@ int Statemachine::move_to_object_safe()
 	{
 		ROS_INFO("move_to_object_safe() called: OPEN");
 
-
 		//publish object state for motion planning
 		if(cur_obj_gripped_==true)
 			publish_obj_state(OBJ_GRABED);
@@ -3488,12 +3511,14 @@ int Statemachine::move_to_object_safe()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
-
 		goal_queue[0].planning_algorithm = planning_mode_.object;
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+
+		if(cur_obj_gripped_==true)
+			goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+		else
+			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
 		//send first goal
 		move_to_object_safe_state_=RUNNING;
@@ -3591,10 +3616,7 @@ int Statemachine::move_to_object_vision()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
-
 		goal_queue[0].planning_algorithm = planning_mode_.object;
-
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3711,11 +3733,9 @@ int Statemachine::move_to_object()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 
-
 #warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_algorithm = planning_mode_.object;
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -3784,6 +3804,11 @@ int Statemachine::move_to_target_zone_safe()
 	{
 		ROS_INFO("move_to_target_zone_safe() called: OPEN");
 
+
+		//publish object state for motion planning
+		if(cur_obj_gripped_==false)
+		  publish_obj_state(OBJ_PLACED);
+
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -3791,9 +3816,7 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
-
 		goal_queue[0].planning_algorithm = planning_mode_.target;
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3828,6 +3851,11 @@ int Statemachine::move_to_target_zone_safe()
 	else if(move_to_target_zone_safe_state_==FINISHED)
 	{
 		ROS_INFO("move_to_target_zone_safe() called: FINISHED");
+
+
+		//publish object state for motion planning
+		if(cur_obj_gripped_==false)
+		  publish_obj_state(OBJ_FINISHED);
 
 		//==============================================
 		scheduler_next();
@@ -3889,9 +3917,7 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
-
 		goal_queue[0].planning_algorithm = planning_mode_.target;
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
@@ -3989,7 +4015,6 @@ int Statemachine::move_to_target_zone()
 #warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_algorithm = planning_mode_.target;
-
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -4147,10 +4172,112 @@ void Statemachine::publish_obj_state(uint16_t state)
 	case OBJ_PLACED:
 		obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
 		break;
+	case OBJ_FINISHED:
+	{
+		geometry_msgs::Pose empty_pose;
+		obj_state_msg_.obj_pose=empty_pose;
+		break;
+	}
 	default:
 		msg_error("Unknown object state !!!");
 		break;
 	}
 
 	obj_state_.publish(obj_state_msg_);
+}
+
+int Statemachine::check_time()
+{
+	double t_act=(double)ros::Time::now().toSec();
+
+	bool stop_needed=(sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM));
+
+	if(stop_needed && t_act >= ein_->get_time_limit())
+	{
+		msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
+
+		//soft shutdown of current task
+		state_queue.clear();
+
+		fsm::fsm_state_t temp_state;
+		//state:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+	}
+	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
+	{
+		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
+		//hard shutdown of current task
+		state_queue.clear();
+
+		fsm::fsm_state_t temp_state;
+		//state:
+		state_.sub.one=fsm::STOP_SIM;
+
+		reset();
+	}
+
+	return 0;
+}
+
+void Statemachine::reset()
+{
+	msg_info("reseting all variables in Statemachine and EurocInput!");
+
+	speed_mod_=0;
+	nr_scenes_=0;
+	active_scene_=-1;
+	active_goal_=0;
+	nr_goals_=0;
+	reached_active_goal_=false;
+	request_task_state_=OPEN;
+	start_sim_state_=OPEN;
+	set_object_load_state_=OPEN;
+	pause_state_=OPEN;
+	parse_yaml_file_state_=OPEN;
+	stop_sim_state_=OPEN;
+	watch_scene_state_=OPEN;
+	watch_scene_counter_=0;
+	explore_environment_init_state_=OPEN;
+	explore_environment_motion_state_=OPEN;
+	explore_environment_image_state_=OPEN;
+	explore_environment_image_counter_=0;
+	locate_object_global_state_=OPEN;
+	locate_object_global_counter_=0;
+	locate_object_close_range_state_=OPEN;
+	check_object_finished_state_=OPEN;
+	check_object_gripped_state_=OPEN;
+	check_object_gripped_counter_=0;
+	get_grasping_pose_state_=OPEN;
+	move_to_object_vision_state_=OPEN;
+	move_to_object_vision_counter_=0;
+	move_to_object_safe_state_=OPEN;
+	move_to_object_safe_counter_=0;
+	move_to_object_state_=OPEN;
+	move_to_object_counter_=0;
+	gripper_release_state_=OPEN;
+	gripper_release_counter_=0;
+	gripper_close_state_=OPEN;
+	gripper_close_counter_=0;
+	move_to_target_zone_safe_state_=OPEN;
+	move_to_target_zone_safe_counter_=0;
+	move_to_target_zone_vision_state_=OPEN;
+	move_to_target_zone_vision_counter_=0;
+	move_to_target_zone_state_=OPEN;
+	move_to_target_zone_counter_=0;
+	homing_state_=OPEN;
+	homing_counter_=0;
+
+	ein_->reset();
+
+	//motion_planning_action_client_.cancelAllGoals();
+	//vision_action_client_.cancelAllGoals();
+	lsc_.detach();
+
+	//vision_action_client_.cancelGoal();
+
+	//send reset message:
+	std_msgs::Bool rst;
+	rst.data=true;
+	reset_pub_.publish(rst);
 }

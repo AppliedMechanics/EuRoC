@@ -982,6 +982,37 @@ void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_
 	}
 }
 
+void EurocInput::save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
+{
+	std::stringstream parname;
+
+	for(uint16_t ii=0;ii<nr_zones_;ii++)
+	{
+		parname.str("");
+		parname << "target_zone_" << ii << "_x_";
+		n.setParam(parname.str(), target_zones_[ii].position.x);
+		parname.str("");
+		parname << "target_zone_" << ii << "_y_";
+		n.setParam(parname.str(), target_zones_[ii].position.y);
+		parname.str("");
+		parname << "target_zone_" << ii << "_radius_";
+		n.setParam(parname.str(), target_zones_[ii].max_distance);
+
+		uint16_t obj_nr;
+		for(uint16_t jj=0;jj<nr_objects_;jj++)
+		{
+			if(!target_zones_[ii].expected_object.compare(objects_[jj].name.c_str()))
+			{
+				obj_nr=jj;
+				break;
+			}
+		}
+		parname.str("");
+		parname << "target_zone_" << ii << "_obj_nr_";
+		n.setParam(parname.str(), obj_nr);
+	}
+}
+
 void EurocInput::save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
 {
 	std::stringstream parname;
@@ -1072,4 +1103,21 @@ bool EurocInput::all_finished()
 		return true;
 	else
 		return false;
+}
+
+void EurocInput::reset()
+{
+	task_nr_=0;
+	description_="";
+	log_filename_="";
+	objects_.clear();
+	nr_objects_=0;
+	active_object_=-1;
+	obj_finished_.clear();
+	target_zones_.clear();
+	nr_zones_=0;
+	active_zone_=0;
+	sensors_.clear();
+	nr_sensors=0;
+	puzzle_target_poses_.clear();
 }
