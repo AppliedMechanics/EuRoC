@@ -202,7 +202,7 @@ private:
 	sensor_msgs::JointState getCurrentJointState();
 
 
-
+	unsigned current_setTarget_algorithm_;
 
 
 	//! OCTOMAP

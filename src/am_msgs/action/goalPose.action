@@ -1,5 +1,6 @@
 #goal definition
 geometry_msgs/Pose goal_pose
+euroc_c2_msgs/Configuration goal_config
 int32 planning_algorithm
 int32 speed_percentage
 int32 inter_steps
