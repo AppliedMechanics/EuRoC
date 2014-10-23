@@ -63,12 +63,12 @@ obj_data_loaded_(false)
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	// planning algorithm for arm group
-	group_7DOF->setPlannerId(ompl_planners[6]);
+	group_7DOF->setPlannerId(ompl_planners[2]);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	// planning algorithm for arm + table axes
-	group_9DOF->setPlannerId(ompl_planners[6]);
+	group_9DOF->setPlannerId(ompl_planners[2]);
 
 
 	// robot model loader

@@ -5,6 +5,8 @@ planner_configs:
     type: geometric::EST
   LBKPIECEkConfigDefault:
     type: geometric::LBKPIECE
+    projection_evaluator: joints(lwr_joint_1,lwr_joint_2)
+    longest_valid_segment_fraction: 0.01
   BKPIECEkConfigDefault:
     type: geometric::BKPIECE
   KPIECEkConfigDefault:
@@ -35,7 +37,7 @@ LWR_9DOF:
     - PRMkConfigDefault
     - PRMstarkConfigDefault
   projection_evaluator: joints(axis_x,axis_y)
-  longest_valid_segment_fraction: 0.05
+  longest_valid_segment_fraction: 0.01
 gripper:
   planner_configs:
     - SBLkConfigDefault
@@ -62,3 +64,5 @@ LWR_7DOF:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
+  longest_valid_segment_fraction: 0.01
+

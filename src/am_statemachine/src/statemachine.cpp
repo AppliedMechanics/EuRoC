@@ -4159,13 +4159,13 @@ int Statemachine::check_time()
 	{
 		msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
 #ifndef ONE_TASK
-		//soft shutdown of current task
-		state_queue.clear();
-
-		fsm::fsm_state_t temp_state;
-		//state:
-		temp_state.sub.one=fsm::STOP_SIM;
-		state_queue.push_back(temp_state);
+//		//soft shutdown of current task
+//		state_queue.clear();
+//
+//		fsm::fsm_state_t temp_state;
+//		//state:
+//		temp_state.sub.one=fsm::STOP_SIM;
+//		state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::RESET;
 		state_queue.push_back(temp_state);
 #endif
@@ -4177,11 +4177,14 @@ int Statemachine::check_time()
 		//hard shutdown of current task
 		state_queue.clear();
 
-		fsm::fsm_state_t temp_state;
-		//state:
-		state_.sub.one=fsm::STOP_SIM;
-
-		reset();
+//		//hard shutdown of current task
+//		state_queue.clear();
+//
+//		fsm::fsm_state_t temp_state;
+//		//state:
+//		state_.sub.one=fsm::STOP_SIM;
+//
+//		reset();
 #endif
 	}
 
