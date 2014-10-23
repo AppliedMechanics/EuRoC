@@ -1780,7 +1780,7 @@ int Statemachine::request_task()
 			planning_mode_.target	= STANDARD_IK_7DOF;
 			planning_mode_.homing	= HOMING_7DOF;
 #else
-			planning_mode_.explore 	= MOVE_IT_7DOF;
+			planning_mode_.explore 	= STANDARD_IK_7DOF;
 			planning_mode_.object	= MOVE_IT_7DOF;
 			planning_mode_.target	= MOVE_IT_7DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
@@ -2373,7 +2373,12 @@ int Statemachine::explore_environment_init()
 
 		explore_environment_init_state_=RUNNING;
 
-#include "explore_snakeposes.hpp"
+		if (active_task_number_ == 4){
+			#include "explore_snakeposes.hpp"
+		}
+		else{
+			#include "explore_standard.hpp"
+		}
 //#include "explore_standard.hpp"
 
 		explore_environment_init_state_=FINISHED;
