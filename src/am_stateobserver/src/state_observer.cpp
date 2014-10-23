@@ -307,8 +307,8 @@ bool StateObserver::ReturnObjectPickedUp(am_msgs::ObjectPickedUp::Request &req, 
 			//new version:
 			//ideal (with set object load set correct!): estimated external force = 0!
 			//test if estim. ext. force is in [-0.1*f_set, 0.1*f_set]
-			if(get_estimated_external_force_srv.response.external_force.force.z <= 0.3*(gravityZ*(req.ObjectMass))
-					&& get_estimated_external_force_srv.response.external_force.force.z >= -0.3*(gravityZ*(req.ObjectMass)))
+			if(get_estimated_external_force_srv.response.external_force.force.z <= 0.5*(gravityZ*(req.ObjectMass))
+					&& get_estimated_external_force_srv.response.external_force.force.z >= -0.5*(gravityZ*(req.ObjectMass)))
 			{
 				ROS_INFO("Object picked up successfully!");
 				res.GotObject = true;

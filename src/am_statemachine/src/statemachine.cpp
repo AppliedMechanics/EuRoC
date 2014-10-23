@@ -3,7 +3,7 @@
 #include <StaticTFBroadcaster.h>
 
 static const uint32_t slow_moving_speed = 10; // in percent
-static const uint32_t std_moving_speed = 30; // in percent
+static const uint32_t std_moving_speed = 20; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 5;
 
