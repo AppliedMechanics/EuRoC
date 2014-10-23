@@ -17,34 +17,34 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
  
  
 <!-- MoveIt!  -->
-	 <include file="$(find lwr_moveit_config)/launch/demo_.launch"/>
+	 <include file="$(find lwr_moveit_config)/launch/demo_.launch" />
 		
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
-	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen"/>
+	<node pkg="am_grasping" type="am_grasping_srv" name="am_grasping_srv" output="screen" respawn="true" />
      <!-- Gripper  -->
-	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface"/>
+	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface" respawn="true" />
 
 
 <!-- Vision  -->
-	<node pkg="am_vision" type="am_vision" name="am_vision"/>
+	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="true" />
 
 <!-- Motion Planning  -->
-	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen"/>
+	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen" respawn="true" />
 	
 <!-- State Observer  -->
-	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver"/>
+	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" respawn="true" />
 
 <!-- State Machine -->
   <node pkg="am_statemachine" type="statemachine" name="statemachine" launch-prefix="xterm -geometry 120x70 -e"/> 
 
 <!-- Dynamic TF Broadcaster  -->
-	<node pkg="am_dyn_tf_broadcaster" type="am_tf_broadcaster" name="am_tf_broadcaster"/>
+	<node pkg="am_dyn_tf_broadcaster" type="am_tf_broadcaster" name="am_tf_broadcaster" respawn="true" />
 <!-- GUI  -->
-	<node pkg="am_gui" type="am_gui" name="am_gui"/>
+	<node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" />
 
 <!-- Octomap Server -->
-<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" respawn="true" >
     <param name="resolution" value="0.01" />
 
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->

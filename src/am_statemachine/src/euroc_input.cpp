@@ -13,7 +13,9 @@ EurocInput::EurocInput():
 	nr_objects_(0),
 	active_object_(-1),
 	nr_zones_(0),
-	active_zone_(-1)
+	active_zone_(-1),
+	time_limit_(3000),
+	nr_sensors(0)
 {
 
 }

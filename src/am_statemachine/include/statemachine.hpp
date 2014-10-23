@@ -127,10 +127,10 @@ private:
 	euroc_c2_msgs::SetObjectLoad set_object_load_srv_;
 
 	//!action client for motionplanning-node (am_motionplanning)
-	actionlib::SimpleActionClient<am_msgs::goalPoseAction> motion_planning_action_client_;
+	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_;
 	am_msgs::goalPoseResult motion_planning_result_;
 	//!action client for vision-node (am_vision)
-	actionlib::SimpleActionClient<am_msgs::VisionAction> vision_action_client_;
+	actionlib::SimpleActionClient<am_msgs::VisionAction> *vision_action_client_;
 	am_msgs::VisionResult vision_result_;
 	//!client for grasp-service (am_grasping)
 	ros::ServiceClient get_grasp_pose_client_;
@@ -442,7 +442,10 @@ private:
 
 	//utililty functions:
 	int check_time();
-	void reset();
+	int reset();
+	//! state of reset() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t reset_state_;
+	uint8_t reset_counter_;
 };
 
 //Methods of main programm

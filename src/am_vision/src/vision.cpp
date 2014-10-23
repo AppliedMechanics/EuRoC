@@ -108,7 +108,6 @@ Vision::Vision():
   vision_server_.start();
   ROS_INFO("vision action server started.");
 
-  reset_subscriber_=nh_.subscribe("reset",1000,&Vision::reset,this);
 }
 
 void Vision::reset(const std_msgs::BoolConstPtr& rst)

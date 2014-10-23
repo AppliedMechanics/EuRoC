@@ -7,62 +7,66 @@ static const uint32_t std_moving_speed = 30; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 5;
 
+#define ONE_TASK //run only one task and then quit
+
 Statemachine::Statemachine():
-	    						scenes_(1),
-	    						task_active_(false),
-	    						sim_running_(false),
-	    						speed_mod_(0),
-	    						nr_scenes_(0),
-	    						active_scene_(-1),
-	    						motion_planning_action_client_("goalPoseAction", true),
-	    						vision_action_client_("VisionAction", true),
-	    						active_goal_(0),
-	    						nr_goals_(0),
-	    						skip_vision_(false),
-	    						skip_motion_(false),
-	    						pause_in_loop_(0),
-	    						reached_active_goal_(false),
-	    						request_task_state_(OPEN),
-	    						start_sim_state_(OPEN),
-	    						set_object_load_state_(OPEN),
-	    						pause_state_(OPEN),
-	    						parse_yaml_file_state_(OPEN),
-	    						stop_sim_state_(OPEN),
-	    						watch_scene_state_(OPEN),
-	    						watch_scene_counter_(0),
-	    						explore_environment_init_state_(OPEN),
-	    						explore_environment_motion_state_(OPEN),
-	    						explore_environment_image_state_(OPEN),
-	    						explore_environment_image_counter_(0),
-	    						locate_object_global_state_(OPEN),
-	    						locate_object_global_counter_(0),
-	    						locate_object_close_range_state_(OPEN),
-	    						check_object_finished_state_(OPEN),
-	    						check_object_gripped_state_(OPEN),
-	    						check_object_gripped_counter_(0),
-	    						get_grasping_pose_state_(OPEN),
-	    						move_to_object_vision_state_(OPEN),
-	    						move_to_object_vision_counter_(0),
-	    						move_to_object_safe_state_(OPEN),
-	    						move_to_object_safe_counter_(0),
-	    						move_to_object_state_(OPEN),
-	    						move_to_object_counter_(0),
-	    						gripper_release_state_(OPEN),
-	    						gripper_release_counter_(0),
-	    						gripper_close_state_(OPEN),
-	    						gripper_close_counter_(0),
-	    						move_to_target_zone_safe_state_(OPEN),
-	    						move_to_target_zone_safe_counter_(0),
-	    						move_to_target_zone_vision_state_(OPEN),
-	    						move_to_target_zone_vision_counter_(0),
-	    						move_to_target_zone_state_(OPEN),
-	    						move_to_target_zone_counter_(0),
-	    						homing_state_(OPEN),
-	    						homing_counter_(0)
+	scenes_(1),
+	task_active_(false),
+	sim_running_(false),
+	speed_mod_(0),
+	nr_scenes_(0),
+	active_scene_(-1),
+	active_goal_(0),
+	nr_goals_(0),
+	skip_vision_(false),
+	skip_motion_(false),
+	pause_in_loop_(0),
+	reached_active_goal_(false),
+	request_task_state_(OPEN),
+	start_sim_state_(OPEN),
+	set_object_load_state_(OPEN),
+	pause_state_(OPEN),
+	parse_yaml_file_state_(OPEN),
+	stop_sim_state_(OPEN),
+	watch_scene_state_(OPEN),
+	watch_scene_counter_(0),
+	explore_environment_init_state_(OPEN),
+	explore_environment_motion_state_(OPEN),
+	explore_environment_image_state_(OPEN),
+	explore_environment_image_counter_(0),
+	locate_object_global_state_(OPEN),
+	locate_object_global_counter_(0),
+	locate_object_close_range_state_(OPEN),
+	check_object_finished_state_(OPEN),
+	check_object_gripped_state_(OPEN),
+	check_object_gripped_counter_(0),
+	get_grasping_pose_state_(OPEN),
+	move_to_object_vision_state_(OPEN),
+	move_to_object_vision_counter_(0),
+	move_to_object_safe_state_(OPEN),
+	move_to_object_safe_counter_(0),
+	move_to_object_state_(OPEN),
+	move_to_object_counter_(0),
+	gripper_release_state_(OPEN),
+	gripper_release_counter_(0),
+	gripper_close_state_(OPEN),
+	gripper_close_counter_(0),
+	move_to_target_zone_safe_state_(OPEN),
+	move_to_target_zone_safe_counter_(0),
+	move_to_target_zone_vision_state_(OPEN),
+	move_to_target_zone_vision_counter_(0),
+	move_to_target_zone_state_(OPEN),
+	move_to_target_zone_counter_(0),
+	homing_state_(OPEN),
+	homing_counter_(0),
+	reset_state_(OPEN),
+	reset_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
 
+	vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
+	motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
 	cur_obj_gripped_=false;
 
 	//==============================================
@@ -88,7 +92,7 @@ Statemachine::Statemachine():
 	planning_mode_.homing	= STANDARD_IK_7DOF;
 
 	obj_state_ = node_.advertise<am_msgs::ObjState>("obj_state", 1000);
-	reset_pub_ = node_.advertise<std_msgs::Bool>("reset", 1000);
+	reset_pub_ = node_.advertise<std_msgs::Bool>("kill", 1000);
 }
 
 Statemachine::~Statemachine()
@@ -153,9 +157,9 @@ int Statemachine::init_sm()
 	while(CheckActionServerCounter<2)	//Loop until all action servers are connected
 	{
 		CheckActionServerCounter=0;	//reset counter
-		if(motion_planning_action_client_.isServerConnected())
+		if(motion_planning_action_client_->isServerConnected())
 		{ CheckActionServerCounter++; }
-		if(vision_action_client_.isServerConnected())
+		if(vision_action_client_->isServerConnected())
 		{ CheckActionServerCounter++; }
 		if(CheckActionServerCounter<2)
 		{
@@ -173,8 +177,8 @@ int Statemachine::init_sm()
 		}
 	}
 	//following two lines don't work: see method description (statemachine is single threaded!)
-	//motion_planning_action_client_.waitForServer(ros::Duration(5.0));
-	//vision_action_client_.waitForServer(ros::Duration(5.0));
+	//motion_planning_action_client_->waitForServer(ros::Duration(5.0));
+	//vision_action_client_->waitForServer(ros::Duration(5.0));
 	ROS_INFO("all action servers are connected.");
 
 	return 0;
@@ -282,6 +286,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 			break;
 			case fsm::STOP_SIM:
 				return "STOP_SIM";
+			case fsm::RESET:
+				return "RESET";
 			default:
 				return "default";
 	}
@@ -452,7 +458,10 @@ void Statemachine::scheduler_schedule()
 				if(ein_->all_finished()) //stop simulation, when all objects finished
 				{
 					//temp_state.sub.one=fsm::PAUSE;								state_queue.push_back(temp_state);
-					temp_state.sub.one=fsm::STOP_SIM;							state_queue.push_back(temp_state);
+					temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
+#ifndef ONE_TASK
+					temp_state.sub.one=fsm::RESET;							state_queue.push_back(temp_state);
+#endif
 				}
 				else	//otherwise start with next object
 				{
@@ -465,7 +474,7 @@ void Statemachine::scheduler_schedule()
 
 					if(planning_mode_.object == STANDARD_IK_7DOF)
 					{
-						temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 					}
 
 					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
@@ -476,7 +485,7 @@ void Statemachine::scheduler_schedule()
 
 						if(planning_mode_.object == STANDARD_IK_7DOF)
 						{
-							temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+							temp_state.sub.two=fsm::HOMING;					state_queue.push_back(temp_state);
 						}
 
 						scheduler_place_object(EXECUTE_LATER);
@@ -494,7 +503,7 @@ void Statemachine::scheduler_schedule()
 				if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
 				{
 					state_queue.clear();	//throw plan away
-					temp_state.sub.one=fsm::STOP_SIM;				state_queue.push_back(temp_state);
+					temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
 					pause_state_=FINISHED;
 				}
 				break;
@@ -1429,7 +1438,7 @@ int Statemachine::tick()
 	//check simulation time if sim is running
 	if(-1 == check_time())
 	{
-
+		msg_error("check time failed!");
 	}
 
 	switch(state_.sub.one)
@@ -1460,6 +1469,7 @@ int Statemachine::tick()
 		return watch_scene();
 
 	case fsm::EXPLORE_ENVIRONMENT:
+	{
 		switch(state_.sub.two)
 		{
 		case fsm::PAUSE:
@@ -1482,108 +1492,118 @@ int Statemachine::tick()
 			return -1;
 		}
 		break;
+	}
 
-		case fsm::SOLVE_TASK:
-			switch(state_.sub.two)
+	case fsm::SOLVE_TASK:
+	{
+		switch(state_.sub.two)
+		{
+		case fsm::PAUSE:
+			return pause();
+
+		case fsm::SCHEDULER:
+			scheduler_schedule();	//make a schedule
+			scheduler_next();		//jump to the first state in the queue
+			return 0;
+
+		case fsm::HOMING:
+			return homing();
+
+		case fsm::LOCATE_OBJECT_GLOBAL:
+			return locate_object_global();
+
+		case fsm::GET_GRASPING_POSE:
+			return get_grasping_pose();
+
+		case fsm::GRIPPER_RELEASE:
+			return gripper_release();
+
+		case fsm::GRIPPER_CLOSE:
+			return gripper_close();
+
+		case fsm::MOVE_TO_OBJECT_VISION:
+			return move_to_object_vision();
+
+		case fsm::MOVE_TO_OBJECT_SAFE:
+			return move_to_object_safe();
+
+		case fsm::MOVE_TO_TARGET_ZONE_VISION:
+			return move_to_target_zone_vision();
+
+		case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+			return move_to_target_zone_safe();
+
+		case fsm::CHECK_OBJECT_FINISHED:
+			return check_object_finished();
+
+		case fsm::CHECK_OBJECT_GRIPPED:
+			return check_object_gripped();
+
+		case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+			return locate_object_close_range();
+
+		case fsm::GRAB_OBJECT:
+		{
+			switch(state_.sub.three)
 			{
 			case fsm::PAUSE:
 				return pause();
 
-			case fsm::SCHEDULER:
-				scheduler_schedule();	//make a schedule
-				scheduler_next();		//jump to the first state in the queue
-				return 0;
-
-			case fsm::HOMING:
-				return homing();
-
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				return locate_object_global();
-
-			case fsm::GET_GRASPING_POSE:
-				return get_grasping_pose();
-
-			case fsm::GRIPPER_RELEASE:
-				return gripper_release();
+			case fsm::MOVE_TO_OBJECT:
+				return move_to_object();
 
 			case fsm::GRIPPER_CLOSE:
 				return gripper_close();
 
-			case fsm::MOVE_TO_OBJECT_VISION:
-				return move_to_object_vision();
-
 			case fsm::MOVE_TO_OBJECT_SAFE:
 				return move_to_object_safe();
 
-			case fsm::MOVE_TO_TARGET_ZONE_VISION:
-				return move_to_target_zone_vision();
+			default:
+				msg_error("Error. unknown state of level three (SOLVE_TASK->GRAB_OBJECT) in tick()");
+				return -1;
+			}
+			break;
+		}
+
+		case fsm::PLACE_OBJECT:
+		{
+			switch(state_.sub.three)
+			{
+			case fsm::PAUSE:
+				return pause();
+
+			case fsm::MOVE_TO_TARGET_ZONE:
+				return move_to_target_zone();
+
+			case fsm::GRIPPER_RELEASE:
+				return gripper_release();
 
 			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
 				return move_to_target_zone_safe();
 
-			case fsm::CHECK_OBJECT_FINISHED:
-				return check_object_finished();
-
-			case fsm::CHECK_OBJECT_GRIPPED:
-				return check_object_gripped();
-
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				return locate_object_close_range();
-
-			case fsm::GRAB_OBJECT:
-				switch(state_.sub.three)
-				{
-				case fsm::PAUSE:
-					return pause();
-
-				case fsm::MOVE_TO_OBJECT:
-					return move_to_object();
-
-				case fsm::GRIPPER_CLOSE:
-					return gripper_close();
-
-				case fsm::MOVE_TO_OBJECT_SAFE:
-					return move_to_object_safe();
-
-				default:
-					msg_error("Error. unknown state of level three (SOLVE_TASK->GRAB_OBJECT) in tick()");
-					return -1;
-				}
-				break;
-
-				case fsm::PLACE_OBJECT:
-					switch(state_.sub.three)
-					{
-					case fsm::PAUSE:
-						return pause();
-
-					case fsm::MOVE_TO_TARGET_ZONE:
-						return move_to_target_zone();
-
-					case fsm::GRIPPER_RELEASE:
-						return gripper_release();
-
-					case fsm::MOVE_TO_TARGET_ZONE_SAFE:
-						return move_to_target_zone_safe();
-
-					default:
-						msg_error("Error. unknown state of level three (SOLVE_TASK->PLACE_OBJECT) in tick()");
-						return -1;
-					}
-					break;
-
-					default:
-						msg_error("Error. unknown state of level two (SOLVE_TASK) in tick()");
-						return -1;
+			default:
+				msg_error("Error. unknown state of level three (SOLVE_TASK->PLACE_OBJECT) in tick()");
+				return -1;
 			}
 			break;
+		}
 
-			case fsm::STOP_SIM:
-				return stop_sim();
+		default:
+			msg_error("Error. unknown state of level two (SOLVE_TASK) in tick()");
+			return -1;
+		}
+		break;
+	}
 
-			default:
-				msg_error("Error. unknown state of level one in tick()");
-				return -1;
+	case fsm::STOP_SIM:
+		return stop_sim();
+
+	case fsm::RESET:
+		return reset();
+
+	default:
+		msg_error("Error. unknown state of level one in tick()");
+		return -1;
 	}
 }
 
@@ -1827,6 +1847,9 @@ void Statemachine::start_sim_cb()
 	}
 
 	ROS_INFO("start_sim_cb() finished");
+
+	ROS_INFO("waiting for 3 seconds to let the start_sim_-service start...");
+	boost::this_thread::sleep( boost::posix_time::milliseconds(3000));
 }
 
 int Statemachine::start_sim()
@@ -1874,6 +1897,37 @@ int Statemachine::start_sim()
 		ROS_INFO("save_log service is available.");
 		//alternative with timeout:
 		//ros::service::waitForService(save_log_,ros::Duration(5.0));
+
+		msg_info("checking for action servers:");
+		if(vision_action_client_==0x0)
+		{
+			msg_warn("vision_action_client_->isServerConnected=0!");
+			//vor send goal -> isconnected abfragen, wenn nicht zerstören und neustarten!
+			//delete vision_action_client_;
+			vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
+			msg_warn("action client recreated, waiting for server");
+			vision_action_client_->waitForServer();
+		}
+		else
+		{
+			msg_info("vision action server available.");
+		}
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_==0x0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			//delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+			motion_planning_action_client_->cancelAllGoals();
+		}
+		else
+		{
+			msg_info("motion planning action server available.");
+		}
 
 		//==============================================
 		scheduler_next();
@@ -1959,7 +2013,6 @@ int Statemachine::parse_yaml_file()
 		//==============================================
 		//reset state
 		parse_yaml_file_state_=OPEN;
-
 	}
 	else if(parse_yaml_file_state_==FINISHEDWITHERROR)
 	{
@@ -1993,7 +2046,7 @@ int Statemachine::check_object_finished()
 
 		//send goal to vision-node.
 		check_object_finished_state_=RUNNING;
-		vision_action_client_.sendGoal(goal,
+		vision_action_client_->sendGoal(goal,
 				boost::bind(&Statemachine::check_object_finished_done,this,_1,_2),
 				visionClient::SimpleActiveCallback(),
 				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::check_object_finished_feedback,this,_1));
@@ -2223,21 +2276,17 @@ int Statemachine::stop_sim()
 	{
 		ROS_INFO("stop_sim() called: FINISHED");
 
-		//destroy thread
-		//lsc_.detach();
-
 		ROS_INFO("simulator stopped");
 		task_active_=false;
 		sim_running_=false;
-		reset();
 
 		//==============================================
 		//Don't call scheduler_next()! The state has to be set manually to be able to quit in any situation.
+#ifdef ONE_TASK
 		state_.sub.one = fsm::FINISHED;
-
-		//test neu:
-//		state_.sub.one = fsm::INITIAL_STATE;
-//		scheduler_schedule();
+#else
+		scheduler_next();
+#endif
 		//==============================================
 		//reset state
 		stop_sim_state_=OPEN;
@@ -2423,7 +2472,19 @@ int Statemachine::explore_environment_motion()
 
 		//send actual goal
 		explore_environment_motion_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));
@@ -2491,6 +2552,16 @@ int Statemachine::locate_object_global()
 		//ein_->print_object(&cur_obj_);
 		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
 
+		if(vision_action_client_->isServerConnected()==0)
+		{
+			msg_warn("vision_action_client_->isServerConnected=0!");
+			//vor send goal -> isconnected abfragen, wenn nicht zerstören und neustarten!
+			delete vision_action_client_;
+			vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
+			msg_warn("action client recreated, waiting for server");
+			vision_action_client_->waitForServer();
+		}
+
 		am_msgs::VisionGoal goal;
 		goal.mode = GLOBAL_POSE_ESTIMATION;
 		goal.precision = locate_object_global_counter_;
@@ -2504,7 +2575,7 @@ int Statemachine::locate_object_global()
 
 		//send goal to vision-node.
 		locate_object_global_state_=RUNNING;
-		vision_action_client_.sendGoal(goal,
+		vision_action_client_->sendGoal(goal,
 				boost::bind(&Statemachine::locate_object_global_done,this,_1,_2),
 				visionClient::SimpleActiveCallback(),
 				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
@@ -2598,7 +2669,7 @@ int Statemachine::locate_object_close_range()
 
 		//send goal to vision-node.
 		locate_object_close_range_state_=RUNNING;
-		vision_action_client_.sendGoal(goal,
+		vision_action_client_->sendGoal(goal,
 				boost::bind(&Statemachine::locate_object_close_range_done,this,_1,_2),
 				visionClient::SimpleActiveCallback(),
 				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_close_range_feedback,this,_1));
@@ -3329,9 +3400,21 @@ int Statemachine::move_to_object_safe()
 		else
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		//send first goal
 		move_to_object_safe_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
@@ -3353,7 +3436,7 @@ int Statemachine::move_to_object_safe()
 			ROS_INFO("move_to_object_safe() called: RUNNING (remaining goals)");
 		}
 
-		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
@@ -3430,9 +3513,20 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		//send first goal
 		move_to_object_vision_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_object_vision_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
@@ -3454,7 +3548,7 @@ int Statemachine::move_to_object_vision()
 			ROS_INFO("move_to_object_vision() called: RUNNING (remaining goals)");
 		}
 
-		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::move_to_object_vision_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
@@ -3549,8 +3643,20 @@ int Statemachine::move_to_object()
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		move_to_object_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_object_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
@@ -3630,8 +3736,20 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		move_to_target_zone_safe_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_target_zone_safe_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_safe_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_safe_feedback,this,_1));
@@ -3651,7 +3769,7 @@ int Statemachine::move_to_target_zone_safe()
 			ROS_INFO("move_to_target_zone_safe() called: RUNNING (remaining goals)");
 		}
 
-		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::move_to_target_zone_safe_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_safe_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_safe_feedback,this,_1));
@@ -3731,8 +3849,20 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		move_to_target_zone_vision_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_target_zone_vision_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_vision_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_vision_feedback,this,_1));
@@ -3752,7 +3882,7 @@ int Statemachine::move_to_target_zone_vision()
 			ROS_INFO("move_to_target_zone_vision() called: RUNNING (remaining goals)");
 		}
 
-		motion_planning_action_client_.sendGoal(goal_queue[active_goal_],
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::move_to_target_zone_vision_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_vision_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_vision_feedback,this,_1));
@@ -3828,8 +3958,20 @@ int Statemachine::move_to_target_zone()
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		move_to_target_zone_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::move_to_target_zone_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_target_zone_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_target_zone_feedback,this,_1));
@@ -3904,8 +4046,20 @@ int Statemachine::homing()
 		goal_queue[0].planning_algorithm = planning_mode_.homing;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
 		homing_state_=RUNNING;
-		motion_planning_action_client_.sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[0],
 				boost::bind(&Statemachine::homing_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::homing_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::homing_feedback,this,_1));
@@ -4004,7 +4158,7 @@ int Statemachine::check_time()
 	if(stop_needed && t_act >= ein_->get_time_limit())
 	{
 		msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
-
+#ifndef ONE_TASK
 		//soft shutdown of current task
 		state_queue.clear();
 
@@ -4012,10 +4166,14 @@ int Statemachine::check_time()
 		//state:
 		temp_state.sub.one=fsm::STOP_SIM;
 		state_queue.push_back(temp_state);
+		temp_state.sub.one=fsm::RESET;
+		state_queue.push_back(temp_state);
+#endif
 	}
 	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
 	{
 		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
+#ifndef ONE_TASK
 		//hard shutdown of current task
 		state_queue.clear();
 
@@ -4024,69 +4182,98 @@ int Statemachine::check_time()
 		state_.sub.one=fsm::STOP_SIM;
 
 		reset();
+#endif
 	}
 
 	return 0;
 }
 
-void Statemachine::reset()
+int Statemachine::reset()
 {
-	msg_info("reseting all variables in Statemachine and EurocInput!");
+	if(reset_state_==OPEN)
+	{
+		msg_info("reseting all variables in Statemachine and EurocInput!");
 
-	speed_mod_=0;
-	nr_scenes_=0;
-	active_scene_=-1;
-	active_goal_=0;
-	nr_goals_=0;
-	reached_active_goal_=false;
-	request_task_state_=OPEN;
-	start_sim_state_=OPEN;
-	set_object_load_state_=OPEN;
-	pause_state_=OPEN;
-	parse_yaml_file_state_=OPEN;
-	stop_sim_state_=OPEN;
-	watch_scene_state_=OPEN;
-	watch_scene_counter_=0;
-	explore_environment_init_state_=OPEN;
-	explore_environment_motion_state_=OPEN;
-	explore_environment_image_state_=OPEN;
-	explore_environment_image_counter_=0;
-	locate_object_global_state_=OPEN;
-	locate_object_global_counter_=0;
-	locate_object_close_range_state_=OPEN;
-	check_object_finished_state_=OPEN;
-	check_object_gripped_state_=OPEN;
-	check_object_gripped_counter_=0;
-	get_grasping_pose_state_=OPEN;
-	move_to_object_vision_state_=OPEN;
-	move_to_object_vision_counter_=0;
-	move_to_object_safe_state_=OPEN;
-	move_to_object_safe_counter_=0;
-	move_to_object_state_=OPEN;
-	move_to_object_counter_=0;
-	gripper_release_state_=OPEN;
-	gripper_release_counter_=0;
-	gripper_close_state_=OPEN;
-	gripper_close_counter_=0;
-	move_to_target_zone_safe_state_=OPEN;
-	move_to_target_zone_safe_counter_=0;
-	move_to_target_zone_vision_state_=OPEN;
-	move_to_target_zone_vision_counter_=0;
-	move_to_target_zone_state_=OPEN;
-	move_to_target_zone_counter_=0;
-	homing_state_=OPEN;
-	homing_counter_=0;
+		speed_mod_=0;
+		nr_scenes_=0;
+		active_scene_=-1;
+		active_goal_=0;
+		nr_goals_=0;
+		reached_active_goal_=false;
+		request_task_state_=OPEN;
+		start_sim_state_=OPEN;
+		set_object_load_state_=OPEN;
+		pause_state_=OPEN;
+		parse_yaml_file_state_=OPEN;
+		stop_sim_state_=OPEN;
+		watch_scene_state_=OPEN;
+		watch_scene_counter_=0;
+		explore_environment_init_state_=OPEN;
+		explore_environment_motion_state_=OPEN;
+		explore_environment_image_state_=OPEN;
+		explore_environment_image_counter_=0;
+		locate_object_global_state_=OPEN;
+		locate_object_global_counter_=0;
+		locate_object_close_range_state_=OPEN;
+		check_object_finished_state_=OPEN;
+		check_object_gripped_state_=OPEN;
+		check_object_gripped_counter_=0;
+		get_grasping_pose_state_=OPEN;
+		move_to_object_vision_state_=OPEN;
+		move_to_object_vision_counter_=0;
+		move_to_object_safe_state_=OPEN;
+		move_to_object_safe_counter_=0;
+		move_to_object_state_=OPEN;
+		move_to_object_counter_=0;
+		gripper_release_state_=OPEN;
+		gripper_release_counter_=0;
+		gripper_close_state_=OPEN;
+		gripper_close_counter_=0;
+		move_to_target_zone_safe_state_=OPEN;
+		move_to_target_zone_safe_counter_=0;
+		move_to_target_zone_vision_state_=OPEN;
+		move_to_target_zone_vision_counter_=0;
+		move_to_target_zone_state_=OPEN;
+		move_to_target_zone_counter_=0;
+		homing_state_=OPEN;
+		homing_counter_=0;
 
-	ein_->reset();
+		ein_->reset();
+		lsc_.detach();
 
-	//motion_planning_action_client_.cancelAllGoals();
-	//vision_action_client_.cancelAllGoals();
-	lsc_.detach();
 
-	//vision_action_client_.cancelGoal();
+		//send reset message:
+		std_msgs::Bool rst;
+		rst.data=true;
+		reset_pub_.publish(rst);
 
-	//send reset message:
-	std_msgs::Bool rst;
-	rst.data=true;
-	reset_pub_.publish(rst);
+		delete vision_action_client_;
+		vision_action_client_=0x0;
+		delete motion_planning_action_client_;
+		motion_planning_action_client_=0x0;
+
+		reset_state_=RUNNING;
+	}
+	else if(reset_state_==RUNNING)
+	{
+		reset_counter_++;
+
+		if(reset_counter_ > 10)
+		{
+			reset_state_=FINISHED;
+			reset_counter_=0;
+		}
+	}
+	else if(reset_state_==FINISHED)
+	{
+
+
+		reset_state_=OPEN;
+
+		//test neu:
+		state_.sub.one = fsm::INITIAL_STATE;
+		scheduler_schedule();
+	}
+
+	return 0;
 }

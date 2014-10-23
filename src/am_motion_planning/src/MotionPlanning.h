@@ -13,6 +13,7 @@
 #include <tf/LinearMath/Transform.h>
 #include <string>
 #include <boost/thread.hpp>
+#include <std_msgs/Bool.h>
 
 // AM
 #include <actionlib/server/simple_action_server.h>

@@ -16,10 +16,19 @@
 #include "MovePantilt.h"
 #include <config.hpp>
 
+//!external kill functionality from a message
+bool kill_flag=false;
+void kill_cb(const std_msgs::BoolConstPtr& rst)
+{
+	kill_flag=true;
+	ROS_INFO("stop received!");
+}
+
 int main(int argc, char** argv) {
 
 	ros::init(argc, argv, "am_vision");
 	ros::NodeHandle nodeHandle;
+	ros::Subscriber rs_=nodeHandle.subscribe("kill",1000,kill_cb);
 
 	bool skip_vision;
 	ros::param::get("/skip_vision",skip_vision);
@@ -40,12 +49,13 @@ int main(int argc, char** argv) {
 	// end of Example
 
 	ros::Rate r(10); // 10 hz
-	while (ros::ok())
+	while (ros::ok() && !kill_flag)
 	{
 		ros::spinOnce();
 		r.sleep();
 
 	}
+	msg_warn("exiting Vision node!");
 
 	return 0;
 }
