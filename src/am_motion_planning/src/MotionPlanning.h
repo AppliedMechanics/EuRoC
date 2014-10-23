@@ -18,8 +18,6 @@
 #include <actionlib/server/simple_action_server.h>
 #include <am_msgs/goalPoseAction.h>
 #include <am_msgs/CheckPoses.h>
-#include <am_msgs/AttachObject.h>
-#include <am_msgs/DetachObject.h>
 #include <am_msgs/ObjState.h>
 #include <am_msgs/CallSetStopConditions.h>
 #include <config.hpp>
@@ -75,6 +73,14 @@ struct ObjectInformation
 	std::vector<double> shape_lengths;
 	std::vector<double> shape_radii;
 	geometry_msgs::Pose obj_pose;
+};
+
+struct TargetZoneInformation
+{
+	int obj_nr;
+	double x;
+	double y;
+	double r;
 };
 
 
@@ -187,18 +193,23 @@ private:
 	bool homingMoveIt();
 	bool getMoveItSolution();
 	bool initializeMoveGroup();
-	void setPlanningConstraints();
 	bool setPlanningTarget(unsigned algorithm);
 	bool valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 
-	bool objectExists(int idx);
-	void createObject(int idx, geometry_msgs::Pose obj_pose);
+	bool objectExists(int obj_index);
+	void createObject(int obj_index, geometry_msgs::Pose obj_pose);
 	void readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
+	void setShapePositions(int obj_index, geometry_msgs::Pose obj_pose);//wird zur ZEit nicht verwendet
+	void addGroundPlaneToWorld();
 	void addObjectToWorld(int obj_index);
-	void attachObject(int idx);
-	void detachObject(int idx);
-	bool attachRandomObject();
-
+	void removeObjectFromWorld(int obj_index);
+	void attachObject(int obj_index);
+	void detachObject(int obj_index);
+	void addObjectToTargetZone(int obj_index);
+	double getTargetObjectHeight(int obj_index);
+	double getTargetObjectRadius(int obj_index);
+	geometry_msgs::Pose getTargetObjectPose(int obj_index);
+	void readTargetZoneDataFromParamServer(int obj_index, TargetZoneInformation& tz_info);
 	sensor_msgs::JointState getCurrentJointState();
 
 

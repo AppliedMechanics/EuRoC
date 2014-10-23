@@ -85,12 +85,6 @@ obj_data_loaded_(false)
 	// planning scene monitor
 	planning_scene_monitor = new planning_scene_monitor::PlanningSceneMonitor("robot_description");
 
-
-	// Motion service servers
-	//	 attach_object_service_ = nh_.advertiseService("AttachObject_srv", &MotionPlanning::return_object_attached, this);
-	//	 detach_object_service_ = nh_.advertiseService("DetachObject_srv", &MotionPlanning::return_object_detached, this);
-
-
 	// Octomap service client
 	octomap_ = "/octomap_binary";
 	octomap_client_ = nh_.serviceClient<octomap_msgs::GetOctomap>(octomap_);
@@ -100,7 +94,6 @@ obj_data_loaded_(false)
 
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
-	//	 attached_object_publisher_ = nh_.advertise<moveit_msgs::AttachedCollisionObject>("attached_collision_object", 1);
 
 }
 
@@ -534,7 +527,8 @@ bool MotionPlanning::getOctomap()
 	ros::param::get("/skip_vision", skip_vision_);
 
 	if(skip_vision_ && active_task_nr_==4 && ros::service::waitForService(octomap_,ros::Duration(4.0)))
-	{	// manuelles reinladen
+	{	
+	  // manuelles reinladen
 		octomap_client_.call(octomap_srv_);
 
 		ROS_INFO("Loading Octomap manually from file.");
@@ -594,9 +588,6 @@ bool MotionPlanning::homingMoveIt()
 			{
 				return false;
 			}
-
-
-
 
 			bool setTarget_successful = false;
 			setTarget_successful = setPlanningTarget(HOMING);
@@ -670,6 +661,7 @@ bool MotionPlanning::getMoveItSolution()
 	{
 		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
 		{
+
 			if(!initializeMoveGroup()){return false;}
 
 			unsigned current_setTarget_attempt = 1;
@@ -1476,6 +1468,8 @@ bool MotionPlanning::transformToLWRBase()
 
 void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 {
+
+
 	if(!obj_data_loaded_)
 	{
 		obj_data_loaded_=true;
@@ -1483,6 +1477,8 @@ void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 		int nr_obj;
 		ros::param::get("/nr_objects_",nr_obj);
 		obj_state_.resize(nr_obj);
+
+		addGroundPlaneToWorld();
 	}
 	ROS_INFO("get object state cb called! ");
 	switch(msg->obj_state)
@@ -1492,54 +1488,276 @@ void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 		obj_state_[msg->obj_index]=*msg;
 
 		// if the current object doesn't exist yet in the environment
-		//		if (!objectExists(msg->obj_index))
-		//		{
-		//			// create one
-		//			createObject(msg->obj_index, msg->obj_pose);
-		//
-		//			// and add it to the planning scene
-		//			addObjectToWorld(msg->obj_index);
-		//
-		//			// publish the planning scene
-		//			ROS_INFO("publish object.");
-		//			planning_scene_.is_diff = true;
-		//			planning_scene_diff_publisher_.publish(planning_scene_);
-		//
-		//			ROS_INFO("Object added to the environment.");
-		//		}
-		//		else
-		//		{
-		//			ROS_WARN("Object already exists in the environment.");
-		//		}
+		if (!objectExists(msg->obj_index))
+		{
+			// create one
+			createObject(msg->obj_index, msg->obj_pose);
+
+			// and add it to the planning scene
+			addObjectToWorld(msg->obj_index);
+
+			ROS_INFO("Object added to the environment.");
+		}
 
 		break;
 	case OBJ_GRIPPING:
 		ROS_INFO("state: OBJ GRIPPING");
 		obj_state_[msg->obj_index]=*msg;
 
+		// remove the object from the world
+		removeObjectFromWorld(msg->obj_index);
+
+		// update the robot state
+		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		planning_scene_.robot_state.is_diff = true;
 
 		break;
 	case OBJ_GRABED:
+	{
 		ROS_INFO("state: OBJ_GRABED");
 		obj_state_[msg->obj_index]=*msg;
 
+		// attach the object to the gripper
 		attachObject(msg->obj_index);
-		planning_scene_diff_publisher_.publish(planning_scene_);
-		ROS_INFO("Object attached to the gripper.");
+
+		// update the robot state
+		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		planning_scene_.robot_state.is_diff = true;
 
 		break;
+	}
 	case OBJ_PLACED:
 		ROS_INFO("state: OBJ_PLACED");
 		obj_state_[msg->obj_index]=*msg;
 
+//		setShapePositions(msg->obj_index, msg->obj_pose);
+
+		// detach the object from the gripper
 		detachObject(msg->obj_index);
-		planning_scene_diff_publisher_.publish(planning_scene_);
-		ROS_INFO("Object detached from the gripper.");
+
+		// update the robot state
+		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		planning_scene_.robot_state.is_diff = true;
+
+		break;
+	case OBJ_FINISHED:
+		ROS_INFO("state: OBJ_FINISHED");
+		obj_state_[msg->obj_index]=*msg;
+
+		// add the object to its target zone
+		addObjectToTargetZone(msg->obj_index);
+
+		// update the robot state
+		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		planning_scene_.robot_state.is_diff = true;
 
 		break;
 	default:
-		msg_error("Unknown object state !!!");
+		msg_error("Unknown object state (msg->obj_state=%d)!!!",msg->obj_state);
 		break;
+	}
+
+
+	// publish the planning scene
+	planning_scene_.is_diff = true;
+	planning_scene_diff_publisher_.publish(planning_scene_);
+
+	planning_scene_.world.collision_objects.clear();
+	planning_scene_.robot_state.attached_collision_objects.clear();
+}
+
+void MotionPlanning::addGroundPlaneToWorld()
+{
+	ROS_INFO("Adding ground plane to collision world...(trunk)");
+
+	moveit_msgs::PlanningScene plane_scene;
+
+//	planning_scene::PlanningScene planning_scene(kinematic_model_);
+
+
+	//************************
+	// ground plane
+
+	shape_msgs::SolidPrimitive primitive;
+	primitive.type = primitive.BOX;
+	primitive.dimensions.resize(3);
+	primitive.dimensions[0] = 1.84;
+	primitive.dimensions[1] = 1.84;
+	primitive.dimensions[2] = 0.01;
+
+	geometry_msgs::Pose primitive_pose;
+	primitive_pose.position.x = 0;
+	primitive_pose.position.y = 0;
+	primitive_pose.position.z = -0.01;
+	primitive_pose.orientation.x = 0;
+	primitive_pose.orientation.y = 0;
+	primitive_pose.orientation.z = 0;
+	primitive_pose.orientation.w = 1;
+
+	moveit_msgs::CollisionObject object;
+	object.id = "ground";
+	object.header.frame_id = "/Origin";
+	object.header.stamp = ros::Time::now();
+	object.operation = object.ADD;
+	object.primitives.push_back(primitive);
+	object.primitive_poses.push_back(primitive_pose);
+
+	plane_scene.world.collision_objects.push_back(object);
+
+
+	//************************
+	// pan tilt station
+	geometry_msgs::Pose pan_tilt_pose_mast, pan_tilt_pose_cam;
+	pan_tilt_pose_mast.position.x = 0.92;
+	pan_tilt_pose_mast.position.y = 0.92;
+	pan_tilt_pose_mast.position.z = 0.55;
+	pan_tilt_pose_mast.orientation.w = 1;
+	pan_tilt_pose_cam.position.x = 0.92;
+	pan_tilt_pose_cam.position.y = 0.92;
+	pan_tilt_pose_cam.position.z = 1.1;
+
+	shape_msgs::SolidPrimitive pan_tilt_primitive_mast, pan_tilt_primitive_cam;
+	pan_tilt_primitive_mast.type = pan_tilt_primitive_mast.CYLINDER;
+	pan_tilt_primitive_mast.dimensions.resize(2);
+	pan_tilt_primitive_mast.dimensions[0] = 1.1;// height
+	pan_tilt_primitive_mast.dimensions[1] = 0.05;// radius
+	pan_tilt_primitive_cam.type = pan_tilt_primitive_cam.SPHERE;
+	pan_tilt_primitive_cam.dimensions.resize(1);
+	pan_tilt_primitive_cam.dimensions[0] = 0.3;// radius
+
+	moveit_msgs::CollisionObject pan_tilt_object;
+	pan_tilt_object.header.frame_id = "/Origin";
+	pan_tilt_object.id = "pan_tilt_mast";
+	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
+	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
+	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
+	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
+
+	plane_scene.world.collision_objects.push_back(pan_tilt_object);
+
+
+//	planning_scene_monitor->getPlanningScene()
+//
+//
+//
+//
+//	moveit_msgs::AllowedCollisionMatrix collision_matrix_msg;
+//
+//	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(collision_matrix_msg);
+//
+//	ROS_WARN("Collision matrix entry names:");
+//	for (unsigned i = 0; i < collision_matrix_msg.entry_names.size(); ++i)
+//	{
+//		ROS_INFO_STREAM(collision_matrix_msg.entry_names[i]);
+//	}
+//
+//	// modify collision matrix
+//	collision_matrix_msg.entry_names.push_back("ground");
+//	moveit_msgs::AllowedCollisionEntry allowed_collision_entry;
+//	allowed_collision_entry.enabled.push_back(true);
+//	collision_matrix_msg.entry_values.push_back(allowed_collision_entry);
+//
+//	plane_scene.allowed_collision_matrix = collision_matrix_msg;
+
+
+	plane_scene.is_diff = true;
+	planning_scene_diff_publisher_.publish(plane_scene);
+	plane_scene.world.collision_objects.clear();
+
+
+
+//	moveit_msgs::AllowedCollisionMatrix new_collision_matrix_msg;
+//
+//	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(new_collision_matrix_msg);
+//
+//	ROS_WARN("Collision matrix entry names:");
+//	for (unsigned i = 0; i < new_collision_matrix_msg.entry_names.size(); ++i)
+//	{
+//		ROS_INFO_STREAM(collision_matrix_msg.entry_names[i]);
+//	}
+
+
+
+
+
+//	planning_scene.getAllowedCollisionMatrixNonConst().removeEntry("ground","base");
+//
+//	plane_scene.allowed_collision_matrix = planning_scene.getAllowedCollisionMatrix();
+//	planning_scene_diff_publisher_.publish(plane_scene);
+	// getPlanningScene() nicht sicher?
+
+
+
+	ROS_INFO("Finished adding ground plane.");
+
+
+
+
+
+}
+
+void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
+{
+	if (objectExists(obj_index))
+	{
+		// create a structure to store the object information including all of its shapes
+		ObjectInformation obj_info;
+		// read the information of all shapes forming the object
+		readObjectDataFromParamServer(obj_index, obj_info);
+
+		// store object pose in a tf
+		tf::Transform tf_object;
+		tf_object.setOrigin(tf::Vector3(obj_pose.position.x,
+				obj_pose.position.y,
+				obj_pose.position.z));
+		tf_object.setRotation(tf::Quaternion(obj_pose.orientation.x,
+				obj_pose.orientation.y,
+				obj_pose.orientation.z,
+				obj_pose.orientation.w));
+
+
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				// it now refers to the appropriate element of collision_objects_
+				// the new position of each shape can be computed
+
+				// clear the old shape poses
+				it->primitive_poses.clear();
+
+				for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
+				{
+					tf::Transform tf_shape_local, tf_shape_global;
+					tf_shape_local.setOrigin(tf::Vector3(obj_info.shape_poses[i].position.x,
+							obj_info.shape_poses[i].position.y,
+							obj_info.shape_poses[i].position.z));
+					tf_shape_local.setRotation(tf::Quaternion(obj_info.shape_poses[i].orientation.x,
+							obj_info.shape_poses[i].orientation.y,
+							obj_info.shape_poses[i].orientation.z,
+							obj_info.shape_poses[i].orientation.w));
+
+					tf_shape_global.mult(tf_object, tf_shape_local);
+
+					geometry_msgs::Pose current_primitive_pose;
+					current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
+					current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
+					current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
+					current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
+					current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
+					current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
+					current_primitive_pose.orientation.w = tf_shape_global.getRotation().getW();
+
+					it->primitive_poses.push_back(current_primitive_pose);
+
+				}
+				break;
+			}
+		}
 	}
 }
 
@@ -1562,6 +1780,7 @@ bool MotionPlanning::objectExists(int obj_index)
 				return true;
 			}
 		}
+		return false;
 	}
 	ROS_WARN("Object does not exist in the environment, yet.");
 	return false;
@@ -1658,15 +1877,13 @@ void MotionPlanning::createObject(int obj_index, geometry_msgs::Pose obj_pose)
 
 void MotionPlanning::readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info)
 {
-	ROS_WARN("Reading object data from the parameter server.");
+	ROS_INFO("Reading object data from the parameter server...");
+
 	// get number of shapes of the current object
 	std::stringstream _number_shapes;
 	_number_shapes << "/object_";//_number_shapes.str("/object_");
 	_number_shapes << obj_index;
 	_number_shapes << "_nr_shapes_";
-
-	ROS_INFO_STREAM(_number_shapes.str());
-
 	ros::param::get(_number_shapes.str(), obj_info.nr_shapes);
 
 	// store the information of each shape
@@ -1812,21 +2029,306 @@ void MotionPlanning::readObjectDataFromParamServer(int obj_index, ObjectInformat
 		}
 		}
 	}
-	ROS_WARN("Finished reading object data from the parameter server.");
+	ROS_INFO("Finished reading object data from the parameter server.");
 }
 
 void MotionPlanning::addObjectToWorld(int obj_index)
 {
-	ROS_WARN("Adding object to the environment.");
-	// for testing
-	planning_scene_.world.collision_objects.push_back(collision_objects_.back());
-	planning_scene_.is_diff = true;
-	ROS_WARN("Adding object to the environment finished.");
+	if (objectExists(obj_index))
+	{
+		ROS_INFO("Adding object to the environment...");
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object;
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end(); ++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				current_object = *it;
+				ROS_INFO("Object found.");
+				break;
+			}
+		}
+
+		// add object to the environment
+		planning_scene_.world.collision_objects.clear();
+		current_object.header.frame_id = "/Origin";
+		current_object.header.stamp = ros::Time::now();
+		current_object.operation = current_object.ADD;
+		planning_scene_.world.collision_objects.push_back(current_object);
+
+		ROS_INFO("Adding object to the environment finished.");
+
+	}
+	else
+		ROS_WARN("Object cannot be added to the environment. It must be created first.");
 }
 
-void MotionPlanning::attachObject(int idx)
+void MotionPlanning::removeObjectFromWorld(int obj_index)
 {
+	if (objectExists(obj_index))
+	{
+		ROS_INFO("Removing object from the environment...");
 
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object;
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				current_object = *it;
+				break;
+			}
+		}
+
+		// remove object from the environment
+		planning_scene_.world.collision_objects.clear();
+		moveit_msgs::CollisionObject remove_object;
+		remove_object.id = current_object.id;
+		remove_object.header.frame_id = "/Origin";
+		remove_object.header.stamp = ros::Time::now();
+		remove_object.operation = remove_object.REMOVE;
+		planning_scene_.world.collision_objects.push_back(remove_object);
+
+		ROS_INFO("Removing object from the environment finished.");
+	}
+	else
+		ROS_WARN("Object cannot be removed from the world. It must be created first.");
+}
+
+void MotionPlanning::attachObject(int obj_index)
+{
+	if (objectExists(obj_index))
+	{
+		ROS_INFO("Attaching object to the gripper...");
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object;
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				current_object = *it;
+				break;
+			}
+		}
+
+		// attach object to the gripper
+		planning_scene_.robot_state.attached_collision_objects.clear();
+		moveit_msgs::AttachedCollisionObject attached_object;
+		attached_object.link_name = "gripper_tcp";
+		attached_object.object = current_object;
+		attached_object.object.operation = attached_object.object.ADD;
+		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
+
+		ROS_INFO("Attaching object to the gripper finished.");
+	}
+	else
+		ROS_WARN("Object cannot be attached to the gripper. It must be created first.");
+}
+
+void MotionPlanning::detachObject(int obj_index)
+{
+	if (objectExists(obj_index))
+	{
+		ROS_INFO("Detaching object from the gripper...");
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object;
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				current_object = *it;
+				break;
+			}
+		}
+
+		// detach object from the gripper
+		planning_scene_.robot_state.attached_collision_objects.clear();
+		moveit_msgs::AttachedCollisionObject detached_object;
+		detached_object.object.id = current_object.id;
+		detached_object.object.operation = detached_object.object.REMOVE;
+		planning_scene_.robot_state.attached_collision_objects.push_back(detached_object);
+
+		ROS_INFO("Detaching object from the gripper finished.");
+	}
+	else
+		ROS_WARN("Object cannot be detached from the gripper. It must be created first.");
+
+}
+
+
+void MotionPlanning::addObjectToTargetZone(int obj_index)
+{
+	if (objectExists(obj_index))
+	{
+		ROS_INFO("Adding object to the target zone...");
+
+		// create a structure to store the object information including all of its shapes
+		ObjectInformation obj_info;
+		// read the information of all shapes forming the object
+		readObjectDataFromParamServer(obj_index, obj_info);
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object;
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				current_object = *it;
+				break;
+			}
+		}
+
+		// reinsert object into the environment
+		planning_scene_.world.collision_objects.clear();
+		moveit_msgs::CollisionObject placed_object;
+		placed_object.id = current_object.id;
+		placed_object.header.frame_id = "/Origin";
+//		placed_object.header.stamp = ros::Time::now();
+
+
+		shape_msgs::SolidPrimitive placed_shape;
+		placed_shape.type = placed_shape.CYLINDER;
+		placed_shape.dimensions.resize(2);
+		placed_shape.dimensions[0] = getTargetObjectHeight(obj_index);
+		ROS_INFO_STREAM("Target cylinder height: " << placed_shape.dimensions[0]);
+		placed_shape.dimensions[1] = getTargetObjectRadius(obj_index);
+		ROS_INFO_STREAM("Target cylinder radius: " << placed_shape.dimensions[1]);
+		placed_object.primitives.push_back(placed_shape);
+
+		placed_object.primitive_poses.push_back(getTargetObjectPose(obj_index));
+		placed_object.operation = placed_object.ADD;
+		planning_scene_.world.collision_objects.push_back(placed_object);
+
+		ROS_INFO("Adding object to the target zone finished.");
+
+	}
+	else
+		ROS_WARN("Object cannot be added to the target zone. It must be created first.");
+
+}
+
+double MotionPlanning::getTargetObjectHeight(int obj_index)
+{
+	double h = 0;
+
+	// create a structure to store the object information including all of its shapes
+	ObjectInformation obj_info;
+	// read the information of all shapes forming the object
+	readObjectDataFromParamServer(obj_index, obj_info);
+
+	for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
+	{
+		if (obj_info.shape_types[i] == SHAPE_BOX)
+			h += obj_info.shape_sizes[i].z;
+		else if (obj_info.shape_types[i] == SHAPE_CYLINDER)
+			h += obj_info.shape_lengths[i];
+	}
+
+	return h;
+}
+
+double MotionPlanning::getTargetObjectRadius(int obj_index)
+{
+	double r = 0;
+
+	// create a structure to store the object information including all of its shapes
+	ObjectInformation obj_info;
+	// read the information of all shapes forming the object
+	readObjectDataFromParamServer(obj_index, obj_info);
+
+	for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
+	{
+		if (obj_info.shape_types[i] == SHAPE_BOX)
+		{
+			if (obj_info.shape_sizes[i].x > r)
+				r = obj_info.shape_sizes[i].x;
+			if (obj_info.shape_sizes[i].y > r)
+				r = obj_info.shape_sizes[i].y;
+		}
+		else if (obj_info.shape_types[i] == SHAPE_CYLINDER)
+		{
+			if (obj_info.shape_radii[i] > r)
+				r = obj_info.shape_radii[i];
+		}
+	}
+
+	return r;
+}
+
+geometry_msgs::Pose MotionPlanning::getTargetObjectPose(int obj_index)
+{
+	geometry_msgs::Pose target_object_pose;
+
+	// create a structure to store the target zone information
+	TargetZoneInformation tz_info;
+	// read the target zone information from the parameter server
+	readTargetZoneDataFromParamServer(obj_index, tz_info);
+
+	double object_height = getTargetObjectHeight(obj_index);
+
+	target_object_pose.position.x = tz_info.x;
+	target_object_pose.position.y = tz_info.y;
+	target_object_pose.position.z = object_height/2.0;
+
+	return target_object_pose;
+}
+
+void MotionPlanning::readTargetZoneDataFromParamServer(int obj_index, TargetZoneInformation& tz_info)
+{
+	ROS_INFO("Reading target zone data from the parameter server...");
+
+	std::stringstream obj_nr;
+	obj_nr << obj_index;
+
+	for (unsigned tz_index = 0; tz_index < obj_state_.size(); ++tz_index)
+	{
+		std::stringstream _tz_obj_nr;
+		_tz_obj_nr << "/target_zone_" << tz_index << "_obj_nr_";
+		ros::param::get(_tz_obj_nr.str(), tz_info.obj_nr);
+
+		std::stringstream tz_nr;
+		tz_nr << tz_info.obj_nr;
+
+		if (!tz_nr.str().compare(obj_nr.str()))
+		{
+			std::stringstream _tz_x;
+			_tz_x << "/target_zone_" << tz_index << "_x_";
+			ros::param::get(_tz_x.str(), tz_info.x);
+
+			std::stringstream _tz_y;
+			_tz_y << "/target_zone_" << tz_index << "_y_";
+			ros::param::get(_tz_y.str(), tz_info.y);
+
+			std::stringstream _tz_r;
+			_tz_r << "/target_zone_" << tz_index << "_radius_";
+			ros::param::get(_tz_r.str(), tz_info.r);
+
+			ROS_INFO("Reading target zone data finished.");
+			break;
+		}
+	}
 }
 
 sensor_msgs::JointState MotionPlanning::getCurrentJointState()
@@ -1855,13 +2357,10 @@ sensor_msgs::JointState MotionPlanning::getCurrentJointState()
 
 		}
 	}
+	else
+		ROS_ERROR("Failed getting the telemetry.");
 
 	return currentState;
-}
-
-void MotionPlanning::detachObject(int idx)
-{
-
 }
 
 bool MotionPlanning::initializeMoveGroup()
@@ -2022,7 +2521,6 @@ bool MotionPlanning::initializeMoveGroup()
 	// OCTOMAP
 	robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
 	kinematic_model_ = robot_model_loader.getModel();
-	planning_scene::PlanningScene planning_scene(kinematic_model_);
 
 	// if Octomap received, then stored in _octree
 
@@ -2041,41 +2539,14 @@ bool MotionPlanning::initializeMoveGroup()
 
 	// Load current robot state into planning scene
 	planning_scene_.robot_state.joint_state = getCurrentJointState();
+	planning_scene_.robot_state.is_diff = true;
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
 
-
-	geometry_msgs::Pose pan_tilt_pose_mast, pan_tilt_pose_cam;
-	pan_tilt_pose_mast.position.x = 0.92;
-	pan_tilt_pose_mast.position.y = 0.92;
-	pan_tilt_pose_mast.position.z = 0.55;
-	pan_tilt_pose_mast.orientation.w = 1;
-	pan_tilt_pose_cam.position.x = 0.92;
-	pan_tilt_pose_cam.position.y = 0.92;
-	pan_tilt_pose_cam.position.z = 1.1;
-
-	shape_msgs::SolidPrimitive pan_tilt_primitive_mast, pan_tilt_primitive_cam;
-	pan_tilt_primitive_mast.type = pan_tilt_primitive_mast.CYLINDER;
-	pan_tilt_primitive_mast.dimensions.resize(2);
-	pan_tilt_primitive_mast.dimensions[0] = 1.1;// height
-	pan_tilt_primitive_mast.dimensions[1] = 0.05;// radius
-	pan_tilt_primitive_cam.type = pan_tilt_primitive_cam.SPHERE;
-	pan_tilt_primitive_cam.dimensions.resize(1);
-	pan_tilt_primitive_cam.dimensions[0] = 0.3;// radius
-
-	moveit_msgs::CollisionObject pan_tilt_object;
-	pan_tilt_object.header.frame_id = "/Origin";
-	pan_tilt_object.id = "pan_tilt_mast";
-	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
-	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
-	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
-	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
-
-
-	planning_scene_.world.collision_objects.push_back(pan_tilt_object);
 	// Publish msg on topic /planning_scene
 	planning_scene_diff_publisher_.publish(planning_scene_);
+
 
 	//==========================================================================================
 
