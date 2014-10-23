@@ -73,7 +73,6 @@ add_service_files(
   SetStaticTFData.srv
   AttachObject.srv
   DetachObject.srv
-  Reset.srv
 )
 
 ## Generate actions in the 'action' folder
