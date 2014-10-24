@@ -43,6 +43,7 @@ int main(int argc, char **argv)
 		ros::Duration(0.5).sleep();
 		ros::spinOnce();
 	}
+	msg_warn("exiting Grasping node!");
 
 	//ros::spin();
 

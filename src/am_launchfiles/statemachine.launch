@@ -30,13 +30,13 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="true" />
 
 <!-- Motion Planning  -->
-	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen" respawn="true" />
+	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen" />
 	
 <!-- State Observer  -->
 	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" respawn="true" />
 
 <!-- State Machine -->
-  <node pkg="am_statemachine" type="statemachine" name="statemachine" launch-prefix="xterm -geometry 120x70 -e"/> 
+  <node pkg="am_statemachine" type="statemachine" name="statemachine" launch-prefix="xterm -geometry 120x70 -e" required="true"/> 
 
 <!-- Dynamic TF Broadcaster  -->
 	<node pkg="am_dyn_tf_broadcaster" type="am_tf_broadcaster" name="am_tf_broadcaster" respawn="true" />
@@ -44,7 +44,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" />
 
 <!-- Octomap Server -->
-<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" respawn="true" >
+<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" >
     <param name="resolution" value="0.01" />
 
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->

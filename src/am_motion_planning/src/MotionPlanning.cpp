@@ -1290,7 +1290,7 @@ bool MotionPlanning::getLimits()
 	table_axis1_limit_.max_acceleration = 1.0;//2.0;
 	table_axis2_limit_.max_acceleration = 1.0;//2.0;
 	for (int ii=0;ii<7;ii++)
-		joint_limits_[ii].max_acceleration = 400 * M_PI / 180.0;
+		joint_limits_[ii].max_acceleration = 100 * M_PI / 180.0;
 	gripper_limit_.max_acceleration = 2.0;
 
 	table_axis1_limit_.max_velocity *= (double)speed_percentage_*0.01;

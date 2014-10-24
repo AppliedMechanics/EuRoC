@@ -3,7 +3,7 @@
 #include <StaticTFBroadcaster.h>
 
 static const uint32_t slow_moving_speed = 10; // in percent
-static const uint32_t std_moving_speed = 20; // in percent
+static const uint32_t std_moving_speed = 30; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 5;
 
@@ -99,6 +99,9 @@ Statemachine::~Statemachine()
 {
 	ROS_INFO("destructor called");
 	delete ein_;
+	delete broadcaster_;
+	delete vision_action_client_;
+	delete motion_planning_action_client_;
 
 	if(sim_running_)
 	{
@@ -4158,38 +4161,44 @@ int Statemachine::check_time()
 {
 	double t_act=(double)ros::Time::now().toSec();
 
-	bool stop_needed=(sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM));
+	//
+	static bool first=true;
 
+	bool stop_needed=(sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM));
 	if(stop_needed && t_act >= ein_->get_time_limit())
 	{
-		msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
+		if(first)
+		{
+			msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
+			first=false;
+		}
 #ifndef ONE_TASK
-//		//soft shutdown of current task
-//		state_queue.clear();
-//
-//		fsm::fsm_state_t temp_state;
-//		//state:
-//		temp_state.sub.one=fsm::STOP_SIM;
-//		state_queue.push_back(temp_state);
+		//soft shutdown of current task
+		state_queue.clear();
+
+		fsm::fsm_state_t temp_state;
+		//state:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::RESET;
 		state_queue.push_back(temp_state);
 #endif
 	}
 	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
 	{
-		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
 #ifndef ONE_TASK
+		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
 		//hard shutdown of current task
 		state_queue.clear();
 
-//		//hard shutdown of current task
-//		state_queue.clear();
-//
-//		fsm::fsm_state_t temp_state;
-//		//state:
-//		state_.sub.one=fsm::STOP_SIM;
-//
-//		reset();
+		//hard shutdown of current task
+		state_queue.clear();
+
+		fsm::fsm_state_t temp_state;
+		//state:
+		state_.sub.one=fsm::STOP_SIM;
+
+		reset();
 #endif
 	}
 

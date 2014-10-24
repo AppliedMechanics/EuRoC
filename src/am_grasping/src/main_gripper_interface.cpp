@@ -10,7 +10,7 @@
 #include <am_msgs/GripperControl.h>
 #include <config.hpp>
 #include <utils.hpp>
-
+#include <std_msgs/Bool.h>
 
 //! Services
 std::string euroc_c2_interface_ = "/euroc_interface_node";
@@ -19,11 +19,20 @@ euroc_c2_msgs::MoveAlongJointPath move_along_joint_path_srv_;
 euroc_c2_msgs::Configuration commanded_configuration_;
 
 
+//!external kill functionality from a message
+bool kill_flag=false;
+void kill_cb(const std_msgs::BoolConstPtr& rst)
+{
+	kill_flag=true;
+	ROS_INFO("stop received!");
+}
 
 bool gripper_interface(am_msgs::GripperControl::Request &req, am_msgs::GripperControl::Response &res)
 {
 	ros::NodeHandle n;
 	ros::ServiceClient move_along_joint_path_client_ = n.serviceClient<euroc_c2_msgs::MoveAlongJointPath>(move_along_joint_path_);
+
+
 	// Read Request variables: ...
 	//			... object type, ....
 	gripping_mode_t gripping_mode = (gripping_mode_t)req.gripping_mode;
@@ -113,13 +122,17 @@ int main(int argc, char** argv) {
 
 	ros::ServiceServer service = nh_.advertiseService("GripperInterface", gripper_interface);
 
+	ros::Subscriber rs_=nh_.subscribe("kill",1000,kill_cb);
+
+
 
 	ros::Rate r(10); // 10 hz
-	while (ros::ok())
+	while (ros::ok() && !kill_flag)
 	{
 		ros::spinOnce();
 		r.sleep();
 	}
+	msg_warn("exiting GrippingInterface node!");
 
 	return 0;
 
