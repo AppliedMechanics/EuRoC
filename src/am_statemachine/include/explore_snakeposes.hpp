@@ -1,7 +1,7 @@
 msg_warn("SNAKE POSES CHOSEN. BE CAREFUL!");
 std::vector<tf::Quaternion> q_temp;
 active_goal_=0;
-nr_goals_=10;
+nr_goals_=20;
 goal_queue.resize(nr_goals_);
 q_temp.resize(nr_goals_);
 
@@ -18,7 +18,16 @@ order_poses[6] = 9;
 order_poses[7] = 8;
 order_poses[8] = 7;
 order_poses[9] = 6;
-
+order_poses[10] = 10;
+order_poses[11] = 11;
+order_poses[12] = 12;
+order_poses[13] = 13;
+order_poses[14] = 14;
+order_poses[15] = 15;
+order_poses[16] = 16;
+order_poses[17] = 17;
+order_poses[18] = 18;
+order_poses[19] = 19;
 
 
 for (int i=0;i<nr_goals_;i++)
@@ -164,6 +173,159 @@ goal_queue[order_poses[9]].goal_config.q[6] = 0.35;
 goal_queue[order_poses[9]].goal_config.q[7] = 1.572;
 goal_queue[order_poses[9]].goal_config.q[8] = 1.572;
 
+/////////////////////////////////////////////////////////////////////////
+// NEW POSES
+
+goal_queue[order_poses[10]].goal_pose.position.x = -0.381;
+goal_queue[order_poses[10]].goal_pose.position.y = 0;
+goal_queue[order_poses[10]].goal_pose.position.z = 0.792;
+q_temp[10].setRPY(2.7,-0.094,-3.085);
+goal_queue[order_poses[10]].goal_config.q[0] = 0;
+goal_queue[order_poses[10]].goal_config.q[1] = 0;
+goal_queue[order_poses[10]].goal_config.q[2] = 0;
+goal_queue[order_poses[10]].goal_config.q[3] = 0;
+goal_queue[order_poses[10]].goal_config.q[4] = 0;
+goal_queue[order_poses[10]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[10]].goal_config.q[6] = 0.45;
+goal_queue[order_poses[10]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[10]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[11]].goal_pose.position.x = -0.27;
+goal_queue[order_poses[11]].goal_pose.position.y = -0.27;
+goal_queue[order_poses[11]].goal_pose.position.z = 0.792;
+q_temp[11].setRPY(-3.14,-0.082,-2.357);
+goal_queue[order_poses[11]].goal_config.q[0] = 0;
+goal_queue[order_poses[11]].goal_config.q[1] = 0;
+goal_queue[order_poses[11]].goal_config.q[2] = 0.193;
+goal_queue[order_poses[11]].goal_config.q[3] = 0;
+goal_queue[order_poses[11]].goal_config.q[4] = 0.593;
+goal_queue[order_poses[11]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[11]].goal_config.q[6] = 0;
+goal_queue[order_poses[11]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[11]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[12]].goal_pose.position.x = -0.232;
+goal_queue[order_poses[12]].goal_pose.position.y = -0.232;
+goal_queue[order_poses[12]].goal_pose.position.z = 0.921;
+q_temp[12].setRPY(-3.14,-0.442,-2.357);
+goal_queue[order_poses[12]].goal_config.q[0] = 0;
+goal_queue[order_poses[12]].goal_config.q[1] = 0;
+goal_queue[order_poses[12]].goal_config.q[2] = 0.193;
+goal_queue[order_poses[12]].goal_config.q[3] = 0;
+goal_queue[order_poses[12]].goal_config.q[4] = 0.593;
+goal_queue[order_poses[12]].goal_config.q[5] = -1;
+goal_queue[order_poses[12]].goal_config.q[6] = 0;
+goal_queue[order_poses[12]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[12]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[13]].goal_pose.position.x = 0;
+goal_queue[order_poses[13]].goal_pose.position.y = -0.381;
+goal_queue[order_poses[13]].goal_pose.position.z = 0.792;
+q_temp[13].setRPY(2.7,-0.094,-1.627);
+goal_queue[order_poses[13]].goal_config.q[0] = 0;
+goal_queue[order_poses[13]].goal_config.q[1] = 0;
+goal_queue[order_poses[13]].goal_config.q[2] = 0.382;
+goal_queue[order_poses[13]].goal_config.q[3] = 0;
+goal_queue[order_poses[13]].goal_config.q[4] = 1.187;
+goal_queue[order_poses[13]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[13]].goal_config.q[6] = -0.45;
+goal_queue[order_poses[13]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[13]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[14]].goal_pose.position.x = 0.3-0.143;
+goal_queue[order_poses[14]].goal_pose.position.y = -0.3-0.354;
+goal_queue[order_poses[14]].goal_pose.position.z = 0.792;
+q_temp[14].setRPY(2.45,-0.11,-2.037);
+goal_queue[order_poses[14]].goal_config.q[0] = 0.3;
+goal_queue[order_poses[14]].goal_config.q[1] = 0.3;
+goal_queue[order_poses[14]].goal_config.q[2] = 0;
+goal_queue[order_poses[14]].goal_config.q[3] = 0;
+goal_queue[order_poses[14]].goal_config.q[4] = 1.187;
+goal_queue[order_poses[14]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[14]].goal_config.q[6] = -0.7;
+goal_queue[order_poses[14]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[14]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[15]].goal_pose.position.x = -0.3-0.354;
+goal_queue[order_poses[15]].goal_pose.position.y = 0.3-0.143;
+goal_queue[order_poses[15]].goal_pose.position.z = 0.792;
+q_temp[15].setRPY(-2.45,-0.11,-2.671);
+goal_queue[order_poses[15]].goal_config.q[0] = -0.3;
+goal_queue[order_poses[15]].goal_config.q[1] = 0.3;
+goal_queue[order_poses[15]].goal_config.q[2] = 0;
+goal_queue[order_poses[15]].goal_config.q[3] = 0;
+goal_queue[order_poses[15]].goal_config.q[4] = 0.385;
+goal_queue[order_poses[15]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[15]].goal_config.q[6] = 0.7;
+goal_queue[order_poses[15]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[15]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[16]].goal_pose.position.x = -0.5-0.172;
+goal_queue[order_poses[16]].goal_pose.position.y = 0.2-0.533;
+goal_queue[order_poses[16]].goal_pose.position.z = 0.563;
+q_temp[16].setRPY(-2.224,0.334,-1.647);
+goal_queue[order_poses[16]].goal_config.q[0] = -0.5;
+goal_queue[order_poses[16]].goal_config.q[1] = 0.2;
+goal_queue[order_poses[16]].goal_config.q[2] = 1;
+goal_queue[order_poses[16]].goal_config.q[3] = 0.5;
+goal_queue[order_poses[16]].goal_config.q[4] = 0.385;
+goal_queue[order_poses[16]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[16]].goal_config.q[6] = 0.7;
+goal_queue[order_poses[16]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[16]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[17]].goal_pose.position.x = -0.5-0.079;
+goal_queue[order_poses[17]].goal_pose.position.y = 0.2-0.506;
+goal_queue[order_poses[17]].goal_pose.position.z = 0.65;
+q_temp[17].setRPY(-2.293,0.115,-0.986);
+goal_queue[order_poses[17]].goal_config.q[0] = -0.5;
+goal_queue[order_poses[17]].goal_config.q[1] = 0.2;
+goal_queue[order_poses[17]].goal_config.q[2] = 1;
+goal_queue[order_poses[17]].goal_config.q[3] = 0.5;
+goal_queue[order_poses[17]].goal_config.q[4] = 1.1;
+goal_queue[order_poses[17]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[17]].goal_config.q[6] = 0.4;
+goal_queue[order_poses[17]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[17]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[18]].goal_pose.position.x = 0.2-0.531;
+goal_queue[order_poses[18]].goal_pose.position.y = -0.5-0.176;
+goal_queue[order_poses[18]].goal_pose.position.z = 0.563;
+q_temp[18].setRPY(2.224,0.334,-3.059);
+goal_queue[order_poses[18]].goal_config.q[0] = 0.2;
+goal_queue[order_poses[18]].goal_config.q[1] = -0.5;
+goal_queue[order_poses[18]].goal_config.q[2] = 0.578;
+goal_queue[order_poses[18]].goal_config.q[3] = 0.5;
+goal_queue[order_poses[18]].goal_config.q[4] = -0.385;
+goal_queue[order_poses[18]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[18]].goal_config.q[6] = -0.7;
+goal_queue[order_poses[18]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[18]].goal_config.q[8] = 0;
+
+
+goal_queue[order_poses[19]].goal_pose.position.x = 0.2-0.506;
+goal_queue[order_poses[19]].goal_pose.position.y = -0.5-0.791;
+goal_queue[order_poses[19]].goal_pose.position.z = 0.65;
+q_temp[19].setRPY(2.293,0.115,2.557);
+goal_queue[order_poses[19]].goal_config.q[0] = 0.2;
+goal_queue[order_poses[19]].goal_config.q[1] = -0.5;
+goal_queue[order_poses[19]].goal_config.q[2] = 0.571;
+goal_queue[order_poses[19]].goal_config.q[3] = 0.5;
+goal_queue[order_poses[19]].goal_config.q[4] = -1.1;
+goal_queue[order_poses[19]].goal_config.q[5] = -1.36;
+goal_queue[order_poses[19]].goal_config.q[6] = -0.4;
+goal_queue[order_poses[19]].goal_config.q[7] = 1.7;
+goal_queue[order_poses[19]].goal_config.q[8] = 0;
+
+////////////////////////////////////////////////////////////////////////////
 
 for (int i=0;i<nr_goals_;i++)
 {
@@ -177,3 +339,4 @@ for (int i=0;i<nr_goals_;i++)
 	goal_queue[i].inter_steps = 0;
 	goal_queue[i].speed_percentage = std_moving_speed;
 }
+
