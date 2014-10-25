@@ -206,10 +206,18 @@ private:
 
 	//!goal queue for motion planning action server
 	std::vector<am_msgs::goalPoseGoal> goal_queue;
+	std::vector<am_msgs::goalPoseGoal> explore_queue_;
 	//!number of goals in the queue for a certain state
 	uint8_t nr_goals_;
+	//!number of exp. poses
+	uint8_t nr_exp_poses_;
 	//!active goal
 	uint8_t active_goal_;
+	//!maximum explore poses
+	uint8_t max_explore_poses_;
+	//!Successful explore poses
+	uint8_t explore_success_count_;
+
 	//!has the active goal been reached?
 	bool reached_active_goal_;
 

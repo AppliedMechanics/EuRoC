@@ -1287,8 +1287,8 @@ bool MotionPlanning::getLimits()
 	}
 
 	//! Setting max accelerations
-	table_axis1_limit_.max_acceleration = 1.0;//2.0;
-	table_axis2_limit_.max_acceleration = 1.0;//2.0;
+	table_axis1_limit_.max_acceleration = 0.5;//2.0;
+	table_axis2_limit_.max_acceleration = 0.5;//2.0;
 	for (int ii=0;ii<7;ii++)
 		joint_limits_[ii].max_acceleration = 100 * M_PI / 180.0;
 	gripper_limit_.max_acceleration = 2.0;
@@ -1340,8 +1340,8 @@ void MotionPlanning::setMoveRequestTCPLimits()
 	move_along_joint_path_srv_.request.tcp_limits.translational.max_velocity = table_axis1_limit_.max_velocity;
 	move_along_joint_path_srv_.request.tcp_limits.translational.max_acceleration = table_axis1_limit_.max_acceleration;
 
-	move_along_joint_path_srv_.request.tcp_limits.rotational.max_velocity = 20 * M_PI / 180.0;;
-	move_along_joint_path_srv_.request.tcp_limits.rotational.max_acceleration = 400 * M_PI / 180.0;;
+	move_along_joint_path_srv_.request.tcp_limits.rotational.max_velocity = 90 * M_PI / 180.0;;
+	move_along_joint_path_srv_.request.tcp_limits.rotational.max_acceleration = 90 * M_PI / 180.0;;
 }
 
 bool MotionPlanning::transformToTCPFrame(std::string frame)

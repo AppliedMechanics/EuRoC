@@ -10,57 +10,60 @@ static const uint32_t std_inter_steps = 5;
 #define ONE_TASK //run only one task and then quit
 
 Statemachine::Statemachine():
-	scenes_(1),
-	task_active_(false),
-	sim_running_(false),
-	speed_mod_(0),
-	nr_scenes_(0),
-	active_scene_(-1),
-	active_goal_(0),
-	nr_goals_(0),
-	skip_vision_(false),
-	skip_motion_(false),
-	pause_in_loop_(0),
-	reached_active_goal_(false),
-	request_task_state_(OPEN),
-	start_sim_state_(OPEN),
-	set_object_load_state_(OPEN),
-	pause_state_(OPEN),
-	parse_yaml_file_state_(OPEN),
-	stop_sim_state_(OPEN),
-	watch_scene_state_(OPEN),
-	watch_scene_counter_(0),
-	explore_environment_init_state_(OPEN),
-	explore_environment_motion_state_(OPEN),
-	explore_environment_image_state_(OPEN),
-	explore_environment_image_counter_(0),
-	locate_object_global_state_(OPEN),
-	locate_object_global_counter_(0),
-	locate_object_close_range_state_(OPEN),
-	check_object_finished_state_(OPEN),
-	check_object_gripped_state_(OPEN),
-	check_object_gripped_counter_(0),
-	get_grasping_pose_state_(OPEN),
-	move_to_object_vision_state_(OPEN),
-	move_to_object_vision_counter_(0),
-	move_to_object_safe_state_(OPEN),
-	move_to_object_safe_counter_(0),
-	move_to_object_state_(OPEN),
-	move_to_object_counter_(0),
-	gripper_release_state_(OPEN),
-	gripper_release_counter_(0),
-	gripper_close_state_(OPEN),
-	gripper_close_counter_(0),
-	move_to_target_zone_safe_state_(OPEN),
-	move_to_target_zone_safe_counter_(0),
-	move_to_target_zone_vision_state_(OPEN),
-	move_to_target_zone_vision_counter_(0),
-	move_to_target_zone_state_(OPEN),
-	move_to_target_zone_counter_(0),
-	homing_state_(OPEN),
-	homing_counter_(0),
-	reset_state_(OPEN),
-	reset_counter_(0)
+					scenes_(1),
+					task_active_(false),
+					sim_running_(false),
+					speed_mod_(0),
+					nr_scenes_(0),
+					active_scene_(-1),
+					active_goal_(0),
+					max_explore_poses_(10),
+					explore_success_count_(0),
+					nr_goals_(0),
+					nr_exp_poses_(0),
+					skip_vision_(false),
+					skip_motion_(false),
+					pause_in_loop_(0),
+					reached_active_goal_(false),
+					request_task_state_(OPEN),
+					start_sim_state_(OPEN),
+					set_object_load_state_(OPEN),
+					pause_state_(OPEN),
+					parse_yaml_file_state_(OPEN),
+					stop_sim_state_(OPEN),
+					watch_scene_state_(OPEN),
+					watch_scene_counter_(0),
+					explore_environment_init_state_(OPEN),
+					explore_environment_motion_state_(OPEN),
+					explore_environment_image_state_(OPEN),
+					explore_environment_image_counter_(0),
+					locate_object_global_state_(OPEN),
+					locate_object_global_counter_(0),
+					locate_object_close_range_state_(OPEN),
+					check_object_finished_state_(OPEN),
+					check_object_gripped_state_(OPEN),
+					check_object_gripped_counter_(0),
+					get_grasping_pose_state_(OPEN),
+					move_to_object_vision_state_(OPEN),
+					move_to_object_vision_counter_(0),
+					move_to_object_safe_state_(OPEN),
+					move_to_object_safe_counter_(0),
+					move_to_object_state_(OPEN),
+					move_to_object_counter_(0),
+					gripper_release_state_(OPEN),
+					gripper_release_counter_(0),
+					gripper_close_state_(OPEN),
+					gripper_close_counter_(0),
+					move_to_target_zone_safe_state_(OPEN),
+					move_to_target_zone_safe_counter_(0),
+					move_to_target_zone_vision_state_(OPEN),
+					move_to_target_zone_vision_counter_(0),
+					move_to_target_zone_state_(OPEN),
+					move_to_target_zone_counter_(0),
+					homing_state_(OPEN),
+					homing_counter_(0),
+					reset_state_(OPEN),
+					reset_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -353,10 +356,11 @@ void Statemachine::scheduler_schedule()
 				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
-				for (int i=0; i<14; i++)
+				for (int i=0; i<nr_exp_poses_; i++)
 				{
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_MOTION;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_IMAGE;		state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 			}
@@ -588,8 +592,8 @@ void Statemachine::scheduler_schedule()
 				if(check_object_finished_state_==FINISHEDWITHERROR)
 				{
 					//-----------------------
-//						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-//						check_object_finished_state_ =FINISHED;
+					//						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+					//						check_object_finished_state_ =FINISHED;
 					//-----------------------
 					//skip current object and try next one
 
@@ -1359,6 +1363,7 @@ void Statemachine::scheduler_error_explore_environment_motion()
 		//skip this explore pose
 		explore_environment_motion_state_=OPEN;
 		msg_warn("skip this explore pose");
+		active_goal_++;
 		scheduler_next();
 		scheduler_next();
 		break;
@@ -1777,23 +1782,37 @@ int Statemachine::request_task()
 		{
 		case 1:
 		case 2:
-#if 0
-			planning_mode_.explore 	= STANDARD_IK_7DOF;
-			planning_mode_.object	= STANDARD_IK_7DOF;
-			planning_mode_.target	= STANDARD_IK_7DOF;
-			planning_mode_.homing	= HOMING_7DOF;
-#else
 			planning_mode_.explore 	= STANDARD_IK_7DOF;
 			planning_mode_.object	= MOVE_IT_7DOF;
 			planning_mode_.target	= MOVE_IT_7DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-#endif
+			nr_exp_poses_ = 14;
+			max_explore_poses_ = nr_exp_poses_;
 			break;
-		default:
+		case 3:
+			planning_mode_.explore 	= STANDARD_IK_7DOF;
+			planning_mode_.object	= MOVE_IT_9DOF;
+			planning_mode_.target	= MOVE_IT_9DOF;
+			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
+			nr_exp_poses_ = 14;
+			max_explore_poses_ = nr_exp_poses_;
+			break;
+		case 4:
 			planning_mode_.explore 	= MOVE_IT_9DOF;
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
+			nr_exp_poses_ = 20;
+			max_explore_poses_ = 10;
+			break;
+		case 5:
+		case 6:
+			planning_mode_.explore 	= STANDARD_IK_7DOF;
+			planning_mode_.object	= MOVE_IT_9DOF;
+			planning_mode_.target	= MOVE_IT_9DOF;
+			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
+			nr_exp_poses_ = 14;
+			max_explore_poses_ = nr_exp_poses_;
 			break;
 		}
 
@@ -2382,7 +2401,6 @@ int Statemachine::explore_environment_init()
 		else{
 			#include "explore_standard.hpp"
 		}
-//#include "explore_standard.hpp"
 
 		explore_environment_init_state_=FINISHED;
 	}
@@ -2454,12 +2472,40 @@ int Statemachine::explore_environment_image()
 		//destroy thread
 		lsc_.detach();
 
-		//==============================================
-		scheduler_next();
-		//==============================================
-		//reset state
-		explore_environment_image_state_=OPEN;
-		explore_environment_image_counter_=0;
+		if (explore_success_count_<max_explore_poses_){
+			//==============================================
+			scheduler_next();
+			scheduler_next();
+			//==============================================
+			//reset state
+			explore_environment_image_state_=OPEN;
+			explore_environment_image_counter_=0;}
+		else
+		{
+			if (active_goal_==nr_goals_)
+			{
+				// Original one... call at end
+				msg_info("Maximum number of explore poses reached.");
+				//==============================================
+				scheduler_next();
+				scheduler_next();
+				//==============================================
+				//reset state
+				explore_environment_image_state_=OPEN;
+				explore_environment_image_counter_=0;
+			}
+			else
+			{
+				ROS_INFO("Skipping explore pose Active_goal_: %i",active_goal_);
+				//Skip procedure
+				//==============================================
+				scheduler_next();
+				scheduler_next();
+				scheduler_next();
+				active_goal_++;
+				//==============================================
+			}
+		}
 	}
 	else if(explore_environment_image_state_==FINISHEDWITHERROR)
 	{
@@ -2491,8 +2537,8 @@ int Statemachine::explore_environment_motion()
 			msg_warn("motion planning action client recreated, waiting for server");
 			motion_planning_action_client_->waitForServer();
 		}
-
-		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
+		ROS_INFO("Active Goal: %i Successful poses: %i",active_goal_,explore_success_count_);
+		motion_planning_action_client_->sendGoal(explore_queue_[active_goal_],
 				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));
@@ -2532,6 +2578,7 @@ void Statemachine::explore_environment_motion_done(const actionlib::SimpleClient
 	case actionlib::SimpleClientGoalState::SUCCEEDED:
 		//increase active_goal counter
 		active_goal_++;
+		explore_success_count_++;
 		explore_environment_motion_state_=FINISHED;
 		break;
 	case actionlib::SimpleClientGoalState::ACTIVE:
@@ -3626,16 +3673,16 @@ int Statemachine::move_to_object()
 
 #warning remove area from octomap
 		if (!skip_vision_){
-		rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.04;
-		rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.04;
-		rm_grasping_area_collision_srv_.request.max.z = 1.0;
-		rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.04;
-		rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.04;
-		rm_grasping_area_collision_srv_.request.min.z = 0.0;
-		try{
-		if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-			msg_warn("Grasping area clearing failed.");
-		}catch (...){msg_error("Grasping area clearing failed.");}
+			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.04;
+			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.04;
+			rm_grasping_area_collision_srv_.request.max.z = 1.0;
+			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.04;
+			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.04;
+			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+			try{
+				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+					msg_warn("Grasping area clearing failed.");
+			}catch (...){msg_error("Grasping area clearing failed.");}
 		}
 		//send goals to motion-planning
 		active_goal_=0;
@@ -3730,7 +3777,7 @@ int Statemachine::move_to_target_zone_safe()
 
 		//publish object state for motion planning
 		if(cur_obj_gripped_==false)
-		  publish_obj_state(OBJ_PLACED);
+			publish_obj_state(OBJ_PLACED);
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -3790,7 +3837,7 @@ int Statemachine::move_to_target_zone_safe()
 
 		//publish object state for motion planning
 		if(cur_obj_gripped_==false)
-		  publish_obj_state(OBJ_FINISHED);
+			publish_obj_state(OBJ_FINISHED);
 
 		//==============================================
 		scheduler_next();
@@ -4047,9 +4094,10 @@ int Statemachine::homing()
 		ROS_INFO("homing() called: OPEN");
 
 		//send goals to motion-planning
-		active_goal_=0;
-		nr_goals_=1;
-		goal_queue.resize(nr_goals_);
+#warning homing interferes with explore environment state and overwrites nr_goals_ and active_goal_
+		//		active_goal_=0;
+		//		nr_goals_=1;
+		goal_queue.resize(1);
 
 		goal_queue[0].planning_algorithm = planning_mode_.homing;
 		goal_queue[0].inter_steps = 0;
