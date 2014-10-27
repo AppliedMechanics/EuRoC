@@ -80,7 +80,7 @@ explore_queue_[order_poses[2]].goal_config.q[4] = -1.572;
 explore_queue_[order_poses[2]].goal_config.q[5] = 1.572;
 explore_queue_[order_poses[2]].goal_config.q[6] = 0.13;
 explore_queue_[order_poses[2]].goal_config.q[7] = -1.572;
-explore_queue
+explore_queue_[order_poses[2]].goal_config.q[8] = -1.572;
 
 explore_queue_[order_poses[14]].goal_pose.position.x = -0.381;
 explore_queue_[order_poses[14]].goal_pose.position.y = 0;
@@ -178,7 +178,7 @@ explore_queue_[order_poses[20]].goal_config.q[4] = -1.572;
 explore_queue_[order_poses[20]].goal_config.q[5] = 1.572;
 explore_queue_[order_poses[20]].goal_config.q[6] = -0.2;
 explore_queue_[order_poses[20]].goal_config.q[7] = -1.572;
-explore_queue_[order_poses[20]].goal_config.q[8] = 0;_[order_poses[2]].goal_config.q[8] = -1.572;
+explore_queue_[order_poses[20]].goal_config.q[8] = 0;
 
 explore_queue_[order_poses[3]].goal_pose.position.x = 0.336+0.88;
 explore_queue_[order_poses[3]].goal_pose.position.y = -0.39-0.4;

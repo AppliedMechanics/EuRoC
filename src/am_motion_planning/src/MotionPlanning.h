@@ -165,6 +165,7 @@ private:
 	// MOVEIT
 	std::vector<std::string> ompl_planners;
 
+	move_group_interface::MoveGroup *group_2DOF;
 	move_group_interface::MoveGroup *group_7DOF;
 	move_group_interface::MoveGroup *group_9DOF;
 	move_group_interface::MoveGroup *group;
@@ -174,6 +175,7 @@ private:
 
 	robot_state::RobotState* kinematic_state_;
 
+	const robot_state::JointModelGroup* joint_model_group_2DOF_;
 	const robot_state::JointModelGroup* joint_model_group_7DOF_;
 	const robot_state::JointModelGroup* joint_model_group_9DOF_;
 	const robot_state::JointModelGroup* joint_model_group_;

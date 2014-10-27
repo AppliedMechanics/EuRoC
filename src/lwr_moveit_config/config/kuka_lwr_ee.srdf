@@ -25,6 +25,10 @@
         <joint name="gripper_base_joint" />
         <joint name="gp_tcp_joint" />
     </group>
+        <group name="LWR_2DOF">
+        <joint name="axis_x" />
+        <joint name="axis_y" />
+    </group>
     <group name="gripper">
         <link name="gripper_base" />
         <link name="gripper_tcp" />
@@ -65,6 +69,10 @@
         <joint name="lwr_joint_5" value="0" />
         <joint name="lwr_joint_6" value="0" />
         <joint name="lwr_joint_7" value="0" />
+    </group_state>
+    	<group_state name="homing" group="LWR_2DOF">
+        <joint name="axis_x" value="0" />
+        <joint name="axis_y" value="0" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="gripper_ee" parent_link="lwr_tcp" group="gripper" />

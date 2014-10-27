@@ -70,6 +70,11 @@ obj_data_loaded_(false)
 	// planning algorithm for arm + table axes
 	group_9DOF->setPlannerId(ompl_planners[2]);
 
+	// table axes
+	group_2DOF = new move_group_interface::MoveGroup("LWR_2DOF");
+	// planning algorithm for arm + table axes
+	group_2DOF->setPlannerId(ompl_planners[2]);
+
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
@@ -106,6 +111,7 @@ MotionPlanning::~MotionPlanning()
 	delete planning_scene_monitor;
 	delete group_9DOF;
 	delete group_7DOF;
+	delete group_2DOF;
 }
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
@@ -166,6 +172,19 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		}
 		break;
 
+	case HOMING_MOVE_IT_2DOF:
+		ROS_INFO("HOMING MOVEIT 2DOF planning mode chosen.");
+		group = group_2DOF;
+		joint_model_group_ = joint_model_group_2DOF_;
+		if (!homingMoveIt())
+		{
+			msg_error("No Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+			return;
+		}
+		break;
+
 	case HOMING_MOVE_IT_7DOF:
 		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
 		group = group_7DOF;
@@ -215,10 +234,13 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			return;
 		}
 		break;
+		//------------------------------------------------------------------------------------------------
+	case (MOVE_IT_2DOF)		:
 	case (MOVE_IT_7DOF)		:
 	case (MOVE_IT_9DOF)		:
 	ROS_WARN("Planning mode based on MoveIt! chosen.");
 
+	//define groups
 	if(goal->planning_algorithm == MOVE_IT_9DOF)
 	{
 		group = group_9DOF;
@@ -234,6 +256,14 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		// the planning target is set as a joint state goal via the searchIKSolution srv
 		max_setTarget_attempts_ = 5;
 	}
+	else if(goal->planning_algorithm == MOVE_IT_2DOF)
+	{
+		group = group_2DOF;
+		joint_model_group_ = joint_model_group_2DOF_;
+		// in case of unsuccessful planning,
+		// the planning target is set as a joint state goal via the searchIKSolution srv
+		max_setTarget_attempts_ = 5;
+	}
 	else
 	{
 		msg_error("Unknown move group name.");
@@ -241,6 +271,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
 		break;
 	}
+	//set target
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 	if (!getMoveItSolution())
 	{
@@ -251,8 +282,9 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	}
 	break;
 
+	//------------------------------------------------------------------------------------------------
 	case (MOVE_IT_JT_9DOF):
-							ROS_WARN("Given JT based on MoveIt! chosen.");
+	ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -944,6 +976,20 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	case SINGLE_POSE_TARGET: {
 		ROS_INFO("Setting a single pose target.");
 
+		if (!group->setJointValueTarget(goal_pose_GPTCP_)) {
+			ROS_ERROR("Setting pose target failed.");
+			return false;
+		}
+		break;
+	}
+
+	case SINGLE_POSE_TARGET_2DOF: {
+		ROS_INFO("Setting a single pose target.");
+
+
+		ROS_INFO_STREAM("Goal Tolerance"<<group->getGoalPositionTolerance());
+
+		group->setGoalTolerance(0.5);
 		if (!group->setJointValueTarget(goal_pose_GPTCP_)) {
 			ROS_ERROR("Setting pose target failed.");
 			return false;
