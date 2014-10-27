@@ -2168,6 +2168,7 @@ void Statemachine::check_object_finished_done(const actionlib::SimpleClientGoalS
 		if(result->object_in_zone == true)
 		{
 			check_object_finished_state_=FINISHED;
+			//TODO extend to 3 way case!
 		}
 		else
 		{

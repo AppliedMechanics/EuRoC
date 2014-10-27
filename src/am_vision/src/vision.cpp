@@ -537,22 +537,28 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     targetZone.z = goal->target_zone.position.z;
     int objectInZone = verify_object_inside_zone(goal->object.color, targetZone, goal->target_zone.max_distance);
     // TODO: Revision needed, ask Phillip
-    if (objectInZone == 1)
+    if (objectInZone == 2)
     {
     	std::cout<<"[VISION]Object_On_Target Verification: PASSED."<<std::endl;
-    	vision_result_.object_in_zone = true; // TODO: change to three-way result code
+    	vision_result_.object_in_zone = true;
+    	vision_result_.object_detected = true;
     	vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+    }
+    else if(objectInZone == 1)
+    {
+    	std::cout<<"[VISION]Object_On_Target Verification: PASSED."<<std::endl;
+    	vision_result_.object_in_zone = false;
+    	vision_result_.object_detected = true;
+    	vision_server_.setPreempted(vision_result_, "Goal configuration has been reached");
     }
     else
     {
     	std::cout<<"[VISION]Object_On_Target Verification: FAILED!"<<std::endl;
-    	if (objectInZone == 0)
-    		std::cout<<"Reason: object not visible in camera view"<<std::endl;
-    	if (objectInZone == -1)
-    	std::cout<<"Reason: object placed far away from target zone"<<std::endl;
+    	std::cout<<"Reason: object not visible in camera view"<<std::endl;
 
-    	vision_result_.object_in_zone = false; // TODO: change to three-way result code
-    	vision_server_.setSucceeded(vision_result_, "Goal configuration has been reached");
+    	vision_result_.object_in_zone = false;
+    	vision_result_.object_detected = false;
+    	vision_server_.setPreempted(vision_result_, "Goal configuration has been reached");
     }
   }
   else
@@ -1866,9 +1872,9 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
 
   // look inside the target zone to find the object
   if ( search_for_object_on_zone(threshPC, zone_center, radius) )
-    return 1;
-
-  return -1;
+	  return 2;
+  else
+	  return 1;
 }
 
 /*
