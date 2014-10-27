@@ -59,6 +59,7 @@ add_message_files(
   TargetZone.msg
   Camera.msg
   Sensor.msg
+  ConveyorBelt.msg
 )
 
 ## Generate services in the 'srv' folder

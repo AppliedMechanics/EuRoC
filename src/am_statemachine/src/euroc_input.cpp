@@ -279,10 +279,10 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 				const YAML::Node* dens = (*it2).FindValue("density");
 				(*dens) >> tmp_obj.shape[jj].density;
 			}catch(YAML::Exception e) {
-				ROS_ERROR("density not found in shape");
+				msg_warn("density not found in shape");
 
 				tmp_obj.shape[jj].density=7850;
-				return -1;
+				//return -1;
 			}
 
 			jj++;
@@ -482,7 +482,6 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 		return -1;
 	}
 
-	ROS_INFO("before two-axes");
 	const YAML::Node* table = task_description_node.FindValue("two_axes_table");
 	if (!table)
 	{
@@ -499,7 +498,6 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 		ROS_ERROR("EurocInput: YAML Error in two_axes speed limit");
 		return -1;
 	}
-	ROS_INFO("after two-axes");
 
 	//######################################################################################
 	//######################################################################################
@@ -762,6 +760,146 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 
 	//######################################################################################
 	//######################################################################################
+	//Conveyor Belt:
+	geometry_msgs::Vector3 tmp_vec;
+	if(task_nr_ == 6)
+	{
+		const YAML::Node* belt = task_description_node.FindValue("conveyor_belt");
+		if (!belt)
+		{
+			ROS_ERROR("EurocInput: conveyor_belt not found in task_description_node");
+			return -1;
+		}
+		else
+		{
+			const YAML::Node* dir = belt->FindValue("move_direction_and_length");
+			if (!dir)
+			{
+				ROS_ERROR("EurocInput: move_direction_and_length not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*dir)[0] >> conv_belt_.move_direction_and_length.x;
+				(*dir)[1] >> conv_belt_.move_direction_and_length.y;
+				(*dir)[2] >> conv_belt_.move_direction_and_length.z;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* drop = belt->FindValue("drop_center_point");
+			if (!drop)
+			{
+				ROS_ERROR("EurocInput: drop_center_point not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*drop)[0] >> conv_belt_.drop_center_point.x;
+				(*drop)[1] >> conv_belt_.drop_center_point.y;
+				(*drop)[2] >> conv_belt_.drop_center_point.z;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* dev = belt->FindValue("drop_deviation");
+			if (!dev)
+			{
+				ROS_ERROR("EurocInput: drop_deviation not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*dev)[0] >> conv_belt_.drop_deviation.x;
+				(*dev)[1] >> conv_belt_.drop_deviation.y;
+				(*dev)[2] >> conv_belt_.drop_deviation.z;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* speed_b = belt->FindValue("start_speed");
+			if (!speed_b)
+			{
+				ROS_ERROR("EurocInput: start_speed not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*speed_b) >> conv_belt_.start_speed;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* speed_e = belt->FindValue("end_speed");
+			if (!speed_e)
+			{
+				ROS_ERROR("EurocInput: end_speed not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*speed_e) >> conv_belt_.end_speed;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* nr_obj = belt->FindValue("n_objects");
+			if (!nr_obj)
+			{
+				ROS_ERROR("EurocInput: n_objects not found in conveyor belt");
+				return -1;
+			}
+			try {
+				(*nr_obj) >> conv_belt_.n_objects;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+
+			const YAML::Node* obj = belt->FindValue("object_template");
+			if (!obj)
+			{
+				ROS_ERROR("EurocInput: object_template not found in conveyor belt");
+				return -1;
+			}
+			try {
+				*obj >> conv_belt_.object_template;
+
+			} catch (YAML::Exception e) {
+				ROS_ERROR("EurocInput: YAML Error in conveyor belt");
+				return -1;
+			}
+		}
+
+		am_msgs::Object tmp_obj=objects_[0];
+		nr_objects_=conv_belt_.n_objects;
+		objects_.resize(nr_objects_);
+		for(uint16_t ii=0;ii<nr_objects_;ii++)
+		{
+			objects_[ii]=tmp_obj;
+		}
+
+#ifdef DBG_OUT
+		ROS_INFO("Conveyor Belt yaml result:");
+		ROS_INFO("move dir and length: [%f %f %f]",conv_belt_.move_direction_and_length.x,
+				conv_belt_.move_direction_and_length.z,conv_belt_.move_direction_and_length.y);
+		ROS_INFO("drop center point: [%f %f %f]",conv_belt_.drop_center_point.x,
+				conv_belt_.drop_center_point.y,conv_belt_.drop_center_point.z);
+		ROS_INFO("drop deviation: [%f %f %f]",conv_belt_.drop_deviation.x,
+				conv_belt_.drop_deviation.y,conv_belt_.drop_deviation.z);
+		ROS_INFO("speed: start %f, end %f",conv_belt_.start_speed,conv_belt_.end_speed);
+		ROS_INFO("number of objects: %d",conv_belt_.n_objects);
+#endif
+	} //task_nr == 6
+
+	//######################################################################################
+	//######################################################################################
 
 	return 0;
 }
@@ -773,9 +911,9 @@ void EurocInput::select_new_object()
 
 	//Find next object which is not finsihed. Start to search right after the
 	//active object. If all are finished remain at the actual object.
-	for(uint16_t ii=1; ii<nr_objects_; ii++)
+	for(uint16_t ii=0; ii<nr_objects_; ii++)
 	{
-		actualindex=actualindex+1;
+		actualindex++;
 		if(actualindex<0 || actualindex>=nr_objects_)
 		{
 			actualindex=0;
@@ -792,8 +930,9 @@ void EurocInput::select_new_object()
 					active_zone_=jj;
 				}
 			}
+
 			//...and stop searching
-			ii=nr_objects_;
+			break;
 		}
 	}
 }

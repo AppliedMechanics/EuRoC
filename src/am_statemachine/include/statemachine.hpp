@@ -237,6 +237,8 @@ private:
 	void scheduler_printqueue();
 	//!skip object
 	void scheduler_skip_object();
+	//!skip explore environment
+	void scheduler_skip_explore();
 	//!properly change to next object
 	void scheduler_next_object();
 	//!schedule grasping sequence

@@ -1,0 +1,7 @@
+geometry_msgs/Vector3 move_direction_and_length
+geometry_msgs/Point drop_center_point
+geometry_msgs/Vector3 drop_deviation
+float64 start_speed
+float64 end_speed
+uint32 n_objects
+string object_template

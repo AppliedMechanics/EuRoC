@@ -352,7 +352,7 @@ void Statemachine::scheduler_schedule()
 			if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 ||
 					active_task_number_==4 || active_task_number_==5)
 			{
-				temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
+			temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
 				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
@@ -360,7 +360,7 @@ void Statemachine::scheduler_schedule()
 				{
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_MOTION;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_IMAGE;		state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
+					//temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 			}
@@ -725,11 +725,22 @@ void Statemachine::scheduler_skip_object()
 		//clear the queue
 		state_queue.clear();
 		temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
-		temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::GRIPPER_RELEASE;		state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::HOMING;					state_queue.push_back(temp_state);
+		temp_state.sub.two=fsm::SCHEDULER;				state_queue.push_back(temp_state);
 		scheduler_next();
 	}
+}
+
+void Statemachine::scheduler_skip_explore()
+{
+	//delete explore sequence
+	state_queue.clear();
+
+	fsm::fsm_state_t temp_state;
+	temp_state.sub.one=fsm::SOLVE_TASK;
+	temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
+	temp_state.sub.two=fsm::SCHEDULER;					state_queue.push_back(temp_state);
 }
 
 void Statemachine::scheduler_next_object()
@@ -876,6 +887,8 @@ void Statemachine::scheduler_error_homing()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		homing_state_=FINISHED;
 		break;
 	}
 }
@@ -942,6 +955,9 @@ void Statemachine::scheduler_error_move_to_object_vision()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_object_vision_state_=FINISHED;
+
 		break;
 	}
 }
@@ -998,6 +1014,8 @@ void Statemachine::scheduler_error_move_to_object_safe()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_object_safe_state_=FINISHED;
 		break;
 	}
 }
@@ -1058,6 +1076,8 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_target_zone_vision_state_=FINISHED;
 		break;
 	}
 }
@@ -1114,6 +1134,8 @@ void Statemachine::scheduler_error_move_to_target_zone_safe()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_target_zone_safe_state_=FINISHED;
 		break;
 	}
 }
@@ -1171,6 +1193,8 @@ void Statemachine::scheduler_error_move_to_object()
 		move_to_object_state_=FINISHED;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_object_state_=FINISHED;
 		break;
 	}
 }
@@ -1225,6 +1249,8 @@ void Statemachine::scheduler_error_move_to_target_zone()
 			move_to_target_zone_safe_state_=FINISHED;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		move_to_target_zone_safe_state_=FINISHED;
 		break;
 	}
 }
@@ -1235,16 +1261,16 @@ void Statemachine::scheduler_error_check_object_gripped()
 	if(check_object_gripped_counter_ > 1)
 		state_.sub.event_two = fsm::SKIP_OBJECT;
 
-
-	if(state_.sub.event_two == fsm::RETRY)
+	switch(state_.sub.event_two)
 	{
+	case fsm::RETRY:
+		msg_warn("Statemachine-Errorhandler: retry check");
 		check_object_gripped_state_ =OPEN;
 		//nop
-	}
-	else if(state_.sub.event_two == fsm::OBJECT_LOST)
-	{
-		scheduler_next();
+		break;
 
+	case fsm::OBJECT_LOST:
+		scheduler_next();
 		scheduler_grasp_object(EXECUTE_NOW);
 
 		check_object_gripped_state_ = OPEN;
@@ -1252,11 +1278,18 @@ void Statemachine::scheduler_error_check_object_gripped()
 
 		scheduler_printqueue(); //print queue to console for debugging purposes
 		scheduler_next();
-	}
-	else if(state_.sub.event_two == fsm::SKIP_OBJECT)
-	{
+		break;
+
+	case fsm::SKIP_OBJECT:
+		msg_warn("Statemachine-Errorhandler: skip object");
 		check_object_gripped_state_ = OPEN;
 		scheduler_skip_object();
+		break;
+
+	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		check_object_gripped_state_ = FINISHED;
+		break;
 	}
 }
 void Statemachine::scheduler_error_gripper_close()
@@ -1266,6 +1299,7 @@ void Statemachine::scheduler_error_gripper_close()
 	case fsm::SIM_SRV_NA:
 	case fsm::GRIPPING_ERROR:
 
+		msg_warn("Statemachine-Errorhandler: gripping error -> retry");
 		gripper_close_counter_++;
 		if(gripper_close_counter_ > 1)
 		{
@@ -1276,10 +1310,13 @@ void Statemachine::scheduler_error_gripper_close()
 		}
 		break;
 	case fsm::STOP_COND:
+		msg_warn("Statemachine-Errorhandler: stop cond -> try slower");
 		//set object load and continue
 		gripper_close_state_=FINISHED;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		gripper_close_state_=FINISHED;
 		break;
 	}
 }
@@ -1291,11 +1328,11 @@ void Statemachine::scheduler_error_gripper_release()
 	case fsm::GRIPPING_ERROR:
 	{
 		gripper_close_counter_++;
-		gripper_close_state_=OPEN;
+		gripper_release_state_=OPEN;
 		if(gripper_close_counter_ > 1)
 		{
 			gripper_close_counter_=0;
-			gripper_close_state_=FINISHED;
+			gripper_release_state_=FINISHED;
 
 			//insert gripper release after move_to_target_zone_safe
 			fsm::fsm_state_t temp_state;
@@ -1310,7 +1347,7 @@ void Statemachine::scheduler_error_gripper_release()
 	case fsm::STOP_COND:
 	{
 		//set object load and continue
-		gripper_close_state_=FINISHED;
+		gripper_release_state_=FINISHED;
 
 		//insert gripper release after move_to_target_zone_safe
 		fsm::fsm_state_t temp_state;
@@ -1322,6 +1359,8 @@ void Statemachine::scheduler_error_gripper_release()
 		break;
 	}
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		gripper_release_state_=FINISHED;
 		break;
 	}
 }
@@ -1349,6 +1388,8 @@ void Statemachine::scheduler_error_watch_scene()
 		break;
 
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		watch_scene_state_=FINISHED;
 		break;
 	}
 }
@@ -1362,9 +1403,13 @@ void Statemachine::scheduler_error_explore_environment_motion()
 	case fsm::NO_IK_SOL:
 		//skip this explore pose
 		explore_environment_motion_state_=OPEN;
-		msg_warn("skip this explore pose");
+		msg_warn("skip this explore pose and insert homing");
 		active_goal_++;
 		scheduler_next();
+
+		fsm::fsm_state_t temp_state;
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::HOMING;			state_queue.insert(state_queue.begin(),temp_state);
 		scheduler_next();
 		break;
 
@@ -1378,6 +1423,8 @@ void Statemachine::scheduler_error_explore_environment_motion()
 			speed_mod_= 0.8;
 		break;
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		explore_environment_motion_state_=FINISHED;
 		break;
 	}
 }
@@ -1406,7 +1453,8 @@ void Statemachine::scheduler_error_explore_environment_image()
 		break;
 
 	default:
-		explore_environment_image_state_=OPEN;
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		explore_environment_image_state_=FINISHED;
 		break;
 	}
 }
@@ -1434,7 +1482,9 @@ void Statemachine::scheduler_error_locate_object_global()
 		break;
 
 	default:
+		msg_error("Statemachine Errorhandler: Unknown error!");
 		locate_object_global_state_=OPEN;
+		scheduler_skip_object();
 		break;
 	}
 }
@@ -2446,6 +2496,7 @@ void Statemachine::explore_environment_image_cb()
 		state_.sub.event_one=fsm::SIM_SRV_NA;
 	}
 
+	explore_success_count_++;
 	ROS_INFO("explore_environment_image_cb() finished");
 }
 
@@ -2472,39 +2523,27 @@ int Statemachine::explore_environment_image()
 		//destroy thread
 		lsc_.detach();
 
-		if (explore_success_count_<max_explore_poses_){
+		if (explore_success_count_<max_explore_poses_)
+		{
 			//==============================================
-			scheduler_next();
 			scheduler_next();
 			//==============================================
 			//reset state
 			explore_environment_image_state_=OPEN;
-			explore_environment_image_counter_=0;}
+			explore_environment_image_counter_=0;
+		}
 		else
 		{
-			if (active_goal_==nr_goals_)
-			{
-				// Original one... call at end
-				msg_info("Maximum number of explore poses reached.");
-				//==============================================
-				scheduler_next();
-				scheduler_next();
-				//==============================================
-				//reset state
-				explore_environment_image_state_=OPEN;
-				explore_environment_image_counter_=0;
-			}
-			else
-			{
-				ROS_INFO("Skipping explore pose Active_goal_: %i",active_goal_);
-				//Skip procedure
-				//==============================================
-				scheduler_next();
-				scheduler_next();
-				scheduler_next();
-				active_goal_++;
-				//==============================================
-			}
+			// Original one... call at end
+			msg_info("Maximum number of explore poses reached.");
+
+			//==============================================
+			scheduler_skip_explore();
+			scheduler_next();
+			//==============================================
+			//reset state
+			explore_environment_image_state_=OPEN;
+			explore_environment_image_counter_=0;
 		}
 	}
 	else if(explore_environment_image_state_==FINISHEDWITHERROR)
@@ -2578,7 +2617,6 @@ void Statemachine::explore_environment_motion_done(const actionlib::SimpleClient
 	case actionlib::SimpleClientGoalState::SUCCEEDED:
 		//increase active_goal counter
 		active_goal_++;
-		explore_success_count_++;
 		explore_environment_motion_state_=FINISHED;
 		break;
 	case actionlib::SimpleClientGoalState::ACTIVE:

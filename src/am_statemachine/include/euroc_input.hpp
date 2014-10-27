@@ -5,10 +5,13 @@
 #include "std_msgs/String.h"
 #include <sstream>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Vector3.h>
 #include <am_msgs/Object.h>
 #include <am_msgs/Robot.h>
 #include <am_msgs/TargetZone.h>
 #include <am_msgs/Sensor.h>
+#include <am_msgs/ConveyorBelt.h>
+
 // Includes for parsing yaml data
 #include <yaml-cpp/yaml.h>
 #include "config.hpp"
@@ -36,12 +39,7 @@ public:
 	//!tried every object once
 	bool is_active_object_last_object();
 
-	//!save the object data to the ros parameter server
-	void save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
-	//!save the robot data to the ros parameter server
-	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
-	//!save target zone data to parameter server
-	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	uint16_t get_active_object_idx(){return active_object_;};
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
@@ -49,7 +47,6 @@ public:
 	//!interface for sensors
 	uint16_t get_nr_sensors(){return nr_sensors;};
 	am_msgs::Sensor get_sensors(uint16_t nr){return sensors_[nr];};
-	uint16_t get_active_object_idx(){return active_object_;};
 	double get_time_limit(){return time_limit_;};
 
 	//!all objects finished
@@ -57,6 +54,13 @@ public:
 
 	//!reset all variables
 	void reset();
+
+	//!save the object data to the ros parameter server
+	void save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save the robot data to the ros parameter server
+	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save target zone data to parameter server
+	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 
 private:
 	//!task number of active task
@@ -114,6 +118,9 @@ private:
 
 	//!relative puzzle fixture target poses
 	std::vector<geometry_msgs::Pose> puzzle_target_poses_;
+
+	//!Conveyor Belt
+	am_msgs::ConveyorBelt conv_belt_;
 };
 
 #endif //#define __EUROC_INPUT_HPP__
