@@ -1242,15 +1242,15 @@ void Statemachine::scheduler_error_move_to_target_zone()
 	case fsm::STOP_COND:
 		msg_warn("Statemachine-Errorhandler: stop cond -> try slower");
 
-		move_to_target_zone_safe_state_=OPEN;
+		move_to_target_zone_state_=OPEN;
 		if(speed_mod_ < 0.66)
 			speed_mod_+=0.33;
 		else
-			move_to_target_zone_safe_state_=FINISHED;
+			move_to_target_zone_state_=FINISHED;
 		break;
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
-		move_to_target_zone_safe_state_=FINISHED;
+		move_to_target_zone_state_=FINISHED;
 		break;
 	}
 }
@@ -2037,6 +2037,11 @@ int Statemachine::parse_yaml_file()
 			return 0;
 		}
 		ROS_INFO("parsing YAML-file finished");
+
+		std::vector<uint16_t> test;
+		test.resize(3,0);
+		//test[1]=1;
+		ein_->sort_objects(test);
 
 		ROS_INFO("filling TF Broadcast information...");
 		try

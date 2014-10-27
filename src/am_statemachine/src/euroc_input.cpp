@@ -11,7 +11,6 @@
 EurocInput::EurocInput():
 	task_nr_(1),
 	nr_objects_(0),
-	active_object_(-1),
 	nr_zones_(0),
 	active_zone_(-1),
 	time_limit_(3000),
@@ -124,7 +123,8 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 	  }
 
 	nr_objects_ = objects->size();
-	obj_finished_.resize(nr_objects_,0);
+	obj_state_.resize(nr_objects_,EIN_OBJ_INIT);
+
 	unsigned int ii = 0;
 	am_msgs::Object tmp_obj;
 	//objects_.resize(nr_objects);
@@ -904,10 +904,130 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 	return 0;
 }
 
+int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
+{
+	//copy target zone data
+	if(target_zones_.size() != target_zone_occupied.size())
+	{
+		msg_error("Dimesion error in setting target zone occupied!");
+		return -1;
+	}
+
+	//!target_zone index for objects
+	std::vector<uint16_t> target_zone_idx_;
+	target_zone_idx_.resize(nr_objects_);
+	//!target zone of object is occupied
+	std::vector<uint16_t> target_zone_occupied_;
+	target_zone_occupied_.resize(nr_objects_);
+
+	//find target zone number and target_zone state for each object
+	uint16_t nr_occupied=0;
+	for(uint16_t oo=0;oo<nr_objects_;oo++)
+	{
+		std::string obj_name=objects_[oo].name;
+		for(uint16_t zz=0;zz<nr_zones_;zz++)
+		{
+			if(!obj_name.compare(target_zones_[zz].expected_object.c_str()))
+			{
+				target_zone_idx_[oo]=zz;
+				if(target_zone_occupied[zz]==1)
+				{
+					target_zone_occupied_[oo]=1;
+					nr_occupied++;
+				}
+			}
+		}
+	} //for(uint16_t oo=0;oo<nr_objects_;oo++)
+
+	//1. sort objects by type (put handle-bar at the end)
+	obj_queue_t temp_obj;
+	for(unsigned ii=0;ii<nr_objects_;ii++)
+	{
+		temp_obj.obj_idx=ii;
+		temp_obj.data = &objects_[ii];
+		temp_obj.action=EIN_PLACE;
+		temp_obj.target_zone_occupied=target_zone_occupied_[ii];
+		temp_obj.target_zone_idx=target_zone_idx_[ii];
+		if(objects_[ii].nr_shapes==1 && task_nr_!= 5)
+		{
+			obj_queue_.insert(obj_queue_.begin(),temp_obj);
+		}
+		else
+		{
+			obj_queue_.push_back(temp_obj);
+		}
+	}
+
+	//2. sort objects by target zone state
+	if(nr_occupied<2)
+	{
+		for(unsigned ii=0;ii<nr_objects_;ii++)
+		{
+			if(obj_queue_[ii].target_zone_occupied==1)
+			{
+				temp_obj=obj_queue_[ii];
+				obj_queue_.erase(obj_queue_.begin()+ii);
+				obj_queue_.push_back(temp_obj);
+			}
+		}
+	}
+	else if(nr_occupied==2)
+	{
+		msg_info("2 Target zones are occupied! -> Try to locate all objects first");
+	}
+	else
+		msg_error("WTF");
+
+	//print object queue
+	ROS_INFO("Object queue:");
+	for(unsigned ii=0;ii<nr_objects_;ii++)
+	{
+		uint16_t obj_idx=obj_queue_[ii].obj_idx;
+		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
+		ROS_INFO("Targetzone (%d) occupied: %s",target_zone_idx_[obj_idx],target_zone_occupied_[obj_idx] ? "true":"false");
+		switch(obj_queue_[ii].action)
+		{
+		case EIN_PLACE:
+			ROS_INFO("action: EIN_PLACE");
+			break;
+		case EIN_PARKING:
+			ROS_INFO("action: EIN_PARKING");
+			break;
+		case EIN_PLACE_FROM_PARKING:
+			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
+			break;
+		default:
+			ROS_ERROR("action unknown!!");
+			return -1;
+		}
+	}
+	return 0;
+}
+
 void EurocInput::select_new_object()
 {
+#if 1
+	if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
+	{
+		obj_queue_t temp_obj=obj_queue_[0];
+
+		obj_queue_.erase(obj_queue_.begin());
+		obj_queue_.push_back(temp_obj);
+	}
+	else
+	{
+		//move current object to the end of obj_queue
+		msg_info("current object is not finished -> move it to the end of object queue");
+
+		obj_queue_t temp_obj=obj_queue_[0];
+		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_UNCERTAIN;
+
+		obj_queue_.erase(obj_queue_.begin());
+		obj_queue_.push_back(temp_obj);
+	}
+#else
 	uint16_t actualindex;
-	actualindex=active_object_;
+	actualindex=active_obj_idx_;
 
 	//Find next object which is not finsihed. Start to search right after the
 	//active object. If all are finished remain at the actual object.
@@ -920,9 +1040,9 @@ void EurocInput::select_new_object()
 		}
 		if(obj_finished_[actualindex]==0)
 		{
-			active_object_=actualindex;
+			active_obj_idx_=actualindex;
 			//...and determine the target zone
-			std::string obj_name=objects_[active_object_].name;
+			std::string obj_name=objects_[active_obj_idx_].name;
 			for(uint16_t jj=0;jj<nr_zones_;jj++)
 			{
 				if(!obj_name.compare(target_zones_[jj].expected_object.c_str()))
@@ -935,11 +1055,13 @@ void EurocInput::select_new_object()
 			break;
 		}
 	}
+#endif
 }
 
 am_msgs::Object EurocInput::get_active_object()
 {
-	if(active_object_<0 || active_object_ >= nr_objects_)
+#if 1
+	if(obj_queue_.size()==0)
 	{
 		msg_error("EurocInput: get_active_object() failed. Index out of range.");
 		am_msgs::Object empty_obj;
@@ -947,12 +1069,38 @@ am_msgs::Object EurocInput::get_active_object()
 	}
 	else
 	{
-		return objects_[active_object_];
+		return *obj_queue_[0].data;
 	}
+#else
+	if(active_obj_idx_<0 || active_obj_idx_ >= nr_objects_)
+	{
+		msg_error("EurocInput: get_active_object() failed. Index out of range.");
+		am_msgs::Object empty_obj;
+		return empty_obj;
+	}
+	else
+	{
+		return objects_[active_obj_idx_];
+	}
+#endif
 }
 
 am_msgs::TargetZone EurocInput::get_active_target_zone()
 {
+#if 1
+	if(obj_queue_.size()==0)
+	{
+		if(task_nr_ != 5)
+			msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
+
+		am_msgs::TargetZone empty_zone;
+		return empty_zone;
+	}
+	else
+	{
+		return target_zones_[obj_queue_[0].target_zone_idx];
+	}
+#else
 	if(active_zone_<0 || active_zone_ >= nr_zones_)
 	{
 		if(task_nr_ != 5)
@@ -965,6 +1113,7 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 	{
 		return target_zones_[active_zone_];
 	}
+#endif
 }
 
 void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
@@ -1212,21 +1361,39 @@ void EurocInput::print_object(am_msgs::Object*obj)
 	}
 }
 
+void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
+{
+	obj_queue_[0].data->abs_pose=abs_pose;
+	obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_LOCATED;
+}
+
 void EurocInput::set_active_object_finished()
 {
-	if(active_object_<0 || active_object_ >= nr_objects_)
+#if 1
+	if(obj_queue_.size()==0)
+	{
+		msg_error("EurocInput: set_active_object_finished() failed. obj_queue_.size()==0");
+	}
+	else
+	{
+		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
+		obj_queue_.erase(obj_queue_.begin());
+	}
+#else
+	if(active_obj_idx_<0 || active_obj_idx_ >= nr_objects_)
 	{
 		msg_error("EurocInput: set_active_object_finished() failed. Index out of range.");
 	}
 	else
 	{
-		obj_finished_[active_object_] = 1;
+		obj_finished_[active_obj_idx_] = 1;
 	}
+#endif
 }
 
 bool EurocInput::is_active_object_last_object()
 {
-	if(active_object_ == nr_objects_-1)
+	if(obj_queue_.size() == 1)
 		return true;
 	else
 		return false;
@@ -1237,7 +1404,7 @@ bool EurocInput::all_finished()
 	uint16_t cnt=0;
 	for(uint16_t ii=0; ii<nr_objects_; ii++)
 	{
-		if(obj_finished_[ii]==1)
+		if(obj_state_[obj_queue_[0].obj_idx]==EIN_OBJ_FINISHED)
 			cnt++;
 	}
 	if(cnt==nr_objects_)
@@ -1253,9 +1420,9 @@ void EurocInput::reset()
 	log_filename_="";
 	objects_.clear();
 	nr_objects_=0;
-	active_object_=-1;
-	obj_finished_.clear();
 	target_zones_.clear();
+	obj_state_.clear();
+	obj_queue_.clear();
 	nr_zones_=0;
 	active_zone_=0;
 	sensors_.clear();

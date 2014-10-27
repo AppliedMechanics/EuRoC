@@ -26,7 +26,11 @@ public:
 	EurocInput();
 	~EurocInput();
 
+	//!parse yaml file from euroc_server and save data into variables
 	int parse_yaml_file(std::string task_yaml_description, const uint16_t task_nr);
+
+	//!sort objects and create the best sequence
+	int sort_objects(std::vector<uint16_t> target_zone_occupied);
 
 	//!select a new object that is not finished (preferred: right after active_object)
 	void select_new_object();
@@ -36,10 +40,12 @@ public:
 	void print_object(am_msgs::Object*obj);
 	//!set active_object_ to finished
 	void set_active_object_finished();
+	//!set abs. pose for current object
+	void set_object_pose(geometry_msgs::Pose abs_pose);
 	//!tried every object once
 	bool is_active_object_last_object();
 
-	uint16_t get_active_object_idx(){return active_object_;};
+	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
@@ -89,11 +95,30 @@ private:
 	//!number of objects
 	uint8_t nr_objects_;
 
-	//!index for current active object
-	int8_t active_object_;
+	typedef enum{
+		EIN_OBJ_INIT=0,
+		EIN_OBJ_LOCATED,
+		EIN_OBJ_PARKING,
+		EIN_OBJ_FINISHED,
+		EIN_OBJ_UNCERTAIN
+	}ein_obj_state_t;
+	typedef enum{
+		EIN_PLACE=0,
+		EIN_PARKING,
+		EIN_PLACE_FROM_PARKING
+	}ein_action_t;
+	typedef struct{
+		uint16_t obj_idx;
+		am_msgs::Object *data;
+		uint16_t action;
+		uint16_t target_zone_idx;
+		uint16_t target_zone_occupied;
+	}obj_queue_t;
 
-	//!vector with values 0/1 for not finished/finished
-	std::vector<uint32_t> obj_finished_;
+	//!state vector for all objects
+	std::vector<uint16_t> obj_state_;
+	//!sequence for objects
+	std::vector<obj_queue_t> obj_queue_;
 
 	//!target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
