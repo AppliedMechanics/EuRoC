@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-#undef DBG_OUT
+#define DBG_OUT
 
 
 EurocInput::EurocInput():
@@ -113,6 +113,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 		return -1;
 	}
 
+
 	//######################################################################################
 	//######################################################################################
 	//Objects:
@@ -171,6 +172,10 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 				return -1;
 			}
 	    }
+	    else
+	    {
+	    	tmp_obj.description="";
+	    }
 
 	    if((task_nr_ != 5) && (task_nr_ != 6))
 	    {
@@ -195,6 +200,10 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 			  ROS_ERROR("surface material not found in shape");
 			  return -1;
 			}
+	    }
+	    else
+	    {
+	    	tmp_obj.surface_material="";
 	    }
 
 
@@ -274,15 +283,21 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 				return -1;
 			}
 
+			if((task_nr_ != 5) && (task_nr_ != 6))
+			{
+				try{
+					const YAML::Node* dens = (*it2).FindValue("density");
+					(*dens) >> tmp_obj.shape[jj].density;
+				}catch(YAML::Exception e) {
+					msg_warn("density not found in shape");
 
-			try{
-				const YAML::Node* dens = (*it2).FindValue("density");
-				(*dens) >> tmp_obj.shape[jj].density;
-			}catch(YAML::Exception e) {
-				msg_warn("density not found in shape");
-
+					tmp_obj.shape[jj].density=7850;
+					//return -1;
+				}
+			}
+			else
+			{
 				tmp_obj.shape[jj].density=7850;
-				//return -1;
 			}
 
 			jj++;
@@ -303,6 +318,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 	  }
 	  ROS_INFO("");
 #endif
+
 
 	//######################################################################################
 	//######################################################################################
@@ -499,6 +515,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 		return -1;
 	}
 
+
 	//######################################################################################
 	//######################################################################################
 	//Sensors:
@@ -660,6 +677,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 		sensors_.push_back(tmp_sens);
 	}
 
+
 	//######################################################################################
 	//######################################################################################
 	//Puzzle:
@@ -757,6 +775,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 
 #endif
 	} //if(task_nr_ == 5)
+
 
 	//######################################################################################
 	//######################################################################################
@@ -898,6 +917,7 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 #endif
 	} //task_nr == 6
 
+
 	//######################################################################################
 	//######################################################################################
 
@@ -1007,6 +1027,8 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 void EurocInput::select_new_object()
 {
 #if 1
+	ROS_INFO("Select new object in euroc-input:");
+
 	if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
 	{
 		obj_queue_t temp_obj=obj_queue_[0];
@@ -1274,6 +1296,9 @@ void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_
 
 void EurocInput::save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
 {
+	if(task_nr_==5)
+		return;
+
 	std::stringstream parname;
 
 	for(uint16_t ii=0;ii<nr_zones_;ii++)

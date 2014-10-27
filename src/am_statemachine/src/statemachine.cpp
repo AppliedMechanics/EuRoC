@@ -2038,10 +2038,13 @@ int Statemachine::parse_yaml_file()
 		}
 		ROS_INFO("parsing YAML-file finished");
 
-		std::vector<uint16_t> test;
-		test.resize(3,0);
-		//test[1]=1;
-		ein_->sort_objects(test);
+		if(active_task_number_!=5)
+		{
+			std::vector<uint16_t> test;
+			test.resize(3,0);
+			//test[1]=1;
+			ein_->sort_objects(test);
+		}
 
 		ROS_INFO("filling TF Broadcast information...");
 		try
@@ -3409,6 +3412,10 @@ int Statemachine::gripper_close()
 
 		//destroy thread
 		lsc_.detach();
+
+                ROS_INFO("waiting for 0.5 second to ensure a static robot...");
+                ros::Duration waittime = ros::Duration(0.5, 0);
+                waittime.sleep();
 
 		if (object_grip_r_tcp_com.size()>0)
 		{
