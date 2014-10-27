@@ -230,8 +230,8 @@ private:
 	octomap_msgs::Octomap _octree;
 	// used to manually load binary octomap.bt
 	octomap::OcTree octree_file;
-
-
+	// Static scene for pantilt + table
+	moveit_msgs::PlanningScene static_scene_;
 
 
 

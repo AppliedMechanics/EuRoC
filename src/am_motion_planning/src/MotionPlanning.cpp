@@ -1696,10 +1696,6 @@ void MotionPlanning::initializePlanningScene()
 {
 	ROS_INFO("Adding ground plane and pan tilt station to collision world...");
 
-	moveit_msgs::PlanningScene static_scene;
-
-
-
 	//************************
 	// ground plane
 	shape_msgs::SolidPrimitive primitive;
@@ -1726,7 +1722,7 @@ void MotionPlanning::initializePlanningScene()
 	object.primitives.push_back(primitive);
 	object.primitive_poses.push_back(primitive_pose);
 
-	static_scene.world.collision_objects.push_back(object);
+	static_scene_.world.collision_objects.push_back(object);
 
 
 
@@ -1736,7 +1732,7 @@ void MotionPlanning::initializePlanningScene()
 	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("ground", "base", true);
 	moveit_msgs::AllowedCollisionMatrix acm;
 	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(acm);
-	static_scene.allowed_collision_matrix = acm;
+	static_scene_.allowed_collision_matrix = acm;
 
 
 
@@ -1768,14 +1764,14 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
 
-	static_scene.world.collision_objects.push_back(pan_tilt_object);
+	static_scene_.world.collision_objects.push_back(pan_tilt_object);
 
 
 
 
-	static_scene.is_diff = true;
-	planning_scene_diff_publisher_.publish(static_scene);
-	static_scene.world.collision_objects.clear();
+	static_scene_.is_diff = true;
+	planning_scene_diff_publisher_.publish(static_scene_);
+	//static_scene_.world.collision_objects.clear();
 
 	ROS_INFO("Finished adding ground plane and pan tilt station.");
 }
@@ -2630,7 +2626,7 @@ bool MotionPlanning::initializeMoveGroup()
 
 	// Publish msg on topic /planning_scene
 	planning_scene_diff_publisher_.publish(planning_scene_);
-
+	planning_scene_diff_publisher_.publish(static_scene_);
 
 	//==========================================================================================
 
