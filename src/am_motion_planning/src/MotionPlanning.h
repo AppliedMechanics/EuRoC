@@ -201,7 +201,7 @@ private:
 	void createObject(int obj_index, geometry_msgs::Pose obj_pose);
 	void readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
 	void setShapePositions(int obj_index, geometry_msgs::Pose obj_pose);//wird zur ZEit nicht verwendet
-	void addGroundPlaneToWorld();
+	void initializePlanningScene();
 	void addObjectToWorld(int obj_index);
 	void removeObjectFromWorld(int obj_index);
 	void attachObject(int obj_index);
@@ -267,7 +267,7 @@ private:
 	bool valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 
 	void getTimingAlongJointPath();
-	void getCurrentConfiguration();
+	euroc_c2_msgs::Configuration getCurrentConfiguration();
 	void setMoveRequestJointLimits();
 	void setMoveRequestTCPLimits();
 	void moveToTargetCB();

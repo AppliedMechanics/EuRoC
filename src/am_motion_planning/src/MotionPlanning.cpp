@@ -274,6 +274,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 	goalPose_server_.publishFeedback(goalPose_feedback_);
 
+
 	moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
 
 	mtt_=RUNNING;
@@ -298,6 +299,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		goalPose_result_.reached_goal = false;
 		goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
 	}
+
+
 }
 
 void MotionPlanning::getGoalPose_Feedback()
@@ -745,29 +748,147 @@ bool MotionPlanning::getMoveItSolution()
 
 }
 
+euroc_c2_msgs::Configuration MotionPlanning::getCurrentConfiguration()
+{
+        euroc_c2_msgs::Configuration current_configuration;
+
+        if (getTelemetry())
+        {
+                // Populate a vector with all the lwr joint names
+                std::vector<std::string> lwr_joints = group->getActiveJoints();
+                current_configuration.q.resize(group->getActiveJoints().size());
+
+                // Get the current configuration from the telemetry message
+                for(unsigned int i = 0; i < group->getActiveJoints().size(); ++i)
+                {
+                      std::vector<std::string> &joint_names = (_telemetry.joint_names);
+                      unsigned int telemetry_index = std::find(joint_names.begin(), joint_names.end(), lwr_joints[i]) - joint_names.begin();
+                      current_configuration.q[i] = _telemetry.measured.position[telemetry_index];
+                }
+        }
+
+        return current_configuration;
+}
+
 bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 {
 	switch (algorithm) {
 
 	case JOINT_VALUE_TARGET_KDL_IK: {
-		ROS_INFO("Setting a Joint value target obtained via the KDL IK.");
+	        ROS_INFO("Setting a Joint value target obtained via the KDL IK.");
 
-		robot_state::RobotStatePtr kinematic_state(
-				new robot_state::RobotState(kinematic_model_));
+	        // declare seed state
+	        std::vector<double> ik_seed_state;
 
-		kinematic_state->enforceBounds();
+		if (active_task_nr_ == 1
+		    || active_task_nr_ == 2)
+		{
+                      joint_model_group_ = joint_model_group_7DOF_;
+                      ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
 
-		if (kinematic_state->setFromIK(joint_model_group_, goal_pose_GPTCP_,
-				"gripper_tcp", 10, 0.1)) {
-			if (!group->setJointValueTarget(*kinematic_state)) {
-				ROS_ERROR("Setting obtained joint value target failed.");
-				return false;
-			}
-		} else {
-			ROS_ERROR(
-					"No inverse kinematics found for the target pose via KDL.");
-			return false;
+                      try
+                      {
+                            if(ros::service::waitForService(search_ik_solution_,ros::Duration(10.0)))
+                            {
+                                  current_configuration_.q.resize(7);
+
+                                  search_ik_solution_srv_.request.start = current_configuration_;
+                                  search_ik_solution_srv_.request.tcp_frame = goal_pose_GPTCP_;
+
+                                  search_ik_solution_client_.call(search_ik_solution_srv_);
+                                  std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+                                  if(!search_error_message.empty())
+                                  {
+                                        ROS_WARN("No seed state found via searchIKSolution srv.");
+                                        ROS_INFO("Setting seed state to current configuration...");
+                                        ik_seed_state = current_configuration_.q;
+                                  }
+                                  else
+                                  {
+                                        ROS_INFO("Seed state found via searchIKSolution srv.");
+                                        ik_seed_state = search_ik_solution_srv_.response.solution.q;
+                                  }
+                            }
+                      }
+                      catch(...)
+                      {
+                            msg_error("failed to find service search ik-solution");
+                            return false;
+                      }
 		}
+		else if (active_task_nr_ == 3
+		    || active_task_nr_ == 4
+			|| active_task_nr_ == 5
+			|| active_task_nr_ == 6)
+		{
+                      joint_model_group_ = joint_model_group_9DOF_;
+                      ROS_INFO("Setting seed state to current configuration...");
+                      ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
+                      ik_seed_state = getCurrentConfiguration().q;
+		}
+
+		// print seed state
+		ROS_INFO("Seed state:");
+		for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
+		      ROS_INFO_STREAM(ik_seed_state[idx]);
+
+
+		ROS_INFO("computing KDL IK...");
+		std::vector<double> solution;
+		moveit_msgs::MoveItErrorCodes error_code;
+		if (!joint_model_group_->getSolverInstance()->getPositionIK(goal_pose_GPTCP_,
+		                                                       ik_seed_state,
+		                                                       solution,
+		                                                       error_code))
+		{
+                    ROS_WARN("KDL->getPositionIK() failed.");
+                    return false;
+		}
+		else
+		{
+                    ROS_INFO("KDL->getPositionIK() successful.");
+                    ROS_INFO("Solution state:");
+                    for (unsigned idx = 0; idx < solution.size(); ++idx)
+                        ROS_INFO_STREAM(solution[idx]);
+
+
+                    // do self collision checking!
+                    ROS_INFO("Checking solution for self collision...");
+
+#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
+                    //--------------------------------------------------------------------------------
+                    collision_detection::CollisionRequest collision_request;
+                    collision_detection::CollisionResult collision_result;
+
+                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
+
+                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
+                                                                                    collision_result,
+                                                                                    *kinematic_state_);
+                    //--------------------------------------------------------------------------------
+
+                    if(collision_result.collision)
+                    {
+                          ROS_WARN("Collision occurred!");
+                          return false;
+                    }
+                    else
+                    {
+                          ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
+                          if (!group->setJointValueTarget(solution))
+                          {
+                            ROS_ERROR("Setting joint value target failed.");
+                            return false;
+                          }
+                          else
+                          {
+                            // TODO
+                            // check if state valid and collision free
+                            break;
+                          }
+                    }
+		}
+
 		break;
 	}
 
@@ -1478,7 +1599,7 @@ void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 		ros::param::get("/nr_objects_",nr_obj);
 		obj_state_.resize(nr_obj);
 
-		addGroundPlaneToWorld();
+		initializePlanningScene();
 	}
 	ROS_INFO("get object state cb called! ");
 	switch(msg->obj_state)
@@ -1566,18 +1687,16 @@ void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 	planning_scene_.robot_state.attached_collision_objects.clear();
 }
 
-void MotionPlanning::addGroundPlaneToWorld()
+void MotionPlanning::initializePlanningScene()
 {
-	ROS_INFO("Adding ground plane to collision world...(trunk)");
+	ROS_INFO("Adding ground plane and pan tilt station to collision world...");
 
-	moveit_msgs::PlanningScene plane_scene;
+	moveit_msgs::PlanningScene static_scene;
 
-//	planning_scene::PlanningScene planning_scene(kinematic_model_);
 
 
 	//************************
 	// ground plane
-
 	shape_msgs::SolidPrimitive primitive;
 	primitive.type = primitive.BOX;
 	primitive.dimensions.resize(3);
@@ -1588,7 +1707,7 @@ void MotionPlanning::addGroundPlaneToWorld()
 	geometry_msgs::Pose primitive_pose;
 	primitive_pose.position.x = 0;
 	primitive_pose.position.y = 0;
-	primitive_pose.position.z = -0.01;
+	primitive_pose.position.z = -0.005;//-0.01;
 	primitive_pose.orientation.x = 0;
 	primitive_pose.orientation.y = 0;
 	primitive_pose.orientation.z = 0;
@@ -1602,7 +1721,18 @@ void MotionPlanning::addGroundPlaneToWorld()
 	object.primitives.push_back(primitive);
 	object.primitive_poses.push_back(primitive_pose);
 
-	plane_scene.world.collision_objects.push_back(object);
+	static_scene.world.collision_objects.push_back(object);
+
+
+
+
+	//************************
+	// allow contact between base and ground plane
+	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("ground", "base", true);
+	moveit_msgs::AllowedCollisionMatrix acm;
+	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(acm);
+	static_scene.allowed_collision_matrix = acm;
+
 
 
 	//************************
@@ -1633,67 +1763,16 @@ void MotionPlanning::addGroundPlaneToWorld()
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
 
-	plane_scene.world.collision_objects.push_back(pan_tilt_object);
-
-
-//	planning_scene_monitor->getPlanningScene()
-//
-//
-//
-//
-//	moveit_msgs::AllowedCollisionMatrix collision_matrix_msg;
-//
-//	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(collision_matrix_msg);
-//
-//	ROS_WARN("Collision matrix entry names:");
-//	for (unsigned i = 0; i < collision_matrix_msg.entry_names.size(); ++i)
-//	{
-//		ROS_INFO_STREAM(collision_matrix_msg.entry_names[i]);
-//	}
-//
-//	// modify collision matrix
-//	collision_matrix_msg.entry_names.push_back("ground");
-//	moveit_msgs::AllowedCollisionEntry allowed_collision_entry;
-//	allowed_collision_entry.enabled.push_back(true);
-//	collision_matrix_msg.entry_values.push_back(allowed_collision_entry);
-//
-//	plane_scene.allowed_collision_matrix = collision_matrix_msg;
-
-
-	plane_scene.is_diff = true;
-	planning_scene_diff_publisher_.publish(plane_scene);
-	plane_scene.world.collision_objects.clear();
-
-
-
-//	moveit_msgs::AllowedCollisionMatrix new_collision_matrix_msg;
-//
-//	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(new_collision_matrix_msg);
-//
-//	ROS_WARN("Collision matrix entry names:");
-//	for (unsigned i = 0; i < new_collision_matrix_msg.entry_names.size(); ++i)
-//	{
-//		ROS_INFO_STREAM(collision_matrix_msg.entry_names[i]);
-//	}
+	static_scene.world.collision_objects.push_back(pan_tilt_object);
 
 
 
 
+	static_scene.is_diff = true;
+	planning_scene_diff_publisher_.publish(static_scene);
+	static_scene.world.collision_objects.clear();
 
-//	planning_scene.getAllowedCollisionMatrixNonConst().removeEntry("ground","base");
-//
-//	plane_scene.allowed_collision_matrix = planning_scene.getAllowedCollisionMatrix();
-//	planning_scene_diff_publisher_.publish(plane_scene);
-	// getPlanningScene() nicht sicher?
-
-
-
-	ROS_INFO("Finished adding ground plane.");
-
-
-
-
-
+	ROS_INFO("Finished adding ground plane and pan tilt station.");
 }
 
 void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
