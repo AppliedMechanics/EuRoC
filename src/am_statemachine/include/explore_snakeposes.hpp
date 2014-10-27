@@ -38,6 +38,8 @@ order_poses[19] = 19;
 for (int i=0;i<nr_goals_;i++)
 	explore_queue_[i].goal_config.q.resize(9);
 
+// BLOCK 1
+
 explore_queue_[order_poses[0]].goal_pose.position.x = 0.336+0.88;
 explore_queue_[order_poses[0]].goal_pose.position.y = 0.39+0;
 explore_queue_[order_poses[0]].goal_pose.position.z = 0.525;
@@ -78,7 +80,105 @@ explore_queue_[order_poses[2]].goal_config.q[4] = -1.572;
 explore_queue_[order_poses[2]].goal_config.q[5] = 1.572;
 explore_queue_[order_poses[2]].goal_config.q[6] = 0.13;
 explore_queue_[order_poses[2]].goal_config.q[7] = -1.572;
-explore_queue_[order_poses[2]].goal_config.q[8] = -1.572;
+explore_queue
+
+explore_queue_[order_poses[14]].goal_pose.position.x = -0.381;
+explore_queue_[order_poses[14]].goal_pose.position.y = 0;
+explore_queue_[order_poses[14]].goal_pose.position.z = 0.792;
+q_temp[order_poses[14]].setRPY(2.7,-0.094,-3.085);
+explore_queue_[order_poses[14]].goal_config.q[0] = 0;
+explore_queue_[order_poses[14]].goal_config.q[1] = 0;
+explore_queue_[order_poses[14]].goal_config.q[2] = 0;
+explore_queue_[order_poses[14]].goal_config.q[3] = 0;
+explore_queue_[order_poses[14]].goal_config.q[4] = 0;
+explore_queue_[order_poses[14]].goal_config.q[5] = -1.36;
+explore_queue_[order_poses[14]].goal_config.q[6] = 0.45;
+explore_queue_[order_poses[14]].goal_config.q[7] = 1.7;
+explore_queue_[order_poses[14]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[15]].goal_pose.position.x = -0.27;
+explore_queue_[order_poses[15]].goal_pose.position.y = -0.27;
+explore_queue_[order_poses[15]].goal_pose.position.z = 0.792;
+q_temp[order_poses[15]].setRPY(-3.14,-0.082,-2.357);
+explore_queue_[order_poses[15]].goal_config.q[0] = 0;
+explore_queue_[order_poses[15]].goal_config.q[1] = 0;
+explore_queue_[order_poses[15]].goal_config.q[2] = 0.193;
+explore_queue_[order_poses[15]].goal_config.q[3] = 0;
+explore_queue_[order_poses[15]].goal_config.q[4] = 0.593;
+explore_queue_[order_poses[15]].goal_config.q[5] = -1.36;
+explore_queue_[order_poses[15]].goal_config.q[6] = 0;
+explore_queue_[order_poses[15]].goal_config.q[7] = 1.7;
+explore_queue_[order_poses[15]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[16]].goal_pose.position.x = 0;
+explore_queue_[order_poses[16]].goal_pose.position.y = -0.381;
+explore_queue_[order_poses[16]].goal_pose.position.z = 0.792;
+q_temp[order_poses[16]].setRPY(2.7,-0.094,-1.627);
+explore_queue_[order_poses[16]].goal_config.q[0] = 0;
+explore_queue_[order_poses[16]].goal_config.q[1] = 0;
+explore_queue_[order_poses[16]].goal_config.q[2] = 0.382;
+explore_queue_[order_poses[16]].goal_config.q[3] = 0;
+explore_queue_[order_poses[16]].goal_config.q[4] = 1.187;
+explore_queue_[order_poses[16]].goal_config.q[5] = -1.36;
+explore_queue_[order_poses[16]].goal_config.q[6] = -0.45;
+explore_queue_[order_poses[16]].goal_config.q[7] = 1.7;
+explore_queue_[order_poses[16]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[17]].goal_pose.position.x = -0.527;
+explore_queue_[order_poses[17]].goal_pose.position.y = 0.112;
+explore_queue_[order_poses[17]].goal_pose.position.z = 0.455;
+q_temp[order_poses[17]].setRPY(2.142,0,2.168);
+explore_queue_[order_poses[17]].goal_config.q[0] = 0;
+explore_queue_[order_poses[17]].goal_config.q[1] = 0;
+explore_queue_[order_poses[17]].goal_config.q[2] = 0.6;
+explore_queue_[order_poses[17]].goal_config.q[3] = 1.2;
+explore_queue_[order_poses[17]].goal_config.q[4] = -1.572;
+explore_queue_[order_poses[17]].goal_config.q[5] = -1.572;
+explore_queue_[order_poses[17]].goal_config.q[6] = 0.2;
+explore_queue_[order_poses[17]].goal_config.q[7] = 1.572;
+explore_queue_[order_poses[17]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[18]].goal_pose.position.x = -0.379;
+explore_queue_[order_poses[18]].goal_pose.position.y = -0.383;
+explore_queue_[order_poses[18]].goal_pose.position.z = 0.455;
+q_temp[order_poses[18]].setRPY(2.142,0,-3.115);
+explore_queue_[order_poses[18]].goal_config.q[0] = 0;
+explore_queue_[order_poses[18]].goal_config.q[1] = 0;
+explore_queue_[order_poses[18]].goal_config.q[2] = 1.572;
+explore_queue_[order_poses[18]].goal_config.q[3] = 1.2;
+explore_queue_[order_poses[18]].goal_config.q[4] = -1.572;
+explore_queue_[order_poses[18]].goal_config.q[5] = -1.572;
+explore_queue_[order_poses[18]].goal_config.q[6] = 0.2;
+explore_queue_[order_poses[18]].goal_config.q[7] = 1.572;
+explore_queue_[order_poses[18]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[19]].goal_pose.position.x = -0.373;
+explore_queue_[order_poses[19]].goal_pose.position.y = -0.39;
+explore_queue_[order_poses[19]].goal_pose.position.z = 0.455;
+q_temp[order_poses[19]].setRPY(2.142,0,1.573);
+explore_queue_[order_poses[19]].goal_config.q[0] = 0;
+explore_queue_[order_poses[19]].goal_config.q[1] = 0;
+explore_queue_[order_poses[19]].goal_config.q[2] = 0;
+explore_queue_[order_poses[19]].goal_config.q[3] = 1.2;
+explore_queue_[order_poses[19]].goal_config.q[4] = -1.572;
+explore_queue_[order_poses[19]].goal_config.q[5] = 1.572;
+explore_queue_[order_poses[19]].goal_config.q[6] = -0.2;
+explore_queue_[order_poses[19]].goal_config.q[7] = -1.572;
+explore_queue_[order_poses[19]].goal_config.q[8] = 0;
+
+explore_queue_[order_poses[20]].goal_pose.position.x = -0.39;
+explore_queue_[order_poses[20]].goal_pose.position.y = 0.373;
+explore_queue_[order_poses[20]].goal_pose.position.z = 0.455;
+q_temp[order_poses[20]].setRPY(2.142,0,0);
+explore_queue_[order_poses[20]].goal_config.q[0] = 0;
+explore_queue_[order_poses[20]].goal_config.q[1] = 0;
+explore_queue_[order_poses[20]].goal_config.q[2] = -1.572;
+explore_queue_[order_poses[20]].goal_config.q[3] = 1.2;
+explore_queue_[order_poses[20]].goal_config.q[4] = -1.572;
+explore_queue_[order_poses[20]].goal_config.q[5] = 1.572;
+explore_queue_[order_poses[20]].goal_config.q[6] = -0.2;
+explore_queue_[order_poses[20]].goal_config.q[7] = -1.572;
+explore_queue_[order_poses[20]].goal_config.q[8] = 0;_[order_poses[2]].goal_config.q[8] = -1.572;
 
 explore_queue_[order_poses[3]].goal_pose.position.x = 0.336+0.88;
 explore_queue_[order_poses[3]].goal_pose.position.y = -0.39-0.4;
@@ -107,6 +207,8 @@ explore_queue_[order_poses[4]].goal_config.q[5] = 1.2;
 explore_queue_[order_poses[4]].goal_config.q[6] = -0.35;
 explore_queue_[order_poses[4]].goal_config.q[7] = -1.572;
 explore_queue_[order_poses[4]].goal_config.q[8] = -1.572;
+
+// BLOCK 2
 
 explore_queue_[order_poses[5]].goal_pose.position.x = 0.39+0;
 explore_queue_[order_poses[5]].goal_pose.position.y = 0.336+0.88;
@@ -181,6 +283,8 @@ explore_queue_[order_poses[9]].goal_config.q[8] = 1.572;
 /////////////////////////////////////////////////////////////////////////
 // NEW POSES
 
+// BLOCK 3
+
 explore_queue_[order_poses[10]].goal_pose.position.x = -0.381;
 explore_queue_[order_poses[10]].goal_pose.position.y = 0;
 explore_queue_[order_poses[10]].goal_pose.position.z = 0.792;
@@ -194,7 +298,6 @@ explore_queue_[order_poses[10]].goal_config.q[5] = -1.36;
 explore_queue_[order_poses[10]].goal_config.q[6] = 0.45;
 explore_queue_[order_poses[10]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[10]].goal_config.q[8] = 0;
-
 
 explore_queue_[order_poses[11]].goal_pose.position.x = -0.27;
 explore_queue_[order_poses[11]].goal_pose.position.y = -0.27;
@@ -210,7 +313,6 @@ explore_queue_[order_poses[11]].goal_config.q[6] = 0;
 explore_queue_[order_poses[11]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[11]].goal_config.q[8] = 0;
 
-
 explore_queue_[order_poses[12]].goal_pose.position.x = -0.232;
 explore_queue_[order_poses[12]].goal_pose.position.y = -0.232;
 explore_queue_[order_poses[12]].goal_pose.position.z = 0.921;
@@ -224,7 +326,6 @@ explore_queue_[order_poses[12]].goal_config.q[5] = -1;
 explore_queue_[order_poses[12]].goal_config.q[6] = 0;
 explore_queue_[order_poses[12]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[12]].goal_config.q[8] = 0;
-
 
 explore_queue_[order_poses[13]].goal_pose.position.x = 0;
 explore_queue_[order_poses[13]].goal_pose.position.y = -0.381;
@@ -240,6 +341,7 @@ explore_queue_[order_poses[13]].goal_config.q[6] = -0.45;
 explore_queue_[order_poses[13]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[13]].goal_config.q[8] = 0;
 
+// BLOCK 4
 
 explore_queue_[order_poses[14]].goal_pose.position.x = 0.3-0.143;
 explore_queue_[order_poses[14]].goal_pose.position.y = -0.3-0.354;
@@ -255,7 +357,6 @@ explore_queue_[order_poses[14]].goal_config.q[6] = -0.7;
 explore_queue_[order_poses[14]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[14]].goal_config.q[8] = 0;
 
-
 explore_queue_[order_poses[15]].goal_pose.position.x = -0.3-0.354;
 explore_queue_[order_poses[15]].goal_pose.position.y = 0.3-0.143;
 explore_queue_[order_poses[15]].goal_pose.position.z = 0.792;
@@ -270,6 +371,7 @@ explore_queue_[order_poses[15]].goal_config.q[6] = 0.7;
 explore_queue_[order_poses[15]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[15]].goal_config.q[8] = 0;
 
+// BLOCK 5
 
 explore_queue_[order_poses[16]].goal_pose.position.x = -0.5-0.172;
 explore_queue_[order_poses[16]].goal_pose.position.y = 0.2-0.533;
@@ -285,7 +387,6 @@ explore_queue_[order_poses[16]].goal_config.q[6] = 0.7;
 explore_queue_[order_poses[16]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[16]].goal_config.q[8] = 0;
 
-
 explore_queue_[order_poses[17]].goal_pose.position.x = -0.5-0.079;
 explore_queue_[order_poses[17]].goal_pose.position.y = 0.2-0.506;
 explore_queue_[order_poses[17]].goal_pose.position.z = 0.65;
@@ -300,6 +401,7 @@ explore_queue_[order_poses[17]].goal_config.q[6] = 0.4;
 explore_queue_[order_poses[17]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[17]].goal_config.q[8] = 0;
 
+// BLOCK 6
 
 explore_queue_[order_poses[18]].goal_pose.position.x = 0.2-0.531;
 explore_queue_[order_poses[18]].goal_pose.position.y = -0.5-0.176;
@@ -314,7 +416,6 @@ explore_queue_[order_poses[18]].goal_config.q[5] = -1.36;
 explore_queue_[order_poses[18]].goal_config.q[6] = -0.7;
 explore_queue_[order_poses[18]].goal_config.q[7] = 1.7;
 explore_queue_[order_poses[18]].goal_config.q[8] = 0;
-
 
 explore_queue_[order_poses[19]].goal_pose.position.x = 0.2-0.506;
 explore_queue_[order_poses[19]].goal_pose.position.y = -0.5-0.791;
