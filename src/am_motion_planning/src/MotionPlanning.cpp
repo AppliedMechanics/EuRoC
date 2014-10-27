@@ -94,6 +94,10 @@ obj_data_loaded_(false)
 
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
+	// initialize Planning Scene -> add ground + pan tilt to environment
+	initializePlanningScene();
+
+
 
 }
 
@@ -106,6 +110,7 @@ MotionPlanning::~MotionPlanning()
 
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
+
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
 	inter_steps_ = goal_pose_goal_->inter_steps;
@@ -1599,7 +1604,7 @@ void MotionPlanning::get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 		ros::param::get("/nr_objects_",nr_obj);
 		obj_state_.resize(nr_obj);
 
-		initializePlanningScene();
+		//initializePlanningScene();
 	}
 	ROS_INFO("get object state cb called! ");
 	switch(msg->obj_state)
