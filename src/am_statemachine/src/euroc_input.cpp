@@ -1029,6 +1029,12 @@ void EurocInput::select_new_object()
 #if 1
 	ROS_INFO("Select new object in euroc-input:");
 
+	if(obj_queue_.size()==0)
+	{
+		msg_error("object queue is empty!");
+		return;
+	}
+
 	if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
 	{
 		obj_queue_t temp_obj=obj_queue_[0];
@@ -1429,8 +1435,32 @@ bool EurocInput::all_finished()
 	uint16_t cnt=0;
 	for(uint16_t ii=0; ii<nr_objects_; ii++)
 	{
-		if(obj_state_[obj_queue_[0].obj_idx]==EIN_OBJ_FINISHED)
+		if(obj_state_[ii]==EIN_OBJ_FINISHED)
 			cnt++;
+	}
+
+	//print object queue
+	ROS_INFO("Object queue:");
+	for(unsigned ii=0;ii<obj_queue_.size();ii++)
+	{
+		uint16_t obj_idx=obj_queue_[ii].obj_idx;
+		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
+		ROS_INFO("Targetzone (%d) occupied: %s",obj_queue_[ii].target_zone_idx,obj_queue_[ii].target_zone_occupied ? "true":"false");
+		switch(obj_queue_[ii].action)
+		{
+		case EIN_PLACE:
+			ROS_INFO("action: EIN_PLACE");
+			break;
+		case EIN_PARKING:
+			ROS_INFO("action: EIN_PARKING");
+			break;
+		case EIN_PLACE_FROM_PARKING:
+			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
+			break;
+		default:
+			ROS_ERROR("action unknown!!");
+			return -1;
+		}
 	}
 	if(cnt==nr_objects_)
 		return true;

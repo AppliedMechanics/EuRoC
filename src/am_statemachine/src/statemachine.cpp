@@ -745,30 +745,43 @@ void Statemachine::scheduler_skip_explore()
 
 void Statemachine::scheduler_next_object()
 {
-	ROS_INFO("Scheduler: changing to next object");
-	ein_->select_new_object();
-	cur_obj_ = ein_->get_active_object();
-	cur_zone_ = ein_->get_active_target_zone();
-	ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
-	cur_object_type_=OBJECT_UNKNOWN;
-	if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("cylinder")))
+	if(ein_->all_finished())
 	{
-		cur_object_type_=OBJECT_CYLINDER;
-		ROS_INFO("new object-type: CYLINDER");
-	}
-	if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("box")))
-	{
-		cur_object_type_=OBJECT_CUBE;
-		ROS_INFO("new object-type: CUBE");
-	}
-	if(cur_obj_.nr_shapes==3)
-	{
-		cur_object_type_=OBJECT_HANDLE;
-		ROS_INFO("new object-type: HANDLE");
-	}
+		ROS_INFO("scheduler_next_object() and all objects finished!");
+		fsm::fsm_state_t temp_state;
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::SCHEDULER;
 
-	//reset speed modification
-	speed_mod_=0;
+		state_queue.clear();
+		state_queue.push_back(temp_state);
+	}
+	else
+	{
+		ROS_INFO("Scheduler: changing to next object");
+		ein_->select_new_object();
+		cur_obj_ = ein_->get_active_object();
+		cur_zone_ = ein_->get_active_target_zone();
+		ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
+		cur_object_type_=OBJECT_UNKNOWN;
+		if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("cylinder")))
+		{
+			cur_object_type_=OBJECT_CYLINDER;
+			ROS_INFO("new object-type: CYLINDER");
+		}
+		if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("box")))
+		{
+			cur_object_type_=OBJECT_CUBE;
+			ROS_INFO("new object-type: CUBE");
+		}
+		if(cur_obj_.nr_shapes==3)
+		{
+			cur_object_type_=OBJECT_HANDLE;
+			ROS_INFO("new object-type: HANDLE");
+		}
+
+		//reset speed modification
+		speed_mod_=0;
+	}
 }
 
 void Statemachine::scheduler_grasp_object(bool start)
