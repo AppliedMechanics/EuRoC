@@ -207,6 +207,7 @@ private:
 	//!goal queue for motion planning action server
 	std::vector<am_msgs::goalPoseGoal> goal_queue;
 	std::vector<am_msgs::goalPoseGoal> explore_queue_;
+	std::vector<am_msgs::VisionGoal>   vision_queue;
 	//!number of goals in the queue for a certain state
 	uint8_t nr_goals_;
 	//!number of exp. poses
@@ -328,6 +329,13 @@ private:
 	uint8_t explore_environment_image_state_;
 	uint8_t explore_environment_image_counter_;
 
+	//!Explore the environment (check results) -> objects in targetzones lying?
+	int explore_environment_check();
+	//!callback for explore_environment_check()
+	void explore_environment_check_cb();
+	//!state of explore_environment_check() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t explore_environment_check_state_;
+
 	//!locate object in a global manner
 	int locate_object_global();
 	//!callbacks for locate_object_global()
@@ -336,6 +344,15 @@ private:
 	//!state of locate_object_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t locate_object_global_state_;
 	uint8_t locate_object_global_counter_;
+
+	//!locate all objects in a global manner
+	int locate_all_objects_global();
+	//!callbacks for locate_all_objects_global()
+	void locate_all_objects_global_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
+	void locate_all_objects_global_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+	//!state of locate_all_objects_global() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t locate_all_objects_global_state_;
+	uint8_t locate_all_objects_global_counter_;
 
 	//!locate object from short distance with TCP CAM
 	int locate_object_close_range();

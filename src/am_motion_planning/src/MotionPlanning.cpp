@@ -894,36 +894,36 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 
 #warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
                     //--------------------------------------------------------------------------------
-                    collision_detection::CollisionRequest collision_request;
-                    collision_detection::CollisionResult collision_result;
-
-                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
-
-                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
-                                                                                    collision_result,
-                                                                                    *kinematic_state_);
+//                    collision_detection::CollisionRequest collision_request;
+//                    collision_detection::CollisionResult collision_result;
+//
+//                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
+//
+//                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
+//                                                                                    collision_result,
+//                                                                                    *kinematic_state_);
                     //--------------------------------------------------------------------------------
 
-                    if(collision_result.collision)
-                    {
-                          ROS_WARN("Collision occurred!");
-                          return false;
-                    }
-                    else
-                    {
-                          ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
-                          if (!group->setJointValueTarget(solution))
-                          {
-                            ROS_ERROR("Setting joint value target failed.");
-                            return false;
-                          }
-                          else
-                          {
-                            // TODO
-                            // check if state valid and collision free
-                            break;
-                          }
-                    }
+//                    if(collision_result.collision)
+//                    {
+//                          ROS_WARN("Collision occurred!");
+//                          return false;
+//                    }
+//                    else
+//                    {
+//                          ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
+//                          if (!group->setJointValueTarget(solution))
+//                          {
+//                            ROS_ERROR("Setting joint value target failed.");
+//                            return false;
+//                          }
+//                          else
+//                          {
+//                            // TODO
+//                            // check if state valid and collision free
+//                            break;
+//                          }
+//                    }
 		}
 
 		break;

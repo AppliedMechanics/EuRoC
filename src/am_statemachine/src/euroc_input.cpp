@@ -926,6 +926,8 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 
 int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 {
+	msg_info("EurocInput: sort_objects() started");
+	//ret: -1 -> error happend, ret:0 -> sort successful,continue, ret=1 -> problem with targetzone
 	if(task_nr_==6)
 	{
 		obj_queue_t temp_obj;
@@ -1072,6 +1074,9 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			}
 		}
 	} //end task_nr_!=5
+
+	msg_info("EurocInput: sort_objects() finished");
+
 	return 0;
 }
 
@@ -1087,7 +1092,7 @@ void EurocInput::select_new_object()
 
 	if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
 	{
-		msg_info("EurocInput: select_new_object() trying next object");
+		msg_info("EurocInput: select_new_object() move to next object");
 		obj_queue_t temp_obj=obj_queue_[0];
 
 		obj_queue_.erase(obj_queue_.begin());
@@ -1434,28 +1439,28 @@ bool EurocInput::all_finished()
 	}
 
 	//print object queue
-	ROS_INFO("Object queue:");
-	for(unsigned ii=0;ii<obj_queue_.size();ii++)
-	{
-		uint16_t obj_idx=obj_queue_[ii].obj_idx;
-		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
-		ROS_INFO("Targetzone (%d) occupied: %s",obj_queue_[ii].target_zone_idx,obj_queue_[ii].target_zone_occupied ? "true":"false");
-		switch(obj_queue_[ii].action)
-		{
-		case EIN_PLACE:
-			ROS_INFO("action: EIN_PLACE");
-			break;
-		case EIN_PARKING:
-			ROS_INFO("action: EIN_PARKING");
-			break;
-		case EIN_PLACE_FROM_PARKING:
-			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
-			break;
-		default:
-			ROS_ERROR("action unknown!!");
-			return -1;
-		}
-	}
+//	ROS_INFO("Object queue:");
+//	for(unsigned ii=0;ii<obj_queue_.size();ii++)
+//	{
+//		uint16_t obj_idx=obj_queue_[ii].obj_idx;
+//		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
+//		ROS_INFO("Targetzone (%d) occupied: %s",obj_queue_[ii].target_zone_idx,obj_queue_[ii].target_zone_occupied ? "true":"false");
+//		switch(obj_queue_[ii].action)
+//		{
+//		case EIN_PLACE:
+//			ROS_INFO("action: EIN_PLACE");
+//			break;
+//		case EIN_PARKING:
+//			ROS_INFO("action: EIN_PARKING");
+//			break;
+//		case EIN_PLACE_FROM_PARKING:
+//			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
+//			break;
+//		default:
+//			ROS_ERROR("action unknown!!");
+//			return -1;
+//		}
+//	}
 	if(cnt==nr_objects_)
 		return true;
 	else

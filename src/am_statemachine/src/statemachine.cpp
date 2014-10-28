@@ -39,6 +39,8 @@ Statemachine::Statemachine():
 					explore_environment_image_counter_(0),
 					locate_object_global_state_(OPEN),
 					locate_object_global_counter_(0),
+					locate_all_objects_global_state_(OPEN),
+					locate_all_objects_global_counter_(0),
 					locate_object_close_range_state_(OPEN),
 					check_object_finished_state_(OPEN),
 					check_object_gripped_state_(OPEN),
@@ -221,6 +223,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_MOTION";
 		case fsm::EXPLORE_ENVIRONMENT_IMAGE:
 			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_IMAGE";
+		case fsm::EXPLORE_ENVIRONMENT_CHECK:
+			return "EXPLORE_ENVIRONMENT->EXPLORE_ENVIRONMENT_CHECK";
 		default:
 			return "EXPLORE_ENVIRONMENT->default";
 		}
@@ -236,6 +240,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 				return "SOLVE_TASK->HOMING";
 			case fsm::LOCATE_OBJECT_GLOBAL:
 				return "SOLVE_TASK->LOCATE_OBJECT_GLOBAL";
+			case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
+				return "SOLVE_TASK->LOCATE_ALL_OBJECTS_GLOBAL";
 			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
 				return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
 			case fsm::GET_GRASPING_POSE:
@@ -340,8 +346,6 @@ void Statemachine::scheduler_schedule()
 		break;
 
 	case fsm::SCHEDULER: //make a schedule at beginning of a task
-		//Get first object
-		scheduler_next_object();
 
 		//clear the queue
 		state_queue.clear();
@@ -352,7 +356,7 @@ void Statemachine::scheduler_schedule()
 			if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 ||
 					active_task_number_==4 || active_task_number_==5)
 			{
-			temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
+				temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
 				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
@@ -363,10 +367,20 @@ void Statemachine::scheduler_schedule()
 					//temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
+				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;			state_queue.push_back(temp_state);
 			}
 			else if(active_task_number_==6) //schedule for task 5 and 6
 			{
 				//Nothing special right now
+			}
+		}
+		else
+		{
+			std::vector<uint16_t> test;
+			test.resize(ein_->get_nr_objects(),0);
+			if(-1==ein_->sort_objects(test))
+			{
+				msg_error("sort_objects failed!");
 			}
 		}
 		//Then make a new schedule inside the SOLVE_TASK
@@ -454,6 +468,12 @@ void Statemachine::scheduler_schedule()
 				scheduler_error_explore_environment_image();
 			}
 			break;
+		case fsm::EXPLORE_ENVIRONMENT_CHECK:
+			if(explore_environment_check_state_==FINISHEDWITHERROR)
+			{
+				msg_warn("error in explore_environment_check()");
+			}
+			break;
 		default:
 			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 		}
@@ -472,6 +492,9 @@ void Statemachine::scheduler_schedule()
 				}
 				else	//otherwise start with next object
 				{
+					//Get first object
+					scheduler_next_object();
+
 					//Following code can be modified according to specific object-properties
 					temp_state.sub.one=fsm::SOLVE_TASK;
 					if(pause_in_loop_==true)
@@ -599,6 +622,7 @@ void Statemachine::scheduler_schedule()
 
 					msg_warn("Statemachine-Errorhandler: object not in target zone -> try next object");
 					//and get next one
+					ein_->select_new_object();
 					scheduler_next_object();
 
 
@@ -720,6 +744,7 @@ void Statemachine::scheduler_skip_object()
 	else
 	{
 		ROS_INFO("Scheduler: skipping object -> next object");
+		ein_->select_new_object();
 		scheduler_next_object();
 
 		//clear the queue
@@ -738,6 +763,8 @@ void Statemachine::scheduler_skip_explore()
 	state_queue.clear();
 
 	fsm::fsm_state_t temp_state;
+	temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+	temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;	state_queue.push_back(temp_state);
 	temp_state.sub.one=fsm::SOLVE_TASK;
 	temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 	temp_state.sub.two=fsm::SCHEDULER;					state_queue.push_back(temp_state);
@@ -745,7 +772,6 @@ void Statemachine::scheduler_skip_explore()
 
 void Statemachine::scheduler_next_object()
 {
-	static bool first=true;
 	if(ein_->all_finished())
 	{
 		ROS_INFO("scheduler_next_object() and all objects finished!");
@@ -758,16 +784,6 @@ void Statemachine::scheduler_next_object()
 	}
 	else
 	{
-		if(first)
-		{
-			first=false;
-		}
-		else
-		{
-			ROS_INFO("Scheduler: changing to next object");
-			ein_->select_new_object();
-		}
-
 		cur_obj_ = ein_->get_active_object();
 		cur_zone_ = ein_->get_active_target_zone();
 		ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
@@ -1048,6 +1064,7 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 	{
 	case fsm::NO_DK_SOL:
 	case fsm::MOTION_PLANNING_ERROR:
+	case fsm::NO_IK_SOL:
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_target_zone_vision_state_=OPEN;
@@ -1062,23 +1079,23 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 		}
 		break;
 
-	case fsm::NO_IK_SOL:
-		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-
-		if(selected_target_pose_ < target_vision_pose.size()-1)
-		{
-			move_to_target_zone_vision_state_=OPEN;
-			selected_target_pose_++;
-		}
-		else
-		{
-			//skip vision pose
-			move_to_target_zone_vision_state_=OPEN;
-			//skip final vision check
-			check_object_finished_state_=FINISHED;
-			scheduler_next();
-		}
-		break;
+//	case fsm::NO_IK_SOL:
+//		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+//
+//		if(selected_target_pose_ < target_vision_pose.size()-1)
+//		{
+//			move_to_target_zone_vision_state_=OPEN;
+//			selected_target_pose_++;
+//		}
+//		else
+//		{
+//			//skip vision pose
+//			move_to_target_zone_vision_state_=OPEN;
+//			//skip final vision check
+//			check_object_finished_state_=FINISHED;
+//			scheduler_next();
+//		}
+//		break;
 
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_target_zone_vision_state_=OPEN;
@@ -1567,6 +1584,9 @@ int Statemachine::tick()
 		case fsm::EXPLORE_ENVIRONMENT_IMAGE:
 			return explore_environment_image();
 
+		case fsm::EXPLORE_ENVIRONMENT_CHECK:
+			return explore_environment_check();
+
 		default:
 			msg_error("Error. unknown state of level two (EXPLORE_ENVIRONMENT) in tick()");
 			return -1;
@@ -1591,6 +1611,9 @@ int Statemachine::tick()
 
 		case fsm::LOCATE_OBJECT_GLOBAL:
 			return locate_object_global();
+
+		case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
+			return locate_all_objects_global();
 
 		case fsm::GET_GRASPING_POSE:
 			return get_grasping_pose();
@@ -1712,6 +1735,7 @@ int Statemachine::pause()
 			pause_state_=FINISHEDWITHERROR;
 			break;
 		case 2:
+			ein_->select_new_object();
 			scheduler_next_object();
 			pause_state_=OPEN;
 			break;
@@ -2060,11 +2084,6 @@ int Statemachine::parse_yaml_file()
 		}
 		ROS_INFO("parsing YAML-file finished");
 
-
-		std::vector<uint16_t> test;
-		test.resize(ein_->get_nr_objects(),0);
-		//test[1]=1;
-		ein_->sort_objects(test);
 
 		ROS_INFO("filling TF Broadcast information...");
 		try
@@ -2664,6 +2683,43 @@ void Statemachine::explore_environment_motion_done(const actionlib::SimpleClient
 	}
 }
 
+void Statemachine::explore_environment_check_cb()
+{
+}
+
+int Statemachine::explore_environment_check()
+{
+	ROS_INFO("explore_environment_check() called: OPEN");
+
+	std::vector<uint16_t> test;
+	test.resize(ein_->get_nr_objects(),0);
+	//test[1]=1;
+
+	int16_t ret=ein_->sort_objects(test);
+	if(ret==-1)
+	{
+		msg_error("sort_objects failed!");
+	}
+	else if(ret==1)
+	{
+		msg_warn("insert locate all objects global in state-queue");
+		fsm::fsm_state_t temp_state;
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::LOCATE_ALL_OBJECTS_GLOBAL;
+		state_queue.insert(state_queue.begin(),temp_state);
+
+		temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+		temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;
+		state_queue.insert(state_queue.begin()+1,temp_state);
+	}
+
+	scheduler_next();
+
+	ROS_INFO("explore_environment_check() called: FINISHED");
+
+	return 0;
+}
+
 int Statemachine::locate_object_global()
 {
 	if(locate_object_global_state_==OPEN)
@@ -2739,15 +2795,157 @@ void Statemachine::locate_object_global_done(const actionlib::SimpleClientGoalSt
 	switch(state.state_)
 	{
 	case actionlib::SimpleClientGoalState::SUCCEEDED:
-		cur_obj_.abs_pose=result->abs_object_pose;
 		if(result->object_detected==true)
 		{
+			cur_obj_.abs_pose=result->abs_object_pose;
+			ein_->set_object_pose(result->abs_object_pose);
+
 			locate_object_global_state_=FINISHED;
 		}
 		else
 		{
 			msg_error("Error. vision node could not locate object");
 			locate_object_global_state_=FINISHEDWITHERROR;
+			vision_result_=*result;
+			//todo: set event here to skip object
+		}
+		break;
+	case actionlib::SimpleClientGoalState::ACTIVE:
+	case actionlib::SimpleClientGoalState::PENDING:
+	case actionlib::SimpleClientGoalState::RECALLED:
+		break;
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::PREEMPTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+		locate_object_global_state_=FINISHEDWITHERROR;
+		vision_result_ = *result;
+		break;
+	default:
+		break;
+	}
+}
+
+int Statemachine::locate_all_objects_global()
+{
+	if(locate_all_objects_global_state_==OPEN)
+	{
+		ROS_INFO("locate_all_objects_global() called: OPEN");
+
+		//ROS_INFO("current object:");
+		//ein_->print_object(&cur_obj_);
+		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
+
+		if(vision_action_client_->isServerConnected()==0)
+		{
+			msg_warn("vision_action_client_->isServerConnected=0!");
+			//vor send goal -> isconnected abfragen, wenn nicht zerstören und neustarten!
+			delete vision_action_client_;
+			vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
+			msg_warn("action client recreated, waiting for server");
+			vision_action_client_->waitForServer();
+		}
+
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=ein_->get_nr_objects();
+		reached_active_goal_=false;
+		vision_queue.resize(nr_goals_);
+
+		vision_queue[0].mode = GLOBAL_POSE_ESTIMATION;
+		vision_queue[0].precision = locate_all_objects_global_counter_;
+		vision_queue[0].object = cur_obj_;
+		vision_queue[0].sensors.resize(ein_->get_nr_sensors());
+		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
+		{
+			vision_queue[0].sensors[ii]=ein_->get_sensors(ii);
+		}
+		vision_queue[0].target_zone=ein_->get_active_target_zone();
+
+		for(uint16_t ii=1;ii<nr_goals_;ii++)
+		{
+			vision_queue[ii]=vision_queue[0];
+
+			ein_->select_new_object();
+			vision_queue[ii].object=ein_->get_active_object();
+			vision_queue[ii].target_zone=ein_->get_active_target_zone();
+		}
+
+		//send goal to vision-node.
+		locate_all_objects_global_state_=RUNNING;
+		vision_action_client_->sendGoal(vision_queue[0],
+				boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
+				visionClient::SimpleActiveCallback(),
+				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
+		);
+	}
+	else if (locate_all_objects_global_state_==RUNNING && reached_active_goal_==true)
+	{
+		reached_active_goal_=false;
+		active_goal_++;
+
+
+		if(active_goal_==nr_goals_)
+		{
+			locate_all_objects_global_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("locate_all_objects_global() called: RUNNING (remaining goals)");
+		}
+
+		vision_action_client_->sendGoal(vision_queue[active_goal_],
+						boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
+						visionClient::SimpleActiveCallback(),
+						visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
+		);
+	}
+	else if(locate_all_objects_global_state_==FINISHED)
+	{
+		ROS_INFO("locate_all_objects_global() called: FINISHED");
+
+		//publish object state for motion planning
+		publish_obj_state(OBJ_LOCATED);
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		locate_all_objects_global_state_=OPEN;
+		locate_all_objects_global_counter_=0;
+	}
+	else if(locate_all_objects_global_state_==FINISHEDWITHERROR)
+	{
+		ROS_INFO("locate_all_objects_global() called: FINISHEDWITHERROR");
+		state_.sub.event_two = vision_result_.error_reason;
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
+void Statemachine::locate_all_objects_global_feedback(const am_msgs::VisionFeedbackConstPtr feedback)
+{
+	ROS_INFO("locate_all_objects_global_feedback() called");
+}
+
+void Statemachine::locate_all_objects_global_done(const actionlib::SimpleClientGoalState& state,
+		const am_msgs::VisionResultConstPtr& result)
+{
+	ROS_INFO("locate_all_objects_global_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		if(result->object_detected==true)
+		{
+			reached_active_goal_=true;
+			ein_->set_object_pose(result->abs_object_pose);
+		}
+		else
+		{
+			msg_error("Error. vision node could not locate object");
+			locate_all_objects_global_state_=FINISHEDWITHERROR;
 			vision_result_=*result;
 			//todo: set event here to skip object
 		}
@@ -3418,7 +3616,7 @@ int Statemachine::gripper_close()
 		}
 		else
 		{
-			gripper_control_srv_.request.object_width = 0.0;
+			gripper_control_srv_.request.object_width = object_grasp_width[selected_object_pose_]; //was 0
 			gripper_control_srv_.request.gripper_position = 0.0; //TODO Delete?
 		}
 		gripper_control_srv_.request.gripping_mode = FF_FORCE;
@@ -3433,9 +3631,9 @@ int Statemachine::gripper_close()
 		//destroy thread
 		lsc_.detach();
 
-                ROS_INFO("waiting for 0.5 second to ensure a static robot...");
-                ros::Duration waittime = ros::Duration(0.5, 0);
-                waittime.sleep();
+		ROS_INFO("waiting for 0.5 second to ensure a static robot...");
+		ros::Duration waittime = ros::Duration(0.5, 0);
+		waittime.sleep();
 
 		if (object_grip_r_tcp_com.size()>0)
 		{
