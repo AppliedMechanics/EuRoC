@@ -1,7 +1,7 @@
 msg_warn("SNAKE POSES CHOSEN. BE CAREFUL!");
 std::vector<tf::Quaternion> q_temp;
 active_goal_=0;
-nr_goals_=20;
+nr_goals_=21;
 
 if (nr_goals_!=nr_exp_poses_)
 	msg_error("Nr of explore poses different from poses defined in explore_snakeposes.hpp");
@@ -33,7 +33,7 @@ order_poses[16] = 16;
 order_poses[17] = 17;
 order_poses[18] = 18;
 order_poses[19] = 19;
-
+order_poses[20] = 20;
 
 for (int i=0;i<nr_goals_;i++)
 	explore_queue_[i].goal_config.q.resize(9);

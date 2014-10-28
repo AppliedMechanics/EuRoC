@@ -1761,8 +1761,8 @@ void MotionPlanning::initializePlanningScene()
 	shape_msgs::SolidPrimitive primitive;
 	primitive.type = primitive.BOX;
 	primitive.dimensions.resize(3);
-	primitive.dimensions[0] = 1.84;
-	primitive.dimensions[1] = 1.84;
+	primitive.dimensions[0] = 2.0;//1.84;
+	primitive.dimensions[1] = 2.0;//1.84;
 	primitive.dimensions[2] = 0.01;
 
 	geometry_msgs::Pose primitive_pose;
@@ -1811,10 +1811,10 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_primitive_mast.type = pan_tilt_primitive_mast.CYLINDER;
 	pan_tilt_primitive_mast.dimensions.resize(2);
 	pan_tilt_primitive_mast.dimensions[0] = 1.1;// height
-	pan_tilt_primitive_mast.dimensions[1] = 0.05;// radius
+	pan_tilt_primitive_mast.dimensions[1] = 0.1;//0.05;// radius
 	pan_tilt_primitive_cam.type = pan_tilt_primitive_cam.SPHERE;
 	pan_tilt_primitive_cam.dimensions.resize(1);
-	pan_tilt_primitive_cam.dimensions[0] = 0.3;// radius
+	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
 
 	moveit_msgs::CollisionObject pan_tilt_object;
 	pan_tilt_object.header.frame_id = "/Origin";
@@ -1825,8 +1825,6 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
 
 	static_scene_.world.collision_objects.push_back(pan_tilt_object);
-
-
 
 
 	static_scene_.is_diff = true;

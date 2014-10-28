@@ -3,6 +3,10 @@ planner_configs:
     type: geometric::SBL
   ESTkConfigDefault:
     type: geometric::EST
+  LBKPIECEkConfigDefault:
+    type: geometric::LBKPIECE
+    projection_evaluator: joints(lwr_joint_1,lwr_joint_2)
+    longest_valid_segment_fraction: 0.01
   LBKPIECEkConfigDefault_2DOF:
     type: geometric::LBKPIECE
     projection_evaluator: joints(axis_x,axis_y)
