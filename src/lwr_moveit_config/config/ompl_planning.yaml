@@ -3,9 +3,17 @@ planner_configs:
     type: geometric::SBL
   ESTkConfigDefault:
     type: geometric::EST
-  LBKPIECEkConfigDefault:
+  LBKPIECEkConfigDefault_2DOF:
+    type: geometric::LBKPIECE
+    projection_evaluator: joints(axis_x,axis_y)
+    longest_valid_segment_fraction: 0.01
+  LBKPIECEkConfigDefault_7DOF:
     type: geometric::LBKPIECE
     projection_evaluator: joints(lwr_joint_1,lwr_joint_2)
+    longest_valid_segment_fraction: 0.01
+  LBKPIECEkConfigDefault_9DOF:
+    type: geometric::LBKPIECE
+    projection_evaluator: joints(axis_x,axis_y)
     longest_valid_segment_fraction: 0.01
   BKPIECEkConfigDefault:
     type: geometric::BKPIECE
@@ -27,7 +35,7 @@ LWR_9DOF:
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault
-    - LBKPIECEkConfigDefault
+    - LBKPIECEkConfigDefault_9DOF
     - BKPIECEkConfigDefault
     - KPIECEkConfigDefault
     - RRTkConfigDefault
@@ -38,11 +46,25 @@ LWR_9DOF:
     - PRMstarkConfigDefault
   projection_evaluator: joints(axis_x,axis_y)
   longest_valid_segment_fraction: 0.01
+LWR_7DOF:
+  planner_configs:
+    - SBLkConfigDefault
+    - ESTkConfigDefault
+    - LBKPIECEkConfigDefault_7DOF
+    - BKPIECEkConfigDefault
+    - KPIECEkConfigDefault
+    - RRTkConfigDefault
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMkConfigDefault
+    - PRMstarkConfigDefault
+  longest_valid_segment_fraction: 0.01
 LWR_2DOF:
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault
-    - LBKPIECEkConfigDefault
+    - LBKPIECEkConfigDefault_2DOF
     - BKPIECEkConfigDefault
     - KPIECEkConfigDefault
     - RRTkConfigDefault
@@ -66,18 +88,3 @@ gripper:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
-LWR_7DOF:
-  planner_configs:
-    - SBLkConfigDefault
-    - ESTkConfigDefault
-    - LBKPIECEkConfigDefault
-    - BKPIECEkConfigDefault
-    - KPIECEkConfigDefault
-    - RRTkConfigDefault
-    - RRTConnectkConfigDefault
-    - RRTstarkConfigDefault
-    - TRRTkConfigDefault
-    - PRMkConfigDefault
-    - PRMstarkConfigDefault
-  longest_valid_segment_fraction: 0.01
-

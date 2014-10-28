@@ -49,7 +49,9 @@ obj_data_loaded_(false)
 	// vector of ompl planners
 	ompl_planners.push_back("SBLkConfigDefault");
 	ompl_planners.push_back("ESTkConfigDefault");
-	ompl_planners.push_back("LBKPIECEkConfigDefault");
+	ompl_planners.push_back("LBKPIECEkConfigDefault_2DOF");
+	ompl_planners.push_back("LBKPIECEkConfigDefault_7DOF");
+	ompl_planners.push_back("LBKPIECEkConfigDefault_9DOF");
 	ompl_planners.push_back("BKPIECEkConfigDefault");
 	ompl_planners.push_back("KPIECEkConfigDefault");
 	ompl_planners.push_back("RRTkConfigDefault");
@@ -59,28 +61,32 @@ obj_data_loaded_(false)
 	ompl_planners.push_back("PRMkConfigDefault");
 	ompl_planners.push_back("PRMstarkConfigDefault");
 
-
-	// arm group
-	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
-	// planning algorithm for arm group
-	group_7DOF->setPlannerId(ompl_planners[2]);
-
-	// arm + table axes
-	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
-	// planning algorithm for arm + table axes
-	group_9DOF->setPlannerId(ompl_planners[2]);
-
 	// table axes
 	group_2DOF = new move_group_interface::MoveGroup("LWR_2DOF");
+	group_2DOF->setEndEffectorLink("base_link");
+#warning Also Goal Tolerance for homing 2DOF (isn't used till now')
+	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
 	group_2DOF->setPlannerId(ompl_planners[2]);
 
+	// arm group
+	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
+	group_7DOF->setEndEffectorLink("gripper_tcp");
+	// planning algorithm for arm group
+	group_7DOF->setPlannerId(ompl_planners[3]);
+
+	// arm + table axes
+	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
+	group_9DOF->setEndEffectorLink("gripper_tcp");
+	// planning algorithm for arm + table axes
+	group_9DOF->setPlannerId(ompl_planners[4]);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
 	kinematic_model_ = robot_model_loader_.getModel();
 	kinematic_state_ = new robot_state::RobotState(kinematic_model_);
 
+	joint_model_group_2DOF_ = kinematic_model_->getJointModelGroup("LWR_2DOF");
 	joint_model_group_7DOF_ = kinematic_model_->getJointModelGroup("LWR_7DOF");
 	joint_model_group_9DOF_ = kinematic_model_->getJointModelGroup("LWR_9DOF");
 
@@ -123,6 +129,13 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	planning_frame_ = goal_pose_goal_->planning_frame;
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
 
+	//--------------------------------------------------------------------------------------
+	//! get kinematic limits
+	getLimits();
+
+
+	//--------------------------------------------------------------------------------------
+	//! set Planning Frame
 	//! If planning frame is given in GP_TCP frame, the LWR_TCP frame is calculated
 	//! If planning frame is chosen as LWR TCP, the GP TCP Pose needs to be calculated
 	if (!planning_frame_.compare(LWR_TCP) || !planning_frame_.compare(GP_TCP)){
@@ -136,18 +149,15 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			return;
 		}
 	}
+	else if (goal_pose_goal_->planning_algorithm==MOVE_IT_2DOF){
+		goal_pose_GPTCP_  = goal_pose_goal_->goal_pose;
+		goal_pose_LWRTCP_ = goal_pose_goal_->goal_pose;
+	}
 	else if (goal_pose_goal_->planning_algorithm!=HOMING_7DOF)
 		msg_error("Planning frame not properly defined.");
 
-
-	//! Set default speed percentage values for motion velocity
-	if (speed_percentage_ <= 0 || speed_percentage_ >100)
-		speed_percentage_ = 40;
-
-	getLimits();
-
-	ros::Rate feedback_rate(feedback_frequency_);
-
+	//--------------------------------------------------------------------------------------
+	//! get telemetry
 	if (!getTelemetry()){
 		msg_error("getTelemetry: An Error happened here.");
 		goalPose_result_.reached_goal = false;
@@ -157,12 +167,13 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		return;
 	}
 
+	//--------------------------------------------------------------------------------------
+	//! Plan
 	switch (goal->planning_algorithm)
 	{
 
 	case HOMING_7DOF:
 		ROS_INFO("HOMING 7DOF planning mode chosen.");
-
 		if (!setReset7DOF())
 		{
 			msg_error("No IK Solution found.");
@@ -173,7 +184,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		break;
 
 	case HOMING_MOVE_IT_2DOF:
-		ROS_INFO("HOMING MOVEIT 2DOF planning mode chosen.");
+		ROS_INFO("HOMING MOVEIT 2DOF planning mode chosen. - Goal tolerance = 0.5!");
 		group = group_2DOF;
 		joint_model_group_ = joint_model_group_2DOF_;
 		if (!homingMoveIt())
@@ -243,26 +254,33 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	//define groups
 	if(goal->planning_algorithm == MOVE_IT_9DOF)
 	{
+		ROS_INFO("Choosed 9DOF");
 		group = group_9DOF;
 		joint_model_group_ = joint_model_group_9DOF_;
 		// setting joint state target via the searchIKSolution srv is not considered
 		max_setTarget_attempts_ = 4;
+
 	}
 	else if(goal->planning_algorithm == MOVE_IT_7DOF)
 	{
+		ROS_INFO("Choosed 7DOF");
 		group = group_7DOF;
 		joint_model_group_ = joint_model_group_7DOF_;
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
 		max_setTarget_attempts_ = 5;
+
 	}
 	else if(goal->planning_algorithm == MOVE_IT_2DOF)
 	{
+		ROS_INFO("Choosed 2DOF");
 		group = group_2DOF;
 		joint_model_group_ = joint_model_group_2DOF_;
+
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
 		max_setTarget_attempts_ = 5;
+
 	}
 	else
 	{
@@ -271,8 +289,10 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
 		break;
 	}
-	//set target
+
+	//set target algorithm
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+	// get moveit solution
 	if (!getMoveItSolution())
 	{
 		msg_error("No MoveIT Solution found.");
@@ -303,14 +323,26 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		msg_warn("unkown Mode in MotionPlanning!");
 		return;
 	}
+	//------------------------------------------------------------------------------------------------
 
+	//! get timing along path
 	getTimingAlongJointPath();
+	//------------------------------------------------------------------------------------------------
+
+	//! Set default speed percentage values for motion velocity
+	if (speed_percentage_ <= 0 || speed_percentage_ >100)
+		speed_percentage_ = 40;
+	//------------------------------------------------------------------------------------------------
+
+	//! Feedback
+	ros::Rate feedback_rate(feedback_frequency_);
 
 	starting_time_ = ros::Time::now().toSec();
 	getGoalPose_Feedback();
 
 	goalPose_server_.publishFeedback(goalPose_feedback_);
 
+	//------------------------------------------------------------------------------------------------
 
 	moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
 
@@ -714,6 +746,8 @@ bool MotionPlanning::getMoveItSolution()
 				setTarget_successful = setPlanningTarget(current_setTarget_algorithm_);
 				if (setTarget_successful)
 				{
+//					ROS_INFO("Planning!");
+//					ROS_INFO_STREAM(group->getName());
 					planning_successful = group->plan(motion_plan_);
 					if (planning_successful)
 					{
@@ -812,118 +846,116 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	switch (algorithm) {
 
 	case JOINT_VALUE_TARGET_KDL_IK: {
-	        ROS_INFO("Setting a Joint value target obtained via the KDL IK.");
+		ROS_INFO("Setting a Joint value target obtained via the KDL IK.");
 
-	        // declare seed state
-	        std::vector<double> ik_seed_state;
+		// declare seed state
+		std::vector<double> ik_seed_state;
 
 		if (active_task_nr_ == 1
-		    || active_task_nr_ == 2)
+				|| active_task_nr_ == 2)
 		{
-                      joint_model_group_ = joint_model_group_7DOF_;
-                      ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
+			ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
 
-                      try
-                      {
-                            if(ros::service::waitForService(search_ik_solution_,ros::Duration(10.0)))
-                            {
-                                  current_configuration_.q.resize(7);
+			try
+			{
+				if(ros::service::waitForService(search_ik_solution_,ros::Duration(10.0)))
+				{
+					current_configuration_.q.resize(7);
 
-                                  search_ik_solution_srv_.request.start = current_configuration_;
-                                  search_ik_solution_srv_.request.tcp_frame = goal_pose_GPTCP_;
+					search_ik_solution_srv_.request.start = current_configuration_;
+					search_ik_solution_srv_.request.tcp_frame = goal_pose_GPTCP_;
 
-                                  search_ik_solution_client_.call(search_ik_solution_srv_);
-                                  std::string &search_error_message = search_ik_solution_srv_.response.error_message;
-                                  if(!search_error_message.empty())
-                                  {
-                                        ROS_WARN("No seed state found via searchIKSolution srv.");
-                                        ROS_INFO("Setting seed state to current configuration...");
-                                        ik_seed_state = current_configuration_.q;
-                                  }
-                                  else
-                                  {
-                                        ROS_INFO("Seed state found via searchIKSolution srv.");
-                                        ik_seed_state = search_ik_solution_srv_.response.solution.q;
-                                  }
-                            }
-                      }
-                      catch(...)
-                      {
-                            msg_error("failed to find service search ik-solution");
-                            return false;
-                      }
+					search_ik_solution_client_.call(search_ik_solution_srv_);
+					std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+					if(!search_error_message.empty())
+					{
+						ROS_WARN("No seed state found via searchIKSolution srv.");
+						ROS_INFO("Setting seed state to current configuration...");
+						ik_seed_state = current_configuration_.q;
+					}
+					else
+					{
+						ROS_INFO("Seed state found via searchIKSolution srv.");
+						ik_seed_state = search_ik_solution_srv_.response.solution.q;
+					}
+				}
+			}
+			catch(...)
+			{
+				msg_error("failed to find service search ik-solution");
+				return false;
+			}
 		}
 		else if (active_task_nr_ == 3
-		    || active_task_nr_ == 4
-			|| active_task_nr_ == 5
-			|| active_task_nr_ == 6)
+				|| active_task_nr_ == 4
+				|| active_task_nr_ == 5
+				|| active_task_nr_ == 6)
 		{
-                      joint_model_group_ = joint_model_group_9DOF_;
-                      ROS_INFO("Setting seed state to current configuration...");
-                      ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
-                      ik_seed_state = getCurrentConfiguration().q;
+			ROS_INFO("Setting seed state to current configuration...");
+			ik_seed_state.resize(joint_model_group_->getActiveJointModels().size());
+			ik_seed_state = getCurrentConfiguration().q;
 		}
 
-		// print seed state
-		ROS_INFO("Seed state:");
-		for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
-		      ROS_INFO_STREAM(ik_seed_state[idx]);
+//		// print seed state
+//		ROS_INFO("Seed state:");
+//		for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
+//			ROS_INFO_STREAM(ik_seed_state[idx]);
 
 
-		ROS_INFO("computing KDL IK...");
+//		ROS_INFO("computing KDL IK...");
 		std::vector<double> solution;
 		moveit_msgs::MoveItErrorCodes error_code;
 		if (!joint_model_group_->getSolverInstance()->getPositionIK(goal_pose_GPTCP_,
-		                                                       ik_seed_state,
-		                                                       solution,
-		                                                       error_code))
+				ik_seed_state,
+				solution,
+				error_code))
 		{
-                    ROS_WARN("KDL->getPositionIK() failed.");
-                    return false;
+			ROS_WARN("KDL->getPositionIK() failed.");
+			return false;
 		}
 		else
 		{
-                    ROS_INFO("KDL->getPositionIK() successful.");
-                    ROS_INFO("Solution state:");
-                    for (unsigned idx = 0; idx < solution.size(); ++idx)
-                        ROS_INFO_STREAM(solution[idx]);
+			ROS_INFO("KDL->getPositionIK() successful.");
+//			ROS_INFO("Solution state:");
+//			for (unsigned idx = 0; idx < solution.size(); ++idx)
+//				ROS_INFO_STREAM(solution[idx]);
 
 
-                    // do self collision checking!
-                    ROS_INFO("Checking solution for self collision...");
+			// do self collision checking!
+			ROS_INFO("Checking solution for self collision...-disabled because motion planning chrashes!");
 
 #warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
-                    //--------------------------------------------------------------------------------
-//                    collision_detection::CollisionRequest collision_request;
-//                    collision_detection::CollisionResult collision_result;
-//
-//                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
-//
-//                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
-//                                                                                    collision_result,
-//                                                                                    *kinematic_state_);
-                    //--------------------------------------------------------------------------------
+			//--------------------------------------------------------------------------------
+			//                    collision_detection::CollisionRequest collision_request;
+			//                    collision_detection::CollisionResult collision_result;
+			//
+			//                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
+			//
+			//                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
+			//                                                                                    collision_result,
+			//                                                                                    *kinematic_state_);
+			//--------------------------------------------------------------------------------
 
-//                    if(collision_result.collision)
-//                    {
-//                          ROS_WARN("Collision occurred!");
-//                          return false;
-//                    }
-//                    else
-//                    {
-//                          ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
-//                          if (!group->setJointValueTarget(solution))
-//                          {
-//                            ROS_ERROR("Setting joint value target failed.");
-//                            return false;
-//                          }
-//                          else
-//                          {
-//                            // TODO
-//                            // check if state valid and collision free
-//                            break;
-//                          }
-//                    }
+			//                    if(collision_result.collision)
+			//                    {
+			//                          ROS_WARN("Collision occurred!");
+			//                          return false;
+			//                    }
+			//                    else
+			//                    {
+			//    ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
+			if (!group->setJointValueTarget(solution))
+			{
+				ROS_ERROR("Setting joint value target failed.");
+				return false;
+			}
+			else
+			{
+				// TODO
+				// check if state valid and collision free
+				break;
+			}
+			//}
 		}
 
 		break;
@@ -932,6 +964,11 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	case JOINT_VALUE_TARGET_EUROC_IK: {
 		ROS_INFO(
 				"Setting a joint value target obtained via the SearchIKSolution srv.");
+		if(group->getActiveJoints().size() == 2)
+		{
+			ROS_ERROR("JOINT_VALUE_TARGET_EUROC_IK called for 2 DOF!");
+			return false;
+		}
 		try {
 			if (ros::service::waitForService(search_ik_solution_,
 					ros::Duration(10.0))) {
@@ -982,21 +1019,6 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		}
 		break;
 	}
-
-	case SINGLE_POSE_TARGET_2DOF: {
-		ROS_INFO("Setting a single pose target.");
-
-
-		ROS_INFO_STREAM("Goal Tolerance"<<group->getGoalPositionTolerance());
-
-		group->setGoalTolerance(0.5);
-		if (!group->setJointValueTarget(goal_pose_GPTCP_)) {
-			ROS_ERROR("Setting pose target failed.");
-			return false;
-		}
-		break;
-	}
-
 	case HOMING: {
 		ROS_INFO("Setting a joint value target (HOMING).");
 
@@ -1036,18 +1058,6 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			return false;
 		}
 		break;
-	}{
-		ROS_INFO("Setting a joint value target.");
-
-		std::vector<double> joint_values_in(9);
-		for (int i=0;i<9;i++)
-			joint_values_in[i] = goal_pose_goal_->goal_config.q[i];
-
-		if (!group->setJointValueTarget(joint_values_in)) {
-			ROS_ERROR("Setting joint value target 9DOF failed.");
-			return false;
-		}
-		break;
 	}
 
 	default: {
@@ -1055,6 +1065,7 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		return false;
 	}
 	}
+
 
 	ROS_INFO("Setting target successful.");
 	return true;
@@ -1483,7 +1494,7 @@ void MotionPlanning::setMoveRequestJointLimits()
 
 	unsigned joint_counter = 0;
 
-	if (move_along_joint_path_srv_.request.joint_limits.size() == 9)
+	if (move_along_joint_path_srv_.request.joint_limits.size() == 9 || move_along_joint_path_srv_.request.joint_limits.size() == 2)
 	{
 
 		move_along_joint_path_srv_.request.joint_limits[0].max_velocity = table_axis1_limit_.max_velocity;
@@ -1495,13 +1506,16 @@ void MotionPlanning::setMoveRequestJointLimits()
 		joint_counter = 2;
 	}
 
-	unsigned jointIdx = 0;
-	for(unsigned idx = joint_counter; idx < joint_counter+7; ++idx)
+	if(move_along_joint_path_srv_.request.joint_limits.size() != 2)
 	{
-		move_along_joint_path_srv_.request.joint_limits[idx].max_velocity = joint_limits_[jointIdx].max_velocity;
-		move_along_joint_path_srv_.request.joint_limits[idx].max_acceleration = joint_limits_[jointIdx].max_acceleration;
+		unsigned jointIdx = 0;
+		for(unsigned idx = joint_counter; idx < joint_counter+7; ++idx)
+		{
+			move_along_joint_path_srv_.request.joint_limits[idx].max_velocity = joint_limits_[jointIdx].max_velocity;
+			move_along_joint_path_srv_.request.joint_limits[idx].max_acceleration = joint_limits_[jointIdx].max_acceleration;
 
-		jointIdx++;
+			jointIdx++;
+		}
 	}
 
 }

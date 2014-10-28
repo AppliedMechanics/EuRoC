@@ -28,6 +28,7 @@
         <group name="LWR_2DOF">
         <joint name="axis_x" />
         <joint name="axis_y" />
+        <joint name="la_tcp" />	
     </group>
     <group name="gripper">
         <link name="gripper_base" />
@@ -70,7 +71,7 @@
         <joint name="lwr_joint_6" value="0" />
         <joint name="lwr_joint_7" value="0" />
     </group_state>
-    	<group_state name="homing" group="LWR_2DOF">
+    	<group_state name="homing_2DOF" group="LWR_2DOF">
         <joint name="axis_x" value="0" />
         <joint name="axis_y" value="0" />
     </group_state>

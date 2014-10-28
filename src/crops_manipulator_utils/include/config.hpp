@@ -57,8 +57,7 @@ typedef enum {
 	HOMING,
 	JOINT_VALUE_TARGET_9DOF,
 	APPROX_JOINT_VALUE_TARGET_9DOF,
-	POSE_TARGET_EXP,
-	SINGLE_POSE_TARGET_2DOF
+	POSE_TARGET_EXP
 } planning_target_type_t;
 
 typedef enum {
