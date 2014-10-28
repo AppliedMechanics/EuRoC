@@ -23,6 +23,8 @@
 using namespace cv;
 using namespace std;
 
+//#define DEBUG
+
 // class constructor
 am_pointcloud::am_pointcloud(Mat& depth, double fov_horizontal_depth, Mat& rgb, double fov_horizontal_rgb)
 {
@@ -116,7 +118,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::alignWithRGB(pcl::PointCloud<
 	tf::Vector3 dcs_vec; // Depth coordinate system vector
 	tf::Vector3 rgbcs_vec; // RGB coordinate system vector
 
-	ros::Time now = ros::Time::now();
+	ros::Time now = ros::Time().now();
+
 	try
 	{
 		_tfListener.waitForTransform(targetFrame, sourceFrame, now, ros::Duration(2.0));
@@ -223,7 +226,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::transformToWorld(pcl::PointCl
 	}
 
 
-	ros::Time now = ros::Time::now();
+	ros::Time now = ros::Time().now();
 	try
 	{
 		_tfListener.waitForTransform(ORIGIN, sourceFrame, now, ros::Duration(2.0));
@@ -378,6 +381,60 @@ pcl::PointXYZ am_pointcloud::calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ
 	return p;
 }
 
+/*
+ * This function receives a point cloud and a vector of indices as input and removes all the points corresponding to the vector
+ * from that point cloud. The returned cloud should be the same as input, minus those from indices vector
+ */
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC, pcl::PointCloud<pcl::PointXYZ>::Ptr inputClusterPC, std::vector<pcl::PointIndices> clusterIndices)
+{
+  for (std::vector<pcl::PointIndices>::const_iterator it = clusterIndices.begin (); it != clusterIndices.end (); ++it)
+  {
+          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+          for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+                  cloud_cluster->points.push_back (inputClusterPC->points[*pit]);
+          cloud_cluster->width = cloud_cluster->points.size ();
+          cloud_cluster->height = 1;
+          cloud_cluster->is_dense = true;
+
+          // search for nearest neighbors of clusterPC in targetPC
+          // Neighbors within radius search
+
+          std::vector<int> pointIdxRadiusSearch;
+          std::vector<float> pointRadiusSquaredDistance;
+
+          pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+          kdtree.setInputCloud (targetPC);
+          float radius = 0.005;
+
+          // iterate over the cluster#
+          //  --> search for the neighbor points in targetPC
+          //  --> remove the points found in targetPC
+          for (int i=0; i<cloud_cluster->points.size(); i++)
+          {
+            pcl::PointXYZ searchPoint;
+            searchPoint = cloud_cluster->points[i];
+
+            if ( kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0 )
+            {
+              for (size_t j = 0; j < pointIdxRadiusSearch.size (); ++j)
+              {
+#ifdef DEBUG
+                std::cout << "    "  <<   targetPC->points[ pointIdxRadiusSearch[j] ].x
+                    << " " << targetPC->points[ pointIdxRadiusSearch[j] ].y
+                    << " " << targetPC->points[ pointIdxRadiusSearch[j] ].z
+                    << " (squared distance: " << pointRadiusSquaredDistance[i] << ")" << std::endl;
+#endif // DEBUG
+                targetPC->points[ pointIdxRadiusSearch[j] ].x = std::numeric_limits<float>::quiet_NaN();
+                targetPC->points[ pointIdxRadiusSearch[j] ].y = std::numeric_limits<float>::quiet_NaN();
+                targetPC->points[ pointIdxRadiusSearch[j] ].z = std::numeric_limits<float>::quiet_NaN();
+              }
+            }
+          } // END FOR
+
+          std::cout<<"Done removing the cluster!"<<std::endl;
+  }
+  return targetPC;
+}
 
 octomath::Vector3 am_pointcloud::getSensorOriginScene (int cameraType)
 {

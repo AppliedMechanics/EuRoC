@@ -11,6 +11,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <pcl-1.7/pcl/visualization/cloud_viewer.h>
 #include <pcl-1.7/pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 #include <octomap/octomap.h>
@@ -59,6 +60,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	static pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>);
 	octomath::Vector3 getSensorOriginScene (int cameraType);
 
 

@@ -208,7 +208,7 @@ template<typename PointT>
 void ShapeGenerator<PointT>::generateBox(const float & step_size, const Eigen::Vector3f & origin,
 		const Eigen::Vector3f & direction_1, const Eigen::Vector3f & direction_2,
 		const Eigen::Vector3f & direction_3, const float & corner_size,
-		bool compound_shape)
+		bool compound_shape,bool is_task5)
 		{
 
 	if (compound_shape == false)
@@ -451,10 +451,13 @@ generateEdge(step_size, origin + direction_3 + direction_1 + corner_direction_2,
 		{
 			generatePlane (step_size,origin + corner_direction_2 + corner_direction_3,
 					edge_direction_2, edge_direction_3);
-#ifndef REDUCE_BOX
-			generatePlane(step_size, origin + direction_1 + corner_direction_2 + corner_direction_3, edge_direction_2,
-					edge_direction_3);
-#endif
+//#ifndef REDUCE_BOX
+			if (is_task5)
+			{
+				generatePlane(step_size, origin + direction_1 + corner_direction_2 + corner_direction_3, edge_direction_2,
+				edge_direction_3);
+			}
+//#endif
 		}
 		if (enable_edge_3 && enable_edge_1)
 		{

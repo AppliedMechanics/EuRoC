@@ -193,7 +193,7 @@ public:
 			const Eigen::Vector3f & direction_2,
 			const Eigen::Vector3f & direction_3,
 			const float & corner_size,
-			bool compound_shape);
+			bool compound_shape,bool is_task5);
 
 	/*! @brief Generates a full cylinder
 	 * @param[in] step_size the distance between each generated point

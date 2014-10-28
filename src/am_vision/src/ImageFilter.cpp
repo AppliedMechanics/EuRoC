@@ -40,7 +40,7 @@ ImageFilter::ImageFilter(Mat &rgb) {
 }
 
 ImageFilter::~ImageFilter() {
-	// TODO Auto-generated destructor stub
+
 }
 
 /*
@@ -177,7 +177,7 @@ void ImageFilter::trackFilteredObject(Mat threshold, Mat HSV, Mat &cameraFeed)
 				Moments moment = moments((Mat)contours[index]);
 				double area = moment.m00;
 
-				//if the area is less than 40 px by 40px then it is probably just noise
+				//if the area is less than (MIN_OBJECT_AREA x MIN_OBJECT_AREA), then it is probably just noise
 				//if the area is the same as the 3/2 of the image size, probably just a bad filter
 				//we only want the object with the largest area so we safe a reference area each
 				//iteration and compare it to the area in the next iteration.

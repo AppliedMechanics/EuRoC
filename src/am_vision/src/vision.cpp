@@ -10,7 +10,12 @@
 #include <highgui.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf/transform_listener.h>
+#include <pcl/visualization/cloud_viewer.h>
 
+//# define LOG_DEBUG
+//# define LOG_INFO
+//# define LOG_ERROR
+# define ANY_OBJ_ON_THIS_ZONE
 
 // For creating octomap with whole scene (with robot and pantilt); also the man outside the table can be seen; every sweep; takes too much time when using every sweep
 // #define OCTOMAP_COMPLETE_OLD
@@ -27,7 +32,6 @@
 // Use octomap_server for creating octomap
 #define OCTOMAP_SERVER
 
-
 namespace enc = sensor_msgs::image_encodings;
 using namespace cv;
 
@@ -41,13 +45,14 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 
 Vision::Vision():
-                      vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
-                      vision_action_name_("VisionAction"),
-                      obj_aligned_(false)
+                          vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
+                          vision_action_name_("VisionAction"),
+                          obj_aligned_(false)
 {
 
   failed = false;
   isSingleCube = false;
+  is_task5 = false;
 
   euroc_c2_interface = "/euroc_interface_node";
   camera_scene_rgb_topic = euroc_c2_interface + "/cameras/scene_rgb_cam";
@@ -98,6 +103,7 @@ Vision::Vision():
 
   // leaf size voxels
   leaf_size = 0.0025;
+  same_color_problem = false;
 
   // Create and set resolution of Octree
   tree = new octomap::OcTree(0.005);
@@ -107,15 +113,6 @@ Vision::Vision():
 
   vision_server_.start();
   ROS_INFO("vision action server started.");
-
-}
-
-void Vision::reset(const std_msgs::BoolConstPtr& rst)
-{
-//	vision_server_.shutdown();
-//	ROS_INFO("vision action server shutdown.");
-//	vision_server_.start();
-//	ROS_INFO("vision action server started.");
 }
 
 
@@ -124,59 +121,77 @@ void Vision::reset(const std_msgs::BoolConstPtr& rst)
  */
 //ROS Callback for the scene RGB camera topic
 void Vision::on_camera_scene_rgb_CB(const sensor_msgs::Image &image){
-  //ROS_INFO("Entered Vision::RGB_CB");
-  //std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#ifdef LOG_INFO
+  ROS_INFO("Entered Vision::RGB_CB");
+  std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#endif
   _scene_rgb_image = image;
 }
 
 //ROS Callback for the scene DEPTH camera topic
 void Vision::on_camera_scene_depth_CB(const sensor_msgs::Image &image){
-  //ROS_INFO("Entered Vision::DEPTH_CB");
-  //std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#ifdef LOG_INFO
+  ROS_INFO("Entered Vision::DEPTH_CB");
+  std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#endif
   _scene_depth_image = image;
 }
 
 //ROS Callback for the tcp RGB camera topic
 void Vision::on_camera_tcp_rgb_CB(const sensor_msgs::Image &image){
-  //ROS_INFO("Entered Vision::RGB_CB");
-  //std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#ifdef LOG_INFO
+  ROS_INFO("Entered Vision::RGB_CB");
+  std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#endif
   _tcp_rgb_image = image;
 }
 
 //ROS Callback for the tcp DEPTH camera topic
 void Vision::on_camera_tcp_depth_CB(const sensor_msgs::Image &image){
-  //ROS_INFO("Entered Vision::DEPTH_CB");
-  //std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#ifdef LOG_INFO
+  ROS_INFO("Entered Vision::DEPTH_CB");
+  std::cout<<"Height: "<<image.height<<"Width: "<<image.width<<std::endl;
+#endif
   _tcp_depth_image = image;
 }
 
 
 bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeImage::Response &res)
 {
-//  // Get the task number
-//  std::string key;
-//  if(nh_.searchParam("active_task_number_", key))
-//  {
-//    nh_.getParam(key, task_nr);
-//    std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
-//  }
-//  else
-//    ROS_WARN("search for parameter: active_task_number_ failed!");
+#ifdef LOG_DEBUG
+  // Get the task number
+  std::string key;
+  if(nh_.searchParam("active_task_number_", key))
+  {
+    nh_.getParam(key, task_nr);
+    std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
+  }
+  else
+    ROS_WARN("search for parameter: active_task_number_ failed!");
+#endif // DEBUG
 
   switch (req.camera) {
     case SCENE_CAM:
+#ifdef LOG_DEBUG
       std::cout<<"[VISION]callback: SCENE CAM!"<<std::endl;
       std::cout<<"[VISION]SCENE Pointcloud updated."<<std::endl;
+#endif
       scan_with_pan_tilt(res);
       break;
     case TCP_CAM:
+#ifdef LOG_DEBUG
       std::cout<<"[VISION]callback: TCP CAM!"<<std::endl;
+#endif
       ros::Duration(1.0).sleep();
       scan_with_tcp(res);
+#ifdef LOG_INFO
       std::cout<<"[VISION]TCP Pointcloud updated"<<std::endl;
+#endif
       break;
     default:
+#ifdef LOG_WARNING
       ROS_WARN("Unknown camera type!");
+#endif
       res.error_reason=fsm::VISION_ERROR;
       return false;
   }
@@ -187,65 +202,435 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
  * END CALLBACKS
  */
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
+	ShapeGenerator<pcl::PointXYZ> shape_generator2;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr T_object_model(
+			new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr T_shape_model(
+			new pcl::PointCloud<pcl::PointXYZ>);
+	float step_size = 0.005;
+	Eigen::Quaternion<double> q2;
+	Eigen::Vector3d translation2;
+
+	//We have to generate the object which is bigger than our target, yet in the same colors
+	std::string part1 = "object_";
+	std::string part2 = "";
+	std::string part3 = "_nr_shapes_";
+	std::string part4 = "_color_";
+	std::string part6 = "_shape_";
+	int object_part_size_number = 0;
+	std::string part5 = "_length_";
+	std::string partx = "x_";
+	std::string party = "y_";
+	std::string partz = "z_";
+	std::string part9 = "_radius_";
+	std::string partw = "w_";
+	std::string part13 = "_size_";
+	std::string hold_obj_part = "";
+	std::string hold_size = "";
+	std::string pose_position = "_pose_position_";
+	std::string pose_orientation = "_pose_orientation_";
+	std::string string_with_shape_number = "";
+	std::string full_string_orientation = "";
+	std::string full_string_position = "";
+	std::string full_string_radius = "";
+	std::string full_string_length = "";
+	std::string full_string_size = "";
+	std::vector<std::string> part_position_vector_;
+	std::vector<std::string> part_orientation_vector_;
+	std::vector<std::string> cube_size_vector_;
+	std::vector<std::string> cylinder_radius_vector_;
+	std::vector<std::string> cylinder_length_vector_;
+	std::stringstream ss;
+	ss << problem_object_index;
+	part2 = ss.str();
+
+	for (int shapecounter_ = 0; shapecounter_ < Number_of_Shapes_List.back();
+			shapecounter_++) {
+		bool is_cylinder = false;
+		std::stringstream cs;
+		cs << shapecounter_;
+		hold_obj_part = cs.str();
+		string_with_shape_number = part1 + part2 + part4 + hold_obj_part;
+		std::cout << "[VISION]String with shape number: "
+				<< string_with_shape_number << std::endl;
+
+		cylinder_radius_vector_.push_back(string_with_shape_number + part9);
+		cylinder_length_vector_.push_back(string_with_shape_number + part5);
+
+		string keystring = "";
+		if (nh_.searchParam(cylinder_radius_vector_.back(), keystring)) {
+
+			nh_.getParam(keystring, cylinder_radius);
+
+			std::cout << "[VISION]****Cylinder radius is found: "
+					<< cylinder_radius << std::endl;
+			is_cylinder = true;
+
+		}
+
+		keystring = "";
+		if (nh_.searchParam(cylinder_length_vector_.back(), keystring)) {
+			nh_.getParam(keystring, cylinder_length);
+			is_cylinder = true;
+
+			std::cout << "[VISION]****Cylinder length is found: "
+					<< cylinder_length << std::endl;
+			std::cout << "[VISION]Cylinder_radius_vector:"
+					<< cylinder_radius_vector_[shapecounter_] << std::endl;
+			std::cout << "[VISION]Cylinder_length_vector:"
+					<< cylinder_length_vector_[shapecounter_] << std::endl;
+		}
+
+		//object_0_shape_0_pose_position_x
+		keystring = "";
+		part_position_vector_.push_back(
+				string_with_shape_number + pose_position + partx);
+		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_position_vector.push_back(temp);
+			std::cout << "[VISION]****Trouble Object part position x is found: "
+					<< trouble_object_position_vector.back() << std::endl;
+			keystring = "";
+		}
+		part_position_vector_.push_back(
+				string_with_shape_number + pose_position + party);
+		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_position_vector.push_back(temp);
+			std::cout << "[VISION]****Trouble Object part position y is found: "
+					<< trouble_object_position_vector.back() << std::endl;
+			keystring = "";
+		}
+		part_position_vector_.push_back(
+				string_with_shape_number + pose_position + partz);
+
+		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_position_vector.push_back(temp);
+			std::cout << "[VISION]****Trouble Object part position z is found: "
+					<< trouble_object_position_vector.back() << std::endl;
+			keystring = "";
+		}
+
+		part_orientation_vector_.push_back(
+				string_with_shape_number + pose_orientation + partx);
+
+		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_orientation_vector.push_back(temp);
+			std::cout
+					<< "[VISION]****Trouble Object orientation position x is found: "
+					<< trouble_object_orientation_vector.back() << std::endl;
+			keystring = "";
+		}
+		part_orientation_vector_.push_back(
+				string_with_shape_number + pose_orientation + party);
+		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_orientation_vector.push_back(temp);
+			std::cout
+					<< "[VISION]****Trouble Object orientation position y is found: "
+					<< trouble_object_orientation_vector.back() << std::endl;
+			keystring = "";
+		}
+		part_orientation_vector_.push_back(
+				string_with_shape_number + pose_orientation + partz);
+		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_orientation_vector.push_back(temp);
+			std::cout
+					<< "[VISION]****Trouble Object orientation position z is found: "
+					<< trouble_object_orientation_vector.back() << std::endl;
+			keystring = "";
+		}
+		part_orientation_vector_.push_back(
+				string_with_shape_number + pose_orientation + partw);
+		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+			double temp = 0;
+			nh_.getParam(keystring, temp);
+			trouble_object_orientation_vector.push_back(temp);
+			std::cout
+					<< "[VISION]****Trouble Object orientation position w is found: "
+					<< trouble_object_orientation_vector.back() << std::endl;
+			keystring = "";
+		}
+
+		std::cout << "[VISION]part_orientation_vector_.partx): "
+				<< (part_orientation_vector_.front()) << std::endl;
+
+		//Find Cube Sizes- Cube always have 3 size
+		for (int sizenumber = 0; sizenumber < 3; sizenumber++) {
+			std::string holdsize = "";
+			std::stringstream cc;
+			cc << sizenumber;
+			holdsize = cc.str();
+			//object_0_shape_0_size_0/1/2_
+
+			cube_size_vector_.push_back(
+					string_with_shape_number + part13 + holdsize + "_");
+			std::string holdtemp = string_with_shape_number + part13 + holdsize
+					+ "_";
+			std::cout << "[VISION]****T.O. cube size is found: " << holdtemp
+					<< std::endl;
+
+			keystring = "";
+			if (nh_.searchParam(holdtemp, keystring)) {
+				double temp = 0;
+				nh_.getParam(keystring, temp);
+				trouble_object_cube_size_vector.push_back(temp);
+				std::cout << "[VISION]****cube size is found: "
+						<< trouble_object_cube_size_vector.back() << std::endl;
+			} //END OF IF
+		} //END OF FOR
+		if (is_cylinder) {
+			step_size = leaf_size;
+			shape_generator2.generateCylinder(step_size,
+					Eigen::Vector3f(0.0f, 0.0f, 0.0f),
+					cylinder_length * Eigen::Vector3f::UnitZ(),
+					cylinder_radius);
+
+			double w = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double z = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double y = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double x = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+			q2 = Eigen::Quaternion<double>(w, x, y, z);
+
+			float pz = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+			float py = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+			float px = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+			translation2[0] = px;
+			translation2[1] = py;
+			translation2[2] = -(cylinder_radius / 2) + pz;
+
+			pcl::transformPointCloud(*T_shape_model, *T_shape_model,
+					translation2, q2);
+
+			*T_object_model += *T_shape_model;
+
+			T_shape_model->clear();
+		} else //If box
+		{
+			step_size = leaf_size;
+			float side3 = trouble_object_cube_size_vector.back();
+			trouble_object_cube_size_vector.pop_back();
+			float side2 = trouble_object_cube_size_vector.back();
+			trouble_object_cube_size_vector.pop_back();
+			float side1 = trouble_object_cube_size_vector.back();
+			trouble_object_cube_size_vector.pop_back();
+
+			shape_generator2.generateBox(step_size,
+					Eigen::Vector3f(0.0f, 0.0f, 0.0f),
+					side3 * Eigen::Vector3f::UnitX(),
+					side1 * Eigen::Vector3f::UnitY(),
+					side1 * Eigen::Vector3f::UnitZ(), 0.0f, true, is_task5);
+			std::cout << "Object Size not 1 and Compound" << std::endl;
+
+			//transform Box PC to valid position
+			double w = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double z = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double y = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			double x = trouble_object_orientation_vector.back();
+			trouble_object_orientation_vector.pop_back();
+
+			q2 = Eigen::Quaternion<double>(w, x, y, z);
+
+			float pz = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+			float py = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+			float px = trouble_object_position_vector.back();
+			trouble_object_position_vector.pop_back();
+
+			translation2[0] = -(side2 / 2) + px;
+			translation2[1] = -(side2 / 2) + py;
+			translation2[2] = -(side3 / 2) + pz;
+
+			pcl::transformPointCloud(*T_shape_model, *T_shape_model,
+					translation2, q2);
+
+			*T_object_model += *T_shape_model;
+			T_shape_model->clear();
+		}
+
+	} //END OF FOR
+	  //*******************************************End of parameter search!****************************
+	return T_object_model;
+}			//END OF FAKE SHAPE GENERATOR, SAME COLOR PROBLEM
+
+bool Vision::same_colored_objects(const am_msgs::VisionGoal::ConstPtr &goal) {
+	same_color_problem = false;
+	std::string nrof_objects = "";
+	problem_object_index = 0;
+	total_nr_of_objects = 0;
+	int problem_obj_shape_number = 0;
+	if (nh_.searchParam("nr_objects_", nrof_objects)) {
+		nh_.getParam(nrof_objects, total_nr_of_objects);
+		std::cout << "[VISION]Total Number of Objects: " << total_nr_of_objects
+				<< std::endl;
+		ROS_INFO("TOTAL NUMBER OF OBJECTS IS FOUND!!!!");
+	} else
+		ROS_WARN("NUMBER OF OBJECTS COULD NOT BE FETCHED");
+
+	std::string object_color_param = "";
+	std::string object_nrshapes_param = "";
+	std::string part1 = "object_";
+	std::string part2 = "";
+	std::string part3 = "_nr_shapes_";
+	std::string part4 = "_color_";
+
+	for (int cnt = 0; cnt < total_nr_of_objects; cnt++) {
+		std::cout << "[VISION] ENTERED THE LOOP" << std::endl;
+		std::stringstream ss;
+		ss << cnt;
+		part2 = ss.str();
+		//std::cout<<"part2: "<<part2<<std::endl;
+
+		std::string full_string_color_param = part1 + part2 + part4;
+		std::string full_string_nrofshapes_param = part1 + part2 + part3;
+
+		std::cout << "[VISION] Full_string_nrofshapes_param: "
+				<< full_string_nrofshapes_param << std::endl;
+		std::cout << "[VISION] Full_string_color_param: "
+				<< full_string_color_param << std::endl;
+
+		if (nh_.searchParam(full_string_color_param, object_color_param)) {
+			std::cout << "Color of an object is found" << std::endl;
+			std::string colortemphold = "";
+			nh_.getParam(object_color_param, colortemphold);
+			Colour_String.push_back(colortemphold);
+			std::cout << "[VISION] COLOR OF AN OBJECT IS SAVED: "
+					<< colortemphold << std::endl;
+
+			if (nh_.searchParam(full_string_nrofshapes_param,
+					object_nrshapes_param)) {
+				int nr_of_shapes_hold = 0;
+				nh_.getParam(object_nrshapes_param, nr_of_shapes_hold);
+				Number_of_Shapes_List.push_back(nr_of_shapes_hold);
+				std::cout << "[VISION]THE OBJECT SHAPE NUMBER IS SAVED:"
+						<< nr_of_shapes_hold << std::endl;
+
+				if (((goal->object.color) == colortemphold)
+						&& ((nr_of_shapes_hold) > (goal->object.nr_shapes))) {
+					std::cout << "[VISION]SAME COLOR OBJECTS: Call alignment2"
+							<< std::endl;
+					same_color_problem = true;
+					problem_obj_shape_number = nr_of_shapes_hold;
+					problem_object_index = cnt;
+					return true; //Call Alignment 2
+
+				}
+			} //Object Shape Number
+		} //Color Comparison
+	} //END OF LOOP
+	return false;
+} // SAME_COLOR_PROBLEM
+
 
 void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
+	_currentGoal = goal;
 
   // Get the task number
   std::string key;
   if(nh_.searchParam("active_task_number_", key))
   {
     nh_.getParam(key, task_nr);
-    std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
+    //std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
   }
   else
+  {
     ROS_WARN("search for parameter failed!");
+  }
+
+  //=====================================IREM'S CODE----PARAM FETCH==========================
+   bool two_objects = same_colored_objects(goal);
+  //=======================================END OF IREM'S CODE=========================================
 
 
-  if(goal->object.nr_shapes == 1)
-    if(!goal->object.shape[0].type.compare("box"))
-    {
-      std::cout<<"[VISION]current object is a single cube"<<std::endl;
-      isSingleCube = true;
-    }
+  // START TASK 6 PROCEDURE
+  if (task_nr == 6)
+  {
+	  std::cout<<"[VISION]now working on task: "<<task_nr<<std::endl;
+	  // TODO:
+	  //        - move pan_tilt unit to correct position
+	  //        - wait for the cube to drop on conveyer belt
+	  //        - take one image + find quick pose
+
+  } // END TASK 6 PROCEDURE
+
+#ifdef ANY_OBJ_ON_THIS_ZONE
+	if ( search_for_object_on_zone_initial(finalVoxelizedPC, goal) )
+		std::cout<<"Something's on this target zone!!"<<std::endl;
+	else
+		std::cout<<"target zone is FREE!!"<<std::endl;
+#endif // ANY_OBJ_ON_THIS_ZONE
+
+  pcl::toROSMsg (*finalVoxelizedPC, msg);
+  msg.header.frame_id = "/Origin";
+  msg.header.stamp = ros::Time::now();
+  pub.publish (msg);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>());
 
   if(!goal->object.color.compare("ff0000"))
   {
-	  // Goal: Red object
-	  *targetPC += *finalVoxelizedRedPC;
+    // Goal: Red object
+    *targetPC += *finalVoxelizedRedPC;
   }
   else if (!goal->object.color.compare("00ff00"))
   {
-	  // Goal: Green object
-	  *targetPC += *finalVoxelizedGreenPC;
+    // Goal: Green object
+    *targetPC += *finalVoxelizedGreenPC;
   }
   else if (!goal->object.color.compare("0000ff"))
   {
-	  // Goal: Blue object
-	  *targetPC += *finalVoxelizedBluePC;
+    // Goal: Blue object
+    *targetPC += *finalVoxelizedBluePC;
   }
   else if (!goal->object.color.compare("00ffff"))
   {
-	  // Goal: Cyan object
-	  *targetPC += *finalVoxelizedCyanPC;
+    // Goal: Cyan object
+    *targetPC += *finalVoxelizedCyanPC;
   }
   else if (!goal->object.color.compare("ff00ff"))
-  {
-	  // Goal: Magenta object
-	  *targetPC += *finalVoxelizedMagentaPC;
+  {//=====================================IREM'S CODE----PARAM FETCH==========================
+	bool two_objects = same_colored_objects(goal);
+//=======================================END OF IREM'S CODE=========================================0
+
+    // Goal: Magenta object
+    *targetPC += *finalVoxelizedMagentaPC;
   }
   else if (!goal->object.color.compare("ffff00"))
   {
-	  // Goal: Yellow object
-	  *targetPC += *finalVoxelizedYellowPC;
+    // Goal: Yellow object
+    *targetPC += *finalVoxelizedYellowPC;
   }
 
 
   if(goal->mode == GLOBAL_POSE_ESTIMATION) {
-
-    std::cout<<"[VISION]Entered Vision::handle()..."<<std::endl;
 
 #ifdef OUTPUT_OCTOMAP_BIN
     tree->writeBinary("/home/euroc_student/EUROC_SVN_STUDENT/vision_octomap/Octomap.bt");
@@ -256,14 +641,101 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
     std::cout<<"[VISION]Looking for: "<<goal->object.name<<std::endl;
 
+
+    // check for task number (different tasks --> different approaches)
+    if ( task_nr == 1 || task_nr == 2 || task_nr == 3 || task_nr == 4 )
+    {
+    	std::cout<<"[VISION]now working on task: "<<task_nr<<std::endl;
+    	if(goal->object.nr_shapes == 1)
+    		if(!goal->object.shape[0].type.compare("box"))
+    		{
+    			std::cout<<"[VISION]current object is a single cube"<<std::endl;
+    			isSingleCube = true;
+    		}
+    }
+
+    // START TASK 4 PREPARATION
+    if (task_nr == 4)
+    {
+      // cluster the complete point cloud and filter it by size
+      std::vector<pcl::PointIndices> cluster_indices;
+      cluster_indices = find_clusters(targetPC, goal);
+      //std::cout<<"# clusters: "<<cluster_indices.size()<<std::endl;
+
+      // check the result cluster size
+      if ( cluster_indices.size() == 1 ) // only one cluster --> ready to pass to alignment + octomap server
+      {
+        std::cout<<"[VISION]updating the Octomap..."<<std::endl;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedPC;
+        subtractedPC = am_pointcloud::removeCluster(finalVoxelizedPC, targetPC, cluster_indices);
+
+        // publish the clusters
+        pcl::toROSMsg (*subtractedPC, msg);
+        msg.header.frame_id = "/Origin";
+        msg.header.stamp = ros::Time::now();
+        pub.publish (msg);
+
+        // Note: no need to update the cluster here,
+        // initial request: Arne,
+        // changed according to the new request
+//#ifdef OCTOMAP_SERVER
+//        // update the octomap with the subtractedPC
+//        pcl::toROSMsg (*subtractedPC, msg);
+//        msg.header.frame_id = "/Origin";
+//        msg.header.stamp = ros::Time::now();
+//        pub_3.publish (msg);
+//#endif
+//        std::cout<<"[VISION]Octomap updated."<<std::endl;
+
+        // prepare the targetPC for alignment
+        for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+        {
+          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+          for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+            cloud_cluster->points.push_back (targetPC->points[*pit]);
+          cloud_cluster->width = cloud_cluster->points.size ();
+          cloud_cluster->height = 1;
+          cloud_cluster->is_dense = true;
+
+          targetPC->clear();
+          targetPC.reset ( new pcl::PointCloud<pcl::PointXYZ>() );
+          *targetPC += *cloud_cluster;
+        }
+      }
+      else if (cluster_indices.size() > 1) // more than one cluster --> possibility: 2 or more objects with same color
+      {
+        std::cout<<"[VISION]more than one cluster --> pass all to alignment"<<std::endl;
+        std::cout<<"[VISION]it's time to pray for alignment to find the correct object... :|"<<std::endl;
+        // Question: DO WE HAVE TO UPDATE THE OCTOMAP IN THIS STATE, TOO?
+        // Answer: NO! We don't know which object we are about to find, yet.
+        // In this case, we update the Octomap after the alignment process
+      }
+      else
+      {
+        ROS_WARN("No Cluster found. Skipping the current object...");
+        vision_result_.error_reason=fsm::SKIP_OBJECT;
+        return;
+      }
+    } // END TASK 4 PREPARATION
+
+    // START TASK 5 PREPARATION
+    if (task_nr == 5)
+    {
+        is_task5 = true;
+    	std::cout<<"[VISION]now working on task: "<<task_nr<<std::endl;
+    	// TODO: PUT Irem's CODE HERE
+
+    	// ---> last point cloud should be copied into "targetPC"
+    } // END TASK 5 PREPARATION
+
     pcl::console::print_highlight ("Passing target point cloud to pose estimator...\n");
     ros::Duration(2.0).sleep();
 
     // publish final thresholded point cloud
-    //    pcl::toROSMsg (*targetPC, msg);
-    //    msg.header.frame_id = "LWR_0";
-    //    msg.header.stamp = ros::Time::now();
-    //    pub.publish (msg);
+    pcl::toROSMsg (*targetPC, msg);
+    msg.header.frame_id = "/Origin";
+    msg.header.stamp = ros::Time::now();
+    pub.publish (msg);
 
 
     // ==========================================================================================
@@ -310,9 +782,9 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
         //generate box PC (PointCloud)
         step_size = leaf_size;
         if (goal->object.shape.size() == 1)
-          shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.0f, false);
+          shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.0f, false, is_task5);
         else
-          shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.0f, true);
+          shape_generator.generateBox(step_size, Eigen::Vector3f(0.0f, 0.0f, 0.0f), goal->object.shape[i].size[0] * Eigen::Vector3f::UnitX(), goal->object.shape[i].size[1] * Eigen::Vector3f::UnitY(), goal->object.shape[i].size[2] * Eigen::Vector3f::UnitZ(), 0.0f, true, is_task5);
 
         //transform Cylinder PC to valid position
         q = Eigen::Quaternion<double>(goal->object.shape[i].pose.orientation.w, goal->object.shape[i].pose.orientation.x, goal->object.shape[i].pose.orientation.y, goal->object.shape[i].pose.orientation.z);
@@ -328,9 +800,10 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       }
       else
       {
-          vision_server_.setPreempted(vision_result_,"Alignment failed.");
-    	  vision_result_.error_reason=fsm::SKIP_OBJECT;
-    	  return;
+        // Unknown shape type
+        vision_server_.setPreempted(vision_result_,"Alignment failed.");
+        vision_result_.error_reason=fsm::SKIP_OBJECT;
+        return;
       }
     }
 
@@ -342,17 +815,17 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
     // Align observed point cloud with modeled object
     if (goal->object.shape.size() == 1 && !goal->object.shape[0].type.compare("box"))
-      transformation = align_PointClouds(object_model, targetPC, true, false);
+      transformation = align_PointClouds(object_model, targetPC, true, false, false);
     else if (goal->object.shape.size() == 1 && !goal->object.shape[0].type.compare("cylinder"))
-      transformation = align_PointClouds(object_model, targetPC, false, true);
+      transformation = align_PointClouds(object_model, targetPC, false, true, false);
     else
-      transformation = align_PointClouds(object_model, targetPC, false, false);
+      transformation = align_PointClouds(object_model, targetPC, false, false, false);
 
     if(obj_aligned_==false)
     {
       vision_server_.setPreempted(vision_result_,"Alignment failed.");
-	  vision_result_.error_reason=fsm::POSE_NOT_FOUND;
-	  return;
+      vision_result_.error_reason=fsm::POSE_NOT_FOUND;
+      return;
     }
 
     //Publish aligned PointCloud
@@ -360,7 +833,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     pcl::copyPointCloud(*object_model, *test);
     pcl::transformPointCloud(*test, *test, transformation);
     pcl::toROSMsg (*test, msg);
-    msg.header.frame_id = "LWR_0";
+    msg.header.frame_id = "/Origin";
     msg.header.stamp = ros::Time::now();
     pub_2.publish (msg);
 
@@ -371,7 +844,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
                       (double)transformation(2,0), (double)transformation(2,1), (double)transformation(2,2));
 
     rotation.getRotation(tfqt);
-    // END code from Fabian
+    // END of code from Fabian
     // ==========================================================================================
 
     //-------------------------------- SEND RESULT ----------------------------------------//
@@ -384,7 +857,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
     vision_result_.abs_object_pose.orientation.y = tfqt.getY();
     vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
 
-    // TODO: fix the timestamp problem
+    // TODO: fix the timestamp problem (TF:: move back in time)
     vision_result_.stamp = finalTimeStamp;
 
     vision_result_.object_detected=true;
@@ -395,7 +868,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
   }
   else if(goal->mode == CLOSE_RANGE_POSE_ESTIMATION)
   {
-    std::cout<<"[VISION]initialize close range pose estimation"<<std::endl;
+    std::cout<<"[VISION]initializing close range pose estimation"<<std::endl;
 
     // check object type
     if(isSingleCube)
@@ -427,15 +900,19 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
       }
       else
       {
-    	double roll,pitch,yaw;
-		tf::Matrix3x3 dcm;
-		dcm.setRotation(tfqt);
-		dcm.getRPY(roll,pitch,yaw);
+        double roll,pitch,yaw;
+        tf::Matrix3x3 dcm;
+        dcm.setRotation(tfqt);
+        dcm.getRPY(roll,pitch,yaw);
 
-    	if ( (std::abs(OptRotationRadians-yaw) > M_PI_4) && (std::abs(OptRotationRadians-yaw) < 3*M_PI_4))
-    	{
-    		OptRotationRadians = OptRotationRadians - ((M_PI_2)*(sgn(OptRotationRadians-yaw)));
-    	}
+
+        std::cout<<"old rotation: "<<OptRotationRadians<<std::endl;
+        if ( (std::abs(OptRotationRadians-yaw) > M_PI_4) && (std::abs(OptRotationRadians-yaw) < 3*M_PI_4))
+        {
+          OptRotationRadians = OptRotationRadians - ((M_PI_2)*(sgn(OptRotationRadians-yaw)));
+          std::cout<<"corrected rotation: "<<OptRotationRadians<<std::endl;
+        }
+
 
         // New optimum pose found, return the new one to the StateMachine
         tf::Matrix3x3 optRotation;
@@ -462,7 +939,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
         pcl::copyPointCloud(*object_model, *closeRangePC);
         pcl::transformPointCloud(*closeRangePC, *closeRangePC, transform_1);
         pcl::toROSMsg (*closeRangePC, msg);
-        msg.header.frame_id = "LWR_0";
+        msg.header.frame_id = "/Origin";
         msg.header.stamp = ros::Time::now();
         pub_2.publish (msg);
 
@@ -474,35 +951,36 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
         // check which transformed model fits better on the observed point cloud
         if ( std::abs( diffOldPose - diffNewPose ) < 15 )
         {
-        	std::cout<<"[VISION]new pose is better!"<<std::endl;
-        	std::cout<<"[VISION]Passing the new pose to grasping node"<<std::endl;
+          std::cout<<"[VISION]new pose is better!"<<std::endl;
+          std::cout<<"[VISION]Passing the new pose to grasping node"<<std::endl;
 
-        	vision_result_.object_detected=true;
+          vision_result_.object_detected=true;
 
-        	vision_result_.abs_object_pose.position.x = transformation(0,3);
-        	vision_result_.abs_object_pose.position.y = transformation(1,3);
-        	vision_result_.abs_object_pose.position.z = transformation(2,3);
-        	vision_result_.abs_object_pose.orientation.w = tfqtNew.getW();
-        	vision_result_.abs_object_pose.orientation.x = tfqtNew.getX();
-        	vision_result_.abs_object_pose.orientation.y = tfqtNew.getY();
-        	vision_result_.abs_object_pose.orientation.z = tfqtNew.getZ();
+          vision_result_.abs_object_pose.position.x = transformation(0,3);
+          vision_result_.abs_object_pose.position.y = transformation(1,3);
+          vision_result_.abs_object_pose.position.z = transformation(2,3);
+          vision_result_.abs_object_pose.orientation.w = tfqtNew.getW();
+          vision_result_.abs_object_pose.orientation.x = tfqtNew.getX();
+          vision_result_.abs_object_pose.orientation.y = tfqtNew.getY();
+          vision_result_.abs_object_pose.orientation.z = tfqtNew.getZ();
         }
         else
         {
-            std::cout<<"[VISION]new pose is a mess!!"<<std::endl;
-            std::cout<<"[VISION]Passing the initial estimated pose"<<std::endl;
+          std::cout<<"[VISION]new pose is a mess!!"<<std::endl;
+          std::cout<<"[VISION]Passing the initial estimated pose"<<std::endl;
 
-            vision_result_.object_detected=false;
+          vision_result_.object_detected=false;
 
-            vision_result_.abs_object_pose.position.x = transformation(0,3);
-            vision_result_.abs_object_pose.position.y = transformation(1,3);
-            vision_result_.abs_object_pose.position.z = transformation(2,3);
-            vision_result_.abs_object_pose.orientation.w = tfqt.getW();
-            vision_result_.abs_object_pose.orientation.x = tfqt.getX();
-            vision_result_.abs_object_pose.orientation.y = tfqt.getY();
-            vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
+          vision_result_.abs_object_pose.position.x = transformation(0,3);
+          vision_result_.abs_object_pose.position.y = transformation(1,3);
+          vision_result_.abs_object_pose.position.z = transformation(2,3);
+          vision_result_.abs_object_pose.orientation.w = tfqt.getW();
+          vision_result_.abs_object_pose.orientation.x = tfqt.getX();
+          vision_result_.abs_object_pose.orientation.y = tfqt.getY();
+          vision_result_.abs_object_pose.orientation.z = tfqt.getZ();
         }
       }
+      isSingleCube = false;
     }
     else // for objects other than cube, the inital pose will be sent back
     {
@@ -525,17 +1003,16 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
   else if (goal->mode == CHECKING_FOR_OBJECT_IN_TARGET_ZONE)
   {
     // Wait as usual!!
-    std::cout<<"[VISION]Wait for 4 sec..."<<std::endl;
-    ros::Duration(4.0).sleep();
+    std::cout<<"[VISION]Wait for 3 sec..."<<std::endl;
+    ros::Duration(3.0).sleep();
     std::cout<<"[VISION]Done!"<<std::endl;
     std::cout<<"[VISION]check if object is on target zone"<<std::endl;
 
-//    bool isObjectInZone = verify_object_inside_zone(goal->object.color);
     pcl::PointXYZ targetZone;
     targetZone.x = goal->target_zone.position.x;
     targetZone.y = goal->target_zone.position.y;
     targetZone.z = goal->target_zone.position.z;
-    int objectInZone = verify_object_inside_zone(goal->object.color, targetZone, goal->target_zone.max_distance);
+    uint16_t objectInZone = verify_object_inside_zone(goal->object.color, targetZone, goal->target_zone.max_distance);
     // TODO: Revision needed, ask Phillip
     if (objectInZone == 2)
     {
@@ -571,7 +1048,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
  * There are a total of 7 point clouds:
  * - Complete (global), Blue, Green, Red, Yellow, Cyan, Magenta
  *
- * 8 fixed configurations has been set for the camera in order get the most complete possible view of the table.
+ * 8 fixed configurations has been set for the camera in order to get the most possible complete view of the table.
  *
  * All point clouds are voxelized at the end of the process for memory and performance purposes.
  *
@@ -599,9 +1076,9 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
     double tilt[8] = {1.250,  0.800, 0.700, 0.800, 0.800, 0.300,  0.300, 0.300};
 
     std::cout<<"[VISION]Scanning the scene with pan tilt cam..."<<std::endl;
-	while(panTiltCounter < 8)
+    while(panTiltCounter < 8)
+//    while(panTiltCounter < 3)
     {
-
       // temporary variables for each sweep
       am_pointcloud *scenePointCloud;
       pcl::PointCloud<pcl::PointXYZ>::Ptr initialPC;
@@ -639,7 +1116,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
         ROS_ERROR("cv_bridge exception: %s", e.what());
         failed = true;
         res.error_reason=fsm::DATA_ERROR;
-        //return false; // SHOULD stop node
+        return;
       }
       // Get Depth image
       try
@@ -652,14 +1129,14 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
         ROS_ERROR("cv_bridge exception: %s", e.what());
         failed = true;
         res.error_reason=fsm::DATA_ERROR;
-        //return false; // SHOULD stop node
+        return;
       }
 
       // Apply HSV filtering
       ImageFilter hsvFilter(_cv_image->image);
 
       /*
-       * Create threshold for Blue, Green, Red respectively
+       * Create threshold for six colors
        */
       // Blue
       hsvFilter.setHsvValues("0000ff");
@@ -686,7 +1163,6 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       thresholdMagenta = hsvFilter.getFilteredImage();
       hsvFilter.morphOps(thresholdMagenta);
 
-
       // TODO: remove hardcoded values
       float fov_horizontal_scene_depth = 1.047;
       float fov_horizontal_scene_rgb = 1.047;
@@ -712,18 +1188,11 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-  	  pcl::toROSMsg (*threshPC, msg);
+      pcl::toROSMsg (*threshPC, msg);
       msg.header.frame_id = "/Origin";
       msg.header.stamp = ros::Time::now();
       pub_3.publish (msg);
 #endif
-
-//#ifdef OCTOMAP_SERVER
-//      pcl::toROSMsg (*initialPC, msg);
-//      msg.header.frame_id = "S_DEPTH";
-//      msg.header.stamp = ros::Time::now();
-//      pub_3.publish (msg);
-//#endif
 
 #ifdef OCTOMAP_REDUCED_OLD
       // Create Octomap without robot and things outside the table
@@ -757,19 +1226,15 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 
       std::cout<<"[VISION]Finished sweep "<<panTiltCounter<<std::endl;
 
-      // Set the time stamp of current image
+      // Set the time stamp of current image as the final stamp
       finalTimeStamp = stepTimeStampRGB;
 
       // set counter for next pan-tilt scan
       panTiltCounter++;
 
-      /*
-       * DEBUG
-       */
-      // publish final thresholded point cloud after each sweep
-      //ROS_INFO("Show point cloud");
+      // publish final thresholded point cloud
       pcl::toROSMsg (*finalScenePC, msg);
-      msg.header.frame_id = "LWR_0";
+      msg.header.frame_id = "/Origin";
       msg.header.stamp = ros::Time::now();
       pub.publish (msg);
 
@@ -778,9 +1243,10 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
     // Move camera to initial configuration
     if(false == mpt->move_pan_tilt_abs(pan_zero, tilt_zero))
     {
-    	res.error_reason=fsm::VISION_ERROR;
+      res.error_reason=fsm::VISION_ERROR;
+      return;
     }
-    std::cout<<"[VISION]pan camera scan complete."<<std::endl;
+    std::cout<<"[VISION]pan_tilt unit scan complete."<<std::endl;
 
     // Voxelize result point clouds
     // for each point cloud, we have to create a voxelized version.
@@ -828,6 +1294,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
   else {
     msg_error("Waiting for camera msgs failed!");
     res.error_reason=fsm::DATA_ERROR;
+    return;
   }
 
 }
@@ -877,7 +1344,8 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    //return false; // SHOULD stop node
+    res.error_reason=fsm::DATA_ERROR;
+    return;
   }
 
   // Convert ROS Depth image to OpencV format
@@ -890,13 +1358,14 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    //return false; // SHOULD stop node
+    res.error_reason=fsm::DATA_ERROR;
+    return;
   }
 
   // Apply HSV filtering
   ImageFilter hsvFilter(_cv_image->image);
   /*
-   * Create threshold for Blue, Green, Red respectively
+   * Create threshold for six colors
    */
   // Blue
   hsvFilter.setHsvValues("0000ff");
@@ -948,18 +1417,11 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-  	  pcl::toROSMsg (*threshPC, msg);
-      msg.header.frame_id = "/Origin";
-      msg.header.stamp = ros::Time::now();
-      pub_3.publish (msg);
+  pcl::toROSMsg (*threshPC, msg);
+  msg.header.frame_id = "/Origin";
+  msg.header.stamp = ros::Time::now();
+  pub_3.publish (msg);
 #endif
-
-//#ifdef OCTOMAP_SERVER
-//  pcl::toROSMsg (*initialPC, msg);
-//  msg.header.frame_id = "T_DEPTH";
-//  msg.header.stamp = ros::Time::now();
-//  pub_3.publish (msg);
-//#endif
 
 #ifdef OCTOMAP_REDUCED_OLD
   // Create Octomap without robot and things outside the table
@@ -1039,12 +1501,10 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 
   // Set the time stamp of current image
   finalTimeStamp = stepTimeStampRGB;
-  /*
-   * DEBUG
-   */
-  //ROS_INFO("Show point cloud");
+
+  // publish final voxelized point cloud
   pcl::toROSMsg (*finalVoxelizedPC, msg);
-  msg.header.frame_id = "LWR_0";
+  msg.header.frame_id = "/Origin";
   msg.header.stamp = ros::Time::now();
   pub.publish (msg);
 
@@ -1055,12 +1515,95 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
  * This function aligns a pre-defined object model with an input point cloud.
  * The input point cloud is calculated by functions from am_pointcloud class.
  **/
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::reduced_object_input(
+		pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,
+		pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box,
+		bool cylinder) {
+	scene_input->is_dense = false;
+	object_input->is_dense = false;
+	std::vector<int> index;
+	pcl::removeNaNFromPointCloud(*scene_input, *scene_input, index);
+	pcl::removeNaNFromPointCloud(*object_input, *object_input, index);
+	std::cout << "[VISION]Number of Points in object input "
+			<< object_input->points.size() << std::endl;
+	std::cout << "CLEAR!" << std::endl;
 
-Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder)
+	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+	kdtree.setInputCloud(object_input);
+	std::vector<int> pointIdxRadiusSearch;
+	std::vector<int> pointIDs;
+	std::vector<float> pointRadiusSquaredDistance;
+	std::vector<float> searchPointList;
+	std::vector<int> bottom_index;
+
+	double radius = leaf_size * 0.5;
+	int mini_index = 0;
+
+	for (size_t f = 0; f < (object_input->points.size()); f++) {
+		if ((object_input->points[f].z) < (object_input->points[mini_index].z))
+			mini_index = f;
+	}
+
+	size_t pointCloudSize = object_input->points.size();
+	for (size_t i = 0; i < (object_input->points.size()); i++) {
+
+		pcl::PointXYZ searchPoint;
+		searchPoint.x = object_input->points[i].x;
+		searchPoint.y = object_input->points[i].y;
+		searchPoint.z = object_input->points[i].z;
+
+		if (object_input->points[i].z
+				< (object_input->points[mini_index].z) + 0.01) {
+			pointIDs.push_back(i);
+			continue;
+		}
+
+		if (kdtree.radiusSearch(searchPoint, radius, pointIdxRadiusSearch,
+				pointRadiusSquaredDistance) > 0) {
+
+			if ((pointIdxRadiusSearch.size() > 1))
+				pointIDs.push_back(i);
+		} //End of Search If
+	} //End of For
+
+	std::cout << "[VISION]Number of Points in object input "
+			<< object_input->points.size() << "Points index " << pointIDs.size()
+			<< std::endl;
+
+	for (int j = 0; j < pointIDs.size(); ++j) {
+		object_input->points[pointIDs[j]].x =
+				std::numeric_limits<float>::quiet_NaN();
+		object_input->points[pointIDs[j]].y =
+				std::numeric_limits<float>::quiet_NaN();
+		object_input->points[pointIDs[j]].z =
+				std::numeric_limits<float>::quiet_NaN();
+	}
+
+	scene_input->is_dense = false;
+	object_input->is_dense = false;
+	std::vector<int> indx;
+
+	pcl::removeNaNFromPointCloud(*scene_input, *scene_input, indx);
+	pcl::removeNaNFromPointCloud(*object_input, *object_input, indx);
+	std::cout << "[VISION]Number of Points in object input2 "
+			<< object_input->points.size() << "smallest z:  "
+			<< object_input->points[mini_index].z << std::endl;
+	return object_input;
+
+}
+
+/**
+ * This function aligns a pre-defined object model with an input point cloud.
+ * The input point cloud is calculated by functions from am_pointcloud class.
+ **/
+
+Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder, bool is_task5)
 {
 
-  // Align a rigid object to a scene with clutter and occlusions
+  std::cout <<"scene points (before second downsampling: " <<scene_input->points.size()<<std::endl;
+  std::cout <<"current precision: "<<_currentGoal->precision<<std::endl;
 
+  // Align a rigid object to a scene with clutter and occlusions
   // Point clouds
   pcl::PointCloud<pcl::PointXYZ>::Ptr object_aligned (new pcl::PointCloud<pcl::PointXYZ>);
   PointCloudT::Ptr object (new PointCloudT);
@@ -1075,8 +1618,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
   pcl::removeNaNFromPointCloud(*scene_input, *scene_input, index);
   pcl::removeNaNFromPointCloud(*object_input, *object_input, index);
 
-
-  //	//Downsample
+  //Downsample
   if (cylinder)
   {
     pcl::VoxelGrid<pcl::PointXYZ> vg;
@@ -1111,11 +1653,11 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
   }
 
   // publish final thresholded point cloud
-  std::cout<<"[VISION]Show downsampled point cloud"<<std::endl;
-  pcl::toROSMsg ((*scene_input + *object_input), msg);
-  msg.header.frame_id = "LWR_0";
-  msg.header.stamp = ros::Time::now();
-  pub.publish (msg);
+//  std::cout<<"[VISION]Show downsampled point cloud"<<std::endl;
+//  pcl::toROSMsg ((*scene_input + *object_input), msg);
+//  msg.header.frame_id = "LWR_0";
+//  msg.header.stamp = ros::Time::now();
+//  pub.publish (msg);
 
 
   // Estimate normals for scene
@@ -1149,11 +1691,42 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
   // Perform alignment
   uint32_t iters;
 
+  // the variable PRECISION determines the precision of the alignment algorithm.
+  // 3 sets of precision is implemented to make the alignment robust with respect to time
+  // the StateMachine starts with the highest precision and passes it to the Vision node,
+  // In the worst case scenario, when the vision node cannot find a good alignment for an object, StateMachine
+  // would ask for a very rough alignment (LOW PRECISION) to have the chance of grabbing the object, though with a
+  // very poor alignment.
   if(cylinder)
-    iters = 350000;
+  {
+	  if (_currentGoal->precision == 0) // High precision
+		  iters = 350000;
+	  else if (_currentGoal->precision == 1) // Mid- precision
+		  iters = 250000;
+	  else if (_currentGoal->precision == 2) // Low precision
+		  iters = 200000;
+	  else
+	  {
+		  ROS_WARN("Unknown precision, proceeding with medium precision.");
+		  iters = 250000;
+	  }
+  }
   else
-    iters = 900000;
+  {
+	  if (_currentGoal->precision == 0) // High precision
+		  iters = 400000;
+	  else if (_currentGoal->precision == 1) // Mid- precision
+		  iters = 300000;
+	  else if (_currentGoal->precision == 2) // Low precision
+		  iters = 250000;
+	  else
+	  {
+		  ROS_WARN("Unknown precision, proceeding with medium precision.");
+		  iters = 300000;
+	  }
+  }
 
+  pcl::console::print_highlight ("performing %i iterations\n", iters);
   pcl::console::print_highlight ("Starting alignment...\n");
   pcl::SampleConsensusPrerejective<pcl::PointXYZ,pcl::PointXYZ,FeatureT> align;
   align.setInputSource (object_input);
@@ -1167,14 +1740,43 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
 
   if(box)
   {
-    align.setMaxCorrespondenceDistance (0.003); // Inlier threshold box
-    align.setInlierFraction (0.30f); // Required inlier fraction for accepting a pose hypothesis
+	  align.setMaxCorrespondenceDistance (0.003); // Inlier threshold box
+	  if (_currentGoal->precision == 0)
+	  {
+		  std::cout<<"set High precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.30f); // Required inlier fraction for accepting a pose hypothesis
+	  }
+	  if (_currentGoal->precision == 1)
+	  {
+		  std::cout<<"set Medium precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.25f); // Required inlier fraction for accepting a pose hypothesis
+	  }
+	  if (_currentGoal->precision == 2)
+	  {
+		  std::cout<<"set low precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.20f); // Required inlier fraction for accepting a pose hypothesis
+	  }
   }
 
-  else
+  else // Cylinder & Handle
   {
-    align.setMaxCorrespondenceDistance (0.004); // Inlier threshold other shapes
-    align.setInlierFraction (0.25f); // Required inlier fraction for accepting a pose hypothesis
+	  align.setMaxCorrespondenceDistance (0.004); // Inlier threshold other shapes
+	  if (_currentGoal->precision == 0)
+	  {
+		  std::cout<<"set High precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.25f); // Required inlier fraction for accepting a pose hypothesis
+	  }
+	  if (_currentGoal->precision == 1)
+	  {
+		  std::cout<<"set Medium precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.20f); // Required inlier fraction for accepting a pose hypothesis
+	  }
+	  if (_currentGoal->precision == 2)
+	  {
+		  std::cout<<"set low precision for InlierFraction..."<<std::endl;
+		  align.setInlierFraction (0.15f); // Required inlier fraction for accepting a pose hypothesis
+	  }
+
   }
 
   Eigen::Matrix4f transform;
@@ -1186,6 +1788,8 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
 
     if (align.hasConverged ())
     {
+
+      std::cout<<"nmbr_tries: "<<nmbr_tries<<std::endl;
       // Print results
       printf ("\n");
       transform = align.getFinalTransformation ();
@@ -1213,10 +1817,8 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
 
       align.setMaximumIterations (iters);
     }
-
     nmbr_tries++;
   }
-
   return transform;
 }
 
@@ -1227,8 +1829,6 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
  */
 double Vision::close_range_pose(string color)
 {
-
-  std::cout<<"[VISION]Entered Vision::close_range_pose()"<<std::endl;
   /*
    * Initialization
    */
@@ -1257,7 +1857,8 @@ double Vision::close_range_pose(string color)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    //return false; // SHOULD stop node
+    //res.error_reason=fsm::DATA_ERROR;
+    return -5;
   }
   try
   {
@@ -1268,7 +1869,8 @@ double Vision::close_range_pose(string color)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    //return false; // SHOULD stop node
+    //res.error_reason=fsm::DATA_ERROR;
+    return -5;
   }
 
   // TODO: remove hardcoded Field-of-View values
@@ -1283,10 +1885,6 @@ double Vision::close_range_pose(string color)
   worldPC = cornersPointCloud->transformToWorld(alignedPC, CAM_TCP, _tcp_depth_image.header.stamp);
   /*
    * END Initialization
-   */
-
-  /*
-   * Find corners
    */
 
   Mat src = _cv_image->image;
@@ -1312,7 +1910,6 @@ double Vision::close_range_pose(string color)
   cv::GaussianBlur(bw, bw, Size(11,11), 0, 0);
   // use canny edge-detector
   cv::Canny(bw, bw, 90, 110, 3);
-
 
   // use Probabilistic Hough Transform to get better results (less error in finding rectangle sides as lines)
   std::vector<cv::Vec4i> lines;
@@ -1344,17 +1941,12 @@ double Vision::close_range_pose(string color)
       // cannot modify the paramters anymore. Vision node is not able to process good lines/corners.
       // return the initial pose to StateMachine
       houghLineCounter = 0; // reset counter
-      std::cout<<"[VISION]failed to find enough lines. return initial pose"<<std::endl;
+      std::cout<<"[VISION]failed to find enough lines. returning initial pose"<<std::endl;
       return -5;
     }
 
     houghLineCounter++;
   }
-  //	for (int i = 0; i < lines.size(); i++)
-  //	{
-  //	  cv::Vec4i v = lines[i];
-  //	  cv::line(dst, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(0,255,0), 2);
-  //	}
 
   /*
    * START compute angles using lines (instead of corners)
@@ -1374,14 +1966,14 @@ double Vision::close_range_pose(string color)
 
   std::cout<<"[VISION]perpendicular lines are: "<<idx[0]<<", "<<idx[1]<<std::endl;
 
-//  // Draw the lines
-//  cv::Vec4i v = lines[idx[0]];
-//  cv::line(dst, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(0,255,0), 2);
-//  v = lines[idx[1]];
-//  cv::line(dst, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(255,0,0), 2);
-//  cv::imshow("lines", dst);
-//  cv::imshow("canny", bw);
-//  cv::waitKey();
+//    // DEBUG: Draw the lines
+//    cv::Vec4i v = lines[idx[0]];
+//    cv::line(dst, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(0,255,0), 2);
+//    v = lines[idx[1]];
+//    cv::line(dst, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(255,0,0), 2);
+//    cv::imshow("lines", dst);
+//    cv::imshow("canny", bw);
+//    cv::waitKey();
 
   std::cout<<"[VISION]Picking one of the perpendicular lines"<<std::endl;
   std::cout<<"[VISION]transforming the line to world coordinate"<<std::endl;
@@ -1406,15 +1998,14 @@ double Vision::close_range_pose(string color)
   det = (targetVecX*unitVecY) - (targetVecY*unitVecX);
 
   rotation = std::atan2(det, dot);
-
-  //std::cout<<"[VISION]rotation around z-axis of table: "<<rotation<<std::endl;
   /*
-   * END compute angles using lines (instead of corners)
+   * END compute angles using lines
    */
 
 
   /*
    * START compute angles using corners
+   * (first proposition, rejected due to high error rates)
    */
   //	// Find intersections between every two lines --> corners
   //	for (int i = 0; i < lines.size(); i++)
@@ -1496,7 +2087,7 @@ double Vision::close_range_pose(string color)
 }
 
 /*
- * This function sort a vector of corners (of a rectangle) based on the camera frame
+ * This function sorts a vector of corners (of a rectangle) based on the camera frame
  * The order will be:
  * 1) TOP_LEFT
  * 2) TOP_RIGHT
@@ -1613,6 +2204,7 @@ cv::Point2f Vision::compute_intersect(cv::Vec4i a, cv::Vec4i b)
  * It will return the coordinates of those points in the world coordinate system.
  * Due to the transformation between the RGB and DEPTH camera, it is normal to face NaN values for certain points. To solve
  * this problem, an averaging process is applied to find the nearest possible point to the corresponding pixel.
+ * This workaround may tamper the whole result. In that case, we just have to send back the initial pose.
  */
 std::vector<pcl::PointXYZ> Vision::find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, std::vector<cv::Point2f> points)
 {
@@ -1682,45 +2274,63 @@ std::vector<pcl::PointXYZ> Vision::find_points_world(pcl::PointCloud<pcl::PointX
   return foundPoints;
 }
 
-
+/*
+ * This function receives two point clouds and computes the number of points which exist in the
+ * first cloud, but not in the second cloud. This will serve us as a solution to compare two point cloud
+ * in the sense of similarity
+ */
 int Vision::verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC, pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC)
 {
 
-	// Octree resolution - side length of octree voxels
-	float resolution = 0.005f;
+  // Octree resolution - side length of octree voxels
+  float resolution = 0.005f;
 
-	// Instantiate octree-based point cloud change detection class
-	pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree (resolution);
+  // Instantiate octree-based point cloud change detection class
+  pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree (resolution);
 
-	// Add points from targetPC to octree
-	octree.setInputCloud (targetPC);
-	octree.addPointsFromInputCloud ();
+  // Add points from targetPC to octree
+  octree.setInputCloud (targetPC);
+  octree.addPointsFromInputCloud ();
 
-	// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
-	octree.switchBuffers ();
+  // Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+  octree.switchBuffers ();
 
-	// Add points from cloudB to octree
-	octree.setInputCloud (closeRangePC);
-	octree.addPointsFromInputCloud ();
+  // Add points from closeRangePC to octree
+  octree.setInputCloud (closeRangePC);
+  octree.addPointsFromInputCloud ();
 
-	std::vector<int> newPointIdxVector;
+  std::vector<int> newPointIdxVector;
 
-	// Get vector of point indices from octree voxels which did not exist in previous buffer
-	octree.getPointIndicesFromNewVoxels (newPointIdxVector);
+  // Get vector of point indices from octree voxels which did not exist in previous buffer
+  octree.getPointIndicesFromNewVoxels (newPointIdxVector);
 
-	// Output points
-	std::cout<<"vector size"<<newPointIdxVector.size()<<std::endl;
-//	std::cout << "Output from getPointIndicesFromNewVoxels:" << std::endl;
-//	for (size_t i = 0; i < newPointIdxVector.size (); ++i)
-//		std::cout << i << "# Index:" << newPointIdxVector[i]
-//				  << "  Point:" << closeRangePC->points[newPointIdxVector[i]].x << " "
-//				  << closeRangePC->points[newPointIdxVector[i]].y << " "
-//				  << closeRangePC->points[newPointIdxVector[i]].z << std::endl;
+  // Output points
+  std::cout<<"vector size"<<newPointIdxVector.size()<<std::endl;
 
-	return newPointIdxVector.size();
+  /*
+   * DEBUG
+   */
+  //	std::cout << "Output from getPointIndicesFromNewVoxels:" << std::endl;
+  //	for (size_t i = 0; i < newPointIdxVector.size (); ++i)
+  //		std::cout << i << "# Index:" << newPointIdxVector[i]
+  //				  << "  Point:" << closeRangePC->points[newPointIdxVector[i]].x << " "
+  //				  << closeRangePC->points[newPointIdxVector[i]].y << " "
+  //				  << closeRangePC->points[newPointIdxVector[i]].z << std::endl;
+  /*
+   * END DEBUG
+   */
+
+  return newPointIdxVector.size();
 }
 
-
+/*
+ * This function checks whether an object with the input color has been placed correctly on its respective target zone.
+ * properties of the target zone is given as its center and radius.
+ * There are 3 possibilities:
+ *    1. object with that color is not found in the camera view
+ *    2. Object with that color is placed correctly on the target zone
+ *    3. Object with that color is not placed within a certain distance from the target zone
+ */
 int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, float radius)
 {
   /*
@@ -1748,7 +2358,8 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    return false;
+    //res.error_reason=fsm::DATA_ERROR;
+    return 0;
   }
 
   // Convert ROS Depth image to OpencV format
@@ -1761,7 +2372,8 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     failed = true;
-    return false; // SHOULD stop node
+    //res.error_reason=fsm::DATA_ERROR;
+    return 0;
   }
 
   // TODO: remove hardcoded Field-of-View values
@@ -1785,29 +2397,30 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
 
   colorFilteredPC = closeRangePointCloud->filterPointCloudByColor(threshPC, threshold);
 
+  // check if cloud in that color is empty
   int nanCounter = 0;
   int cloudSize = colorFilteredPC->height * colorFilteredPC->width;
   std::cout<<"colorfiltercloud size = "<<cloudSize<<std::endl;
   for(int i=0; i<colorFilteredPC->height; i++)
-	  for(int j=0; j<colorFilteredPC->width; j++)
-	  {
-		  if( !pcl_isfinite(colorFilteredPC->at(j,i).x) )
-		  {
-			  nanCounter++;
-			  continue;
-			  //std::cout<<"X: "<<colorFilteredPC->at(j,i).x<<", Y: "<<colorFilteredPC->at(j,i).y<<" Z: "<<colorFilteredPC->at(j,i).z<<std::endl;
-		  }
-		  if( colorFilteredPC->at(j,i).x == 0 && colorFilteredPC->at(j,i).y == 0 && colorFilteredPC->at(j,i).z == 0 )
-		  {
-			  nanCounter++;
-			  continue;
-		  }
-	  }
+    for(int j=0; j<colorFilteredPC->width; j++)
+    {
+      if( !pcl_isfinite(colorFilteredPC->at(j,i).x) )
+      {
+        nanCounter++;
+        continue;
+        //std::cout<<"X: "<<colorFilteredPC->at(j,i).x<<", Y: "<<colorFilteredPC->at(j,i).y<<" Z: "<<colorFilteredPC->at(j,i).z<<std::endl;
+      }
+      if( colorFilteredPC->at(j,i).x == 0 && colorFilteredPC->at(j,i).y == 0 && colorFilteredPC->at(j,i).z == 0 )
+      {
+        nanCounter++;
+        continue;
+      }
+    }
   std::cout<<"NanCounter = "<<nanCounter<<std::endl;
   if (nanCounter == cloudSize)
   {
-	  std::cout<<"cloud is empty!!"<<std::endl;
-	  return 0;
+    std::cout<<"cloud is empty!!"<<std::endl;
+    return 0;
   }
 
 
@@ -1817,58 +2430,59 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
 
   /*
    * 2D Image Proc.: find circle (target zone)
+   * new solution: use exact information from the YAML file
    */
-//  // Apply HSV filtering
-//  cv::Mat threshold, src, src_gray;
-//  src = _cv_image->image;
-//
-//  ImageFilter hsvFilter(src);
-//  hsvFilter.setHsvValues(color);
-//  threshold = hsvFilter.getFilteredImage();
-//  hsvFilter.morphOps(threshold);
-//  threshold.convertTo(src_gray, CV_8U);
-//
-//  // Convert it to gray
-////  cvtColor(src, src_gray, CV_BGR2GRAY );
-//
-//  // Reduce the noise so we avoid false circle detection
-//  cv::GaussianBlur(src_gray, src_gray, Size(9, 9), 2, 2);
-//
-//  vector<Vec3f> circles;
-//  // Apply the Hough Transform to find the circles
-//  cv::HoughCircles( src_gray, circles, CV_HOUGH_GRADIENT, 1, 30, 200, 50, 0, 0 );
-//
-//
-//  std::cout<<"circles: "<<circles.size()<<std::endl;
-//  Point center( cvRound(circles[0][0]), cvRound(circles[0][1]) );
-//  int radius;
-//  // Draw the circles detected
-//  for( size_t i = 0; i < circles.size(); i++ )
-//  {
-//    Point center( cvRound(circles[i][0]), cvRound(circles[i][1]) );
-//    radius = cvRound(circles[i][2]);
-//    // circle center
-//    circle(src, center, 3, Scalar(0,255,0), -1, 8, 0 );
-//    // circle outline
-//    circle(src, center, radius, Scalar(0,0,255), 3, 8, 0 );
-//  }
-//
-////  cv::imshow( "Threshold", src_gray);
-////  cv::imshow( "Circles", src);
-////  cv::waitKey();
-////  ros::Duration(5.0).sleep();
-//
-//
-//  if (circles.size() == 0)
-//  {
-//    std::cout<<"[VISION]could not find any circle..."<<std::endl;
-//    return false;
-//  }
-//  else if (circles.size() > 1)
-//  {
-//    std::cout<<"[VISION]error: found more than one circle"<<std::endl;
-//    return false;
-//  }
+  //  // Apply HSV filtering
+  //  cv::Mat threshold, src, src_gray;
+  //  src = _cv_image->image;
+  //
+  //  ImageFilter hsvFilter(src);
+  //  hsvFilter.setHsvValues(color);
+  //  threshold = hsvFilter.getFilteredImage();
+  //  hsvFilter.morphOps(threshold);
+  //  threshold.convertTo(src_gray, CV_8U);
+  //
+  //  // Convert it to gray
+  ////  cvtColor(src, src_gray, CV_BGR2GRAY );
+  //
+  //  // Reduce the noise so we avoid false circle detection
+  //  cv::GaussianBlur(src_gray, src_gray, Size(9, 9), 2, 2);
+  //
+  //  vector<Vec3f> circles;
+  //  // Apply the Hough Transform to find the circles
+  //  cv::HoughCircles( src_gray, circles, CV_HOUGH_GRADIENT, 1, 30, 200, 50, 0, 0 );
+  //
+  //
+  //  std::cout<<"circles: "<<circles.size()<<std::endl;
+  //  Point center( cvRound(circles[0][0]), cvRound(circles[0][1]) );
+  //  int radius;
+  //  // Draw the circles detected
+  //  for( size_t i = 0; i < circles.size(); i++ )
+  //  {
+  //    Point center( cvRound(circles[i][0]), cvRound(circles[i][1]) );
+  //    radius = cvRound(circles[i][2]);
+  //    // circle center
+  //    circle(src, center, 3, Scalar(0,255,0), -1, 8, 0 );
+  //    // circle outline
+  //    circle(src, center, radius, Scalar(0,0,255), 3, 8, 0 );
+  //  }
+  //
+  ////  cv::imshow( "Threshold", src_gray);
+  ////  cv::imshow( "Circles", src);
+  ////  cv::waitKey();
+  ////  ros::Duration(5.0).sleep();
+  //
+  //
+  //  if (circles.size() == 0)
+  //  {
+  //    std::cout<<"[VISION]could not find any circle..."<<std::endl;
+  //    return false;
+  //  }
+  //  else if (circles.size() > 1)
+  //  {
+  //    std::cout<<"[VISION]error: found more than one circle"<<std::endl;
+  //    return false;
+  //  }
 
   // look inside the target zone to find the object
   if ( search_for_object_on_zone(threshPC, zone_center, radius) )
@@ -1883,37 +2497,206 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
  */
 bool Vision::search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr inputCloud, pcl::PointXYZ zoneCenter, float radius)
 {
-	// calculate center of mass
-	pcl::PointXYZ centerOfMass;
-	centerOfMass = am_pointcloud::calculateCenterOfMass(inputCloud);
+  // calculate center of mass
+  pcl::PointXYZ centerOfMass;
+  centerOfMass = am_pointcloud::calculateCenterOfMass(inputCloud);
 
-	std::cout<<"Center of Mass:  X= "<<centerOfMass.x<<",  Y= "<<centerOfMass.y<<",  Z="<<centerOfMass.z<<std::endl;
+  std::cout<<"Center of Mass:  X= "<<centerOfMass.x<<",  Y= "<<centerOfMass.y<<",  Z="<<centerOfMass.z<<std::endl;
 
-	float distanceX = std::abs(centerOfMass.x - zoneCenter.x);
-	float distanceY = std::abs(centerOfMass.y - zoneCenter.y);
+  float distanceX = std::abs(centerOfMass.x - zoneCenter.x);
+  float distanceY = std::abs(centerOfMass.y - zoneCenter.y);
 
-	if ( distanceX < radius+0.005 && distanceY < radius+0.005 )
-	{
-		std::cout<<"Object placed within the correct radius."<<std::endl;
-		return true;
-	}
+  if ( distanceX < radius+0.005 && distanceY < radius+0.005 )
+  {
+    std::cout<<"Object placed within the correct radius."<<std::endl;
+    return true;
+  }
 
-//	pcl::PointXYZ p;
-//	for (int i=(-1)*radius; i<radius; i++)
-//	{
-//		for (int j=(-1)*radius; j<radius; j++)
-//		{
-//			p.z = inputCloud->at( center.x-i , center.y-j).z;
-//			if(pcl_isfinite(p.z))
-//				if (p.z > 0.005)
-//				{
-//					std::cout<<"found a point with Z > 0.05"<<std::endl;
-//					return true;
-//				}
-//		}
+  //	pcl::PointXYZ p;
+  //	for (int i=(-1)*radius; i<radius; i++)
+  //	{
+  //		for (int j=(-1)*radius; j<radius; j++)
+  //		{
+  //			p.z = inputCloud->at( center.x-i , center.y-j).z;
+  //			if(pcl_isfinite(p.z))
+  //				if (p.z > 0.005)
+  //				{
+  //					std::cout<<"found a point with Z > 0.05"<<std::endl;
+  //					return true;
+  //				}
+  //		}
 
   // could not find any point with Z > 0.01
   // object is not placed on the target zone
   std::cout<<"Object is far away from the target zone"<<std::endl;
   return false;
+}
+
+bool Vision::search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr input_cloud, const am_msgs::VisionGoal::ConstPtr &goal)
+{
+	// set up target zone position and radius
+    pcl::PointXYZ zoneCenter;
+    zoneCenter.x = goal->target_zone.position.x;
+    zoneCenter.y = goal->target_zone.position.y;
+    zoneCenter.z = goal->target_zone.position.z;
+    float zoneRadius = goal->target_zone.max_distance;
+
+	int minPointCounter = 0;
+	float distanceX, distanceY;
+	for (int i=0; i<input_cloud->points.size(); i++)
+	{
+		distanceX = std::abs(input_cloud->points[i].x - zoneCenter.x);
+		distanceY = std::abs(input_cloud->points[i].y - zoneCenter.y);
+		if ( distanceX < zoneRadius && distanceY < zoneRadius )
+			minPointCounter++;
+		if (minPointCounter > 5)
+		{
+			std::cout<<"an object is detected on target zone."<<std::endl;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+ * This function receives a point cloud as input and divides it into zero or more clusters.
+ * Then it tries to find those clusters which are similar to the objects defined in the YAML file, based on their sizes/lengths
+ */
+std::vector<pcl::PointIndices> Vision::find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr input_cloud, const am_msgs::VisionGoal::ConstPtr &goal)
+{
+#ifdef LOG_DEBUG
+  std::cout<<"[VISION]entered find_clusters."<<std::endl;
+#endif // DEBUG
+
+  ros::Duration(1.0).sleep();
+  // remove NaNs from the input point cloud
+  input_cloud->is_dense = false;
+  std::vector<int> index;
+  pcl::removeNaNFromPointCloud(*input_cloud, *input_cloud, index);
+
+  // Create the KdTree object for the search method of the extraction
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud (input_cloud);
+
+  std::vector<pcl::PointIndices> initial_cluster_indices;
+  std::vector<pcl::PointIndices> final_cluster_indices;
+  int finalClusterCounter = 0;
+
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance (0.02); // 2cm
+  ec.setMinClusterSize (50);
+  ec.setMaxClusterSize (100000);
+  ec.setSearchMethod (tree);
+  ec.setInputCloud (input_cloud);
+  ec.extract (initial_cluster_indices);
+
+  std::cout<<"[VISION]found "<<initial_cluster_indices.size()<<" initial clusters"<<std::endl;
+
+  //final_cluster_indices.resize( initial_cluster_indices.size() );
+  for (std::vector<pcl::PointIndices>::const_iterator it = initial_cluster_indices.begin (); it != initial_cluster_indices.end (); ++it)
+  {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+      cloud_cluster->points.push_back (input_cloud->points[*pit]);
+    cloud_cluster->width = cloud_cluster->points.size ();
+    cloud_cluster->height = 1;
+    cloud_cluster->is_dense = true;
+
+    // find the min & max point in the cloud (cluster)
+    pcl::PointXYZ pMin, pMax;
+    //std::cout<<"computing max distance..."<<std::endl;
+    //std::cout<<"cluster size: "<<cloud_cluster->points.size()<<std::endl;
+    pcl::getMinMax3D(*cloud_cluster, pMin, pMax);
+    double max_dist = pcl::euclideanDistance(pMin, pMax);
+    //std::cout<<"Max Distance: "<<max_dist<<std::endl;
+    float obj_length = get_shape_length(goal);
+    //std::cout<<"current goal->shape length: "<<obj_length<<std::endl;
+    // compare the distance between min & max
+    if( max_dist < obj_length+obj_length*0.3 ) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
+    {
+      final_cluster_indices.resize( final_cluster_indices.size() + 1 );
+      final_cluster_indices[finalClusterCounter].indices = it->indices; //http://www.pcl-users.org/IndicesPtr-from-PointIndices-td4020356.html
+      finalClusterCounter++;
+    }
+
+    // publish the clusters
+    pcl::toROSMsg (*cloud_cluster, msg);
+    msg.header.frame_id = "/Origin";
+    msg.header.stamp = ros::Time::now();
+    pub.publish (msg);
+
+    ros::Duration(1.0).sleep();
+  }
+
+  finalClusterCounter = 0;
+
+  return final_cluster_indices;
+}
+
+/*
+ * This function takes an object (from goal msg) as input and tries to find
+ * the maximum length of that object.
+ */
+float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal)
+{
+  if(goal->object.nr_shapes == 1) // should be either a cube or a cylinder
+  {
+    if( !goal->object.shape[0].type.compare("box") )
+    {
+      return (float) goal->object.shape[0].size[0];
+    }
+    else if( !goal->object.shape[0].type.compare("cylinder") )
+    {
+      return (float) goal->object.shape[0].length;
+    }
+    else
+    {
+      ROS_WARN("Unknown shape type");
+      return 0;
+    }
+  }
+  else // this should be a handle
+  {
+    return (float)goal->object.shape[0].length +
+           (float)goal->object.shape[1].size[0]+
+           (float)goal->object.shape[2].size[0];
+  }
+
+  ROS_WARN("Unknown shape type");
+  return 0;
+}
+
+/*
+ * This function clears all point clouds and transformations, making them ready to work on a new task.
+ */
+bool Vision::master_reset()
+{
+	try
+	{
+		finalScenePC  ->clear();
+		finalTcpPC    ->clear();
+		finalBluePC   ->clear();
+		finalGreenPC  ->clear();
+		finalRedPC    ->clear();
+		finalYellowPC ->clear();
+		finalCyanPC   ->clear();
+		finalMagentaPC->clear();
+
+		finalVoxelizedPC       ->clear();
+		finalVoxelizedBluePC   ->clear();
+		finalVoxelizedGreenPC  ->clear();
+		finalVoxelizedRedPC    ->clear();
+		finalVoxelizedYellowPC ->clear();
+		finalVoxelizedCyanPC   ->clear();
+		finalVoxelizedMagentaPC->clear();
+
+		transformation.Ones();
+	}
+	catch (...)
+	{
+		ROS_WARN("Vision::reset procedure failed.");
+		return false;
+	}
+	return true;
 }

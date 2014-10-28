@@ -6,7 +6,6 @@
 
 // Local includes
 #include <actionlib/server/simple_action_server.h>
-#include "std_msgs/Bool.h"
 #include <am_msgs/VisionAction.h>
 #include "MovePantilt.h"
 #include <ampointcloud.h>
@@ -23,6 +22,11 @@
 
 // PCL includes
 #include <pcl/common/transforms.h>
+#include <pcl/common/distances.h>
+#include <pcl/common/point_operators.h>
+#include <pcl/common/common.h>
+
+#include <pcl/ModelCoefficients.h>
 #include <pcl/common/io.h>
 #include <Eigen/Core>
 #include <pcl/point_types.h>
@@ -31,9 +35,12 @@
 #include <pcl/console/print.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/features/fpfh_omp.h>
+#include <pcl/features/normal_3d.h>
 #include <pcl/filters/filter.h>
+#include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree.h>
 #include <pcl/registration/icp.h>
 #include <pcl/registration/sample_consensus_prerejective.h>
 #include <pcl/segmentation/sac_segmentation.h>
@@ -43,6 +50,10 @@
 #include <pcl-1.7/pcl/pcl_macros.h>
 #include <pcl/keypoints/uniform_sampling.h>
 #include <pcl/octree/octree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/extract_clusters.h>
+
 
 // Includes for received topic messages
 #include <euroc_c2_msgs/Telemetry.h>
@@ -61,16 +72,31 @@ class Vision
 {
 
 private:
+	ros::NodeHandle nh_;
+	std::string vision_action_name_;
+	int task_nr; // store parameter from active_task_number
+
 	ros::Time finalTimeStamp;
 
 	// Constants
 	static const int CAM_TCP = 0;
 	static const int CAM_SCENE = 1;
-//	static const int CLOSE_RANGE_POSE = 2;
-//	static const int OBJECT_ON_TARGET_VERIFICATION = 3;
 	static const int HANDLE = 4;
 	static const int CYLINDER = 5;
 	static const int CUBE = 6;
+	static const float cube_size=0.05;
+
+	//Added By İrem -Parameter Names
+	int total_nr_of_objects;
+	int problem_object_index;
+	std::vector<std::string> Colour_String;
+	std::vector<int> Number_of_Shapes_List;
+	bool same_color_problem; //two objects which are in same color
+	double cylinder_radius;
+	double cylinder_length;
+	std::vector<float>trouble_object_cube_size_vector;
+	std::vector<double>trouble_object_orientation_vector;
+	std::vector<float>trouble_object_position_vector;
 
 	// topic and service names
 	std::string euroc_c2_interface;
@@ -80,52 +106,7 @@ private:
 	std::string camera_tcp_depth_topic;
 	std::string save_log;
 
-	int task_nr; // store parameter from active_task_number
-	bool isSingleCube; // verifies whether the current object is a single cube
-	ros::NodeHandle nh_;
-
-	std::string vision_action_name_;
-protected:
-	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
-
-	ros::Subscriber reset_subscriber_;
-
-public:
-	// Eigen: alignment issues: http://eigen.tuxfamily.org/dox-devel/group__DenseMatrixManipulation__Alignement.html
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-	Vision();
-	virtual ~Vision(){;};
-
-	void reset(const std_msgs::BoolConstPtr& rst);
-
-	void on_camera_scene_rgb_CB(const sensor_msgs::Image &image);
-	void on_camera_scene_depth_CB(const sensor_msgs::Image &image);
-	void on_camera_tcp_rgb_CB(const sensor_msgs::Image &image);
-	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
-	bool on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeImage::Response &res);
-	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res);
-	void scan_with_tcp(am_msgs::TakeImage::Response &res);
-	virtual void handle(const am_msgs::VisionGoal::ConstPtr &goal);
-	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
-
-	double close_range_pose(string);
-	void sort_corners(std::vector<cv::Point2f>&);
-	std::vector<int> find_perpendicular_lines(std::vector<cv::Vec4i>&);
-	cv::Point2f compute_intersect(cv::Vec4i, cv::Vec4i);
-	std::vector<pcl::PointXYZ> find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>);
-	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
-	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
-	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
-
-	// create messages that are used to published feedback/result
-	am_msgs::VisionFeedback vision_feedback_;
-	am_msgs::VisionResult   vision_result_;
-
-
-	ros::ServiceServer take_img_service_;
-
-	bool failed;
+	am_msgs::VisionGoal::ConstPtr _currentGoal;
 
 	Mat HSV;
 	Mat cameraFeed;
@@ -136,6 +117,55 @@ public:
 	Mat thresholdYellow;
 	Mat thresholdCyan;
 	Mat thresholdMagenta;
+
+	bool isSingleCube; // verifies whether the current object is a single cube
+	bool is_task5;
+
+protected:
+	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
+	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res);
+	void scan_with_tcp(am_msgs::TakeImage::Response &res);
+	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
+	double close_range_pose(string);
+	void sort_corners(std::vector<cv::Point2f>&);
+	std::vector<int> find_perpendicular_lines(std::vector<cv::Vec4i>&);
+	cv::Point2f compute_intersect(cv::Vec4i, cv::Vec4i);
+	std::vector<pcl::PointXYZ> find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>);
+	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
+	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
+	bool search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
+	std::vector<pcl::PointIndices> find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
+	float get_shape_length(const am_msgs::VisionGoal::ConstPtr &);
+	bool master_reset();
+
+public:
+	// Eigen: alignment issues: http://eigen.tuxfamily.org/dox-devel/group__DenseMatrixManipulation__Alignement.html
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+	Vision();
+	virtual ~Vision(){;};
+
+	void on_camera_scene_rgb_CB(const sensor_msgs::Image &image);
+	void on_camera_scene_depth_CB(const sensor_msgs::Image &image);
+	void on_camera_tcp_rgb_CB(const sensor_msgs::Image &image);
+	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
+	bool on_take_image_CB(am_msgs::TakeImage::Request &, am_msgs::TakeImage::Response &);
+	virtual void handle(const am_msgs::VisionGoal::ConstPtr &);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creater(bool);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(
+	pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input,bool box, bool cylinder);
+	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, bool, bool, bool);
+	bool same_colored_objects(const am_msgs::VisionGoal::ConstPtr &);
+	//void Vision::Octomap_Update(OcTree* tree);
+
+	// create messages that are used to published feedback/result
+	am_msgs::VisionFeedback vision_feedback_;
+	am_msgs::VisionResult   vision_result_;
+
+	ros::ServiceServer take_img_service_;
+
+	bool failed;
 
 	cv_bridge::CvImagePtr _cv_image;
 	cv_bridge::CvImagePtr _cv_depthptr;
@@ -161,9 +191,6 @@ public:
 	octomap::OcTree* tree;
 	octomap::Pointcloud* OctoCloud;
 
-	//am_pointcloud *scenePointCloud;
-	//am_pointcloud *tcpPointCloud;
-
 	tf::Quaternion tfqt;
 	tf::Quaternion tfqtNew;
 	Eigen::Matrix4f transformation;
@@ -185,15 +212,15 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
 
-
 	pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
-
 
 	//alignemt was successfull
 	bool obj_aligned_;
 
 	// size of voxels
 	float leaf_size;
+
+
 };
 
 #endif //VISION_HPP__

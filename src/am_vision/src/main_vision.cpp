@@ -15,6 +15,7 @@
 
 #include "MovePantilt.h"
 #include <config.hpp>
+#include <std_msgs/Bool.h>
 
 //!external kill functionality from a message
 bool kill_flag=false;
