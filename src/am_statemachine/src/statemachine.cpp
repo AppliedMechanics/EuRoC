@@ -3620,6 +3620,7 @@ int Statemachine::move_to_object_vision()
 	{
 		ROS_INFO("move_to_object_vision() called: OPEN");
 
+#if 1
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -3631,6 +3632,32 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+#else
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=3;
+		reached_active_goal_=false;
+		goal_queue.resize(nr_goals_);
+
+		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+		goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
+		goal_queue[0].planning_frame = GP_TCP;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+
+		goal_queue[1].goal_pose.position.x = cur_zone_.position.x;
+		goal_queue[1].goal_pose.position.y = cur_zone_.position.y;
+		goal_queue[1].planning_algorithm = MOVE_IT_2DOF;
+		goal_queue[1].planning_frame = GP_TCP;
+		goal_queue[1].inter_steps = 0;
+		goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
+
+		goal_queue[2].goal_pose = object_vision_pose[selected_object_pose_];
+		goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
+		goal_queue[2].planning_frame = GP_TCP;
+		goal_queue[2].inter_steps = 0;
+		goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
+#endif
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
