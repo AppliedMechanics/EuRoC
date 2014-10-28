@@ -21,8 +21,11 @@ GraspPose2::GraspPose2()
 	vision_distance_object_height_cylinder_=0.2;
 	vision_distance_object_height_handle_=0.2;
 	place_falling_dist_=0.01;
+	place_falling_distT6_=0.1;
 	gripping_angle_deg_=45;
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(pi);
+	gripping_angleT6_deg_=45;
+	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
 }
 
 GraspPose2::~GraspPose2() {
@@ -125,6 +128,56 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	send_poses_to_tf_broadcaster();
 
 	ROS_INFO("GraspPose_srv finished successfully");
+	return true;
+}
+
+bool GraspPose2::return_grasp_poseT6(am_msgs::GetGraspPoseT6::Request &req, am_msgs::GetGraspPoseT6::Response &res)
+{
+	ROS_INFO("GraspPoseT6_srv called and running...");
+	set_object_data_(req.object, req.target_zone);
+	conveyor_belt=req.conveyor_belt;
+
+	compute_object_CoM_();
+	compute_idx_shape_CoM_();
+	compute_abs_shape_poses_();
+	compute_bounding_box_();
+	compute_grasp_posesT6_();
+
+	ROS_INFO("transforming poses from GPTCP to LWRTCP frame");
+	if (!get_transform_GPTCP_2_LWRTCP())
+		msg_error("Could not get transform GPTCP --> LWRTCP");
+
+	LWRTCP_object_grip_pose.clear();
+	LWRTCP_object_safe_pose.clear();
+	LWRTCP_object_vision_pose.clear();
+	LWRTCP_target_place_pose.clear();
+	LWRTCP_target_safe_pose.clear();
+	LWRTCP_target_vision_pose.clear();
+
+	for(int ii=0; ii<GPTCP_object_grip_pose.size();ii++)
+			{ LWRTCP_object_grip_pose.push_back(transform_pose_GPTCP_2_LWRTCP_(GPTCP_object_grip_pose[ii])); }
+	for(int ii=0; ii<GPTCP_target_place_pose.size();ii++)
+		{ LWRTCP_target_place_pose.push_back(transform_pose_GPTCP_2_LWRTCP_(GPTCP_target_place_pose[ii])); }
+
+	//compute the relative vectors
+	compute_relative_vectors_();
+
+	// Save everything to response
+	res.object_mass = object_mass_;
+	res.object_grip_pose=GPTCP_object_grip_pose[0];
+	res.object_grasp_width=object_grasp_width[0];
+	res.target_place_pose=GPTCP_target_place_pose;
+	res.object_grip_r_tcp_com=object_grip_r_tcp_com[0];
+	res.object_grip_r_gp_com=object_grip_r_gp_com[0];
+	res.object_grip_r_gp_obj=object_grip_r_gp_obj[0];
+
+	//Print results of service call
+	print_results();
+
+	//send the whole bunch of poses to the tf broadcaster (for rviz)
+	send_poses_to_tf_broadcaster();
+
+	ROS_INFO("GraspPoseT6_srv finished successfully");
 	return true;
 }
 
@@ -1862,6 +1915,83 @@ void GraspPose2::compute_grasp_poses_()
 	}
 }
 
+void GraspPose2::compute_grasp_posesT6_()
+{
+	ROS_INFO("compute_grasp_posesT6_() called");
+	geometry_msgs::Pose tmp_GPTCP_pose;
+	tf::Vector3 x_axis(1,0,0), y_axis(0,1,0), z_axis(0,0,1);
+	tf::Vector3 x_grp, y_grp, z_grp;
+	tf::Vector3 tmp_vec;
+	tf::Vector3 safe_to_grip_dir;
+	tf::Matrix3x3 tmpRotation;
+
+	//clear all existing poses
+	GPTCP_object_grip_pose.clear();
+	GPTCP_object_safe_pose.clear();
+	GPTCP_object_vision_pose.clear();
+	grip_pose_type.clear();
+	object_grasp_width.clear();
+	GPTCP_target_place_pose.clear();
+	GPTCP_target_safe_pose.clear();
+	GPTCP_target_vision_pose.clear();
+	place_pose_type.clear();
+
+	object_pose_type_=OBJECT_POSE_CUBE_TASK6;
+
+	//=================================================================
+	//--------------------------GRIPPING CUBE--------------------------
+	//=================================================================
+	z_grp = -1.0*z_axis;
+	y_grp.setX(conveyor_belt.move_direction_and_length.x);
+	y_grp.setY(conveyor_belt.move_direction_and_length.y);
+	y_grp.setZ(conveyor_belt.move_direction_and_length.z);
+	y_grp=y_grp/y_grp.length();
+	y_grp.setZ(0);	//only use rotation around vertical axis
+	x_grp = y_grp.cross(z_grp);
+
+	tmpRotation=get_rotationmatrixfromaxis(x_grp,gripping_angleT6_rad_);
+	y_grp=tmpRotation*y_grp;
+	z_grp=tmpRotation*z_grp;
+	set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
+
+	safe_to_grip_dir=z_grp/z_grp.length();
+	tmp_vec=o_object_com_;
+	tmp_vec.setZ(tmp_vec.getZ()-0.5*bbox_z_);
+	tmp_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+	tmp_vec.setZ(tmp_vec.getZ()+0.5*gripper_finger_width*sin(gripping_angleT6_rad_)+grip_safety_dist_);
+
+	tmp_GPTCP_pose.position.x = tmp_vec.getX();
+	tmp_GPTCP_pose.position.y = tmp_vec.getY();
+	tmp_GPTCP_pose.position.z = tmp_vec.getZ();
+	GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
+	grip_pose_type.push_back(GRIP_POSE_CUBE_TASK6);
+	object_grasp_width.push_back(bbox_x_);	//assuming, that its really a cube
+
+	//=================================================================
+	//--------------------PLACING CUBE ON TARGET ZONE------------------
+	//=================================================================
+	tmp_GPTCP_pose.position = target_zone_.position;
+	z_grp = -1.0*z_axis;
+	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+gripper_height_+grip_safety_dist_+place_falling_distT6_;
+	//calculate 4 possibilities
+	for(uint8_t ii=1; ii<=4; ii++)
+	{
+		if(ii==1)	//possibility 1
+			y_grp=y_axis;
+		if(ii==2)	//possibility 2
+			y_grp=-y_axis;
+		if(ii==3)	//possibility 3
+			y_grp=x_axis;
+		if(ii==4)	//possibility 4
+			y_grp=-x_axis;
+		x_grp = y_grp.cross(z_grp);
+		set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
+
+		GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
+		place_pose_type.push_back(PLACE_POSE_CUBE_TASK6);
+	}
+}
+
 bool GraspPose2::get_transform_GPTCP_2_LWRTCP()
 {
 	tf::TransformListener tf_listener;
@@ -2414,6 +2544,9 @@ void GraspPose2::print_results()
 			case GRIP_POSE_CUBE_Z_UP_45byY:
 				ROS_INFO(" [%d] | GRIP_POSE_CUBE_Z_UP_45byY",ii);
 				break;
+			case GRIP_POSE_CUBE_TASK6:
+				ROS_INFO(" [%d] | GRIP_POSE_CUBE_TASK6",ii);
+				break;
 			case GRIP_POSE_CYLINDER_VERTICAL:
 				ROS_INFO(" [%d] | GRIP_POSE_CYLINDER_VERTICAL",ii);
 				break;
@@ -2492,6 +2625,9 @@ void GraspPose2::print_results()
 				break;
 			case PLACE_POSE_CUBE_Z_UP_45byY:
 				ROS_INFO(" [%d] | PLACE_POSE_CUBE_Z_UP_45byY",ii);
+				break;
+			case PLACE_POSE_CUBE_TASK6:
+				ROS_INFO(" [%d] | PLACE_POSE_CUBE_TASK6",ii);
 				break;
 			case PLACE_POSE_CYLINDER_VERTICAL:
 				ROS_INFO(" [%d] | PLACE_POSE_CYLINDER_VERTICAL",ii);
@@ -2586,7 +2722,9 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		posename << "object_grip_" << ii;
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
-
+	}
+	for (uint16_t ii=0; ii<LWRTCP_object_safe_pose.size(); ii++)
+	{
 		//send safe pose
 		tmp_Origin.setX(LWRTCP_object_safe_pose[ii].position.x);
 		tmp_Origin.setY(LWRTCP_object_safe_pose[ii].position.y);
@@ -2602,7 +2740,9 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		posename << "object_safe_" << ii;
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
-
+	}
+	for (uint16_t ii=0; ii<LWRTCP_object_vision_pose.size(); ii++)
+		{
 		//send vision pose
 		tmp_Origin.setX(LWRTCP_object_vision_pose[ii].position.x);
 		tmp_Origin.setY(LWRTCP_object_vision_pose[ii].position.y);
@@ -2637,7 +2777,9 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		posename << "target_place_" << ii;
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
-
+	}
+	for (uint16_t ii=0; ii<LWRTCP_target_safe_pose.size(); ii++)
+	{
 		//send safe pose
 		tmp_Origin.setX(LWRTCP_target_safe_pose[ii].position.x);
 		tmp_Origin.setY(LWRTCP_target_safe_pose[ii].position.y);
@@ -2653,7 +2795,9 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		posename << "target_safe_" << ii;
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
-
+	}
+	for (uint16_t ii=0; ii<LWRTCP_target_vision_pose.size(); ii++)
+	{
 		//send vision pose
 		tmp_Origin.setX(LWRTCP_target_vision_pose[ii].position.x);
 		tmp_Origin.setY(LWRTCP_target_vision_pose[ii].position.y);
@@ -2704,268 +2848,3 @@ tf::Matrix3x3 GraspPose2::get_rotationmatrixfromaxis(tf::Vector3 axis, double an
 	tmpMat.setValue(xx, xy, xz, yx, yy, yz, zx, zy, zz);
 	return tmpMat;
 }
-
-//void GraspPose2::compute_object_height_() {
-//
-//	object_height_ = 0;
-//	double tmp_oh = 0;
-//	double dot_product;
-//	tf::Vector3 z_axis(0,0,1);
-//
-//
-//	for (int ii=0;ii<object_.nr_shapes;ii++)
-//	{
-//		if(!object_.shape[ii].type.compare("cylinder"))
-//		{
-//			dot_product = o_transform_shapes_[ii].getBasis().getColumn(2).dot(z_axis);
-//			std::cout<<"x-axis "<<o_transform_shapes_[ii].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(0).getZ()<<std::endl;
-//			std::cout<<"y-axis "<<o_transform_shapes_[ii].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(1).getZ()<<std::endl;
-//			std::cout<<"z-axis "<<o_transform_shapes_[ii].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[ii].getBasis().getColumn(2).getZ()<<std::endl;
-//			std::cout<<"dot product "<<o_transform_shapes_[ii].getBasis().getColumn(2).dot(z_axis)<<" "<<dot_product<<std::endl;
-//			if (dot_product > -0.7 && dot_product < 0.7){
-//				tmp_oh = o_transform_shapes_[ii].getOrigin().getZ() + object_.shape[ii].radius;
-//				msg_info("Cylinder is horizontal.");
-//			}
-//			else
-//			{
-//				tmp_oh = o_transform_shapes_[ii].getOrigin().getZ() + (object_.shape[ii].length*0.5);
-//				msg_info("Cylinder is standing upwards.");
-//			}
-//		}
-//		else if (!object_.shape[ii].type.compare("box"))
-//		{
-//			tmp_oh = o_transform_shapes_[ii].getOrigin().getZ() + 0.5*object_.shape[ii].size[o_transform_shapes_[ii].getRotation().getAxis().closestAxis()];
-//		}
-//		else
-//			msg_error("Undefined type.");
-//
-//		if (tmp_oh > object_height_){
-//			object_height_ = tmp_oh;
-//			high_idx_ = ii;
-//		}
-//	}
-//	ROS_INFO("object height is %f",object_height_);
-//}
-
-//void GraspPose2::compute_grasp_pose_() {
-//
-//	double dot_product;
-//	tf::Vector3 z_axis(0,0,1);
-//	tf::Vector3 x_obj, y_obj, z_obj;
-//	tf::Vector3 z_grp, x_grp, y_grp;
-//
-//	x_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(0);
-//	y_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(1);
-//	z_obj = o_transform_shapes_[com_idx_].getBasis().getColumn(2);
-//
-//	GPTCP_target_pose_.position.x = o_object_com_.getX();
-//	GPTCP_target_pose_.position.y = o_object_com_.getY();
-//	if (high_idx_ == com_idx_)
-//		GPTCP_target_pose_.position.z = object_height_ - 0.5*gripper_height_ + grip_safety_dist_;
-//	else
-//		GPTCP_target_pose_.position.z = o_object_com_.getZ() + grip_safety_dist_;
-//
-//	if (GPTCP_target_pose_.position.z<0.04)
-//		GPTCP_target_pose_.position.z = 0.04;
-//
-//	double roll,pitch,yaw,dummy1,dummy2;
-//	tf::Matrix3x3 dcm;
-//	tf::Quaternion q_tmp;
-//	bool cyl_vert = false;
-//
-//
-//	if(!object_.shape[com_idx_].type.compare("cylinder"))
-//	{
-//		dot_product = z_obj.dot(z_axis);
-//		grasp_width_ = object_.shape[com_idx_].radius*2.0;
-//		if (dot_product > -0.7 && dot_product < 0.7)
-//		{
-//			ROS_INFO("horizontal cylinder");
-//			//dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
-//			//! Revised Version
-//			// Set z pointing down, set y along z of object, calculate x
-//			z_grp = -1.0*z_axis;
-//			y_grp = z_obj;
-//			x_grp = y_grp.cross(z_grp);
-//
-//			cyl_vert = true;
-//		}
-//		else //! Cylinder is horizontal
-//		{
-//			ROS_INFO("vertical cylinder");
-//			//			roll = 0;
-//			//			pitch = M_PI;
-//			//			yaw = 0.0; //TODO!
-//			//			yaw = atan2(am_abs(GPTCP_target_pose_.position.y),am_abs(GPTCP_target_pose_.position.x));
-//			z_grp = -1.0*z_axis;
-//			y_grp.setX(GPTCP_target_pose_.position.x);
-//			y_grp.setY(GPTCP_target_pose_.position.y);
-//			y_grp.setZ(0);
-//			x_grp = y_grp.cross(z_grp);
-//		}
-////		ROS_INFO("Cylinder RPY = %f,%f,%f",roll,pitch,yaw);
-//	}
-//	else if (!object_.shape[com_idx_].type.compare("box"))
-//	{
-//		//		dcm.setRotation(o_transform_shapes_[com_idx_].getRotation());
-//		//		std::cout<<"x-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(0).getZ()<<std::endl;
-//		//		std::cout<<"y-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(1).getZ()<<std::endl;
-//		//		std::cout<<"z-axis "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getX()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getY()<<" "<<o_transform_shapes_[com_idx_].getBasis().getColumn(2).getZ()<<std::endl;
-//		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(0).dot(z_axis))>0.9)
-//		//		{
-//		//			ROS_INFO("x_axis pointing up");
-//		//			dcm.getRPY(yaw,dummy1,dummy2);
-//		//		}
-//		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(1).dot(z_axis))>0.9)
-//		//		{
-//		//			ROS_INFO("y_axis pointing up");
-//		//			dcm.getRPY(dummy1,yaw,dummy2);
-//		//		}
-//		//		if (am_abs(o_transform_shapes_[com_idx_].getBasis().getColumn(2).dot(z_axis))>0.9)
-//		//		{
-//		//			ROS_INFO("z_axis pointing up");
-//		//			dcm.getRPY(dummy1,dummy2,yaw);
-//		//		}
-//		z_grp = -1.0*z_axis;
-//		if (am_abs(x_obj.dot(z_axis))>0.9)
-//		{
-//			ROS_INFO("x_axis pointing up");
-//			if (object_.shape[com_idx_].size[1]>=object_.shape[com_idx_].size[2])
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[2];
-//				y_grp = y_obj;
-//			}
-//			else
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[1];
-//				y_grp = z_obj;
-//			}
-//		}
-//		if (am_abs(y_obj.dot(z_axis))>0.9)
-//		{
-//			ROS_INFO("y_axis pointing up");
-//			if (object_.shape[com_idx_].size[0]>=object_.shape[com_idx_].size[2])
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[2];
-//				y_grp = x_obj;
-//			}
-//			else
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[0];
-//				y_grp = z_obj;
-//			}
-//		}
-//		if (am_abs(z_obj.dot(z_axis))>0.9)
-//		{
-//			ROS_INFO("z_axis pointing up");
-//			if (object_.shape[com_idx_].size[0]>=object_.shape[com_idx_].size[1])
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[1];
-//				y_grp = x_obj;
-//			}
-//			else
-//			{
-//				grasp_width_ = object_.shape[com_idx_].size[0];
-//				y_grp = y_obj;
-//			}
-//		}
-//		x_grp = y_grp.cross(z_grp);
-//
-//	}
-//
-//	//! Choose roll, pitch dependent on position
-//	//	if (!cyl_vert)
-//	//	{
-//	//		if (am_abs(GPTCP_target_pose_.position.x)>am_abs(GPTCP_target_pose_.position.y))
-//	//		{
-//	//			roll = 0;
-//	//			if (GPTCP_target_pose_.position.x > 0)
-//	//				pitch = M_PI;
-//	//			else
-//	//				pitch = -M_PI;
-//	//		}
-//	//		else
-//	//		{
-//	//			pitch = 0;
-//	//			if (GPTCP_target_pose_.position.y > 0)
-//	//				roll = -M_PI;
-//	//			else
-//	//				roll = M_PI;
-//	//		}
-//	//	}
-//
-//	//dcm.setValue(x_grp.getX(),x_grp.getY(),x_grp.getZ(),y_grp.getX(),y_grp.getY(),y_grp.getZ(),z_grp.getX(),z_grp.getY(),z_grp.getZ());
-//	//transposed matrix seems to be the right one :)
-//	dcm.setValue(x_grp.getX(),y_grp.getX(),z_grp.getX(),x_grp.getY(),y_grp.getY(),z_grp.getY(), x_grp.getZ(),y_grp.getZ(),z_grp.getZ());
-//	dcm.getRPY(roll,pitch,yaw);
-//	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
-//
-//	//! Choose yaw always  between [-PI/2;+PI/2]
-//	if (yaw<-M_PI_2)
-//		yaw+=M_PI;
-//	else if (yaw>M_PI_2)
-//		yaw-=M_PI;
-//
-//	ROS_INFO("RPY = %f,%f,%f",roll,pitch,yaw);
-//
-//	q_tmp.setRPY(roll,pitch,yaw);
-//	GPTCP_target_pose_.orientation.x = q_tmp.getX();
-//	GPTCP_target_pose_.orientation.y = q_tmp.getY();
-//	GPTCP_target_pose_.orientation.z = q_tmp.getZ();
-//	GPTCP_target_pose_.orientation.w = q_tmp.getW();
-//}
-
-//
-//void GraspPose2::transform_grasp_pose_GPTCP_2_LWRTCP_() {
-//
-//	tf::TransformListener tf_listener, tf_listener_obj;
-//	tf::StampedTransform transform_GPTCP_2_LWRTCP;
-//	tf::Transform tf_tmp,tf_tmp2;
-//
-//	ros::Time now = ros::Time::now();
-//	try{
-//		tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(2.0));
-//		tf_listener.lookupTransform(LWR_TCP,GP_TCP,ros::Time(0),transform_GPTCP_2_LWRTCP);
-//		//ROS_INFO("Listening to transform was successful");
-//	}
-//	catch(...){
-//		ROS_ERROR("Listening to transform was not successful");
-//	}
-//	tf_tmp.setOrigin(tf::Vector3(GPTCP_target_pose_.position.x,
-//			GPTCP_target_pose_.position.y,
-//			GPTCP_target_pose_.position.z));
-//	tf_tmp.setRotation(tf::Quaternion(GPTCP_target_pose_.orientation.x,
-//			GPTCP_target_pose_.orientation.y,
-//			GPTCP_target_pose_.orientation.z,
-//			GPTCP_target_pose_.orientation.w));
-//
-//	tf_tmp2 = transform_GPTCP_2_LWRTCP*tf_tmp;
-//
-//	LWRTCP_target_pose_.position.x = tf_tmp2.getOrigin().getX();
-//	LWRTCP_target_pose_.position.y = tf_tmp2.getOrigin().getY();
-//	LWRTCP_target_pose_.position.z = tf_tmp2.getOrigin().getZ();
-//
-//	LWRTCP_target_pose_.orientation.x = tf_tmp2.getRotation().getX();
-//	LWRTCP_target_pose_.orientation.y = tf_tmp2.getRotation().getY();
-//	LWRTCP_target_pose_.orientation.z = tf_tmp2.getRotation().getZ();
-//	LWRTCP_target_pose_.orientation.w = tf_tmp2.getRotation().getW();
-//
-//
-//	//calculate relative vector (Object-CoM / LWR-TCP)
-//	r_tcp_com_.x = o_object_com_.x()-LWRTCP_target_pose_.position.x;
-//	r_tcp_com_.y = o_object_com_.y()-LWRTCP_target_pose_.position.y;
-//	r_tcp_com_.z = o_object_com_.z()-LWRTCP_target_pose_.position.z;
-//
-//	//calculate relative vector (Object-CoM / GP-TCP)
-//	r_gp_com_.x = r_tcp_com_.x-transform_GPTCP_2_LWRTCP.getOrigin().getX();
-//	r_gp_com_.y = r_tcp_com_.y-transform_GPTCP_2_LWRTCP.getOrigin().getY();
-//	r_gp_com_.z = r_tcp_com_.z-transform_GPTCP_2_LWRTCP.getOrigin().getZ();
-//
-//	//! Vector from Gripper tcp to object frame
-//	r_target_offset_.x = object_.abs_pose.position.x - LWRTCP_target_pose_.position.x;
-//	r_target_offset_.y = object_.abs_pose.position.y - LWRTCP_target_pose_.position.y;
-//	r_target_offset_.z = object_.abs_pose.position.z - LWRTCP_target_pose_.position.z;
-//	//	ROS_INFO("r_tcp_com: [%f %f %f]",r_tcp_com_.x,r_tcp_com_.y,r_tcp_com_.z);
-//	//	ROS_INFO("r_gp_com:  [%f %f %f]",r_gp_com_.x,r_gp_com_.y,r_gp_com_.z);
-//
-//}

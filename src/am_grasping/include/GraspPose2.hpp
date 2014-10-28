@@ -20,7 +20,9 @@
 //am msgs
 #include <am_msgs/Object.h>
 #include <am_msgs/GetGraspPose.h>
+#include <am_msgs/GetGraspPoseT6.h>
 #include <am_msgs/CheckPoses.h>
+#include <am_msgs/ConveyorBelt.h>
 
 //am includes
 #include <config.hpp>
@@ -35,6 +37,8 @@ public:
 	virtual ~GraspPose2();
 	// ROS-service function
 	bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPose::Response &res);
+	// ROS-service function for Task 6
+	bool return_grasp_poseT6(am_msgs::GetGraspPoseT6::Request &req, am_msgs::GetGraspPoseT6::Response &res);
 	// Transform for frame of object (received in service request)
 	tf::Transform transform_object;
 	//transform Broadcaster
@@ -46,7 +50,7 @@ public:
 	//!client to check poses service from motion planning
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
-
+	am_msgs::ConveyorBelt conveyor_belt;
 
 	//stamped Transform from GPTCP to LWRTCP
 	tf::StampedTransform transform_GPTCP_2_LWRTCP_;
@@ -102,6 +106,8 @@ private:
 
 	double gripping_angle_deg_;
 	double gripping_angle_rad_;
+	double gripping_angleT6_deg_;
+	double gripping_angleT6_rad_;
 	double gripper_maxwidth_;
 	double gripper_height_;
 	double gripper_finger_width;
@@ -109,6 +115,7 @@ private:
 	double vertical_handle_safe_planar_offset;
 	double vertical_handle_safe_z_offset;
 	double place_falling_dist_;
+	double place_falling_distT6_;
 	double vision_distance_object_height_cube_;
 	double vision_distance_object_height_cylinder_;
 	double vision_distance_object_height_handle_;
@@ -125,8 +132,10 @@ private:
 	void compute_idx_shape_CoM_();
 	// "compute_bounding_box()" calculates the bounding box of the object in the object frame
 	void compute_bounding_box_();
-	// "compute_grasp_pose_(prio)" computes the desired gripper pose in the gripper frame
+	// "compute_grasp_poses_()" computes the desired gripper pose in the gripper frame
 	void compute_grasp_poses_();
+	// "compute_grasp_posesT6_" computes the desired gripper pose in the gripper frame for Task 6
+	void compute_grasp_posesT6_();
 	// "get_transform_GPTCP_2_LWRTCP()" returns the transform between GPTCP and LWRTCP
 	bool get_transform_GPTCP_2_LWRTCP();
 	// "transform_pose_GPTCP_2_LWRTCP_()" returns the desired gripper poses transformed into the LWR-TCP frame
@@ -143,31 +152,6 @@ private:
 	void send_poses_to_tf_broadcaster();
 	// "get_rotationmatrixfromaxis()" returns a transformation matrix to rotate around an axis (with given angle)
 	tf::Matrix3x3 get_rotationmatrixfromaxis(tf::Vector3 axis, double angle);
-
-	//old stuff
-	//geometry_msgs::Pose GPTCP_target_pose_;
-	//geometry_msgs::Pose LWRTCP_target_pose_;
-	//!relative vector from TCP -> Object CoM
-	//geometry_msgs::Vector3 r_tcp_com_;
-	//!relative vector from GP -> Object CoM
-	//geometry_msgs::Vector3 r_gp_com_;
-	//!target zone offset (x,y)
-	//geometry_msgs::Vector3 r_target_offset_;
-	// Object height
-	//double object_height_;
-	//int8_t high_idx_;
-	// Grasp width
-	//double grasp_width_;
-	//void compute_grasp_pose_();
-	// "compute_grasp_poses_" computes the desired gripper pose in the gripper frame
-	//void compute_object_height_();
-	// "compute_object_CoM_()" sets the properties "object_CoM_" and "object_mass_"
-	// "transform_grasp_pose_GPTCP_2_LWRTCP_()" returns the desired gripper pose transformed into the LWR-TCP frame
-	//void transform_grasp_pose_GPTCP_2_LWRTCP_();
-	// Rotation Matrix Grasp Shape
-	//tf::Matrix3x3 dcm_object_;
-	// Rotation Matrix Grasp Pose
-	//tf::Matrix3x3 dcm_grasp_;
 };
 
 #endif /* GRASPPOSE2_H_ */

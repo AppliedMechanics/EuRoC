@@ -66,6 +66,7 @@ add_message_files(
 add_service_files(
   FILES
   GetGraspPose.srv
+  GetGraspPoseT6.srv
   GripperControl.srv
   TakeImage.srv
   ObjectPickedUp.srv
