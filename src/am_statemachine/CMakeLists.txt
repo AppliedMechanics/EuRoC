@@ -35,6 +35,7 @@ include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_executable(statemachine src/euroc_input.cpp 
 				src/StaticTFBroadcaster.cpp 
+				src/explore_poses.cpp
 				src/statemachine.cpp 
 				src/main_statemachine.cpp)
 target_link_libraries(statemachine ${catkin_LIBRARIES} ${Boost_LIBRARIES} yaml-cpp crops_manipulator_utils)

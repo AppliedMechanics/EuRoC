@@ -152,6 +152,17 @@ typedef enum {
 	PLACE_POSE_HANDLE_BOX2_YNEGZ_VERTICAL
 } place_pose_type_t;
 
+typedef enum {
+	EXPLORE_STD_1=0,
+	EXPLORE_STD_2,
+	EXPLORE_SNAKE
+} explore_pose_type_t;
+
+static const uint32_t slow_moving_speed = 10; // in percent
+static const uint32_t std_moving_speed = 30; // in percent
+static const uint32_t fast_moving_speed = 60; // in percent
+static const uint32_t std_inter_steps = 5;
+
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";
 const std::string LWR_0 = "LWR_0";

@@ -1,11 +1,7 @@
 #include <statemachine.hpp>
 #include <cmath>
 #include <StaticTFBroadcaster.h>
-
-static const uint32_t slow_moving_speed = 10; // in percent
-static const uint32_t std_moving_speed = 30; // in percent
-static const uint32_t fast_moving_speed = 60; // in percent
-static const uint32_t std_inter_steps = 5;
+#include <explore_poses.h>
 
 #define ONE_TASK //run only one task and then quit
 
@@ -21,6 +17,7 @@ Statemachine::Statemachine():
 					explore_success_count_(0),
 					nr_goals_(0),
 					nr_exp_poses_(0),
+					explore_pose_type_(EXPLORE_STD_1),
 					skip_vision_(false),
 					skip_motion_(false),
 					pause_in_loop_(0),
@@ -69,6 +66,7 @@ Statemachine::Statemachine():
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
+	explore_poses_ = new ExplorePoses();
 
 	vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
 	motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
@@ -105,6 +103,7 @@ Statemachine::~Statemachine()
 	ROS_INFO("destructor called");
 	delete ein_;
 	delete broadcaster_;
+	delete explore_poses_;
 	delete vision_action_client_;
 	delete motion_planning_action_client_;
 
@@ -1882,7 +1881,7 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_7DOF;
 			planning_mode_.target	= MOVE_IT_7DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = 14;
+			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 3:
@@ -1890,15 +1889,15 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = 14;
+			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 4:
-			planning_mode_.explore 	= MOVE_IT_9DOF;
+			planning_mode_.explore 	= MOVE_IT_JT_9DOF;
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = 20;
+			nr_exp_poses_ = explore_poses_->size(EXPLORE_SNAKE);
 			max_explore_poses_ = 10;
 			break;
 		case 5:
@@ -1907,7 +1906,7 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = 14;
+			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		}
@@ -2494,10 +2493,10 @@ int Statemachine::explore_environment_init()
 		explore_environment_init_state_=RUNNING;
 
 		if (active_task_number_ == 4){
-			#include "explore_snakeposes.hpp"
+			explore_pose_type_ = EXPLORE_SNAKE;
 		}
 		else{
-			#include "explore_standard.hpp"
+			explore_pose_type_ = EXPLORE_STD_2;
 		}
 
 		explore_environment_init_state_=FINISHED;
@@ -2625,7 +2624,7 @@ int Statemachine::explore_environment_motion()
 			motion_planning_action_client_->waitForServer();
 		}
 		ROS_INFO("Active Goal: %i Successful poses: %i",active_goal_,explore_success_count_);
-		motion_planning_action_client_->sendGoal(explore_queue_[active_goal_],
+		motion_planning_action_client_->sendGoal(explore_poses_->getExploreGoalPose(active_goal_,explore_pose_type_),
 				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));

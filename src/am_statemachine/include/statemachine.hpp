@@ -39,10 +39,12 @@
 #include <fsm_state.hpp>
 #include <euroc_input.hpp>
 
+
 typedef actionlib::SimpleActionClient<am_msgs::VisionAction> visionClient;
 typedef actionlib::SimpleActionClient<am_msgs::goalPoseAction> motionClient;
 
 class StaticTFBroadcaster;
+class ExplorePoses;
 
 class Statemachine
 {
@@ -72,6 +74,9 @@ public:
 private:
 	//!Static TF Broadcaster
 	StaticTFBroadcaster* broadcaster_;
+
+	//!Explore Poses
+	ExplorePoses* explore_poses_;
 
 	//!input container class for yaml data
 	EurocInput *ein_;
@@ -218,6 +223,8 @@ private:
 	uint8_t max_explore_poses_;
 	//!Successful explore poses
 	uint8_t explore_success_count_;
+	//!Explore Pose Type
+	uint8_t explore_pose_type_;
 
 	//!has the active goal been reached?
 	bool reached_active_goal_;
