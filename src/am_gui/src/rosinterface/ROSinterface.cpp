@@ -231,8 +231,8 @@ bool ROSinterface::getIKSolution7DOF()
 		move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
 		for(unsigned int i = 0; i < nr_lwr_joints; ++i){
 			euroc_c2_msgs::Limits &limits = move_along_joint_path_srv_.request.joint_limits[i];
-			limits.max_velocity = 20 * M_PI / 180.0; // 20 degrees per second
-			limits.max_acceleration = 400 * M_PI / 180.0;
+			limits.max_velocity = 0.1; //TODO 20 * M_PI / 180.0; // 20 degrees per second
+			limits.max_acceleration = 5; //TODO 400 * M_PI / 180.0;
 		}
 
 		// current_configuration will hold our current joint position data extracted from the measured telemetry
@@ -351,8 +351,8 @@ void ROSinterface::getUrdfConf()
 
 	system_limits_[0].pos_limit_0 =  -1.84;
 	system_limits_[0].pos_limit_1 =   1.84;
-	system_limits_[0].vel_limit   =   0.5;
-	system_limits_[0].acc_limit   =   0.5*(120.0/17.6);  // mass LWR + gripper = 17.6kg
+	system_limits_[0].vel_limit   =  0.1; //TODO 0.05; //TODO 0.5;
+	system_limits_[0].acc_limit   =  5; //TODO 0.5; //TODO 0.5*(120.0/17.6);  // mass LWR + gripper = 17.6kg
 	system_limits_[1] = system_limits_[0];
 
 	if (!model_robot_.initFile(urdf_robot)){
@@ -384,8 +384,8 @@ void ROSinterface::getUrdfConf()
 	{
 		system_limits_[i].pos_limit_0 = -M_PI;
 		system_limits_[i].pos_limit_1 = M_PI;
-		system_limits_[i].vel_limit   = 1.7453; // 20 degrees per second
-		system_limits_[i].acc_limit   = 400 * M_PI / 180.0;
+		system_limits_[i].vel_limit   = 0.1; //TODO 1.7453; // 20 degrees per second
+		system_limits_[i].acc_limit   = 5; //TODO 400 * M_PI / 180.0;
 	}
 
 }

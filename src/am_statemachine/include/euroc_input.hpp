@@ -54,6 +54,7 @@ public:
 	uint16_t get_nr_sensors(){return nr_sensors;};
 	am_msgs::Sensor get_sensors(uint16_t nr){return sensors_[nr];};
 	double get_time_limit(){return time_limit_;};
+	uint16_t get_nr_objects(){return nr_objects_;};
 
 	//!all objects finished
 	bool all_finished();
@@ -67,6 +68,10 @@ public:
 	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 	//!save target zone data to parameter server
 	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+
+
+	//!determine in which order the puzzle peaces need to be placed into the fixture
+	void order_of_puzzle_pieces();
 
 private:
 	//!task number of active task
@@ -146,6 +151,15 @@ private:
 
 	//!Conveyor Belt
 	am_msgs::ConveyorBelt conv_belt_;
+	struct puzzle_piece_
+	{
+	  int part_index;
+	  bool x_first;
+	};
+
+	//!the final order for puzzle peace placement & info on how to place them
+	std::vector<puzzle_piece_> puzzle_order_;
+
 };
 
 #endif //#define __EUROC_INPUT_HPP__

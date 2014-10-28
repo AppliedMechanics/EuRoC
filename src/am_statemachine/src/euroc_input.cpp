@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-#define DBG_OUT
+#undef DBG_OUT
 
 
 EurocInput::EurocInput():
@@ -926,107 +926,157 @@ int EurocInput::parse_yaml_file(std::string task_yaml_description, const uint16_
 
 int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 {
-	//copy target zone data
-	if(target_zones_.size() != target_zone_occupied.size())
+	if(task_nr_==6)
 	{
-		msg_error("Dimesion error in setting target zone occupied!");
-		return -1;
-	}
-
-	//!target_zone index for objects
-	std::vector<uint16_t> target_zone_idx_;
-	target_zone_idx_.resize(nr_objects_);
-	//!target zone of object is occupied
-	std::vector<uint16_t> target_zone_occupied_;
-	target_zone_occupied_.resize(nr_objects_);
-
-	//find target zone number and target_zone state for each object
-	uint16_t nr_occupied=0;
-	for(uint16_t oo=0;oo<nr_objects_;oo++)
-	{
-		std::string obj_name=objects_[oo].name;
-		for(uint16_t zz=0;zz<nr_zones_;zz++)
+		obj_queue_t temp_obj;
+		obj_queue_.clear();
+		for(uint16_t ii=0;ii<nr_objects_;ii++)
 		{
-			if(!obj_name.compare(target_zones_[zz].expected_object.c_str()))
-			{
-				target_zone_idx_[oo]=zz;
-				if(target_zone_occupied[zz]==1)
-				{
-					target_zone_occupied_[oo]=1;
-					nr_occupied++;
-				}
-			}
-		}
-	} //for(uint16_t oo=0;oo<nr_objects_;oo++)
+			temp_obj.action=EIN_PLACE;
+			temp_obj.data=&objects_[0];
+			temp_obj.obj_idx=0;
+			temp_obj.target_zone_idx=0;
+			temp_obj.target_zone_occupied=0;
 
-	//1. sort objects by type (put handle-bar at the end)
-	obj_queue_t temp_obj;
-	for(unsigned ii=0;ii<nr_objects_;ii++)
-	{
-		temp_obj.obj_idx=ii;
-		temp_obj.data = &objects_[ii];
-		temp_obj.action=EIN_PLACE;
-		temp_obj.target_zone_occupied=target_zone_occupied_[ii];
-		temp_obj.target_zone_idx=target_zone_idx_[ii];
-		if(objects_[ii].nr_shapes==1 && task_nr_!= 5)
-		{
-			obj_queue_.insert(obj_queue_.begin(),temp_obj);
-		}
-		else
-		{
 			obj_queue_.push_back(temp_obj);
 		}
 	}
-
-	//2. sort objects by target zone state
-	if(nr_occupied<2)
+	else if(task_nr_==5)
 	{
+		ROS_INFO("calling order puzzle pieces:");
+		order_of_puzzle_pieces();
+
+		obj_queue_t temp_obj;
+		obj_queue_.clear();
+		for(uint16_t ii=0;ii<nr_objects_;ii++)
+		{
+			temp_obj.action=EIN_PLACE;
+			temp_obj.data=&objects_[puzzle_order_[ii].part_index];
+			temp_obj.obj_idx=puzzle_order_[ii].part_index;
+			temp_obj.target_zone_idx=0;
+			temp_obj.target_zone_occupied=0;
+
+			obj_queue_.push_back(temp_obj);
+		}
+	}
+	else
+	{
+		//copy target zone data
+		if(target_zones_.size() != target_zone_occupied.size())
+		{
+			msg_error("EurocInput: sort_objects() failed. Targetzone sizes dont match");
+			return -1;
+		}
+
+		//!target_zone index for objects
+		std::vector<uint16_t> target_zone_idx_;
+		target_zone_idx_.resize(nr_objects_);
+		//!target zone of object is occupied
+		std::vector<uint16_t> target_zone_occupied_;
+		target_zone_occupied_.resize(nr_objects_);
+
+		//find target zone number and target_zone state for each object
+		uint16_t nr_occupied=0;
+		for(uint16_t oo=0;oo<nr_objects_;oo++)
+		{
+			std::string obj_name=objects_[oo].name;
+			for(uint16_t zz=0;zz<nr_zones_;zz++)
+			{
+				if(!obj_name.compare(target_zones_[zz].expected_object.c_str()))
+				{
+					target_zone_idx_[oo]=zz;
+					if(target_zone_occupied[zz]==1)
+					{
+						target_zone_occupied_[oo]=1;
+						nr_occupied++;
+					}
+				}
+			}
+		} //for(uint16_t oo=0;oo<nr_objects_;oo++)
+
+		//1. sort objects by type (put handle-bar at the end)
+		obj_queue_.clear();
+		obj_queue_t temp_obj;
 		for(unsigned ii=0;ii<nr_objects_;ii++)
 		{
-			if(obj_queue_[ii].target_zone_occupied==1)
+			temp_obj.obj_idx=ii;
+			temp_obj.data = &objects_[ii];
+			temp_obj.action=EIN_PLACE;
+			temp_obj.target_zone_occupied=target_zone_occupied_[ii];
+			temp_obj.target_zone_idx=target_zone_idx_[ii];
+			if(objects_[ii].nr_shapes==1 && task_nr_!= 5)
 			{
-				temp_obj=obj_queue_[ii];
-				obj_queue_.erase(obj_queue_.begin()+ii);
+				obj_queue_.insert(obj_queue_.begin(),temp_obj);
+			}
+			else
+			{
 				obj_queue_.push_back(temp_obj);
 			}
 		}
-	}
-	else if(nr_occupied==2)
-	{
-		msg_info("2 Target zones are occupied! -> Try to locate all objects first");
-	}
-	else
-		msg_error("WTF");
 
-	//print object queue
-	ROS_INFO("Object queue:");
-	for(unsigned ii=0;ii<nr_objects_;ii++)
-	{
-		uint16_t obj_idx=obj_queue_[ii].obj_idx;
-		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
-		ROS_INFO("Targetzone (%d) occupied: %s",target_zone_idx_[obj_idx],target_zone_occupied_[obj_idx] ? "true":"false");
-		switch(obj_queue_[ii].action)
+		//2. sort objects by target zone state
+		if(nr_occupied<2)
 		{
-		case EIN_PLACE:
-			ROS_INFO("action: EIN_PLACE");
-			break;
-		case EIN_PARKING:
-			ROS_INFO("action: EIN_PARKING");
-			break;
-		case EIN_PLACE_FROM_PARKING:
-			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
-			break;
-		default:
-			ROS_ERROR("action unknown!!");
-			return -1;
+			for(unsigned ii=0;ii<nr_objects_;ii++)
+			{
+				if(obj_queue_[ii].target_zone_occupied==1)
+				{
+					temp_obj=obj_queue_[ii];
+					obj_queue_.erase(obj_queue_.begin()+ii);
+					obj_queue_.push_back(temp_obj);
+					break;
+				}
+			}
 		}
-	}
+		else if(nr_occupied==2)
+		{
+			uint16_t cnt=0;
+			for(unsigned ii=0;ii<obj_state_.size();ii++)
+				if(obj_state_[ii]==EIN_OBJ_LOCATED)
+					cnt++;
+
+			if(cnt!=obj_state_.size())
+			{
+				msg_info("2 Target zones are occupied! -> Try to locate all objects first");
+				return 1;
+			}
+			else
+			{
+				msg_info("implement me!!");
+			}
+		}
+		else
+			msg_error("WTF");
+
+		//print object queue
+		ROS_INFO("Object queue:");
+		for(unsigned ii=0;ii<nr_objects_;ii++)
+		{
+			uint16_t obj_idx=obj_queue_[ii].obj_idx;
+			ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
+			ROS_INFO("Targetzone (%d) occupied: %s",target_zone_idx_[obj_idx],target_zone_occupied_[obj_idx] ? "true":"false");
+			switch(obj_queue_[ii].action)
+			{
+			case EIN_PLACE:
+				ROS_INFO("action: EIN_PLACE");
+				break;
+			case EIN_PARKING:
+				ROS_INFO("action: EIN_PARKING");
+				break;
+			case EIN_PLACE_FROM_PARKING:
+				ROS_INFO("action: EIN_PLACE_FROM_PARKING");
+				break;
+			default:
+				ROS_ERROR("action unknown!!");
+				return -1;
+			}
+		}
+	} //end task_nr_!=5
 	return 0;
 }
 
 void EurocInput::select_new_object()
 {
-#if 1
 	ROS_INFO("Select new object in euroc-input:");
 
 	if(obj_queue_.size()==0)
@@ -1037,6 +1087,7 @@ void EurocInput::select_new_object()
 
 	if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
 	{
+		msg_info("EurocInput: select_new_object() trying next object");
 		obj_queue_t temp_obj=obj_queue_[0];
 
 		obj_queue_.erase(obj_queue_.begin());
@@ -1053,42 +1104,12 @@ void EurocInput::select_new_object()
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
 	}
-#else
-	uint16_t actualindex;
-	actualindex=active_obj_idx_;
-
-	//Find next object which is not finsihed. Start to search right after the
-	//active object. If all are finished remain at the actual object.
-	for(uint16_t ii=0; ii<nr_objects_; ii++)
-	{
-		actualindex++;
-		if(actualindex<0 || actualindex>=nr_objects_)
-		{
-			actualindex=0;
-		}
-		if(obj_finished_[actualindex]==0)
-		{
-			active_obj_idx_=actualindex;
-			//...and determine the target zone
-			std::string obj_name=objects_[active_obj_idx_].name;
-			for(uint16_t jj=0;jj<nr_zones_;jj++)
-			{
-				if(!obj_name.compare(target_zones_[jj].expected_object.c_str()))
-				{
-					active_zone_=jj;
-				}
-			}
-
-			//...and stop searching
-			break;
-		}
-	}
-#endif
 }
 
 am_msgs::Object EurocInput::get_active_object()
 {
-#if 1
+	ROS_INFO("Get active object in euroc-input:");
+
 	if(obj_queue_.size()==0)
 	{
 		msg_error("EurocInput: get_active_object() failed. Index out of range.");
@@ -1099,24 +1120,13 @@ am_msgs::Object EurocInput::get_active_object()
 	{
 		return *obj_queue_[0].data;
 	}
-#else
-	if(active_obj_idx_<0 || active_obj_idx_ >= nr_objects_)
-	{
-		msg_error("EurocInput: get_active_object() failed. Index out of range.");
-		am_msgs::Object empty_obj;
-		return empty_obj;
-	}
-	else
-	{
-		return objects_[active_obj_idx_];
-	}
-#endif
 }
 
 am_msgs::TargetZone EurocInput::get_active_target_zone()
 {
-#if 1
-	if(obj_queue_.size()==0)
+	ROS_INFO("Get active targetzone in euroc-input:");
+
+	if((obj_queue_.size()==0) ||(task_nr_ == 5))
 	{
 		if(task_nr_ != 5)
 			msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
@@ -1128,20 +1138,6 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 	{
 		return target_zones_[obj_queue_[0].target_zone_idx];
 	}
-#else
-	if(active_zone_<0 || active_zone_ >= nr_zones_)
-	{
-		if(task_nr_ != 5)
-			msg_error("EurocInput: get_active_target_zone() failed. Index out of range.");
-
-		am_msgs::TargetZone empty_zone;
-		return empty_zone;
-	}
-	else
-	{
-		return target_zones_[active_zone_];
-	}
-#endif
 }
 
 void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
@@ -1392,15 +1388,8 @@ void EurocInput::print_object(am_msgs::Object*obj)
 	}
 }
 
-void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
-{
-	obj_queue_[0].data->abs_pose=abs_pose;
-	obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_LOCATED;
-}
-
 void EurocInput::set_active_object_finished()
 {
-#if 1
 	if(obj_queue_.size()==0)
 	{
 		msg_error("EurocInput: set_active_object_finished() failed. obj_queue_.size()==0");
@@ -1410,16 +1399,21 @@ void EurocInput::set_active_object_finished()
 		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
 		obj_queue_.erase(obj_queue_.begin());
 	}
-#else
-	if(active_obj_idx_<0 || active_obj_idx_ >= nr_objects_)
+}
+
+void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
+{
+	if(obj_queue_.size()==0)
 	{
-		msg_error("EurocInput: set_active_object_finished() failed. Index out of range.");
+		msg_error("Object queue is empty!");
+		return;
 	}
 	else
 	{
-		obj_finished_[active_obj_idx_] = 1;
+		obj_queue_[0].data->abs_pose=abs_pose;
+		obj_state_[0] = EIN_OBJ_LOCATED;
+		return;
 	}
-#endif
 }
 
 bool EurocInput::is_active_object_last_object()
@@ -1483,4 +1477,576 @@ void EurocInput::reset()
 	sensors_.clear();
 	nr_sensors=0;
 	puzzle_target_poses_.clear();
+}
+
+void EurocInput::order_of_puzzle_pieces()
+{
+  bool fix_x_below = false;
+  bool fix_y_below = false;
+
+  bool order_found = false;
+
+  bool fix_x_above = false;
+  bool fix_y_above = false;
+
+  bool all_fix_x_below = true;
+  bool all_fix_y_below = true;
+  bool all_fix_x_above = true;
+  bool all_fix_y_above = true;
+
+  int search_until = 0; // will be used in the back-up check for first order of object placement
+  int nr_objects_after[nr_objects_]; //how many objects will be placed AFTER the current object
+
+  for(int i=0; i<nr_objects_; i++)
+  {
+    nr_objects_after[i] = 0;
+    //    ROS_INFO("_____________________________________________________");
+    //    ROS_INFO("object %d :", i);
+    //    ROS_INFO("relative x: %f", puzzle_target_poses_[i].position.x);
+    //    ROS_INFO("relative y: %f", puzzle_target_poses_[i].position.y);
+  }
+  //  ROS_INFO("_____________________________________________________");
+
+  puzzle_order_.resize(nr_objects_);
+  //vector of objects --> choose an object for comparison
+  for (int fix_object = 0; fix_object < nr_objects_; fix_object++)
+  {
+
+    // compare fix_object with all other objects
+    for (int comp_object = 0; comp_object < nr_objects_; comp_object++)
+    {
+      order_found = false;
+
+      if (fix_object < comp_object)
+      {
+
+        //vector of shapes within a specific object --> choose a shape for comparison
+        for (int fix_shape = 0; fix_shape < objects_[fix_object].nr_shapes; fix_shape++)
+        {
+          fix_x_below = false;
+          fix_y_below = false;
+
+          // compare fix_shape (of fix_object) with all shapes of comp_object
+          for (int comp_shape1 = 0; comp_shape1 < objects_[comp_object].nr_shapes; comp_shape1++)
+          {
+            // for fix_shape: x smaller & y the same as any shape of comp_object?
+            if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape].pose.position.x+0.000005))
+                < int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape1].pose.position.x+0.000005))
+                && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape].pose.position.y+0.000005))
+                == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape1].pose.position.y+0.000005)))
+            {
+              fix_x_below = true; //one of the shapes of fix_object is directly below the same shape of comp_object
+              break;
+            }
+          }
+
+          for (int comp_shape2 = 0; comp_shape2 < objects_[comp_object].nr_shapes; comp_shape2++)
+          {
+            // for fix_shape: x the same & y smaller than any shape of comp_object?
+            if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape].pose.position.x+0.000005))
+                == int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape2].pose.position.x+0.000005))
+                && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape].pose.position.y+0.000005))
+                < int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape2].pose.position.y+0.000005)))
+            {
+              fix_y_below = true; //one of the shapes of fix_object is on the right of the same shape of comp_object
+              break;
+            }
+          }
+
+          if(fix_x_below && fix_y_below)
+          {
+            //            ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+            //            ROS_INFO("the latter has a shape on the left and on top of one of the shapes of the former");
+            nr_objects_after[fix_object]++;
+            order_found = true;
+            //Now leave current for loop and proceed with comparing fix_object with a new comp_object!
+            break; // --> leaving fix_shape loop
+          } // try to find the above scenario for all shapes of fix object before testing for other possibilities.
+        }// end fix_shape
+
+        if (!order_found)
+        {
+          for (int comp_shape3 = 0; comp_shape3 < objects_[comp_object].nr_shapes; comp_shape3++)
+          {
+            fix_x_above = false;
+            fix_y_above = false;
+
+            for (int fix_shape1 = 0; fix_shape1 < objects_[fix_object].nr_shapes; fix_shape1++)
+            {
+              // if fix_object has one of its shapes above a shape of comp_object
+              if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape1].pose.position.x+0.000005))
+                  > int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape3].pose.position.x+0.000005))
+                  && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape1].pose.position.y+0.000005))
+                  == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape3].pose.position.y+0.000005)))
+              {
+                fix_x_above = true;
+                break; // --> leave fix_shape1
+              }
+            }
+
+            for (int fix_shape2 = 0; fix_shape2 < objects_[fix_object].nr_shapes; fix_shape2++)
+            {
+              // if there is another shape of fix_object to the left of the original fix_shape
+              if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape2].pose.position.x+0.000005))
+                  == int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape3].pose.position.x+0.000005))
+                  && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape2].pose.position.y+0.000005))
+                  > int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape3].pose.position.y+0.000005)))
+              {
+                fix_y_above = true;
+                break; // -->leave fix_shape2
+              }
+            }
+
+            if(fix_x_above && fix_y_above)
+            {
+              //              ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+              //              ROS_INFO("The former has a shape on top and on the left of one of the shapes of the latter.");
+              nr_objects_after[comp_object]++;
+              order_found = true;
+              break; // --> leaving comp_shape3
+            }
+
+          } // end comp_shape3
+
+          if(!order_found)
+          {
+            all_fix_x_below = true;
+            all_fix_y_below = true;
+            all_fix_x_above = true;
+            all_fix_y_above = true;
+
+            for (int fix_shape4 = 0; fix_shape4 < objects_[fix_object].nr_shapes; fix_shape4++)
+            {
+              for (int comp_shape4 = 0; comp_shape4 < objects_[comp_object].nr_shapes; comp_shape4++)
+              {
+                if(int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape4].pose.position.x+0.000005))
+                    >= int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape4].pose.position.x+0.000005)))
+                {
+                  all_fix_x_below = false;
+                }
+                // all pieces of fix_object on top of comp_object? -> if not, allfixxabove = false
+                if(int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape4].pose.position.x+0.000005))
+                    <= int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape4].pose.position.x+0.000005)))
+                {
+                  all_fix_x_above = false;
+                }
+
+                if(int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape4].pose.position.y+0.000005))
+                    >= int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape4].pose.position.y+0.000005)))
+                {
+                  all_fix_y_below = false;
+                }
+                // all pieces of fix_object on the left of comp_object? -> if not, allfixyabove = false
+                if(int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape4].pose.position.y+0.000005))
+                    <= int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape4].pose.position.y+0.000005)))
+                {
+                  all_fix_y_above = false;
+                }
+              }
+            }
+
+            if(all_fix_x_below)
+            {
+              bool x_below = false;
+              for(int fix_shape5 = 0; fix_shape5 < objects_[fix_object].nr_shapes; fix_shape5++)
+              {
+                for(int comp_shape5 = 0; comp_shape5 < objects_[comp_object].nr_shapes; comp_shape5++)
+                {
+                  if(int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape5].pose.position.y+0.000005))
+                      == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape5].pose.position.y+0.000005)))
+                  {
+                    x_below = true;
+                  }
+                }
+              }
+              if(x_below)
+              {
+                //                ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+                //                ROS_INFO("the latter has all its shapes above the former");
+                nr_objects_after[fix_object]++;
+                order_found = true;
+              }
+            }
+            else if(all_fix_x_above)
+            {
+              bool x_above = false;
+              for(int fix_shape5 = 0; fix_shape5 < objects_[fix_object].nr_shapes; fix_shape5++)
+              {
+                for(int comp_shape5 = 0; comp_shape5 < objects_[comp_object].nr_shapes; comp_shape5++)
+                {
+                  if(int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape5].pose.position.y+0.000005))
+                      == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape5].pose.position.y+0.000005)))
+                  {
+                    x_above = true;
+                  }
+                }
+              }
+              if(x_above)
+              {
+                //                ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+                //                ROS_INFO("the former has all its shapes above the latter");
+                nr_objects_after[comp_object]++;
+                order_found = true;
+              }
+            }
+            else if(all_fix_y_below)
+            {
+              bool y_below = false;
+              for(int fix_shape5 = 0; fix_shape5 < objects_[fix_object].nr_shapes; fix_shape5++)
+              {
+                for(int comp_shape5 = 0; comp_shape5 < objects_[comp_object].nr_shapes; comp_shape5++)
+                {
+                  if(int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape5].pose.position.x+0.000005))
+                      == int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape5].pose.position.x+0.000005)))
+                  {
+                    y_below = true;
+                  }
+                }
+              }
+              if(y_below)
+              {
+                //                ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+                //                ROS_INFO("the latter has all its shapes on the left of the former");
+                nr_objects_after[fix_object]++;
+                order_found = true;
+              }
+            }
+            else if(all_fix_y_above)
+            {
+              bool y_above = false;
+              for(int fix_shape5 = 0; fix_shape5 < objects_[fix_object].nr_shapes; fix_shape5++)
+              {
+                for(int comp_shape5 = 0; comp_shape5 < objects_[comp_object].nr_shapes; comp_shape5++)
+                {
+                  if(int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape5].pose.position.x+0.000005))
+                      == int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape5].pose.position.x+0.000005)))
+                  {
+                    y_above = true;
+                  }
+                }
+              }
+              if(y_above)
+              {
+                //                ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+                //                ROS_INFO("the former has all its shapes on the left of the latter");
+                nr_objects_after[comp_object]++;
+                order_found = true;
+              }
+            }
+
+
+            if (!order_found)
+            {
+              if (sqrt(puzzle_target_poses_[fix_object].position.x * puzzle_target_poses_[fix_object].position.x
+                       + puzzle_target_poses_[fix_object].position.y * puzzle_target_poses_[fix_object].position.y)
+                       < sqrt(puzzle_target_poses_[comp_object].position.x * puzzle_target_poses_[comp_object].position.x
+                              + puzzle_target_poses_[comp_object].position.y * puzzle_target_poses_[comp_object].position.y))
+              {
+                //                ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+                //                ROS_INFO("object %d is closer to the fixture origin than object %d", fix_object, comp_object);
+                nr_objects_after[fix_object]++;
+              }
+              else if (sqrt(puzzle_target_poses_[fix_object].position.x * puzzle_target_poses_[fix_object].position.x
+                            + puzzle_target_poses_[fix_object].position.y * puzzle_target_poses_[fix_object].position.y)
+                            > sqrt(puzzle_target_poses_[comp_object].position.x * puzzle_target_poses_[comp_object].position.x
+                                   + puzzle_target_poses_[comp_object].position.y * puzzle_target_poses_[comp_object].position.y))
+              {
+                //                ROS_INFO("object %d is farther away from the fixture origin than object %d.", fix_object, comp_object);
+                //                ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+                nr_objects_after[comp_object]++;
+              }
+              else
+              {
+                // if nothing else remains, simply place first the object with a smaller number in its name
+                if(fix_object < comp_object)
+                {
+                  nr_objects_after[fix_object]++;
+                  //                  ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+                }
+                else
+                {
+                  nr_objects_after[comp_object]++;
+                  //                  ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+                }
+              }
+            }
+          } // end 2nd if(!order_found)
+        } // end 1st if(!order_found)
+
+      } // end if fix_object != comp_object
+    } // end comp_object
+
+
+    // construct the first version of the order in which the objects should be placed
+    puzzle_order_[(nr_objects_ - 1) - nr_objects_after[fix_object]].part_index = fix_object;
+
+  }// end fix_object
+
+  //----------------------------------------------------------------------------------
+  //go through first version of object order and check for blocking
+
+  bool any_fix_x_below = false;
+  bool any_fix_x_above = false;
+  bool any_organised_object_y_above_fix = false;
+  bool any_organised_object_y_above_comp = false;
+
+
+  for (int fix_object = 0; fix_object < nr_objects_; fix_object++)
+  {
+    for (int comp_object = 0; comp_object < nr_objects_; comp_object++)
+    {
+      any_fix_x_below = false;
+      any_fix_x_above = false;
+      any_organised_object_y_above_fix = false;
+      any_organised_object_y_above_comp = false;
+
+      if (fix_object < comp_object)
+      {
+
+        for (int fix_shape = 0; fix_shape < objects_[fix_object].nr_shapes; fix_shape++)
+        {
+          for (int comp_shape1 = 0; comp_shape1 < objects_[comp_object].nr_shapes; comp_shape1++)
+          {
+            // for fix_shape: x smaller & y the same as any shape of comp_object?
+            if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape].pose.position.x+0.000005))
+                < int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape1].pose.position.x+0.000005))
+                && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape].pose.position.y+0.000005))
+                == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape1].pose.position.y+0.000005)))
+            {
+              any_fix_x_below = true; // if fix_object has any of its shapes under a shape of comp_object
+            }
+          }
+        }
+
+        for (int comp_shape3 = 0; comp_shape3 < objects_[comp_object].nr_shapes; comp_shape3++)
+        {
+          for (int fix_shape1 = 0; fix_shape1 < objects_[fix_object].nr_shapes; fix_shape1++)
+          {
+            // if fix_object has one of its shapes above a shape of comp_object
+            if (int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape1].pose.position.x+0.000005))
+                > int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape3].pose.position.x+0.000005))
+                && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape1].pose.position.y+0.000005))
+                == int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape3].pose.position.y+0.000005)))
+            {
+              any_fix_x_above = true;
+            }
+          }
+        }
+
+        for (int i = 0; i < nr_objects_; i++)
+        {
+          if (puzzle_order_[i].part_index == fix_object)
+          {
+            search_until = i;
+          }
+        }
+
+        for(int organised_object = 0; organised_object < search_until; organised_object++)
+        {
+          if (puzzle_order_[organised_object].part_index != comp_object)
+          {
+            for(int fix_shape4 = 0; fix_shape4 < objects_[organised_object].nr_shapes; fix_shape4++)
+            {
+              for(int fix_shape3 = 0; fix_shape3 < objects_[fix_object].nr_shapes; fix_shape3++)
+              {
+                if(int(100*(puzzle_target_poses_[fix_object].position.x + objects_[fix_object].shape[fix_shape3].pose.position.x+0.000005))
+                    == int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[fix_shape4].pose.position.x+0.000005))
+                    && int(100*(puzzle_target_poses_[fix_object].position.y + objects_[fix_object].shape[fix_shape3].pose.position.y+0.000005))
+                    < int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[fix_shape4].pose.position.y+0.000005)))
+                {
+                  any_organised_object_y_above_fix = true;
+                }
+              }
+              for(int comp_shape4 = 0; comp_shape4 < objects_[comp_object].nr_shapes; comp_shape4++)
+              {
+                //                ROS_INFO("org_object %d, comp_object %d. fix_object %d ", puzzle_order_[organised_object].part_index, comp_object, fix_object);
+                if(int(100*(puzzle_target_poses_[comp_object].position.x + objects_[comp_object].shape[comp_shape4].pose.position.x+0.000005))
+                    == int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[fix_shape4].pose.position.x+0.000005))
+                    && int(100*(puzzle_target_poses_[comp_object].position.y + objects_[comp_object].shape[comp_shape4].pose.position.y+0.000005))
+                    < int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[fix_shape4].pose.position.y+0.000005)))
+                {
+                  any_organised_object_y_above_comp = true;
+                }
+              }
+            }
+            if (any_organised_object_y_above_fix && any_fix_x_below)
+            {
+              //              ROS_INFO("piece %d must be placed before piece %d",fix_object, comp_object);
+              //              ROS_INFO("the former is blocked by an organised object %d and the latter", puzzle_order_[organised_object].part_index);
+              nr_objects_after[fix_object]++;
+              nr_objects_after[comp_object]--;
+            }
+            else if(any_organised_object_y_above_comp && any_fix_x_above)
+            {
+              //              ROS_INFO("piece %d must be placed after piece %d",fix_object, comp_object);
+              //              ROS_INFO("the latter is blocked by an organised object %d and the former", puzzle_order_[organised_object].part_index);
+              nr_objects_after[fix_object]--;
+              nr_objects_after[comp_object]++;
+            }
+          }
+        }
+      }
+    }
+
+    // construct the second version of the order in which the objects should be placed
+    //    ROS_INFO("%d objects have to be placed after object %d", nr_objects_after[fix_object], fix_object);
+    puzzle_order_[(nr_objects_ - 1) - nr_objects_after[fix_object]].part_index = fix_object;
+
+  }// end fix_object
+
+  //----------------------------------------------------------------------------------
+
+  ROS_INFO("The right order:");
+  for(int k=0; k < nr_objects_; k++)
+  {
+    try
+    {
+      ROS_INFO("piece %d", puzzle_order_[k].part_index);
+    }
+    catch (...)
+    {
+      ROS_ERROR("Failed to print out right order");
+    }
+  }
+
+  //---------------------------------------------------------------------------------
+
+  // The manner in which the objects need to be placed: (fist in x then in y or vice versa?)
+  // if object touches x axis but not y axis --> first move in y
+  // if order doesn't matter --> first in x
+
+  bool only_x = true;
+  bool only_y = true;
+  bool no_blocks_x = true;
+  bool no_blocks_y = true;
+
+  //  // look at first object --> moving it against fixture wall in one direction first
+  //  for (int shape = 0; shape < objects_[puzzle_order_[0].part_index].nr_shapes; shape++)
+  //  {
+  //    // if object has a shape at the x axis --> doesn't only touch y axis
+  //    if ((puzzle_target_poses_[puzzle_order_[0].part_index].position.x + objects_[puzzle_order_[0].part_index].shape[shape].pose.position.x) < 0.03)
+  //    {
+  //      only_y = false;
+  //    }
+  //    // if object has a shape at the y axis --> doesn't only touch x axis
+  //    if ((puzzle_target_poses_[puzzle_order_[0].part_index].position.y + objects_[puzzle_order_[0].part_index].shape[shape].pose.position.y) < 0.03)
+  //    {
+  //      only_x = false;
+  //    }
+  //  }
+  //  if (only_x && !only_y) // only touches x axis -->first move in y
+  //  {
+  //    puzzle_order_[0].x_first = false;
+  //  }
+  //  else
+  //  {
+  //    puzzle_order_[0].x_first = true;
+  //  }
+
+  for (int fix_object = 0; fix_object < nr_objects_; fix_object++)
+  {
+    only_x = true;
+    only_y = true;
+
+    for (int shape = 0; shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; shape++)
+    {
+      // if object has a shape at the y axis --> doesn't only touch x axis
+      if ((puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[shape].pose.position.x) < 0.03)
+      {
+        ROS_INFO("Object %d touches y axis", puzzle_order_[fix_object].part_index);
+        only_x = false;
+      }
+      // if object has a shape at the x axis --> doesn't only touch y axis
+      if ((puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[shape].pose.position.y) < 0.03)
+      {
+        ROS_INFO("Object %d touches x axis", puzzle_order_[fix_object].part_index);
+        only_y = false;
+      }
+    }
+    if (only_x && !only_y) // only touches x axis -->first move in y
+    {
+      ROS_INFO("Object %d only touches x axis", puzzle_order_[fix_object].part_index);
+      puzzle_order_[fix_object].x_first = false;
+    }
+    else if ((!only_x && only_y) || (!only_x && !only_y)) //only touches y axis OR touches both
+    {
+      ROS_INFO("Object %d touches y and x axis or only y", puzzle_order_[fix_object].part_index);
+      puzzle_order_[fix_object].x_first = true;
+    }
+    else
+    {
+      ROS_INFO("Object %d does not touch any axis", puzzle_order_[fix_object].part_index);
+      bool no_blocks_x = true; // no blocks x = other objects don't have shapes with greater x value and equal y value
+      bool no_blocks_y = true;
+
+      for (int i = 0; i < nr_objects_; i++)
+      {
+        // search where in puzzle_order_ fix_object is located
+        // --> only the objects placed before fix_object matter when placing it
+        if (puzzle_order_[i].part_index == puzzle_order_[fix_object].part_index)
+        {
+          search_until = i;
+        }
+      }
+
+      for(int organised_object = 0; organised_object < search_until; organised_object++)
+      {
+        if (puzzle_order_[organised_object].part_index != puzzle_order_[fix_object].part_index)
+        {
+          for (int fix_shape = 0; fix_shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; fix_shape++)
+          {
+            for (int organised_shape = 0; organised_shape < objects_[puzzle_order_[organised_object].part_index].nr_shapes; organised_shape++)
+            {
+              if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+                  < int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+                  && int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+                  == int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)))
+              {
+                no_blocks_x = false;
+              }
+              //          ROS_INFO("fix %d, organised %d: ", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
+              //          ROS_INFO("x: %d & %d: ", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005)));
+              //          ROS_INFO("y: %d & %d: ", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)));
+              if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+                  == int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+                  && int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+                  < int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)))
+              {
+                //              ROS_INFO("fix %d, organised %d, !no_blocks_y", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
+                no_blocks_y = false;
+              }
+            }
+          }
+        }
+      }
+
+      if (no_blocks_y && !no_blocks_x)
+      {
+        //      ROS_INFO("fix_object %d no_blocks_y && !no_blocks_x", puzzle_order_[fix_object].part_index);
+        puzzle_order_[fix_object].x_first = false;
+      }
+      else if (!no_blocks_y && !no_blocks_x)
+      {
+        ROS_INFO("fix_object %d THIS IS AN ERROR", puzzle_order_[fix_object].part_index);
+      }
+      else
+      {
+        puzzle_order_[fix_object].x_first = true;
+      }
+    }
+  }
+
+  //---------------------------------------------------------------------------------
+
+  for(int i = 0; i < nr_objects_; i++)
+  {
+    if(puzzle_order_[i].x_first)
+    {
+      ROS_INFO("push piece %d first in x direction", puzzle_order_[i].part_index);
+    }
+    else
+    {
+      ROS_INFO("push piece %d first in y direction", puzzle_order_[i].part_index);
+    }
+  }
 }

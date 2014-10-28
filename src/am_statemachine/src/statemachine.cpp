@@ -745,6 +745,7 @@ void Statemachine::scheduler_skip_explore()
 
 void Statemachine::scheduler_next_object()
 {
+	static bool first=true;
 	if(ein_->all_finished())
 	{
 		ROS_INFO("scheduler_next_object() and all objects finished!");
@@ -757,8 +758,16 @@ void Statemachine::scheduler_next_object()
 	}
 	else
 	{
-		ROS_INFO("Scheduler: changing to next object");
-		ein_->select_new_object();
+		if(first)
+		{
+			first=false;
+		}
+		else
+		{
+			ROS_INFO("Scheduler: changing to next object");
+			ein_->select_new_object();
+		}
+
 		cur_obj_ = ein_->get_active_object();
 		cur_zone_ = ein_->get_active_target_zone();
 		ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
@@ -2051,13 +2060,11 @@ int Statemachine::parse_yaml_file()
 		}
 		ROS_INFO("parsing YAML-file finished");
 
-		if(active_task_number_!=5)
-		{
-			std::vector<uint16_t> test;
-			test.resize(3,0);
-			//test[1]=1;
-			ein_->sort_objects(test);
-		}
+
+		std::vector<uint16_t> test;
+		test.resize(ein_->get_nr_objects(),0);
+		//test[1]=1;
+		ein_->sort_objects(test);
 
 		ROS_INFO("filling TF Broadcast information...");
 		try
