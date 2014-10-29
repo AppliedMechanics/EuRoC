@@ -33,6 +33,7 @@ Statemachine::Statemachine():
 					explore_environment_init_state_(OPEN),
 					explore_environment_motion_state_(OPEN),
 					explore_environment_image_state_(OPEN),
+					explore_environment_check_state_(OPEN),
 					explore_environment_image_counter_(0),
 					locate_object_global_state_(OPEN),
 					locate_object_global_counter_(0),
@@ -153,6 +154,7 @@ int Statemachine::init_sm()
 	get_grasp_pose_client_ = node_.serviceClient<am_msgs::GetGraspPose>("GraspPose_srv");
 	gripper_control_client_ = node_.serviceClient<am_msgs::GripperControl>("GripperInterface");
 	take_image_client_ = node_.serviceClient<am_msgs::TakeImage>("TakeImageService");
+	check_zones_client_ = node_.serviceClient<am_msgs::CheckZones>("CheckZonesService");
 	state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
 	set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
 	//check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
@@ -2688,37 +2690,70 @@ void Statemachine::explore_environment_motion_done(const actionlib::SimpleClient
 
 void Statemachine::explore_environment_check_cb()
 {
+	ROS_INFO("explore_environment_check_cb() running");
+
+	ein_->get_all_zones(&check_zones_srv_.request.target_zones);
+
+	if(check_zones_client_.call(check_zones_srv_))
+	{
+		explore_environment_check_state_=FINISHED;
+	}
+	else
+	{
+		msg_error("Error. call of check_zones_client_ failed");
+		explore_environment_check_state_=FINISHEDWITHERROR;
+	}
+
+	ROS_INFO("explore_environment_check_cb() finished");
 }
 
 int Statemachine::explore_environment_check()
 {
-	ROS_INFO("explore_environment_check() called: OPEN");
-
-	std::vector<uint16_t> test;
-	test.resize(ein_->get_nr_objects(),0);
-	//test[1]=1;
-
-	int16_t ret=ein_->sort_objects(test);
-	if(ret==-1)
+	if(explore_environment_check_state_==OPEN)
 	{
-		msg_error("sort_objects failed!");
+		ROS_INFO("explore_environment_check() called: OPEN");
+
+		explore_environment_check_state_=RUNNING;
+
+		lsc_ = boost::thread(&Statemachine::explore_environment_check_cb,this);
 	}
-	else if(ret==1)
+	else if((explore_environment_check_state_==FINISHED)||
+			(explore_environment_check_state_==FINISHEDWITHERROR))
 	{
-		msg_warn("insert locate all objects global in state-queue");
-		fsm::fsm_state_t temp_state;
-		temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.two=fsm::LOCATE_ALL_OBJECTS_GLOBAL;
-		state_queue.insert(state_queue.begin(),temp_state);
+		lsc_.detach();
 
-		temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
-		temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;
-		state_queue.insert(state_queue.begin()+1,temp_state);
+		std::vector<uint16_t> test;
+		if(explore_environment_check_state_==FINISHEDWITHERROR)
+		{
+			test.resize(ein_->get_nr_objects(),0);
+			//test[1]=1;
+		}
+		else
+			test=check_zones_srv_.response.zones_occupied;
+
+		int16_t ret=ein_->sort_objects(test);
+		if(ret==-1)
+		{
+			msg_error("sort_objects failed!");
+		}
+		else if(ret==1)
+		{
+			msg_warn("insert locate all objects global in state-queue");
+			fsm::fsm_state_t temp_state;
+			temp_state.sub.one=fsm::SOLVE_TASK;
+			temp_state.sub.two=fsm::LOCATE_ALL_OBJECTS_GLOBAL;
+			state_queue.insert(state_queue.begin(),temp_state);
+
+			temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+			temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;
+			state_queue.insert(state_queue.begin()+1,temp_state);
+		}
+
+		explore_environment_check_state_=OPEN;
+		scheduler_next();
+
+		ROS_INFO("explore_environment_check() called: FINISHED");
 	}
-
-	scheduler_next();
-
-	ROS_INFO("explore_environment_check() called: FINISHED");
 
 	return 0;
 }
@@ -2837,7 +2872,8 @@ int Statemachine::locate_all_objects_global()
 
 		//ROS_INFO("current object:");
 		//ein_->print_object(&cur_obj_);
-		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
+		cur_obj_=ein_->get_object(0);
+		//ROS_INFO("searching for: %s",cur_obj_.name.c_str());
 
 		if(vision_action_client_->isServerConnected()==0)
 		{
@@ -2863,15 +2899,14 @@ int Statemachine::locate_all_objects_global()
 		{
 			vision_queue[0].sensors[ii]=ein_->get_sensors(ii);
 		}
-		vision_queue[0].target_zone=ein_->get_active_target_zone();
+		vision_queue[0].target_zone=ein_->get_target_zone(0);
 
 		for(uint16_t ii=1;ii<nr_goals_;ii++)
 		{
 			vision_queue[ii]=vision_queue[0];
 
-			ein_->select_new_object();
-			vision_queue[ii].object=ein_->get_active_object();
-			vision_queue[ii].target_zone=ein_->get_active_target_zone();
+			vision_queue[ii].object=ein_->get_object(ii);
+			vision_queue[ii].target_zone=ein_->get_target_zone(ii);
 		}
 
 		//send goal to vision-node.
@@ -2943,7 +2978,7 @@ void Statemachine::locate_all_objects_global_done(const actionlib::SimpleClientG
 		if(result->object_detected==true)
 		{
 			reached_active_goal_=true;
-			ein_->set_object_pose(result->abs_object_pose);
+			ein_->set_object_pose(result->abs_object_pose, active_goal_);
 		}
 		else
 		{

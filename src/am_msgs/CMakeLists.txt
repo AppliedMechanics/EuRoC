@@ -75,6 +75,7 @@ add_service_files(
   SetStaticTFData.srv
   AttachObject.srv
   DetachObject.srv
+  CheckZones.srv
 )
 
 ## Generate actions in the 'action' folder

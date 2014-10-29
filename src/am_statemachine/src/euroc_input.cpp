@@ -1036,15 +1036,148 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			for(unsigned ii=0;ii<obj_state_.size();ii++)
 				if(obj_state_[ii]==EIN_OBJ_LOCATED)
 					cnt++;
+			//ROS_INFO("cnt=%d, obj_state_.size()=%d",cnt,obj_state_.size());
 
 			if(cnt!=obj_state_.size())
 			{
 				msg_info("2 Target zones are occupied! -> Try to locate all objects first");
+				ROS_INFO("Objects:");
+				for(unsigned ii=0;ii<objects_.size();ii++)
+				{
+					ROS_INFO("# %d : Object %s",ii,objects_[ii].name.c_str());
+					ROS_INFO("Targetzone (%d) occupied: %s",target_zone_idx_[ii],target_zone_occupied_[ii] ? "true":"false");
+					switch(obj_state_[ii])
+					{
+					case EIN_OBJ_INIT:
+						ROS_INFO("state: EIN_OBJ_INIT");
+						break;
+					case EIN_OBJ_LOCATED:
+						ROS_INFO("state: EIN_OBJ_LOCATED");
+						break;
+					case EIN_OBJ_PARKING:
+						ROS_INFO("state: EIN_OBJ_PARKING");
+						break;
+					case EIN_OBJ_FINISHED:
+						ROS_INFO("state: EIN_OBJ_FINISHED");
+						break;
+					case EIN_OBJ_UNCERTAIN:
+						ROS_INFO("state: EIN_OBJ_UNCERTAIN");
+						break;
+					default:
+						ROS_ERROR("action unknown!!");
+						return -1;
+					}
+				}
 				return 1;
 			}
 			else
 			{
-				msg_info("implement me!!");
+				//msg_info("implement me!!");
+				ROS_INFO("Result for 2 Objects on 2 target_zones:");
+				obj_idx_on_zone_.clear();
+
+
+				//find occupied zones
+				for(uint16_t ii=0;ii<nr_zones_;ii++)
+				{
+					if(target_zone_occupied[ii])
+					{
+						double rad2=pow(target_zones_[ii].max_distance,2);
+						for(uint16_t oo=0;oo<nr_objects_;oo++)
+						{
+							double dist2=pow(objects_[oo].abs_pose.position.x-target_zones_[ii].position.x,2)+
+									pow(objects_[oo].abs_pose.position.y-target_zones_[ii].position.y,2);
+
+							//object is lying on that zone
+							if(dist2<rad2)
+							{
+								obj_idx_on_zone_.push_back(oo);
+								ROS_INFO("Object # %d on TargetZone %d",oo,ii);
+								ROS_INFO("Targetzone belongs to Object # %d",target_zone_idx_[oo]);
+								break;
+							}
+						}
+					}
+				} //for(uint16_t ii=0;ii<nr_zones_;ii++)
+
+				//delete occupied objects from queue
+				for(uint16_t ii=0;ii<nr_objects_;ii++)
+				{
+					if(obj_queue_[ii].target_zone_occupied==1)
+						obj_queue_.erase(obj_queue_.begin()+ii);
+				}
+
+				//find objects with one shape (= not handlebar)
+				int cnt_1shape=0;
+				int handle_idx=0;
+				for(uint16_t ii=0;ii<obj_idx_on_zone_.size();ii++)
+				{
+					if(objects_[obj_idx_on_zone_[ii]].nr_shapes==1)
+					{
+						cnt_1shape++;
+					}
+					else
+					{
+						handle_idx=obj_idx_on_zone_[ii];
+						obj_idx_on_zone_.erase(obj_idx_on_zone_.begin()+ii);
+					}
+				}
+				if(cnt_1shape==2)
+				{
+					uint16_t box_idx;
+					if( strcmp(objects_[obj_idx_on_zone_[0]].shape[0].type.c_str(),"box") == 0)
+						box_idx=0;
+					else
+						box_idx=1;
+
+					temp_obj.obj_idx=obj_idx_on_zone_[box_idx];
+					temp_obj.action=EIN_PARKING;
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx]];
+					temp_obj.target_zone_occupied=1;
+					temp_obj.target_zone_obj_idx=1-box_idx;
+
+					obj_queue_.push_back(temp_obj);
+
+					temp_obj.obj_idx=1-box_idx;
+					temp_obj.action=EIN_PLACE;
+					temp_obj.target_zone_idx=target_zone_idx_[1-box_idx];
+					temp_obj.target_zone_occupied=0;
+					temp_obj.target_zone_obj_idx=-1;
+
+					obj_queue_.push_back(temp_obj);
+
+					temp_obj.obj_idx=obj_idx_on_zone_[box_idx];
+					temp_obj.action=EIN_PLACE_FROM_PARKING;
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx]];
+					temp_obj.target_zone_occupied=0;
+					temp_obj.target_zone_obj_idx=-1;
+				}
+				else if(cnt_1shape==1)
+				{
+					temp_obj.obj_idx=obj_idx_on_zone_[0];
+					temp_obj.action=EIN_PARKING;
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[0]];
+					temp_obj.target_zone_occupied=1;
+					temp_obj.target_zone_obj_idx=handle_idx;
+
+					obj_queue_.push_back(temp_obj);
+
+					temp_obj.obj_idx=handle_idx;
+					temp_obj.action=EIN_PLACE;
+					temp_obj.target_zone_idx=target_zone_idx_[handle_idx];
+					temp_obj.target_zone_occupied=0;
+					temp_obj.target_zone_obj_idx=-1;
+
+					obj_queue_.push_back(temp_obj);
+
+					temp_obj.obj_idx=obj_idx_on_zone_[0];
+					temp_obj.action=EIN_PLACE_FROM_PARKING;
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[0]];
+					temp_obj.target_zone_occupied=0;
+					temp_obj.target_zone_obj_idx=-1;
+				}
+				else
+					msg_error("dont know what to do...");
 			}
 		}
 		else
@@ -1052,7 +1185,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 
 		//print object queue
 		ROS_INFO("Object queue:");
-		for(unsigned ii=0;ii<nr_objects_;ii++)
+		for(unsigned ii=0;ii<obj_queue_.size();ii++)
 		{
 			uint16_t obj_idx=obj_queue_[ii].obj_idx;
 			ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
@@ -1073,7 +1206,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 				return -1;
 			}
 		}
-	} //end task_nr_!=5
+	} //end task_nr_!=5/6
 
 	msg_info("EurocInput: sort_objects() finished");
 
@@ -1113,7 +1246,7 @@ void EurocInput::select_new_object()
 
 am_msgs::Object EurocInput::get_active_object()
 {
-	ROS_INFO("Get active object in euroc-input:");
+	ROS_INFO("Get active object in euroc-input");
 
 	if(obj_queue_.size()==0)
 	{
@@ -1129,7 +1262,7 @@ am_msgs::Object EurocInput::get_active_object()
 
 am_msgs::TargetZone EurocInput::get_active_target_zone()
 {
-	ROS_INFO("Get active targetzone in euroc-input:");
+	ROS_INFO("Get active targetzone in euroc-input");
 
 	if((obj_queue_.size()==0) ||(task_nr_ == 5))
 	{
@@ -1143,6 +1276,12 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 	{
 		return target_zones_[obj_queue_[0].target_zone_idx];
 	}
+}
+
+void EurocInput::get_all_zones(std::vector<am_msgs::TargetZone> *tz)
+{
+	tz->resize(nr_zones_);
+	*tz=target_zones_;
 }
 
 void EurocInput::save_objects_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
@@ -1308,6 +1447,7 @@ void EurocInput::save_target_zone_to_parameter_server(ros::NodeHandle& n, bool s
 
 	std::stringstream parname;
 
+	n.setParam("target_zone_nr_",nr_zones_);
 	for(uint16_t ii=0;ii<nr_zones_;ii++)
 	{
 		parname.str("");
@@ -1417,6 +1557,21 @@ void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
 	{
 		obj_queue_[0].data->abs_pose=abs_pose;
 		obj_state_[0] = EIN_OBJ_LOCATED;
+		return;
+	}
+}
+
+void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, uint16_t idx)
+{
+	if(objects_.size()==0)
+	{
+		msg_error("Object vector is empty!");
+		return;
+	}
+	else
+	{
+		objects_[idx].abs_pose=abs_pose;
+		obj_state_[idx] = EIN_OBJ_LOCATED;
 		return;
 	}
 }

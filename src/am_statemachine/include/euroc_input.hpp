@@ -42,6 +42,7 @@ public:
 	void set_active_object_finished();
 	//!set abs. pose for current object
 	void set_object_pose(geometry_msgs::Pose abs_pose);
+	void set_object_pose(geometry_msgs::Pose abs_pose,uint16_t idx);
 	//!tried every object once
 	bool is_active_object_last_object();
 
@@ -49,12 +50,18 @@ public:
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
+	void get_all_zones(std::vector<am_msgs::TargetZone>*tz);
 
 	//!interface for sensors
 	uint16_t get_nr_sensors(){return nr_sensors;};
 	am_msgs::Sensor get_sensors(uint16_t nr){return sensors_[nr];};
 	double get_time_limit(){return time_limit_;};
 	uint16_t get_nr_objects(){return nr_objects_;};
+
+	//!hack
+	am_msgs::Object get_object(uint16_t cnt){return objects_[cnt];};
+	am_msgs::TargetZone get_target_zone(uint16_t cnt){return target_zones_[cnt];};
+
 
 	//!all objects finished
 	bool all_finished();
@@ -118,6 +125,7 @@ private:
 		uint16_t action;
 		uint16_t target_zone_idx;
 		uint16_t target_zone_occupied;
+		uint16_t target_zone_obj_idx;
 	}obj_queue_t;
 
 	//!state vector for all objects
@@ -127,6 +135,7 @@ private:
 
 	//!target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
+	std::vector<int16_t> obj_idx_on_zone_;
 
 	//!number of target_zones
 	uint8_t nr_zones_;

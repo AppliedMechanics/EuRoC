@@ -15,7 +15,7 @@
 //# define LOG_DEBUG
 //# define LOG_INFO
 //# define LOG_ERROR
-# define ANY_OBJ_ON_THIS_ZONE
+# undef ANY_OBJ_ON_THIS_ZONE
 
 // For creating octomap with whole scene (with robot and pantilt); also the man outside the table can be seen; every sweep; takes too much time when using every sweep
 // #define OCTOMAP_COMPLETE_OLD
@@ -75,6 +75,8 @@ Vision::Vision():
 
   // Take Image Service
   take_img_service_ = nh_.advertiseService("TakeImageService", &Vision::on_take_image_CB,this);
+  // Check Zones Service
+  check_zones_service_ = nh_.advertiseService("CheckZonesService", &Vision::on_check_zones_CB,this);
 
   // Show PointCloud in rviz
   pub = nh_.advertise<sensor_msgs::PointCloud2> ("PointCloud_1", 1);
@@ -196,6 +198,43 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
       return false;
   }
   return true;
+}
+
+bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res)
+{
+	res.zones_occupied.resize(req.target_zones.size());
+
+    pcl::PointXYZ zoneCenter;
+	for(uint16_t ii=0;ii<req.target_zones.size();ii++)
+	{
+		// set up target zone position and radius
+	    zoneCenter.x = req.target_zones[ii].position.x;
+	    zoneCenter.y = req.target_zones[ii].position.y;
+	    zoneCenter.z = req.target_zones[ii].position.z;
+	    float zoneRadius = req.target_zones[ii].max_distance;
+
+		int minPointCounter = 0;
+		float distanceX, distanceY;
+		for (int i=0; i<finalVoxelizedPC->points.size(); i++)
+		{
+			distanceX = std::abs(finalVoxelizedPC->points[i].x - zoneCenter.x);
+			distanceY = std::abs(finalVoxelizedPC->points[i].y - zoneCenter.y);
+			if ( distanceX < zoneRadius && distanceY < zoneRadius )
+				minPointCounter++;
+			if (minPointCounter > 5)
+			{
+				std::cout<<"an object is detected on target zone."<<ii<<" "<<std::endl;
+				res.zones_occupied[ii]=1;
+			}
+			else
+			{
+				res.zones_occupied[ii]=0;
+
+			}
+		}
+	}
+
+	return true;
 }
 
 /*
@@ -2532,32 +2571,32 @@ bool Vision::search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr inpu
   return false;
 }
 
-bool Vision::search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr input_cloud, const am_msgs::VisionGoal::ConstPtr &goal)
-{
-	// set up target zone position and radius
-    pcl::PointXYZ zoneCenter;
-    zoneCenter.x = goal->target_zone.position.x;
-    zoneCenter.y = goal->target_zone.position.y;
-    zoneCenter.z = goal->target_zone.position.z;
-    float zoneRadius = goal->target_zone.max_distance;
-
-	int minPointCounter = 0;
-	float distanceX, distanceY;
-	for (int i=0; i<input_cloud->points.size(); i++)
-	{
-		distanceX = std::abs(input_cloud->points[i].x - zoneCenter.x);
-		distanceY = std::abs(input_cloud->points[i].y - zoneCenter.y);
-		if ( distanceX < zoneRadius && distanceY < zoneRadius )
-			minPointCounter++;
-		if (minPointCounter > 5)
-		{
-			std::cout<<"an object is detected on target zone."<<std::endl;
-			return true;
-		}
-	}
-
-	return false;
-}
+//bool Vision::search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr input_cloud, const am_msgs::VisionGoal::ConstPtr &goal)
+//{
+//	// set up target zone position and radius
+//    pcl::PointXYZ zoneCenter;
+//    zoneCenter.x = goal->target_zone.position.x;
+//    zoneCenter.y = goal->target_zone.position.y;
+//    zoneCenter.z = goal->target_zone.position.z;
+//    float zoneRadius = goal->target_zone.max_distance;
+//
+//	int minPointCounter = 0;
+//	float distanceX, distanceY;
+//	for (int i=0; i<input_cloud->points.size(); i++)
+//	{
+//		distanceX = std::abs(input_cloud->points[i].x - zoneCenter.x);
+//		distanceY = std::abs(input_cloud->points[i].y - zoneCenter.y);
+//		if ( distanceX < zoneRadius && distanceY < zoneRadius )
+//			minPointCounter++;
+//		if (minPointCounter > 5)
+//		{
+//			std::cout<<"an object is detected on target zone."<<std::endl;
+//			return true;
+//		}
+//	}
+//
+//	return false;
+//}
 
 /*
  * This function receives a point cloud as input and divides it into zero or more clusters.

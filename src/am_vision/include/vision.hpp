@@ -10,6 +10,7 @@
 #include "MovePantilt.h"
 #include <ampointcloud.h>
 #include <am_msgs/TakeImage.h>
+#include <am_msgs/CheckZones.h>
 #include <shape_generator.cpp>
 
 // Octomap includes
@@ -134,7 +135,7 @@ protected:
 	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
 	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
-	bool search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
+	//bool search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
 	std::vector<pcl::PointIndices> find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
 	float get_shape_length(const am_msgs::VisionGoal::ConstPtr &);
 	bool master_reset();
@@ -151,6 +152,7 @@ public:
 	void on_camera_tcp_rgb_CB(const sensor_msgs::Image &image);
 	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
 	bool on_take_image_CB(am_msgs::TakeImage::Request &, am_msgs::TakeImage::Response &);
+	bool on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res);
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creater(bool);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(
@@ -164,6 +166,7 @@ public:
 	am_msgs::VisionResult   vision_result_;
 
 	ros::ServiceServer take_img_service_;
+	ros::ServiceServer check_zones_service_;
 
 	bool failed;
 

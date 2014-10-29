@@ -20,7 +20,7 @@ GraspPose2::GraspPose2()
 	vision_distance_object_height_cube_=0.2;
 	vision_distance_object_height_cylinder_=0.2;
 	vision_distance_object_height_handle_=0.2;
-	place_falling_dist_=0.01;
+	place_falling_dist_=0.005; //robert:changed from 0.01
 	place_falling_distT6_=0.1;
 	gripping_angle_deg_=45;
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(pi);

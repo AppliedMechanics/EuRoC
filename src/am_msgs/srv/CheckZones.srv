@@ -1,0 +1,5 @@
+#
+TargetZone[] target_zones
+---
+#  return which zones are occupied (1=occupied)
+uint16[] zones_occupied

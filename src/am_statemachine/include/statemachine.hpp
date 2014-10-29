@@ -32,6 +32,7 @@
 #include <am_msgs/ObjectPickedUp.h>
 #include <am_msgs/CheckPoses.h>
 #include <am_msgs/ObjState.h>
+#include <am_msgs/CheckZones.h>
 
 //am includes
 #include <utils.hpp>
@@ -149,6 +150,9 @@ private:
 	ros::ServiceClient take_image_client_;
 	//!explore environment service
 	am_msgs::TakeImage take_image_srv_;
+	//!client for target zone check
+	ros::ServiceClient check_zones_client_;
+	am_msgs::CheckZones check_zones_srv_;
 	//!state-observer interface
 	ros::ServiceClient state_observer_client_;
 	am_msgs::ObjectPickedUp obj_picked_up_srv_;
