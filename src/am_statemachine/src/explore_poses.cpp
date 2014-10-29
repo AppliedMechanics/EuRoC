@@ -267,84 +267,41 @@ void ExplorePoses::init_std_v2()
 
 	tmp_goal_.goal_config.q.resize(9);
 
-	tmp_goal_.goal_pose.position.x = -0.381;
-	tmp_goal_.goal_pose.position.y = 0;
-	tmp_goal_.goal_pose.position.z = 0.792;
-	q_temp_.setRPY(2.7,-0.094,-3.085);
-	tmp_goal_.goal_config.q[0] = 0;
-	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = 0;
-	tmp_goal_.goal_config.q[3] = 0;
-	tmp_goal_.goal_config.q[4] = 0;
-	tmp_goal_.goal_config.q[5] = -1.36;
-	tmp_goal_.goal_config.q[6] = 0.45;
-	tmp_goal_.goal_config.q[7] = 1.7;
-	tmp_goal_.goal_config.q[8] = 0;
-	setOrientationAndInsert(EXPLORE_STD_2);
+	//COMPATIBLE WITH STANDARD IK!!!!
 
-	tmp_goal_.goal_pose.position.x = -0.27;
-	tmp_goal_.goal_pose.position.y = -0.27;
-	tmp_goal_.goal_pose.position.z = 0.792;
-	q_temp_.setRPY(-3.14,-0.082,-2.357);
+	tmp_goal_.goal_pose.position.x = -0.517;
+	tmp_goal_.goal_pose.position.y = 0.155;
+	tmp_goal_.goal_pose.position.z = 0.454;
+	q_temp_.setRPY(2.142,0,0.472);
 	tmp_goal_.goal_config.q[0] = 0;
 	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = 0.193;
-	tmp_goal_.goal_config.q[3] = 0;
-	tmp_goal_.goal_config.q[4] = 0.593;
-	tmp_goal_.goal_config.q[5] = -1.36;
-	tmp_goal_.goal_config.q[6] = 0;
-	tmp_goal_.goal_config.q[7] = 1.7;
-	tmp_goal_.goal_config.q[8] = 0;
-	setOrientationAndInsert(EXPLORE_STD_2);
-
-	tmp_goal_.goal_pose.position.x = 0;
-	tmp_goal_.goal_pose.position.y = -0.381;
-	tmp_goal_.goal_pose.position.z = 0.792;
-	q_temp_.setRPY(2.7,-0.094,-1.627);
-	tmp_goal_.goal_config.q[0] = 0;
-	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = 0.382;
-	tmp_goal_.goal_config.q[3] = 0;
-	tmp_goal_.goal_config.q[4] = 1.187;
-	tmp_goal_.goal_config.q[5] = -1.36;
-	tmp_goal_.goal_config.q[6] = -0.45;
-	tmp_goal_.goal_config.q[7] = 1.7;
-	tmp_goal_.goal_config.q[8] = 0;
-	setOrientationAndInsert(EXPLORE_STD_2);
-
-	tmp_goal_.goal_pose.position.x = -0.527;
-	tmp_goal_.goal_pose.position.y = 0.112;
-	tmp_goal_.goal_pose.position.z = 0.455;
-	q_temp_.setRPY(2.142,0,2.168);
-	tmp_goal_.goal_config.q[0] = 0;
-	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = 0.6;
+	tmp_goal_.goal_config.q[2] = -1.1;
 	tmp_goal_.goal_config.q[3] = 1.2;
 	tmp_goal_.goal_config.q[4] = -1.572;
-	tmp_goal_.goal_config.q[5] = -1.572;
-	tmp_goal_.goal_config.q[6] = 0.2;
-	tmp_goal_.goal_config.q[7] = 1.572;
+	tmp_goal_.goal_config.q[5] = 1.572;
+	tmp_goal_.goal_config.q[6] = -0.2;
+	tmp_goal_.goal_config.q[7] = -1.572;
 	tmp_goal_.goal_config.q[8] = 0;
 	setOrientationAndInsert(EXPLORE_STD_2);
 
-	tmp_goal_.goal_pose.position.x = -0.379;
-	tmp_goal_.goal_pose.position.y = -0.383;
-	tmp_goal_.goal_pose.position.z = 0.455;
-	q_temp_.setRPY(2.142,0,-3.115);
+	tmp_goal_.goal_pose.position.x = -0.39;
+	tmp_goal_.goal_pose.position.y = 0.373;
+	tmp_goal_.goal_pose.position.z = 0.454;
+	q_temp_.setRPY(2.142,0,0);
 	tmp_goal_.goal_config.q[0] = 0;
 	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = 1.572;
+	tmp_goal_.goal_config.q[2] = -1.572;
 	tmp_goal_.goal_config.q[3] = 1.2;
 	tmp_goal_.goal_config.q[4] = -1.572;
-	tmp_goal_.goal_config.q[5] = -1.572;
-	tmp_goal_.goal_config.q[6] = 0.2;
-	tmp_goal_.goal_config.q[7] = 1.572;
+	tmp_goal_.goal_config.q[5] = 1.572;
+	tmp_goal_.goal_config.q[6] = -0.2;
+	tmp_goal_.goal_config.q[7] = -1.572;
 	tmp_goal_.goal_config.q[8] = 0;
 	setOrientationAndInsert(EXPLORE_STD_2);
 
 	tmp_goal_.goal_pose.position.x = -0.373;
 	tmp_goal_.goal_pose.position.y = -0.39;
-	tmp_goal_.goal_pose.position.z = 0.455;
+	tmp_goal_.goal_pose.position.z = 0.454;
 	q_temp_.setRPY(2.142,0,1.573);
 	tmp_goal_.goal_config.q[0] = 0;
 	tmp_goal_.goal_config.q[1] = 0;
@@ -357,13 +314,13 @@ void ExplorePoses::init_std_v2()
 	tmp_goal_.goal_config.q[8] = 0;
 	setOrientationAndInsert(EXPLORE_STD_2);
 
-	tmp_goal_.goal_pose.position.x = -0.39;
-	tmp_goal_.goal_pose.position.y = 0.373;
-	tmp_goal_.goal_pose.position.z = 0.455;
-	q_temp_.setRPY(2.142,0,0);
+	tmp_goal_.goal_pose.position.x = 0.39;
+	tmp_goal_.goal_pose.position.y = -0.372;
+	tmp_goal_.goal_pose.position.z = 0.454;
+	q_temp_.setRPY(2.142,0,-3.139);
 	tmp_goal_.goal_config.q[0] = 0;
 	tmp_goal_.goal_config.q[1] = 0;
-	tmp_goal_.goal_config.q[2] = -1.572;
+	tmp_goal_.goal_config.q[2] = 1.572;
 	tmp_goal_.goal_config.q[3] = 1.2;
 	tmp_goal_.goal_config.q[4] = -1.572;
 	tmp_goal_.goal_config.q[5] = 1.572;
@@ -371,6 +328,175 @@ void ExplorePoses::init_std_v2()
 	tmp_goal_.goal_config.q[7] = -1.572;
 	tmp_goal_.goal_config.q[8] = 0;
 	setOrientationAndInsert(EXPLORE_STD_2);
+
+	tmp_goal_.goal_pose.position.x = -0.064;
+	tmp_goal_.goal_pose.position.y = -0.459;
+	tmp_goal_.goal_pose.position.z = 0.549;
+	q_temp_.setRPY(-3.073,-0.501,1.218);
+	tmp_goal_.goal_config.q[0] = 0;
+	tmp_goal_.goal_config.q[1] = 0;
+	tmp_goal_.goal_config.q[2] = -1.223;
+	tmp_goal_.goal_config.q[3] = -0.3;
+	tmp_goal_.goal_config.q[4] = -0.593;
+	tmp_goal_.goal_config.q[5] = 1.70;
+	tmp_goal_.goal_config.q[6] = 0.14;
+	tmp_goal_.goal_config.q[7] = -1.7;
+	tmp_goal_.goal_config.q[8] = 0.05;
+	setOrientationAndInsert(EXPLORE_STD_2);
+
+	tmp_goal_.goal_pose.position.x = -0.274;
+	tmp_goal_.goal_pose.position.y = -0.265;
+	tmp_goal_.goal_pose.position.z = 0.792;
+	q_temp_.setRPY(3.117,0.078,0.467);
+	tmp_goal_.goal_config.q[0] = 0;
+	tmp_goal_.goal_config.q[1] = 0;
+	tmp_goal_.goal_config.q[2] = 0.594;
+	tmp_goal_.goal_config.q[3] = 0;
+	tmp_goal_.goal_config.q[4] = -2.967;
+	tmp_goal_.goal_config.q[5] = 1.359;
+	tmp_goal_.goal_config.q[6] = 0;
+	tmp_goal_.goal_config.q[7] = -1.701;
+	tmp_goal_.goal_config.q[8] = 0.301;
+	setOrientationAndInsert(EXPLORE_STD_2);
+
+	tmp_goal_.goal_pose.position.x = -0.376;
+	tmp_goal_.goal_pose.position.y = -0.066;
+	tmp_goal_.goal_pose.position.z = 0.792;
+	q_temp_.setRPY(-2.885,0.17,-0.156);
+	tmp_goal_.goal_config.q[0] = 0;
+	tmp_goal_.goal_config.q[1] = 0;
+	tmp_goal_.goal_config.q[2] = 0;
+	tmp_goal_.goal_config.q[3] = 0;
+	tmp_goal_.goal_config.q[4] = -2.96;
+	tmp_goal_.goal_config.q[5] = 1.359;
+	tmp_goal_.goal_config.q[6] = -0.3;
+	tmp_goal_.goal_config.q[7] = -1.701;
+	tmp_goal_.goal_config.q[8] = 0.301;
+	setOrientationAndInsert(EXPLORE_STD_2);
+
+	tmp_goal_.goal_pose.position.x = -0.383;
+	tmp_goal_.goal_pose.position.y = -0.068;
+	tmp_goal_.goal_pose.position.z = 0.738;
+	q_temp_.setRPY(-2.555,0.132,-0.148);
+	tmp_goal_.goal_config.q[0] = 0;
+	tmp_goal_.goal_config.q[1] = 0;
+	tmp_goal_.goal_config.q[2] = 0;
+	tmp_goal_.goal_config.q[3] = 0;
+	tmp_goal_.goal_config.q[4] = -2.96;
+	tmp_goal_.goal_config.q[5] = 1.5;
+	tmp_goal_.goal_config.q[6] = -0.6;
+	tmp_goal_.goal_config.q[7] = -1.701;
+	tmp_goal_.goal_config.q[8] = 0.301;
+	setOrientationAndInsert(EXPLORE_STD_2);
+
+
+
+	//IF DONE WITH MOVE_IT, NOT STANDARD IK!!!
+//
+//	tmp_goal_.goal_pose.position.x = -0.373;
+//	tmp_goal_.goal_pose.position.y = -0.39;
+//	tmp_goal_.goal_pose.position.z = 0.455;
+//	q_temp_.setRPY(2.142,0,1.573);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 0;
+//	tmp_goal_.goal_config.q[3] = 1.2;
+//	tmp_goal_.goal_config.q[4] = -1.572;
+//	tmp_goal_.goal_config.q[5] = 1.572;
+//	tmp_goal_.goal_config.q[6] = -0.2;
+//	tmp_goal_.goal_config.q[7] = -1.572;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = -0.39;
+//	tmp_goal_.goal_pose.position.y = 0.373;
+//	tmp_goal_.goal_pose.position.z = 0.455;
+//	q_temp_.setRPY(2.142,0,0);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = -1.572;
+//	tmp_goal_.goal_config.q[3] = 1.2;
+//	tmp_goal_.goal_config.q[4] = -1.572;
+//	tmp_goal_.goal_config.q[5] = 1.572;
+//	tmp_goal_.goal_config.q[6] = -0.2;
+//	tmp_goal_.goal_config.q[7] = -1.572;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = -0.381;
+//	tmp_goal_.goal_pose.position.y = 0;
+//	tmp_goal_.goal_pose.position.z = 0.792;
+//	q_temp_.setRPY(-2.7,-0.094,-3.085);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 0;
+//	tmp_goal_.goal_config.q[3] = 0;
+//	tmp_goal_.goal_config.q[4] = 0;
+//	tmp_goal_.goal_config.q[5] = -1.36;
+//	tmp_goal_.goal_config.q[6] = 0.45;
+//	tmp_goal_.goal_config.q[7] = 1.7;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = -0.27;
+//	tmp_goal_.goal_pose.position.y = -0.27;
+//	tmp_goal_.goal_pose.position.z = 0.792;
+//	q_temp_.setRPY(-3.14,-0.082,-2.357);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 0.193;
+//	tmp_goal_.goal_config.q[3] = 0;
+//	tmp_goal_.goal_config.q[4] = 0.593;
+//	tmp_goal_.goal_config.q[5] = -1.36;
+//	tmp_goal_.goal_config.q[6] = 0;
+//	tmp_goal_.goal_config.q[7] = 1.7;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = 0;
+//	tmp_goal_.goal_pose.position.y = -0.381;
+//	tmp_goal_.goal_pose.position.z = 0.792;
+//	q_temp_.setRPY(2.7,-0.094,-1.627);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 0.382;
+//	tmp_goal_.goal_config.q[3] = 0;
+//	tmp_goal_.goal_config.q[4] = 1.187;
+//	tmp_goal_.goal_config.q[5] = -1.36;
+//	tmp_goal_.goal_config.q[6] = -0.45;
+//	tmp_goal_.goal_config.q[7] = 1.7;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = -0.390;
+//	tmp_goal_.goal_pose.position.y = -0.373;
+//	tmp_goal_.goal_pose.position.z = 0.455;
+//	q_temp_.setRPY(2.142,0,3.140);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 1.572;
+//	tmp_goal_.goal_config.q[3] = 1.2;
+//	tmp_goal_.goal_config.q[4] = -1.572;
+//	tmp_goal_.goal_config.q[5] = -1.572;
+//	tmp_goal_.goal_config.q[6] = 0.2;
+//	tmp_goal_.goal_config.q[7] = 1.572;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
+//
+//	tmp_goal_.goal_pose.position.x = -0.527;
+//	tmp_goal_.goal_pose.position.y = 0.112;
+//	tmp_goal_.goal_pose.position.z = 0.455;
+//	q_temp_.setRPY(2.142,0,2.168);
+//	tmp_goal_.goal_config.q[0] = 0;
+//	tmp_goal_.goal_config.q[1] = 0;
+//	tmp_goal_.goal_config.q[2] = 0.6;
+//	tmp_goal_.goal_config.q[3] = 1.2;
+//	tmp_goal_.goal_config.q[4] = -1.572;
+//	tmp_goal_.goal_config.q[5] = -1.572;
+//	tmp_goal_.goal_config.q[6] = 0.2;
+//	tmp_goal_.goal_config.q[7] = 1.572;
+//	tmp_goal_.goal_config.q[8] = 0;
+//	setOrientationAndInsert(EXPLORE_STD_2);
 
 }
 
@@ -548,7 +674,7 @@ void ExplorePoses::init_snake()
 	tmp_goal_.goal_pose.position.x = -0.381;
 	tmp_goal_.goal_pose.position.y = 0;
 	tmp_goal_.goal_pose.position.z = 0.792;
-	q_temp_.setRPY(2.7,-0.094,-3.085);
+	q_temp_.setRPY(-2.7,-0.094,-3.085);
 	tmp_goal_.goal_config.q[0] = 0;
 	tmp_goal_.goal_config.q[1] = 0;
 	tmp_goal_.goal_config.q[2] = 0;
