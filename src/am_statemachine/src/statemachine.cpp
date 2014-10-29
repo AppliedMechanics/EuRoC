@@ -1881,7 +1881,8 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_7DOF;
 			planning_mode_.target	= MOVE_IT_7DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
+			explore_pose_type_ = EXPLORE_STD_1;
+			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 3:
@@ -1889,7 +1890,8 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
+			explore_pose_type_ = EXPLORE_STD_1;
+			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 4:
@@ -1897,7 +1899,8 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = explore_poses_->size(EXPLORE_SNAKE);
+			explore_pose_type_ = EXPLORE_SNAKE;
+			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = 10;
 			break;
 		case 5:
@@ -1906,7 +1909,8 @@ int Statemachine::request_task()
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			nr_exp_poses_ = explore_poses_->size(EXPLORE_STD_2);
+			explore_pose_type_ = EXPLORE_STD_1;
+			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		}
@@ -2492,12 +2496,12 @@ int Statemachine::explore_environment_init()
 
 		explore_environment_init_state_=RUNNING;
 
-		if (active_task_number_ == 4){
-			explore_pose_type_ = EXPLORE_SNAKE;
-		}
-		else{
-			explore_pose_type_ = EXPLORE_STD_2;
-		}
+//		if (active_task_number_ == 4){
+//			explore_pose_type_ = EXPLORE_SNAKE;
+//		}
+//		else{
+//			explore_pose_type_ = EXPLORE_STD_1;
+//		}
 
 		explore_environment_init_state_=FINISHED;
 	}
