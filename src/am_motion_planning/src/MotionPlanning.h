@@ -195,7 +195,11 @@ private:
 
 	bool homingMoveIt();
 	bool getMoveItSolution();
+	//! get straight line in taskspace
+	bool getMoveItSolutionInTaskSpace();
 	bool initializeMoveGroup();
+	//! compute Waypoints for tcp to follow an straight line
+	bool computeWayPoints(std::vector< geometry_msgs::Pose > &waypoints_);
 	bool setPlanningTarget(unsigned algorithm);
 	bool valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 

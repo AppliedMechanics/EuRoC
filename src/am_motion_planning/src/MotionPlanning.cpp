@@ -303,6 +303,49 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	break;
 
 	//------------------------------------------------------------------------------------------------
+	case (MOVE_IT_7DOF_MOVE_TO_OBJECT)		:
+	case (MOVE_IT_9DOF_MOVE_TO_OBJECT)		:
+	ROS_WARN("Planning mode based on MoveIt! chosen.");
+
+	//define groups
+	if(goal->planning_algorithm == MOVE_IT_9DOF_MOVE_TO_OBJECT)
+	{
+		ROS_INFO("Choosed 9DOF");
+		group = group_9DOF;
+		joint_model_group_ = joint_model_group_9DOF_;
+		// setting joint state target via the searchIKSolution srv is not considered
+		max_setTarget_attempts_ = 4;
+
+	}
+	else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
+	{
+		ROS_INFO("Choosed 7DOF");
+		group = group_7DOF;
+		joint_model_group_ = joint_model_group_7DOF_;
+		// in case of unsuccessful planning,
+		// the planning target is set as a joint state goal via the searchIKSolution srv
+		max_setTarget_attempts_ = 5;
+
+	}
+	else
+	{
+		msg_error("Unknown move group name.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
+		break;
+	}
+
+	// get moveit solution
+	if (!getMoveItSolutionInTaskSpace())
+	{
+		msg_error("No MoveIT Solution found.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+		return;
+	}
+	break;
+
+	//------------------------------------------------------------------------------------------------
 	case (MOVE_IT_JT_9DOF):
 	ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
@@ -726,6 +769,108 @@ bool MotionPlanning::homingMoveIt()
 
 
 }
+bool MotionPlanning::getMoveItSolutionInTaskSpace()
+{
+	try
+	{
+		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+
+			if(!initializeMoveGroup()){return false;}
+
+			unsigned current_setTarget_attempt = 1;
+			bool setTarget_successful = false;
+			bool planning_successful = false;
+
+			//cartesian waypoints
+			std::vector< geometry_msgs::Pose > waypoints;
+
+			// compute waypoints
+			setTarget_successful = computeWayPoints(waypoints);
+
+			if (setTarget_successful)
+			{
+				ROS_INFO("Planning straight line in workspace successful!");
+				while (!planning_successful)
+				{
+					//trajectory
+					moveit_msgs::RobotTrajectory trajectory;
+
+					double error = group->computeCartesianPath(waypoints,0.5,1.0,trajectory,true);
+					if (error != -1)
+					{
+
+						planned_path_.clear();
+
+						// for each configuration of the trajectory except from the start configuration
+						for (unsigned configIdx = 0; configIdx < trajectory.joint_trajectory.points.size(); ++configIdx)
+						{
+							// current configuration
+							euroc_c2_msgs::Configuration current_config;
+
+							// for each joint at the current configuration
+							for (unsigned jointIdx = 0; jointIdx < group->getActiveJoints().size(); ++ jointIdx)
+							{
+								current_config.q.push_back(trajectory.joint_trajectory.points[configIdx].positions[jointIdx]);
+							}
+							planned_path_.push_back(current_config);
+						}
+
+						current_configuration_ = planned_path_[0];
+
+						move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+						move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+						for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+						{
+							move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
+						}
+
+						// set the joint limits (velocities/accelerations) of the move along joint path service request
+						setMoveRequestJointLimits();
+						// set the TCP limits of the move along joint path service
+						setMoveRequestTCPLimits();
+
+						return true;
+					}
+
+					current_setTarget_attempt++;
+					if (current_setTarget_attempt > max_setTarget_attempts_)
+					{
+						msg_error("MoveIt: No Motion Plan found!");
+						goalPose_result_.error_reason = fsm::NO_IK_SOL;
+						return false;
+					}
+				}
+
+
+
+			}//set target successful
+			else
+			{
+				ROS_INFO("Not able to calculate straight line");
+				goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+				return false;
+			}
+
+		}
+		else	// if (!ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+			return false;
+		}
+
+	} // end try
+
+	catch(...)
+	{
+		msg_error("MotionPlanning::Error in MoveIt! Planning straight line in workspace.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+	return true;
+}
+
 bool MotionPlanning::getMoveItSolution()
 {
 
@@ -749,6 +894,8 @@ bool MotionPlanning::getMoveItSolution()
 //					ROS_INFO("Planning!");
 //					ROS_INFO_STREAM(group->getName());
 					planning_successful = group->plan(motion_plan_);
+
+
 					if (planning_successful)
 					{
 						ROS_INFO("Planning successful!");
@@ -2690,3 +2837,55 @@ bool MotionPlanning::initializeMoveGroup()
 
 	return true;
 }
+
+bool MotionPlanning::computeWayPoints(std::vector< geometry_msgs::Pose > &waypoints_)
+{
+
+	get_dk_solution_srv_.request.configuration = current_configuration_;
+	if(!get_dk_solution_client_.call(get_dk_solution_srv_))
+	{
+		msg_error("Search DK Solution call failed");
+
+		goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+		return false;
+	}
+
+	// The error_message field of each service response indicates whether an error occured. An empty string indicates success
+	std::string &ls_error_message = get_dk_solution_srv_.response.error_message;
+	if(!ls_error_message.empty())
+	{
+		ROS_ERROR("Get DK failed: %s", ls_error_message.c_str());
+
+		goalPose_result_.error_reason = fsm::NO_DK_SOL;
+		return false;
+	}
+	else
+	{
+		geometry_msgs::Pose cur_pose = get_dk_solution_srv_.response.ee_frame;
+
+		double delta_x=goal_pose_GPTCP_.position.x - cur_pose.position.x;
+		double delta_y=goal_pose_GPTCP_.position.y - cur_pose.position.y;
+		double delta_z=goal_pose_GPTCP_.position.z - cur_pose.position.z;
+
+
+		waypoints_.push_back(cur_pose);
+
+		//necessary to get goal orientation!
+		cur_pose.orientation=goal_pose_GPTCP_.orientation;
+		for(uint16_t ii=0;ii<inter_steps_;ii++)
+		{
+			cur_pose.position.x+=(double)(delta_x/inter_steps_);
+			cur_pose.position.y+=(double)(delta_y/inter_steps_);
+			cur_pose.position.z+=(double)(delta_z/inter_steps_);
+
+			waypoints_.push_back(cur_pose);
+
+			ROS_INFO("pose %d: [%4.3f %4.3f %4.3f]",ii,
+						cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
+		}
+	}
+
+return true;
+}
+
+
