@@ -45,14 +45,17 @@ ExplorePoses::ExplorePoses()
 	pose_blocks_[block_nr_[5]].push_back(18);
 	pose_blocks_[block_nr_[5]].push_back(19);
 
-	rand_pose_block_vec_.resize(explore_poses_snake_.size());
+	rand_pose_block_vec_.clear();
 	for (int jj=0;jj<N_POSE_BLOCKS;jj++)
 	{
-		for (int ii=0;ii<(pose_blocks_[jj].size());ii++)
+		for (int ii=0;ii<(pose_blocks_[jj].size());ii++){
 			rand_pose_block_vec_.push_back(pose_blocks_[jj].at(ii));
+//			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[jj].at(ii));
+		}
 	}
 	ROS_INFO("Random Block sorting: %i %i %i %i %i %i ",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5]);
-
+//	for (int ii=0;ii<(rand_pose_block_vec_.size());ii++)
+//		ROS_INFO("Random Pose Numbers: %i %i",ii,rand_pose_block_vec_[ii]);
 }
 
 ExplorePoses::~ExplorePoses() {
