@@ -54,8 +54,7 @@ ExplorePoses::ExplorePoses()
 		}
 	}
 	ROS_INFO("Random Block sorting: %i %i %i %i %i %i ",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5]);
-//	for (int ii=0;ii<(rand_pose_block_vec_.size());ii++)
-//		ROS_INFO("Random Pose Numbers: %i %i",ii,rand_pose_block_vec_[ii]);
+
 }
 
 ExplorePoses::~ExplorePoses() {

@@ -98,8 +98,8 @@ obj_data_loaded_(false)
 
 	// Octomap service client
 	octomap_ = "/octomap_binary";
-	octomap_client_ = nh_.serviceClient<octomap_msgs::GetOctomap>(octomap_);
-
+	octomap_client_			= nh_.serviceClient<octomap_msgs::GetOctomap>(octomap_);
+	cleanup_octomap_client_ = nh_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
 	// Publisher
 	planning_scene_diff_publisher_ = nh_.advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
 
@@ -669,6 +669,7 @@ bool MotionPlanning::getOctomap()
 	}
 	else if (!skip_vision_)
 	{
+
 		// call service
 		ros::service::waitForService(octomap_,ros::Duration(4.0));
 		octomap_client_.call(octomap_srv_);
@@ -687,6 +688,18 @@ bool MotionPlanning::getOctomap()
 	}
 	else
 		return false;
+}
+
+bool MotionPlanning::cleanupOctomap()
+{
+	try{
+		if (!cleanup_octomap_client_.call(cleanup_octomap_srv_)){
+			msg_warn("Octomap cleanup failed");
+			return false;
+		}
+	}catch (...){msg_error("Cleanup Octomap failed."); return false;}
+
+	return true;
 }
 
 bool MotionPlanning::homingMoveIt()
@@ -1617,8 +1630,8 @@ bool MotionPlanning::getLimits()
 	}
 
 	//! Setting max accelerations
-	table_axis1_limit_.max_acceleration = 0.5;//2.0;
-	table_axis2_limit_.max_acceleration = 0.5;//2.0;
+	table_axis1_limit_.max_acceleration = 0.2;//2.0;
+	table_axis2_limit_.max_acceleration = 0.2;//2.0;
 	for (int ii=0;ii<7;ii++)
 		joint_limits_[ii].max_acceleration = 100 * M_PI / 180.0;
 	gripper_limit_.max_acceleration = 2.0;
@@ -1979,6 +1992,16 @@ void MotionPlanning::initializePlanningScene()
 	//static_scene_.world.collision_objects.clear();
 
 	ROS_INFO("Finished adding ground plane and pan tilt station.");
+
+
+	//! Remove Octomap Artefacts at the Ground
+	cleanup_octomap_srv_.request.min.x = -primitive.dimensions[0]*0.5;
+	cleanup_octomap_srv_.request.min.y = -primitive.dimensions[1]*0.5;
+	cleanup_octomap_srv_.request.min.z = -0.01;
+	cleanup_octomap_srv_.request.max.x = primitive.dimensions[0]*0.5;
+	cleanup_octomap_srv_.request.max.y = primitive.dimensions[1]*0.5;
+	cleanup_octomap_srv_.request.max.z = 0.01;
+
 }
 
 void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
@@ -2809,6 +2832,9 @@ bool MotionPlanning::initializeMoveGroup()
 
 	// if Octomap received, then stored in _octree
 
+	if (cleanupOctomap())
+		msg_info("Octomap cleaned up");
+
 
 	if(getOctomap())
 	{
@@ -2825,6 +2851,19 @@ bool MotionPlanning::initializeMoveGroup()
 	// Load current robot state into planning scene
 	planning_scene_.robot_state.joint_state = getCurrentJointState();
 	planning_scene_.robot_state.is_diff = true;
+
+	// Robot link padding
+	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+	{
+		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+			planning_scene_.link_padding[i].padding = 0.0;
+		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+			planning_scene_.link_padding[i].padding = 0.02;
+		else
+			planning_scene_.link_padding[i].padding = 0.01;
+	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;

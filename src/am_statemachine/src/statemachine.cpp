@@ -90,7 +90,6 @@ Statemachine::Statemachine():
 	ros::param::get("/skip_motion",skip_motion_);
 	ros::param::get("/pause_in_loop",pause_in_loop_);
 
-	planning_mode_.explore 	= STANDARD_IK_7DOF;
 	planning_mode_.object	= STANDARD_IK_7DOF;
 	planning_mode_.target	= STANDARD_IK_7DOF;
 	planning_mode_.homing	= STANDARD_IK_7DOF;
@@ -357,7 +356,7 @@ void Statemachine::scheduler_schedule()
 			if(active_task_number_==1 || active_task_number_==2 || active_task_number_==3 ||
 					active_task_number_==4 || active_task_number_==5)
 			{
-				temp_state.sub.one=fsm::WATCH_SCENE;							state_queue.push_back(temp_state);
+				temp_state.sub.one=fsm::WATCH_SCENE;						state_queue.push_back(temp_state);
 				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_INIT;			state_queue.push_back(temp_state);
@@ -365,7 +364,6 @@ void Statemachine::scheduler_schedule()
 				{
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_MOTION;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_IMAGE;		state_queue.push_back(temp_state);
-					//temp_state.sub.two=fsm::HOMING;							state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;			state_queue.push_back(temp_state);
@@ -1879,7 +1877,6 @@ int Statemachine::request_task()
 		{
 		case 1:
 		case 2:
-			planning_mode_.explore 	= STANDARD_IK_7DOF;
 			planning_mode_.object	= MOVE_IT_7DOF;
 			planning_mode_.target	= MOVE_IT_7DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
@@ -1888,7 +1885,6 @@ int Statemachine::request_task()
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 3:
-			planning_mode_.explore 	= STANDARD_IK_7DOF;
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
@@ -1897,7 +1893,6 @@ int Statemachine::request_task()
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 4:
-			planning_mode_.explore 	= MOVE_IT_JT_9DOF;
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
@@ -1907,7 +1902,6 @@ int Statemachine::request_task()
 			break;
 		case 5:
 		case 6:
-			planning_mode_.explore 	= STANDARD_IK_7DOF;
 			planning_mode_.object	= MOVE_IT_9DOF;
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;

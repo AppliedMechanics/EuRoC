@@ -40,6 +40,7 @@
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 
+
 // GEOMETRY
 #include <geometry_msgs/Vector3.h>
 #include <shape_msgs/SolidPrimitive.h>
@@ -59,6 +60,7 @@
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/GetOctomap.h>
 #include <octomap_msgs/conversions.h>
+#include <octomap_msgs/BoundingBoxQuery.h>
 
 
 
@@ -239,8 +241,9 @@ private:
 	// Static scene for pantilt + table
 	moveit_msgs::PlanningScene static_scene_;
 
-
-
+	//!client to remove area in octomap
+	ros::ServiceClient cleanup_octomap_client_;
+	octomap_msgs::BoundingBoxQuery cleanup_octomap_srv_;
 
 	std::vector<euroc_c2_msgs::Limits> joint_limits_;
 	euroc_c2_msgs::Limits gripper_limit_;
@@ -264,6 +267,7 @@ private:
 
 
 	bool getOctomap();
+	bool cleanupOctomap();
 	bool getIKSolution7DOF();
 	bool getTelemetry();
 	bool getLimits();

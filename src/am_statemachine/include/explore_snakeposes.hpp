@@ -435,7 +435,6 @@ explore_queue_[order_poses[19]].goal_config.q[8] = 0;
 
 for (int i=0;i<nr_goals_;i++)
 {
-	explore_queue_[i].planning_algorithm = MOVE_IT_JT_9DOF;
 	explore_queue_[i].planning_frame = LWR_TCP;
 	explore_queue_[i].goal_pose.orientation.x = q_temp[order_poses[i]].getX();
 	explore_queue_[i].goal_pose.orientation.y = q_temp[order_poses[i]].getY();
