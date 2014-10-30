@@ -613,26 +613,7 @@ void Statemachine::scheduler_schedule()
 			case fsm::CHECK_OBJECT_FINISHED:
 				if(check_object_finished_state_==FINISHEDWITHERROR)
 				{
-					//-----------------------
-					//						ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					//						check_object_finished_state_ =FINISHED;
-					//-----------------------
-					//skip current object and try next one
-
-					msg_warn("Statemachine-Errorhandler: object not in target zone -> try next object");
-					//and get next one
-					ein_->select_new_object();
-					scheduler_next_object();
-
-
-					//publish object state for motion planning
-					publish_obj_state(OBJ_NOT_LOCATED);
-
-					//==============================================
-					scheduler_next();
-					//==============================================
-					//reset state
-					check_object_finished_state_=OPEN;
+					scheduler_error_check_object_finished();
 				}
 				break;
 			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
@@ -911,7 +892,10 @@ void Statemachine::scheduler_error_homing()
 		msg_error("IMPLEMENT ME!!!!!!!!");
 
 		//temporary:
-		scheduler_skip_object();
+		if(state_.sub.one!=fsm::EXPLORE_ENVIRONMENT)
+			scheduler_skip_object();
+		else
+			scheduler_next();
 		break;
 
 	case fsm::STOP_COND:
@@ -1286,6 +1270,7 @@ void Statemachine::scheduler_error_move_to_target_zone()
 		else
 			move_to_target_zone_state_=FINISHED;
 		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_target_zone_state_=FINISHED;
@@ -1329,6 +1314,25 @@ void Statemachine::scheduler_error_check_object_gripped()
 		check_object_gripped_state_ = FINISHED;
 		break;
 	}
+}
+void Statemachine::scheduler_error_check_object_finished()
+{
+	//skip current object and try next one
+
+	msg_warn("Statemachine-Errorhandler: object not in target zone -> try next object");
+	//and get next one
+	ein_->select_new_object();
+	scheduler_next_object();
+
+
+	//publish object state for motion planning
+	publish_obj_state(OBJ_NOT_LOCATED);
+
+	//==============================================
+	scheduler_next();
+	//==============================================
+	//reset state
+	check_object_finished_state_=OPEN;
 }
 void Statemachine::scheduler_error_gripper_close()
 {
@@ -2112,6 +2116,7 @@ int Statemachine::parse_yaml_file()
 		ROS_INFO("saving object data to parameter server...");
 		try
 		{
+			ein_->save_fixture_to_parameter_server(node_,false);
 			ein_->save_objects_to_parameter_server(node_,false);
 			ein_->save_target_zone_to_parameter_server(node_,false);
 			ein_->save_robot_to_parameter_server(node_,false);
@@ -2143,10 +2148,10 @@ int Statemachine::parse_yaml_file()
 
 int Statemachine::check_object_finished()
 {
-	if(target_skip_vision[selected_target_pose_]==1)
+	if((target_skip_vision[selected_target_pose_]==1)||(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING))
 	{
 		check_object_finished_state_=FINISHED;
-		ROS_INFO("skip move to target zone vision pose");
+		ROS_INFO("skip check object in zone");
 	}
 	if(check_object_finished_state_==OPEN)
 	{
@@ -4313,6 +4318,12 @@ int Statemachine::move_to_target_zone_vision()
 	{
 		ROS_INFO("move_to_target_zone_vision() called: OPEN");
 
+		if(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)
+		{
+			move_to_target_zone_vision_state_=FINISHED;
+			return 0;
+		}
+
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -4623,22 +4634,30 @@ void Statemachine::publish_obj_state(uint16_t state)
 
 	switch(state)
 	{
+	case OBJ_NOT_LOCATED:
+		ROS_INFO("Statemachine: publishing state OBJ_NOT_LOCATED for object %s",cur_obj_.name.c_str());
+		break;
 	case OBJ_LOCATED:
 		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+		ROS_INFO("Statemachine: publishing state OBJ_LOCATED for object %s",cur_obj_.name.c_str());
 		break;
 	case OBJ_GRIPPING:
 		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+		ROS_INFO("Statemachine: publishing state OBJ_GRIPPING for object %s",cur_obj_.name.c_str());
 		break;
 	case OBJ_GRABED:
 		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+		ROS_INFO("Statemachine: publishing state OBJ_GRABED for object %s",cur_obj_.name.c_str());
 		break;
 	case OBJ_PLACED:
 		obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
+		ROS_INFO("Statemachine: publishing state OBJ_PLACED for object %s",cur_obj_.name.c_str());
 		break;
 	case OBJ_FINISHED:
 	{
 		geometry_msgs::Pose empty_pose;
 		obj_state_msg_.obj_pose=empty_pose;
+		ROS_INFO("Statemachine: publishing state OBJ_FINISHED for object %s",cur_obj_.name.c_str());
 		break;
 	}
 	default:

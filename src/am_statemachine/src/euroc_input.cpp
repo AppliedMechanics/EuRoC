@@ -1282,6 +1282,9 @@ void EurocInput::select_new_object()
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
 	}
+
+	if(obj_queue_[0].action==EIN_PARKING)
+		obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_PARKING;
 }
 
 am_msgs::Object EurocInput::get_active_object()
@@ -1559,6 +1562,21 @@ void EurocInput::save_robot_to_parameter_server(ros::NodeHandle& n, bool show_lo
 	}
 }
 
+void EurocInput::save_fixture_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
+{
+	if(task_nr_==5)
+	{
+		ROS_INFO("saving fixture pose to parameter server...");
+		n.setParam("fixture_pose_position_x_",fixture_pose_.position.x);
+		n.setParam("fixture_pose_position_y_",fixture_pose_.position.y);
+		n.setParam("fixture_pose_position_z_",fixture_pose_.position.z);
+		n.setParam("fixture_pose_orientation_x_",fixture_pose_.orientation.x);
+		n.setParam("fixture_pose_orientation_y_",fixture_pose_.orientation.y);
+		n.setParam("fixture_pose_orientation_z_",fixture_pose_.orientation.z);
+		n.setParam("fixture_pose_orientation_w_",fixture_pose_.orientation.w);
+	}
+}
+
 void EurocInput::print_object(am_msgs::Object*obj)
 {
 	ROS_INFO("Name: %s",obj->name.c_str());
@@ -1604,6 +1622,10 @@ void EurocInput::set_active_object_finished()
 		else
 			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
 		obj_queue_.erase(obj_queue_.begin());
+
+
+		if(obj_queue_[0].action==EIN_PARKING)
+			obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_PARKING;
 	}
 }
 

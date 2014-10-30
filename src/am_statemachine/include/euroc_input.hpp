@@ -78,6 +78,8 @@ public:
 	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 	//!save target zone data to parameter server
 	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save target zone data to parameter server
+	void save_fixture_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 
 
 	//!determine in which order the puzzle peaces need to be placed into the fixture

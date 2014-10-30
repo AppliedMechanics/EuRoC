@@ -272,6 +272,7 @@ private:
 	void scheduler_error_move_to_target_zone_safe();
 	void scheduler_error_move_to_target_zone();
 	void scheduler_error_check_object_gripped();
+	void scheduler_error_check_object_finished();
 	void scheduler_error_gripper_close();
 	void scheduler_error_gripper_release();
 	void scheduler_error_watch_scene();
