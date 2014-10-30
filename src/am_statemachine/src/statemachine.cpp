@@ -1167,12 +1167,13 @@ void Statemachine::scheduler_error_move_to_object()
 	{
 	case fsm::NO_DK_SOL:
 	case fsm::MOTION_PLANNING_ERROR:
+	case fsm::NO_IK_SOL:
 		msg_warn("Statemachine-Errorhandler: gen. motion planning error -> retry");
 		//retry:
 		move_to_object_state_=OPEN;
 		move_to_object_counter_++;
 
-		if(move_to_object_counter_ > 1)
+		if(move_to_object_counter_ > 3)
 		{
 			move_to_object_counter_=0;
 			//try to close the gripper
@@ -1180,20 +1181,20 @@ void Statemachine::scheduler_error_move_to_object()
 		}
 		break;
 
-	case fsm::NO_IK_SOL:
-		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-
-		if(selected_object_pose_ < object_vision_pose.size()-1)
-		{
-			move_to_object_state_=OPEN;
-			selected_object_pose_++;
-		}
-		else
-		{
-			//skip vision pose and try to grasp the object
-			move_to_object_state_=FINISHED;
-		}
-		break;
+//	case fsm::NO_IK_SOL:
+//		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+//
+//		if(selected_object_pose_ < object_vision_pose.size()-1)
+//		{
+//			move_to_object_state_=OPEN;
+//			selected_object_pose_++;
+//		}
+//		else
+//		{
+//			//skip vision pose and try to grasp the object
+//			move_to_object_state_=FINISHED;
+//		}
+//		break;
 
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_object_state_=FINISHED;
