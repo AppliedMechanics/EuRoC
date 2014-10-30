@@ -1895,7 +1895,7 @@ int Statemachine::request_task()
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
-			max_explore_poses_ = nr_exp_poses_;
+			max_explore_poses_ = 10;
 			break;
 		case 4:
 			planning_mode_.object	= MOVE_IT_9DOF;
@@ -3650,10 +3650,15 @@ int Statemachine::gripper_close()
 		ROS_INFO("gripper_close() called: OPEN (close) OPEN (set object load)");
 
 		//calculate estimated gripper forces over friction (friction-coefficient=0.1, safety-factor=1.5)
-		gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*0.1);
+		//gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*0.1);
+		gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*1);
 		if (gripper_control_srv_.request.gripping_force>170)
 		{
 			gripper_control_srv_.request.gripping_force=170;
+		}
+		if(gripper_control_srv_.request.gripping_force<10)
+		{
+			gripper_control_srv_.request.gripping_force=10;
 		}
 
 		ROS_INFO("gripper force set to %3.2fN",gripper_control_srv_.request.gripping_force);
@@ -3887,7 +3892,7 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 #else
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
-		if(active_task_number_ == 3 || active_task_number_ == 4)
+		if((active_task_number_ == 3 || active_task_number_ == 4)&& (cur_obj_gripped_==true))
 		{
 		//send goals to motion-planning
 		active_goal_=0;
@@ -4173,7 +4178,7 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 #else
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
-		if(active_task_number_ == 3 || active_task_number_ == 4)
+		if((active_task_number_ == 3 || active_task_number_ == 4) && (cur_obj_gripped_==true))
 		{
 			//send goals to motion-planning
 			active_goal_=0;

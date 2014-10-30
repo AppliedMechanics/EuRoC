@@ -296,7 +296,7 @@ bool StateObserver::ReturnObjectPickedUp(am_msgs::ObjectPickedUp::Request &req, 
 		// position verctor size - 3 because gripper position value is given by the third last entry
 		// set gripper to close fully: Statemachine::gripper_close() -> main_gripper_interface::gripper_interface(...)
 		if (_telemetry.measured.position[_telemetry.measured.position.size() - 3] >
-		abs(_telemetry.commanded.position[_telemetry.commanded.position.size() - 3]) &&
+		abs(_telemetry.commanded.position[_telemetry.commanded.position.size() - 3]+0.002) &&
 		_telemetry.measured.position[_telemetry.measured.position.size() - 3] > 0.003)//0.003->position uncertainties into account
 		{
 
