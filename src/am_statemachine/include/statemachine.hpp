@@ -8,6 +8,8 @@
 #include "std_msgs/Bool.h"
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
+#include <tf/transform_listener.h>
+#include <tf/LinearMath/Transform.h>
 #include <octomap_msgs/BoundingBoxQuery.h>
 
 //general includes
@@ -211,6 +213,9 @@ private:
 	std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
 	std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
 	std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
+
+	//transformation from gp-tcp to object origin
+	tf::Transform gp_obj_orig_;
 
 	//!goal queue for motion planning action server
 	std::vector<am_msgs::goalPoseGoal> goal_queue;

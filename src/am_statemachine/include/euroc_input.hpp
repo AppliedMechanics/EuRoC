@@ -36,17 +36,19 @@ public:
 	void select_new_object();
 	//!get active object
 	am_msgs::Object get_active_object();
+	//!get active object state
+	uint16_t get_active_object_state(){return obj_state_[obj_queue_[0].obj_idx];};
+	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
+
 	//!print object properties
 	void print_object(am_msgs::Object*obj);
 	//!set active_object_ to finished
 	void set_active_object_finished();
 	//!set abs. pose for current object
 	void set_object_pose(geometry_msgs::Pose abs_pose);
-	void set_object_pose(geometry_msgs::Pose abs_pose,uint16_t idx);
 	//!tried every object once
 	bool is_active_object_last_object();
 
-	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
@@ -59,8 +61,9 @@ public:
 	uint16_t get_nr_objects(){return nr_objects_;};
 
 	//!hack
-	am_msgs::Object get_object(uint16_t cnt){return objects_[cnt];};
-	am_msgs::TargetZone get_target_zone(uint16_t cnt){return target_zones_[cnt];};
+	am_msgs::Object get_object(uint16_t idx){return objects_[idx];};
+	am_msgs::TargetZone get_target_zone(uint16_t idx){return target_zones_[idx];};
+	void set_object_pose(geometry_msgs::Pose abs_pose,uint16_t idx);
 
 
 	//!all objects finished
@@ -80,6 +83,19 @@ public:
 	//!determine in which order the puzzle peaces need to be placed into the fixture
 	void order_of_puzzle_pieces();
 
+
+	typedef enum{
+		EIN_OBJ_INIT=0,
+		EIN_OBJ_LOCATED,
+		EIN_OBJ_PARKING,
+		EIN_OBJ_FINISHED,
+		EIN_OBJ_UNCERTAIN
+	}ein_obj_state_t;
+	typedef enum{
+		EIN_PLACE=0,
+		EIN_PARKING,
+		EIN_PLACE_FROM_PARKING
+	}ein_action_t;
 private:
 	//!task number of active task
 	uint16_t task_nr_;
@@ -107,18 +123,6 @@ private:
 	//!number of objects
 	uint8_t nr_objects_;
 
-	typedef enum{
-		EIN_OBJ_INIT=0,
-		EIN_OBJ_LOCATED,
-		EIN_OBJ_PARKING,
-		EIN_OBJ_FINISHED,
-		EIN_OBJ_UNCERTAIN
-	}ein_obj_state_t;
-	typedef enum{
-		EIN_PLACE=0,
-		EIN_PARKING,
-		EIN_PLACE_FROM_PARKING
-	}ein_action_t;
 	typedef struct{
 		uint16_t obj_idx;
 		am_msgs::Object *data;
@@ -135,7 +139,6 @@ private:
 
 	//!target zones
 	std::vector<am_msgs::TargetZone> target_zones_;
-	std::vector<int16_t> obj_idx_on_zone_;
 
 	//!number of target_zones
 	uint8_t nr_zones_;

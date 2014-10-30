@@ -2176,6 +2176,7 @@ int Statemachine::check_object_finished()
 
 		//set current object finished
 		ein_->set_active_object_finished();
+
 		//and get next one
 		scheduler_next_object();
 
@@ -2745,6 +2746,7 @@ int Statemachine::explore_environment_check()
 
 		explore_environment_check_state_=OPEN;
 		scheduler_next();
+		scheduler_printqueue();
 
 		ROS_INFO("explore_environment_check() called: FINISHED");
 	}
@@ -2760,7 +2762,16 @@ int Statemachine::locate_object_global()
 
 		//ROS_INFO("current object:");
 		//ein_->print_object(&cur_obj_);
-		ROS_INFO("searching for: %s",cur_obj_.name.c_str());
+		if(ein_->get_active_object_state()==EurocInput::EIN_OBJ_LOCATED)
+		{
+			ROS_INFO("object %s already located, skip locate_object_global()",cur_obj_.name.c_str());
+			locate_object_global_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("searching for: %s",cur_obj_.name.c_str());
+		}
 
 		if(vision_action_client_->isServerConnected()==0)
 		{
@@ -2864,11 +2875,6 @@ int Statemachine::locate_all_objects_global()
 	{
 		ROS_INFO("locate_all_objects_global() called: OPEN");
 
-		//ROS_INFO("current object:");
-		//ein_->print_object(&cur_obj_);
-		cur_obj_=ein_->get_object(0);
-		//ROS_INFO("searching for: %s",cur_obj_.name.c_str());
-
 		if(vision_action_client_->isServerConnected()==0)
 		{
 			msg_warn("vision_action_client_->isServerConnected=0!");
@@ -2878,6 +2884,8 @@ int Statemachine::locate_all_objects_global()
 			msg_warn("action client recreated, waiting for server");
 			vision_action_client_->waitForServer();
 		}
+
+		cur_obj_=ein_->get_object(0);
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -2904,6 +2912,7 @@ int Statemachine::locate_all_objects_global()
 		}
 
 		//send goal to vision-node.
+		ROS_INFO("searching for: %s",vision_queue[0].object.name.c_str());
 		locate_all_objects_global_state_=RUNNING;
 		vision_action_client_->sendGoal(vision_queue[0],
 				boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
@@ -2927,6 +2936,7 @@ int Statemachine::locate_all_objects_global()
 			ROS_INFO("locate_all_objects_global() called: RUNNING (remaining goals)");
 		}
 
+		ROS_INFO("searching for: %s",vision_queue[active_goal_].object.name.c_str());
 		vision_action_client_->sendGoal(vision_queue[active_goal_],
 						boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
 						visionClient::SimpleActiveCallback(),
@@ -2938,7 +2948,7 @@ int Statemachine::locate_all_objects_global()
 		ROS_INFO("locate_all_objects_global() called: FINISHED");
 
 		//publish object state for motion planning
-		publish_obj_state(OBJ_LOCATED);
+		//publish_obj_state(OBJ_LOCATED);
 
 		//==============================================
 		scheduler_next();
@@ -4068,6 +4078,23 @@ int Statemachine::move_to_object()
 	{
 		ROS_INFO("move_to_object() called: FINISHED");
 
+		//calculate transformation from gp tcp to object origin for grapsing with object_grip_pose[selected_object_pose_]
+		tf::Transform gp;
+		gp.setOrigin(tf::Vector3(goal_queue[0].goal_pose.position.x,
+				goal_queue[0].goal_pose.position.y,goal_queue[0].goal_pose.position.z));
+		gp.setRotation(tf::Quaternion(goal_queue[0].goal_pose.orientation.x,
+				goal_queue[0].goal_pose.orientation.y,goal_queue[0].goal_pose.orientation.z,
+				goal_queue[0].goal_pose.orientation.w));
+
+		tf::Transform obj_orig;
+		obj_orig.setOrigin(tf::Vector3(cur_obj_.abs_pose.position.x,
+				cur_obj_.abs_pose.position.y,cur_obj_.abs_pose.position.z));
+		obj_orig.setRotation(tf::Quaternion(cur_obj_.abs_pose.orientation.x,
+				cur_obj_.abs_pose.orientation.y,cur_obj_.abs_pose.orientation.z,
+				cur_obj_.abs_pose.orientation.w));
+
+		gp_obj_orig_.mult(gp.inverse(),obj_orig);
+
 		//==============================================
 		scheduler_next();
 		//==============================================
@@ -4176,7 +4203,7 @@ int Statemachine::move_to_target_zone_safe()
 			reached_active_goal_=false;
 			goal_queue.resize(nr_goals_);
 
-			goal_queue[0].goal_pose = target_vision_pose[selected_target_pose_];
+			goal_queue[0].goal_pose = target_safe_pose[selected_target_pose_];
 			goal_queue[0].planning_algorithm = planning_mode_.target;
 			goal_queue[0].planning_frame = GP_TCP;
 			goal_queue[0].inter_steps = 0;
@@ -4430,6 +4457,28 @@ int Statemachine::move_to_target_zone()
 	else if(move_to_target_zone_state_==FINISHED)
 	{
 		ROS_INFO("move_to_target_zone() called: FINISHED");
+
+		geometry_msgs::Pose tmp_pose;
+		//calculate transformation from gp tcp to object origin for grapsing with object_grip_pose[selected_object_pose_]
+		tf::Transform gp;
+		gp.setOrigin(tf::Vector3(goal_queue[0].goal_pose.position.x,
+				goal_queue[0].goal_pose.position.y,goal_queue[0].goal_pose.position.z));
+		gp.setRotation(tf::Quaternion(goal_queue[0].goal_pose.orientation.x,
+				goal_queue[0].goal_pose.orientation.y,goal_queue[0].goal_pose.orientation.z,
+				goal_queue[0].goal_pose.orientation.w));
+
+		tf::Transform obj_orig;
+		obj_orig.mult(gp,gp_obj_orig_);
+		tmp_pose.position.x=obj_orig.getOrigin().getX();
+		tmp_pose.position.y=obj_orig.getOrigin().getY();
+		tmp_pose.position.z=obj_orig.getOrigin().getZ();
+		tmp_pose.orientation.x=obj_orig.getRotation().getX();
+		tmp_pose.orientation.y=obj_orig.getRotation().getY();
+		tmp_pose.orientation.z=obj_orig.getRotation().getZ();
+		tmp_pose.orientation.w=obj_orig.getRotation().getW();
+
+		//gp_obj_orig_=
+		ein_->set_object_pose(tmp_pose);
 
 		//publish object state for motion planning
 		publish_obj_state(OBJ_PLACED);

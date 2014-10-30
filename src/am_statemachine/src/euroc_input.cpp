@@ -1040,7 +1040,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 
 			if(cnt!=obj_state_.size())
 			{
-				msg_info("2 Target zones are occupied! -> Try to locate all objects first");
+				ROS_INFO("2 Target zones are occupied! -> Try to locate all objects first");
 				ROS_INFO("Objects:");
 				for(unsigned ii=0;ii<objects_.size();ii++)
 				{
@@ -1073,8 +1073,11 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			else
 			{
 				//msg_info("implement me!!");
-				ROS_INFO("Result for 2 Objects on 2 target_zones:");
-				obj_idx_on_zone_.clear();
+				//vector of objects on zones, indizes are stored in a tupel
+				std::vector<std::vector<int16_t> >obj_idx_on_zone_;
+				//def: (obj idx,target zone idx)
+				std::vector<int16_t> tupel;
+				tupel.resize(2);
 
 
 				//find occupied zones
@@ -1083,6 +1086,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					if(target_zone_occupied[ii])
 					{
 						double rad2=pow(target_zones_[ii].max_distance,2);
+						//find object on that zone
 						for(uint16_t oo=0;oo<nr_objects_;oo++)
 						{
 							double dist2=pow(objects_[oo].abs_pose.position.x-target_zones_[ii].position.x,2)+
@@ -1091,20 +1095,44 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 							//object is lying on that zone
 							if(dist2<rad2)
 							{
-								obj_idx_on_zone_.push_back(oo);
-								ROS_INFO("Object # %d on TargetZone %d",oo,ii);
-								ROS_INFO("Targetzone belongs to Object # %d",target_zone_idx_[oo]);
+								tupel[0]=oo;
+								tupel[1]=ii;
+								obj_idx_on_zone_.push_back(tupel);
+
+								if(target_zone_idx_[oo]==ii)
+								{
+									ROS_INFO("object %d is already in its target zone (%d)!!",oo,ii);
+									obj_state_[oo]=EIN_OBJ_FINISHED;
+								}
 								break;
 							}
 						}
 					}
 				} //for(uint16_t ii=0;ii<nr_zones_;ii++)
+				ROS_INFO("############################################");
+				ROS_INFO("Result for 2 Objects on 2 target_zones:");
+				ROS_INFO(" ");
+				ROS_INFO("obj_idx_on_zone_(0,0)=%d | obj_idx_on_zone_(0,1)=%d ",obj_idx_on_zone_[0][0],obj_idx_on_zone_[0][1]);
+				ROS_INFO("obj_idx_on_zone_(1,0)=%d | obj_idx_on_zone_(1,1)=%d ",obj_idx_on_zone_[1][0],obj_idx_on_zone_[1][1]);
+				ROS_INFO(" ");
+				ROS_INFO("Interpretation:");
+				for(uint16_t ii=0;ii<obj_idx_on_zone_.size();ii++)
+				{
+					ROS_INFO("Object # %d on TargetZone %d",obj_idx_on_zone_[ii][0],obj_idx_on_zone_[ii][1]);
+					//quatsch!
+					//ROS_INFO("Targetzone belongs to Object # %d",target_zone_idx_[obj_idx_on_zone_[ii][0]]);
+				}
 
 				//delete occupied objects from queue
-				for(uint16_t ii=0;ii<nr_objects_;ii++)
+				for(uint16_t ii=0;ii<obj_queue_.size();ii++)
 				{
-					if(obj_queue_[ii].target_zone_occupied==1)
-						obj_queue_.erase(obj_queue_.begin()+ii);
+					if(obj_queue_[ii].target_zone_occupied==0)
+					{
+						temp_obj=obj_queue_[ii];
+						obj_queue_.clear();
+						obj_queue_.push_back(temp_obj);
+						break;
+					}
 				}
 
 				//find objects with one shape (= not handlebar)
@@ -1112,69 +1140,80 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 				int handle_idx=0;
 				for(uint16_t ii=0;ii<obj_idx_on_zone_.size();ii++)
 				{
-					if(objects_[obj_idx_on_zone_[ii]].nr_shapes==1)
+					if(objects_[obj_idx_on_zone_[ii][0]].nr_shapes==1)
 					{
 						cnt_1shape++;
 					}
 					else
 					{
-						handle_idx=obj_idx_on_zone_[ii];
+						handle_idx=obj_idx_on_zone_[ii][0];
 						obj_idx_on_zone_.erase(obj_idx_on_zone_.begin()+ii);
 					}
 				}
+
 				if(cnt_1shape==2)
 				{
 					uint16_t box_idx;
-					if( strcmp(objects_[obj_idx_on_zone_[0]].shape[0].type.c_str(),"box") == 0)
+					if( strcmp(objects_[obj_idx_on_zone_[0][0]].shape[0].type.c_str(),"box") == 0)
 						box_idx=0;
 					else
 						box_idx=1;
 
-					temp_obj.obj_idx=obj_idx_on_zone_[box_idx];
+					temp_obj.obj_idx=obj_idx_on_zone_[box_idx][0];
+					temp_obj.data=&objects_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.action=EIN_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][1]];
 					temp_obj.target_zone_occupied=1;
 					temp_obj.target_zone_obj_idx=1-box_idx;
 
 					obj_queue_.push_back(temp_obj);
 
-					temp_obj.obj_idx=1-box_idx;
+					temp_obj.obj_idx=obj_idx_on_zone_[1-box_idx][0];
+					temp_obj.data=&objects_[obj_idx_on_zone_[1-box_idx][0]];
 					temp_obj.action=EIN_PLACE;
-					temp_obj.target_zone_idx=target_zone_idx_[1-box_idx];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-box_idx][1]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
 					obj_queue_.push_back(temp_obj);
 
-					temp_obj.obj_idx=obj_idx_on_zone_[box_idx];
+					temp_obj.obj_idx=obj_idx_on_zone_[box_idx][0];
+					temp_obj.data=&objects_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.action=EIN_PLACE_FROM_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][1]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
+
+					obj_queue_.push_back(temp_obj);
 				}
 				else if(cnt_1shape==1)
 				{
-					temp_obj.obj_idx=obj_idx_on_zone_[0];
+					temp_obj.obj_idx=obj_idx_on_zone_[1-handle_idx][0];
+					temp_obj.data=&objects_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.action=EIN_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[0]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][1]];
 					temp_obj.target_zone_occupied=1;
 					temp_obj.target_zone_obj_idx=handle_idx;
 
 					obj_queue_.push_back(temp_obj);
 
 					temp_obj.obj_idx=handle_idx;
+					temp_obj.data=&objects_[obj_idx_on_zone_[handle_idx][0]];
 					temp_obj.action=EIN_PLACE;
-					temp_obj.target_zone_idx=target_zone_idx_[handle_idx];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[handle_idx][1]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
 					obj_queue_.push_back(temp_obj);
 
-					temp_obj.obj_idx=obj_idx_on_zone_[0];
+					temp_obj.obj_idx=obj_idx_on_zone_[1-handle_idx][0];
+					temp_obj.data=&objects_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.action=EIN_PLACE_FROM_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[0]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][1]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
+
+					obj_queue_.push_back(temp_obj);
 				}
 				else
 					msg_error("dont know what to do...");
@@ -1206,6 +1245,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 				return -1;
 			}
 		}
+
 	} //end task_nr_!=5/6
 
 	msg_info("EurocInput: sort_objects() finished");
@@ -1274,7 +1314,23 @@ am_msgs::TargetZone EurocInput::get_active_target_zone()
 	}
 	else
 	{
-		return target_zones_[obj_queue_[0].target_zone_idx];
+		if(obj_queue_[0].action == EIN_PARKING)
+		{
+			ROS_INFO("action = parking -> place object next to target zone");
+			am_msgs::TargetZone temp_zone=target_zones_[obj_queue_[0].target_zone_idx];
+			if(temp_zone.position.x>=0)
+				temp_zone.position.x-=3*temp_zone.max_distance;
+			else
+				temp_zone.position.x+=3*temp_zone.max_distance;
+			if(temp_zone.position.y>=0)
+				temp_zone.position.y-=3*temp_zone.max_distance;
+			else
+				temp_zone.position.y+=3*temp_zone.max_distance;
+
+			return temp_zone;
+		}
+		else
+			return target_zones_[obj_queue_[0].target_zone_idx];
 	}
 }
 
@@ -1541,7 +1597,12 @@ void EurocInput::set_active_object_finished()
 	}
 	else
 	{
-		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
+		if(obj_queue_[0].action == EIN_PARKING)
+		{
+			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_LOCATED;
+		}
+		else
+			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
 		obj_queue_.erase(obj_queue_.begin());
 	}
 }
@@ -1556,7 +1617,8 @@ void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
 	else
 	{
 		obj_queue_[0].data->abs_pose=abs_pose;
-		obj_state_[0] = EIN_OBJ_LOCATED;
+		if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
+			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_LOCATED;
 		return;
 	}
 }
