@@ -3902,7 +3902,7 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 #else
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
-		if((active_task_number_ == 3 || active_task_number_ == 4)&& (cur_obj_gripped_==true))
+		if((active_task_number_ == 3 || active_task_number_ == 4)&& (cur_obj_gripped_==false))
 		{
 		//send goals to motion-planning
 		active_goal_=0;
