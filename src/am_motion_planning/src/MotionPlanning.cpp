@@ -346,39 +346,70 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	//set target algorithm
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
+	//to save goal pose
+	geometry_msgs::Pose goal_pose_GPTCP_old_ = goal_pose_GPTCP_;
 
+	std::vector< geometry_msgs::Pose > waypoints_;
+	//compute waypoints
+	computeWayPoints(waypoints_);
 
-//	constraints_.position_constraints.resize(1);
-//	constraints_.position_constraints.at(0).link_name = group->getEndEffectorLink();
-//	constraints_.position_constraints.at(0).header.frame_id = "GP_TCP";
-//	constraints_.position_constraints.at(0).target_point_offset.x = 0.0;
-//	constraints_.position_constraints.at(0).target_point_offset.y = 0.0;
-//	constraints_.position_constraints.at(0).target_point_offset.z = 0.0;
-//
-//	constraints_.position_constraints.at(0).weight = 1.0;
+	//initialize move group with current state
+	MoveIt_initializeMoveGroup();
 
+	planned_path_.clear();
 
-	// get moveit solution
-	if (!MoveIt_getSolution2())
+	for(uint64_t ii = 0; ii < waypoints_.size(); ii++)
 	{
-		msg_error("No MoveIT Solution found.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-		return;
+		goal_pose_GPTCP_ = waypoints_.at(ii);
+
+		// get moveit solution
+		if (!MoveIt_getSolutionNoInitialize())
+		{
+			msg_error("No MoveIT Solution found for waypoint %d.",ii);
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+
+			if(ii == waypoints_.size()-1)
+			{
+				msg_error("No MoveIT Solution found goal pose",ii);
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+				return;
+
+			}
+		}
+
+		// set start state to last waypoint
+		if(planned_path_.empty() != true)
+		{
+			moveit_msgs::RobotState start_state;
+			start_state.joint_state.name = group->getActiveJoints();
+			start_state.joint_state.position = planned_path_.back().q;
+			start_state.joint_state.velocity.resize(group->getActiveJoints().size());
+			for(uint64_t jj = 0; jj < start_state.joint_state.velocity.size(); jj++)
+				start_state.joint_state.velocity.at(jj) = 0.0;
+
+			group->setStartState(start_state);
+		}
+
+	}
+	goal_pose_GPTCP_ = goal_pose_GPTCP_old_;
+
+	// fill move along joint path
+	move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+	move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+	for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+	{
+		move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
 	}
 
-//	// get moveit solution
-//	if (!getMoveItSolutionInTaskSpace())
-//	{
-//		msg_error("No MoveIT Solution found.");
-//		goalPose_result_.reached_goal = false;
-//		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-//		return;
-//	}
-//	else
-//	{
-//		ROS_INFO("MoveIT Solution found for task space movements.");
-//	}
+	// set the joint limits (velocities/accelerations) of the move along joint path service request
+	setMoveRequestJointLimits();
+	// set the TCP limits of the move along joint path service
+	setMoveRequestTCPLimits();
+
+
 	break;
 	}
 	//------------------------------------------------------------------------------------------------
@@ -1029,7 +1060,7 @@ bool MotionPlanning::MoveIt_getSolution()
 
 }
 
-bool MotionPlanning::MoveIt_getSolution2()
+bool MotionPlanning::MoveIt_getSolutionNoInitialize()
 {
 
 	try
@@ -1037,7 +1068,7 @@ bool MotionPlanning::MoveIt_getSolution2()
 		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
 		{
 
-			if(!MoveIt_initializeMoveGroup()){return false;}
+			//if(!MoveIt_initializeMoveGroup()){return false;}
 
 			unsigned current_setTarget_attempt = 1;
 			bool setTarget_successful = false;
@@ -1052,35 +1083,12 @@ bool MotionPlanning::MoveIt_getSolution2()
 //					ROS_INFO("Planning!");
 //					ROS_INFO_STREAM(group->getName());
 //					ROS_INFO_STREAM(group->getPoseReferenceFrame());
-
-					geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
-
-					//set constraints
-					moveit_msgs::Constraints constraints_;
-					constraints_.name = "move_to_object";
-
-					constraints_.orientation_constraints.resize(1);
-					constraints_.orientation_constraints.at(0).link_name = group->getEndEffectorLink();
-					constraints_.orientation_constraints.at(0).orientation = test.pose.orientation;
-				//	constraints_.orientation_constraints.at(0).orientation.x = 0.0;
-				//	constraints_.orientation_constraints.at(0).orientation.y = 0.0;
-				//	constraints_.orientation_constraints.at(0).orientation.z = 0.0;
-
-					constraints_.orientation_constraints.at(0).absolute_x_axis_tolerance = 0.10;
-					constraints_.orientation_constraints.at(0).absolute_y_axis_tolerance = 0.10;
-					constraints_.orientation_constraints.at(0).absolute_z_axis_tolerance = 0.10;
-					constraints_.orientation_constraints.at(0).weight = 0.8;
-					constraints_.orientation_constraints.at(0).header.frame_id = "GP_TCP";
-
-					group->setPathConstraints(constraints_);
-					//group->setPlannerId(ompl_planners[0]);
-
 					planning_successful = group->plan(motion_plan_);
 
 					if (planning_successful)
 					{
 						ROS_INFO("Planning successful!");
-						planned_path_.clear();
+
 
 						// for each configuration of the trajectory except from the start configuration
 						for (unsigned configIdx = 0; configIdx < motion_plan_.trajectory_.joint_trajectory.points.size(); ++configIdx)
@@ -1096,20 +1104,9 @@ bool MotionPlanning::MoveIt_getSolution2()
 							planned_path_.push_back(current_config);
 						}
 
-						current_configuration_ = planned_path_[0];
+						//current_configuration_ = planned_path_[0];
 
-						move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
 
-						move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
-						for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
-						{
-							move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
-						}
-
-						// set the joint limits (velocities/accelerations) of the move along joint path service request
-						setMoveRequestJointLimits();
-						// set the TCP limits of the move along joint path service
-						setMoveRequestTCPLimits();
 
 						return true;
 					}
@@ -1143,8 +1140,340 @@ bool MotionPlanning::MoveIt_getSolution2()
 		return false;
 	}
 	return true;
+}
 
 
+
+//bool MotionPlanning::MoveIt_getSolution2()
+//{
+//
+//	try
+//	{
+//		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+//		{
+//
+//			if(!MoveIt_initializeMoveGroup()){return false;}
+//
+//			unsigned current_setTarget_attempt = 1;
+//			bool setTarget_successful = false;
+//			bool planning_successful = false;
+//
+//			while (!planning_successful)
+//			{
+//				setTarget_successful = false;
+//				setTarget_successful = setPlanningTarget(current_setTarget_algorithm_);
+//				if (setTarget_successful)
+//				{
+////					ROS_INFO("Planning!");
+////					ROS_INFO_STREAM(group->getName());
+////					ROS_INFO_STREAM(group->getPoseReferenceFrame());
+//
+//					geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
+//
+//					//set constraints
+//					moveit_msgs::Constraints constraints_;
+//					constraints_.name = "move_to_object";
+//
+//					constraints_.orientation_constraints.resize(1);
+//					constraints_.orientation_constraints.at(0).link_name = group->getEndEffectorLink();
+//					constraints_.orientation_constraints.at(0).orientation = test.pose.orientation;
+//				//	constraints_.orientation_constraints.at(0).orientation.x = 0.0;
+//				//	constraints_.orientation_constraints.at(0).orientation.y = 0.0;
+//				//	constraints_.orientation_constraints.at(0).orientation.z = 0.0;
+//
+//					constraints_.orientation_constraints.at(0).absolute_x_axis_tolerance = 0.10;
+//					constraints_.orientation_constraints.at(0).absolute_y_axis_tolerance = 0.10;
+//					constraints_.orientation_constraints.at(0).absolute_z_axis_tolerance = 0.10;
+//					constraints_.orientation_constraints.at(0).weight = 0.8;
+//					constraints_.orientation_constraints.at(0).header.frame_id = "GP_TCP";
+//
+//					group->setPathConstraints(constraints_);
+//					//group->setPlannerId(ompl_planners[0]);
+//
+//					planning_successful = group->plan(motion_plan_);
+//
+//					if (planning_successful)
+//					{
+//						ROS_INFO("Planning successful!");
+//						planned_path_.clear();
+//
+//						// for each configuration of the trajectory except from the start configuration
+//						for (unsigned configIdx = 0; configIdx < motion_plan_.trajectory_.joint_trajectory.points.size(); ++configIdx)
+//						{
+//							// current configuration
+//							euroc_c2_msgs::Configuration current_config;
+//
+//							// for each joint at the current configuration
+//							for (unsigned jointIdx = 0; jointIdx < group->getActiveJoints().size(); ++ jointIdx)
+//							{
+//								current_config.q.push_back(motion_plan_.trajectory_.joint_trajectory.points[configIdx].positions[jointIdx]);
+//							}
+//							planned_path_.push_back(current_config);
+//						}
+//
+//						current_configuration_ = planned_path_[0];
+//
+//						move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+//
+//						move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+//						for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+//						{
+//							move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
+//						}
+//
+//						// set the joint limits (velocities/accelerations) of the move along joint path service request
+//						setMoveRequestJointLimits();
+//						// set the TCP limits of the move along joint path service
+//						setMoveRequestTCPLimits();
+//
+//						return true;
+//					}
+//				}
+//
+//				current_setTarget_attempt++;
+//				if (current_setTarget_attempt > max_setTarget_attempts_)
+//				{
+//					msg_error("MoveIt: No Motion Plan found!");
+//					goalPose_result_.error_reason = fsm::NO_IK_SOL;
+//					return false;
+//				}
+//
+//				current_setTarget_algorithm_++;
+//			}
+//
+//
+//		}
+//		else	// if (!ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+//		{
+//			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+//			return false;
+//		}
+//
+//	} // end try
+//
+//	catch(...)
+//	{
+//		msg_error("MotionPlanning::Error in MoveIt! Planning.");
+//		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+//		return false;
+//	}
+//	return true;
+//
+//
+//}
+
+bool MotionPlanning::MoveIt_initializeMoveGroup()
+{
+
+	//	// print telemetry data
+	//	ROS_WARN("Measured telemetry: ");
+	//	for (unsigned idx = 0; idx < _telemetry.joint_names.size(); ++idx)
+	//	{
+	//		ROS_INFO_STREAM(_telemetry.joint_names[idx] << "  " << _telemetry.measured.position[idx]);
+	//	}
+
+	// store the joint names of the move group in a vector
+	std::vector<std::string> joint_namesMI = group->getActiveJoints();
+
+	// print the joint names of the move group
+	ROS_INFO("Joint names of the current move group:");
+	if (!joint_namesMI.empty())
+	{
+		//		for(unsigned idx = 0; idx < joint_namesMI.size(); ++idx)
+		//		{
+		//			ROS_INFO_STREAM("MoveitJoint: "<< joint_namesMI[idx]);
+		//		}
+	}
+	else
+	{
+		ROS_INFO("MoveGroup: Vector of joint names empty. General Motion Planning Error!");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+
+
+
+	// set start state equal to measured telemetry positions and velocities = 0;
+	ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
+	moveit_msgs::RobotState start_state;
+
+	// declare joint positions and velocities
+	std::vector<double> joint_positionsMI;
+	std::vector<double> joint_velocitiesMI;
+
+
+	unsigned matchCounter = 0;
+
+	for (unsigned idxMI = 0; idxMI < joint_namesMI.size(); ++ idxMI)
+	{
+		unsigned idxTELE = 0;
+		while (joint_namesMI.at(idxMI).compare(_telemetry.joint_names.at(idxTELE)))
+		{
+			idxTELE++;
+			if (idxTELE > _telemetry.joint_names.size()-1)
+			{
+				ROS_WARN("MoveIt! joint not found in telemetry");
+				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+				return false;
+			}
+		}
+
+		//		// print idx of the matching joint in the telemetry
+		//		ROS_INFO_STREAM("telemetry idx of the current joint: " << idxTELE);
+
+		// store the telemetry joint positions in the corresponding order of the move group
+		joint_positionsMI.push_back(_telemetry.measured.position[idxTELE]);
+		joint_velocitiesMI.push_back(0.0);
+		//		// increase counter of matches between telemetry joints and MoveIt joints
+		//		ROS_INFO_STREAM("number of joint matches: " << joint_positionsMI.size());
+	}
+
+	if (joint_positionsMI.size() == joint_namesMI.size())
+	{
+		ROS_INFO("All MoveIt! joints found in the telemetry.");
+
+		start_state.joint_state.name = joint_namesMI;
+		start_state.joint_state.position = joint_positionsMI;
+		start_state.joint_state.velocity = joint_velocitiesMI;
+		group->setStartState(start_state);
+
+	}
+	else
+	{
+		ROS_ERROR("Setting start state failed");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+
+//
+//	geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
+//
+//	ROS_INFO("Pose: ");
+//	ROS_INFO_STREAM(test.pose.orientation.w<<" "<<test.pose.orientation.x<<" "<<test.pose.orientation.y<<" "<<test.pose.orientation.z);
+//	ROS_INFO_STREAM(test.pose.position.x<<" "<<test.pose.position.y<<" "<<test.pose.position.z);
+//	ROS_INFO_STREAM(test.header.frame_id);
+	//==========================================================================================
+	//DEBUG Informations
+
+	//	// print joint names, positions and velocities
+	//	for (unsigned idx = 0; idx < start_state.joint_state.name.size(); ++idx)
+	//	{
+	//		ROS_INFO_STREAM(start_state.joint_state.name[idx] << "  "
+	//				<< start_state.joint_state.position[idx] << "  "
+	//				<< start_state.joint_state.velocity[idx]);
+	//	}
+	//
+	//	ROS_INFO_STREAM("Default goal joint tolerance: " << group->getGoalJointTolerance());
+	//	ROS_INFO_STREAM("Default goal position tolerance: " << group->getGoalPositionTolerance());
+	//	ROS_INFO_STREAM("Default goal orientation tolerance: " << group->getGoalOrientationTolerance());
+	//	//		group->setGoalTolerance(1);
+	//	//		group->setGoalPositionTolerance(0.1);
+	//	//		group->setGoalOrientationTolerance(0.1);
+	//	//		ROS_INFO_STREAM("Goal tolerance set to 1");
+	//	ROS_INFO_STREAM("Current goal joint tolerance: " << group->getGoalJointTolerance());
+	//	ROS_INFO_STREAM("Current goal position tolerance: " << group->getGoalPositionTolerance());
+	//	ROS_INFO_STREAM("Current goal orientation tolerance: " << group->getGoalOrientationTolerance());
+
+	// print the planning interface description
+	moveit_msgs::PlannerInterfaceDescription plintdesc;
+	group->getInterfaceDescription(plintdesc);
+	//	ROS_INFO_STREAM("Name of the planner interface: " << plintdesc.name);
+	//	ROS_INFO("Names of the planner ID's within the interface:");
+	//	for (unsigned idx = 0; idx < plintdesc.planner_ids.size(); ++idx)
+	//	{
+	//		ROS_INFO_STREAM(idx << ": " << plintdesc.planner_ids[idx]);
+	//	}
+
+	// print the planning reference frame
+	//	ROS_INFO_STREAM("Planning frame:" << group->getPlanningFrame());
+	//	// print the pose reference frame
+	//	ROS_INFO_STREAM("Pose reference frame: " << group->getPoseReferenceFrame());
+	//	// print default planning time
+	//	ROS_INFO_STREAM("Default planning time: " << group->getPlanningTime() << " seconds.");
+	group->setPlanningTime(20);
+	//	ROS_INFO_STREAM("Planning time set to " << group->getPlanningTime() << " seconds.");
+	//	// print the name of the end effector
+	//	ROS_INFO_STREAM("End effector: " << group->getEndEffector());
+	//	// print the name of the end effector link
+	//	ROS_INFO_STREAM("End effector link: " << group->getEndEffectorLink());
+	//==========================================================================================
+
+
+
+	// get the robot model
+	robot_model::RobotModelConstPtr robot_model = planning_scene_monitor->getRobotModel();
+	const robot_model::JointModelGroup* joint_model_group_LWR = robot_model->getJointModelGroup("LWR_9DOF");
+	//	ROS_WARN("JOINT BOUNDS");
+	moveit::core::JointBoundsVector joint_bounds = joint_model_group_LWR->getActiveJointModelsBounds();
+
+	//	for (unsigned idx = 0; idx < joint_bounds.size(); ++idx)
+	//	{
+	//		ROS_INFO_STREAM("position bounded: " << joint_bounds.at(idx)->at(0).position_bounded_);
+	//		ROS_INFO_STREAM("min position: " << joint_bounds.at(idx)->at(0).min_position_);
+	//		ROS_INFO_STREAM("max position: " << joint_bounds.at(idx)->at(0).max_position_);
+	//
+	//		ROS_INFO_STREAM("velocity bounded: " << joint_bounds.at(idx)->at(0).velocity_bounded_);
+	//		ROS_INFO_STREAM("min velocity: " << joint_bounds.at(idx)->at(0).min_velocity_);
+	//		ROS_INFO_STREAM("max velocity: " << joint_bounds.at(idx)->at(0).max_velocity_);
+	//
+	//		ROS_INFO_STREAM("acceleration bounded: " << joint_bounds.at(idx)->at(0).acceleration_bounded_);
+	//		ROS_INFO_STREAM("min acceleration: " << joint_bounds.at(idx)->at(0).min_acceleration_);
+	//		ROS_INFO_STREAM("max acceleration: " << joint_bounds.at(idx)->at(0).max_acceleration_);
+	//	}
+
+
+	//==========================================================================================
+	// OCTOMAP
+	robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+	kinematic_model_ = robot_model_loader.getModel();
+
+	// if Octomap received, then stored in _octree
+
+	if(!skip_vision_)
+	{
+		if (octomap_manager_cleanupOctomap())
+			msg_info("Octomap cleaned up");
+	}
+
+	if(octomap_manager_getOctomap())
+	{
+		// Arming a planning scene message with octomap
+		_octree.header.frame_id =("/Origin");
+		planning_scene_.world.octomap.octomap = _octree;
+		// arming planning scene message with tf information
+		planning_scene_.world.octomap.octomap.header.frame_id = "/Origin";
+		planning_scene_.world.octomap.octomap.header.stamp = ros::Time::now();
+		planning_scene_.world.octomap.header.frame_id = "/Origin";
+		planning_scene_.world.octomap.header.stamp = ros::Time::now();
+	}
+
+	// Load current robot state into planning scene
+	planning_scene_.robot_state.joint_state = getCurrentJointState();
+	planning_scene_.robot_state.is_diff = true;
+
+	// Robot link padding
+	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+	{
+		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+			planning_scene_.link_padding[i].padding = 0.0;
+		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+			planning_scene_.link_padding[i].padding = 0.02;
+		else
+			planning_scene_.link_padding[i].padding = 0.01;
+	}
+
+	// setting planning scene message to type diff
+	planning_scene_.is_diff = true;
+
+	// Publish msg on topic /planning_scene
+	planning_scene_diff_publisher_.publish(planning_scene_);
+	planning_scene_diff_publisher_.publish(static_scene_);
+
+	//==========================================================================================
+
+	return true;
 }
 
 
@@ -1981,6 +2310,161 @@ bool MotionPlanning::transformToLWRBase()
 }
 
 
+
+void MotionPlanning::initializePlanningScene()
+{
+	ROS_INFO("Adding ground plane and pan tilt station to collision world...");
+
+	//************************
+	// ground plane
+	shape_msgs::SolidPrimitive primitive;
+	primitive.type = primitive.BOX;
+	primitive.dimensions.resize(3);
+	primitive.dimensions[0] = 2.0;//1.84;
+	primitive.dimensions[1] = 2.0;//1.84;
+	primitive.dimensions[2] = 0.01;
+
+	geometry_msgs::Pose primitive_pose;
+	primitive_pose.position.x = 0;
+	primitive_pose.position.y = 0;
+	primitive_pose.position.z = -0.005;//-0.01;
+	primitive_pose.orientation.x = 0;
+	primitive_pose.orientation.y = 0;
+	primitive_pose.orientation.z = 0;
+	primitive_pose.orientation.w = 1;
+
+	moveit_msgs::CollisionObject object;
+	object.id = "ground";
+	object.header.frame_id = "/Origin";
+	object.header.stamp = ros::Time::now();
+	object.operation = object.ADD;
+	object.primitives.push_back(primitive);
+	object.primitive_poses.push_back(primitive_pose);
+
+	static_scene_.world.collision_objects.push_back(object);
+
+	//************************
+	// allow contact between base and ground plane
+	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("ground", "base", true);
+	moveit_msgs::AllowedCollisionMatrix acm;
+	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(acm);
+	static_scene_.allowed_collision_matrix = acm;
+
+
+
+	//************************
+	// pan tilt station
+	geometry_msgs::Pose pan_tilt_pose_mast, pan_tilt_pose_cam;
+	pan_tilt_pose_mast.position.x = 0.92;
+	pan_tilt_pose_mast.position.y = 0.92;
+	pan_tilt_pose_mast.position.z = 0.55;
+	pan_tilt_pose_mast.orientation.w = 1;
+	pan_tilt_pose_cam.position.x = 0.92;
+	pan_tilt_pose_cam.position.y = 0.92;
+	pan_tilt_pose_cam.position.z = 1.1;
+
+	shape_msgs::SolidPrimitive pan_tilt_primitive_mast, pan_tilt_primitive_cam;
+	pan_tilt_primitive_mast.type = pan_tilt_primitive_mast.CYLINDER;
+	pan_tilt_primitive_mast.dimensions.resize(2);
+	pan_tilt_primitive_mast.dimensions[0] = 1.1;// height
+	pan_tilt_primitive_mast.dimensions[1] = 0.1;//0.05;// radius
+	pan_tilt_primitive_cam.type = pan_tilt_primitive_cam.SPHERE;
+	pan_tilt_primitive_cam.dimensions.resize(1);
+	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
+
+	moveit_msgs::CollisionObject pan_tilt_object;
+	pan_tilt_object.header.frame_id = "/Origin";
+	pan_tilt_object.id = "pan_tilt_mast";
+	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
+	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
+	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
+	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
+
+	static_scene_.world.collision_objects.push_back(pan_tilt_object);
+
+
+	static_scene_.is_diff = true;
+	planning_scene_diff_publisher_.publish(static_scene_);
+	//static_scene_.world.collision_objects.clear();
+
+	ROS_INFO("Finished adding ground plane and pan tilt station.");
+
+
+	//! Remove Octomap Artefacts at the Ground
+	cleanup_octomap_srv_.request.min.x = -primitive.dimensions[0]*0.5;
+	cleanup_octomap_srv_.request.min.y = -primitive.dimensions[1]*0.5;
+	cleanup_octomap_srv_.request.min.z = -0.01;
+	cleanup_octomap_srv_.request.max.x = primitive.dimensions[0]*0.5;
+	cleanup_octomap_srv_.request.max.y = primitive.dimensions[1]*0.5;
+	cleanup_octomap_srv_.request.max.z = 0.01;
+
+}
+
+void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
+{
+	if (object_manager_objectExists(obj_index))
+	{
+		// create a structure to store the object information including all of its shapes
+		ObjectInformation obj_info;
+		// read the information of all shapes forming the object
+		object_manager_readObjectDataFromParamServer(obj_index, obj_info);
+
+		// store object pose in a tf
+		tf::Transform tf_object;
+		tf_object.setOrigin(tf::Vector3(obj_pose.position.x,
+				obj_pose.position.y,
+				obj_pose.position.z));
+		tf_object.setRotation(tf::Quaternion(obj_pose.orientation.x,
+				obj_pose.orientation.y,
+				obj_pose.orientation.z,
+				obj_pose.orientation.w));
+
+
+		std::stringstream id;
+		id << obj_index;
+		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
+				it != collision_objects_.end();
+				++it)
+		{
+			if (!id.str().compare((*it).id))
+			{
+				// it now refers to the appropriate element of collision_objects_
+				// the new position of each shape can be computed
+
+				// clear the old shape poses
+				it->primitive_poses.clear();
+
+				for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
+				{
+					tf::Transform tf_shape_local, tf_shape_global;
+					tf_shape_local.setOrigin(tf::Vector3(obj_info.shape_poses[i].position.x,
+							obj_info.shape_poses[i].position.y,
+							obj_info.shape_poses[i].position.z));
+					tf_shape_local.setRotation(tf::Quaternion(obj_info.shape_poses[i].orientation.x,
+							obj_info.shape_poses[i].orientation.y,
+							obj_info.shape_poses[i].orientation.z,
+							obj_info.shape_poses[i].orientation.w));
+
+					tf_shape_global.mult(tf_object, tf_shape_local);
+
+					geometry_msgs::Pose current_primitive_pose;
+					current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
+					current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
+					current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
+					current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
+					current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
+					current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
+					current_primitive_pose.orientation.w = tf_shape_global.getRotation().getW();
+
+					it->primitive_poses.push_back(current_primitive_pose);
+
+				}
+				break;
+			}
+		}
+	}
+}
+
 void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 {
 
@@ -2125,6 +2609,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		{
 			// add the object to its target zone
 			object_manager_addObjectToTargetZone(msg->obj_index);
+			planning_scene_.robot_state.is_diff = true;
 		}
 		else if (obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
 		{
@@ -2156,6 +2641,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 
 	planning_scene_.robot_state.is_diff = true;
 	planning_scene_.robot_state.joint_state = getCurrentJointState();
+	planning_scene_.robot_state.is_diff = true;
 	// publish the planning scene
 	planning_scene_.is_diff = true;
 	planning_scene_diff_publisher_.publish(planning_scene_);
@@ -2164,162 +2650,6 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 	planning_scene_.robot_state.attached_collision_objects.clear();
 }
 
-void MotionPlanning::initializePlanningScene()
-{
-	ROS_INFO("Adding ground plane and pan tilt station to collision world...");
-
-	//************************
-	// ground plane
-	shape_msgs::SolidPrimitive primitive;
-	primitive.type = primitive.BOX;
-	primitive.dimensions.resize(3);
-	primitive.dimensions[0] = 2.0;//1.84;
-	primitive.dimensions[1] = 2.0;//1.84;
-	primitive.dimensions[2] = 0.01;
-
-	geometry_msgs::Pose primitive_pose;
-	primitive_pose.position.x = 0;
-	primitive_pose.position.y = 0;
-	primitive_pose.position.z = -0.005;//-0.01;
-	primitive_pose.orientation.x = 0;
-	primitive_pose.orientation.y = 0;
-	primitive_pose.orientation.z = 0;
-	primitive_pose.orientation.w = 1;
-
-	moveit_msgs::CollisionObject object;
-	object.id = "ground";
-	object.header.frame_id = "/Origin";
-	object.header.stamp = ros::Time::now();
-	object.operation = object.ADD;
-	object.primitives.push_back(primitive);
-	object.primitive_poses.push_back(primitive_pose);
-
-	static_scene_.world.collision_objects.push_back(object);
-
-
-
-
-	//************************
-	// allow contact between base and ground plane
-	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().setEntry("ground", "base", true);
-	moveit_msgs::AllowedCollisionMatrix acm;
-	planning_scene_monitor->getPlanningScene()->getAllowedCollisionMatrixNonConst().getMessage(acm);
-	static_scene_.allowed_collision_matrix = acm;
-
-
-
-	//************************
-	// pan tilt station
-	geometry_msgs::Pose pan_tilt_pose_mast, pan_tilt_pose_cam;
-	pan_tilt_pose_mast.position.x = 0.92;
-	pan_tilt_pose_mast.position.y = 0.92;
-	pan_tilt_pose_mast.position.z = 0.55;
-	pan_tilt_pose_mast.orientation.w = 1;
-	pan_tilt_pose_cam.position.x = 0.92;
-	pan_tilt_pose_cam.position.y = 0.92;
-	pan_tilt_pose_cam.position.z = 1.1;
-
-	shape_msgs::SolidPrimitive pan_tilt_primitive_mast, pan_tilt_primitive_cam;
-	pan_tilt_primitive_mast.type = pan_tilt_primitive_mast.CYLINDER;
-	pan_tilt_primitive_mast.dimensions.resize(2);
-	pan_tilt_primitive_mast.dimensions[0] = 1.1;// height
-	pan_tilt_primitive_mast.dimensions[1] = 0.1;//0.05;// radius
-	pan_tilt_primitive_cam.type = pan_tilt_primitive_cam.SPHERE;
-	pan_tilt_primitive_cam.dimensions.resize(1);
-	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
-
-	moveit_msgs::CollisionObject pan_tilt_object;
-	pan_tilt_object.header.frame_id = "/Origin";
-	pan_tilt_object.id = "pan_tilt_mast";
-	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
-	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
-	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_mast);
-	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
-
-	static_scene_.world.collision_objects.push_back(pan_tilt_object);
-
-
-	static_scene_.is_diff = true;
-	planning_scene_diff_publisher_.publish(static_scene_);
-	//static_scene_.world.collision_objects.clear();
-
-	ROS_INFO("Finished adding ground plane and pan tilt station.");
-
-
-	//! Remove Octomap Artefacts at the Ground
-	cleanup_octomap_srv_.request.min.x = -primitive.dimensions[0]*0.5;
-	cleanup_octomap_srv_.request.min.y = -primitive.dimensions[1]*0.5;
-	cleanup_octomap_srv_.request.min.z = -0.01;
-	cleanup_octomap_srv_.request.max.x = primitive.dimensions[0]*0.5;
-	cleanup_octomap_srv_.request.max.y = primitive.dimensions[1]*0.5;
-	cleanup_octomap_srv_.request.max.z = 0.01;
-
-}
-
-void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
-{
-	if (object_manager_objectExists(obj_index))
-	{
-		// create a structure to store the object information including all of its shapes
-		ObjectInformation obj_info;
-		// read the information of all shapes forming the object
-		object_manager_readObjectDataFromParamServer(obj_index, obj_info);
-
-		// store object pose in a tf
-		tf::Transform tf_object;
-		tf_object.setOrigin(tf::Vector3(obj_pose.position.x,
-				obj_pose.position.y,
-				obj_pose.position.z));
-		tf_object.setRotation(tf::Quaternion(obj_pose.orientation.x,
-				obj_pose.orientation.y,
-				obj_pose.orientation.z,
-				obj_pose.orientation.w));
-
-
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
-		{
-			if (!id.str().compare((*it).id))
-			{
-				// it now refers to the appropriate element of collision_objects_
-				// the new position of each shape can be computed
-
-				// clear the old shape poses
-				it->primitive_poses.clear();
-
-				for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
-				{
-					tf::Transform tf_shape_local, tf_shape_global;
-					tf_shape_local.setOrigin(tf::Vector3(obj_info.shape_poses[i].position.x,
-							obj_info.shape_poses[i].position.y,
-							obj_info.shape_poses[i].position.z));
-					tf_shape_local.setRotation(tf::Quaternion(obj_info.shape_poses[i].orientation.x,
-							obj_info.shape_poses[i].orientation.y,
-							obj_info.shape_poses[i].orientation.z,
-							obj_info.shape_poses[i].orientation.w));
-
-					tf_shape_global.mult(tf_object, tf_shape_local);
-
-					geometry_msgs::Pose current_primitive_pose;
-					current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
-					current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
-					current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
-					current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
-					current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
-					current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
-					current_primitive_pose.orientation.w = tf_shape_global.getRotation().getW();
-
-					it->primitive_poses.push_back(current_primitive_pose);
-
-				}
-				break;
-			}
-		}
-	}
-}
 
 bool MotionPlanning::object_manager_objectExists(int obj_index)
 {
@@ -2937,219 +3267,6 @@ sensor_msgs::JointState MotionPlanning::getCurrentJointState()
 	return currentState;
 }
 
-bool MotionPlanning::MoveIt_initializeMoveGroup()
-{
-
-	//	// print telemetry data
-	//	ROS_WARN("Measured telemetry: ");
-	//	for (unsigned idx = 0; idx < _telemetry.joint_names.size(); ++idx)
-	//	{
-	//		ROS_INFO_STREAM(_telemetry.joint_names[idx] << "  " << _telemetry.measured.position[idx]);
-	//	}
-
-	// store the joint names of the move group in a vector
-	std::vector<std::string> joint_namesMI = group->getActiveJoints();
-
-	// print the joint names of the move group
-	ROS_INFO("Joint names of the current move group:");
-	if (!joint_namesMI.empty())
-	{
-		//		for(unsigned idx = 0; idx < joint_namesMI.size(); ++idx)
-		//		{
-		//			ROS_INFO_STREAM("MoveitJoint: "<< joint_namesMI[idx]);
-		//		}
-	}
-	else
-	{
-		ROS_INFO("MoveGroup: Vector of joint names empty. General Motion Planning Error!");
-		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-		return false;
-	}
-
-
-
-	// set start state equal to measured telemetry positions and velocities = 0;
-	ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
-	moveit_msgs::RobotState start_state;
-
-	// declare joint positions and velocities
-	std::vector<double> joint_positionsMI;
-	std::vector<double> joint_velocitiesMI;
-
-
-	unsigned matchCounter = 0;
-
-	for (unsigned idxMI = 0; idxMI < joint_namesMI.size(); ++ idxMI)
-	{
-		unsigned idxTELE = 0;
-		while (joint_namesMI.at(idxMI).compare(_telemetry.joint_names.at(idxTELE)))
-		{
-			idxTELE++;
-			if (idxTELE > _telemetry.joint_names.size()-1)
-			{
-				ROS_WARN("MoveIt! joint not found in telemetry");
-				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-				return false;
-			}
-		}
-
-		//		// print idx of the matching joint in the telemetry
-		//		ROS_INFO_STREAM("telemetry idx of the current joint: " << idxTELE);
-
-		// store the telemetry joint positions in the corresponding order of the move group
-		joint_positionsMI.push_back(_telemetry.measured.position[idxTELE]);
-		joint_velocitiesMI.push_back(0.0);
-		//		// increase counter of matches between telemetry joints and MoveIt joints
-		//		ROS_INFO_STREAM("number of joint matches: " << joint_positionsMI.size());
-	}
-
-	if (joint_positionsMI.size() == joint_namesMI.size())
-	{
-		ROS_INFO("All MoveIt! joints found in the telemetry.");
-
-		start_state.joint_state.name = joint_namesMI;
-		start_state.joint_state.position = joint_positionsMI;
-		start_state.joint_state.velocity = joint_velocitiesMI;
-		group->setStartState(start_state);
-
-	}
-	else
-	{
-		ROS_ERROR("Setting start state failed");
-		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-		return false;
-	}
-
-//
-//	geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
-//
-//	ROS_INFO("Pose: ");
-//	ROS_INFO_STREAM(test.pose.orientation.w<<" "<<test.pose.orientation.x<<" "<<test.pose.orientation.y<<" "<<test.pose.orientation.z);
-//	ROS_INFO_STREAM(test.pose.position.x<<" "<<test.pose.position.y<<" "<<test.pose.position.z);
-//	ROS_INFO_STREAM(test.header.frame_id);
-	//==========================================================================================
-	//DEBUG Informations
-
-	//	// print joint names, positions and velocities
-	//	for (unsigned idx = 0; idx < start_state.joint_state.name.size(); ++idx)
-	//	{
-	//		ROS_INFO_STREAM(start_state.joint_state.name[idx] << "  "
-	//				<< start_state.joint_state.position[idx] << "  "
-	//				<< start_state.joint_state.velocity[idx]);
-	//	}
-	//
-	//	ROS_INFO_STREAM("Default goal joint tolerance: " << group->getGoalJointTolerance());
-	//	ROS_INFO_STREAM("Default goal position tolerance: " << group->getGoalPositionTolerance());
-	//	ROS_INFO_STREAM("Default goal orientation tolerance: " << group->getGoalOrientationTolerance());
-	//	//		group->setGoalTolerance(1);
-	//	//		group->setGoalPositionTolerance(0.1);
-	//	//		group->setGoalOrientationTolerance(0.1);
-	//	//		ROS_INFO_STREAM("Goal tolerance set to 1");
-	//	ROS_INFO_STREAM("Current goal joint tolerance: " << group->getGoalJointTolerance());
-	//	ROS_INFO_STREAM("Current goal position tolerance: " << group->getGoalPositionTolerance());
-	//	ROS_INFO_STREAM("Current goal orientation tolerance: " << group->getGoalOrientationTolerance());
-
-	// print the planning interface description
-	moveit_msgs::PlannerInterfaceDescription plintdesc;
-	group->getInterfaceDescription(plintdesc);
-	//	ROS_INFO_STREAM("Name of the planner interface: " << plintdesc.name);
-	//	ROS_INFO("Names of the planner ID's within the interface:");
-	//	for (unsigned idx = 0; idx < plintdesc.planner_ids.size(); ++idx)
-	//	{
-	//		ROS_INFO_STREAM(idx << ": " << plintdesc.planner_ids[idx]);
-	//	}
-
-	// print the planning reference frame
-	//	ROS_INFO_STREAM("Planning frame:" << group->getPlanningFrame());
-	//	// print the pose reference frame
-	//	ROS_INFO_STREAM("Pose reference frame: " << group->getPoseReferenceFrame());
-	//	// print default planning time
-	//	ROS_INFO_STREAM("Default planning time: " << group->getPlanningTime() << " seconds.");
-	group->setPlanningTime(20);
-	//	ROS_INFO_STREAM("Planning time set to " << group->getPlanningTime() << " seconds.");
-	//	// print the name of the end effector
-	//	ROS_INFO_STREAM("End effector: " << group->getEndEffector());
-	//	// print the name of the end effector link
-	//	ROS_INFO_STREAM("End effector link: " << group->getEndEffectorLink());
-	//==========================================================================================
-
-
-
-	// get the robot model
-	robot_model::RobotModelConstPtr robot_model = planning_scene_monitor->getRobotModel();
-	const robot_model::JointModelGroup* joint_model_group_LWR = robot_model->getJointModelGroup("LWR_9DOF");
-	//	ROS_WARN("JOINT BOUNDS");
-	moveit::core::JointBoundsVector joint_bounds = joint_model_group_LWR->getActiveJointModelsBounds();
-
-	//	for (unsigned idx = 0; idx < joint_bounds.size(); ++idx)
-	//	{
-	//		ROS_INFO_STREAM("position bounded: " << joint_bounds.at(idx)->at(0).position_bounded_);
-	//		ROS_INFO_STREAM("min position: " << joint_bounds.at(idx)->at(0).min_position_);
-	//		ROS_INFO_STREAM("max position: " << joint_bounds.at(idx)->at(0).max_position_);
-	//
-	//		ROS_INFO_STREAM("velocity bounded: " << joint_bounds.at(idx)->at(0).velocity_bounded_);
-	//		ROS_INFO_STREAM("min velocity: " << joint_bounds.at(idx)->at(0).min_velocity_);
-	//		ROS_INFO_STREAM("max velocity: " << joint_bounds.at(idx)->at(0).max_velocity_);
-	//
-	//		ROS_INFO_STREAM("acceleration bounded: " << joint_bounds.at(idx)->at(0).acceleration_bounded_);
-	//		ROS_INFO_STREAM("min acceleration: " << joint_bounds.at(idx)->at(0).min_acceleration_);
-	//		ROS_INFO_STREAM("max acceleration: " << joint_bounds.at(idx)->at(0).max_acceleration_);
-	//	}
-
-
-	//==========================================================================================
-	// OCTOMAP
-	robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
-	kinematic_model_ = robot_model_loader.getModel();
-
-	// if Octomap received, then stored in _octree
-
-	if(!skip_vision_)
-	{
-		if (octomap_manager_cleanupOctomap())
-			msg_info("Octomap cleaned up");
-	}
-
-	if(octomap_manager_getOctomap())
-	{
-		// Arming a planning scene message with octomap
-		_octree.header.frame_id =("/Origin");
-		planning_scene_.world.octomap.octomap = _octree;
-		// arming planning scene message with tf information
-		planning_scene_.world.octomap.octomap.header.frame_id = "/Origin";
-		planning_scene_.world.octomap.octomap.header.stamp = ros::Time::now();
-		planning_scene_.world.octomap.header.frame_id = "/Origin";
-		planning_scene_.world.octomap.header.stamp = ros::Time::now();
-	}
-
-	// Load current robot state into planning scene
-	planning_scene_.robot_state.joint_state = getCurrentJointState();
-	planning_scene_.robot_state.is_diff = true;
-
-	// Robot link padding
-	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-	{
-		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-			planning_scene_.link_padding[i].padding = 0.0;
-		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-			planning_scene_.link_padding[i].padding = 0.02;
-		else
-			planning_scene_.link_padding[i].padding = 0.01;
-	}
-
-	// setting planning scene message to type diff
-	planning_scene_.is_diff = true;
-
-	// Publish msg on topic /planning_scene
-	planning_scene_diff_publisher_.publish(planning_scene_);
-	planning_scene_diff_publisher_.publish(static_scene_);
-
-	//==========================================================================================
-
-	return true;
-}
 
 bool MotionPlanning::computeWayPoints(std::vector< geometry_msgs::Pose > &waypoints_)
 {

@@ -45,6 +45,9 @@
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 
+#include <moveit/move_group/move_group_capability.h>
+
+
 
 
 // GEOMETRY
@@ -208,7 +211,8 @@ private:
 	bool MoveIt_getSolution();
 	//! get straight line in taskspace
 	bool MoveIt_getSolutionInTaskSpace();
-	bool MoveIt_getSolution2();
+	//bool MoveIt_getSolution2();
+	bool MoveIt_getSolutionNoInitialize();
 	bool MoveIt_initializeMoveGroup();
 	bool MoveIt_valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 

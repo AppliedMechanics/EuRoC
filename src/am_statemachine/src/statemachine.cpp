@@ -1885,9 +1885,9 @@ int Statemachine::request_task()
 		case 1:
 		case 2:
 			planning_mode_.object	= MOVE_IT_7DOF;
-			planning_mode_.move_to_object	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_object	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= MOVE_IT_7DOF;
-			planning_mode_.move_to_target_zone	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_target_zone	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_STD_2;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1895,9 +1895,9 @@ int Statemachine::request_task()
 			break;
 		case 3:
 			planning_mode_.object	= MOVE_IT_9DOF;
-			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= MOVE_IT_9DOF;
-			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1905,9 +1905,9 @@ int Statemachine::request_task()
 			break;
 		case 4:
 			planning_mode_.object	= MOVE_IT_9DOF;
-			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= MOVE_IT_9DOF;
-			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1916,9 +1916,9 @@ int Statemachine::request_task()
 		case 5:
 		case 6:
 			planning_mode_.object	= MOVE_IT_9DOF;
-			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= MOVE_IT_9DOF;
-			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_STD_1;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
