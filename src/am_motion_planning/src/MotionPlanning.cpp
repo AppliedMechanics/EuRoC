@@ -2154,6 +2154,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		break;
 	}
 
+	planning_scene_.robot_state.is_diff = true;
 	planning_scene_.robot_state.joint_state = getCurrentJointState();
 	// publish the planning scene
 	planning_scene_.is_diff = true;

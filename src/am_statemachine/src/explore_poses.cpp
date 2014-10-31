@@ -50,7 +50,7 @@ ExplorePoses::ExplorePoses()
 	{
 		for (int ii=0;ii<(pose_blocks_[jj].size());ii++){
 			rand_pose_block_vec_.push_back(pose_blocks_[jj].at(ii));
-//			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[jj].at(ii));
+			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[jj].at(ii));
 		}
 	}
 	ROS_INFO("Random Block sorting: %i %i %i %i %i %i ",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5]);
@@ -126,7 +126,9 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 
 void ExplorePoses::randomSort()
 {
-	block_nr_[0] = rand() % 6;         // blocks_[0] in the range 0 to 5
+	//! Block 3 at the beginning
+	block_nr_[0] = 2;
+	//block_nr_[0] = rand() % 6;         // blocks_[0] in the range 0 to 5
 
 	for (int i=1;i<N_POSE_BLOCKS;i++)
 	{

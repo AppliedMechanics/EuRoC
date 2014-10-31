@@ -4204,7 +4204,7 @@ int Statemachine::move_to_target_zone_safe()
 			goal_queue[1].planning_algorithm = MOVE_IT_2DOF;
 			goal_queue[1].planning_frame = LWR_0; // should not affect MP
 			goal_queue[1].inter_steps = 0;
-			goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[1].speed_percentage = std_moving_speed;//*(1-speed_mod_);
 
 			goal_queue[2].goal_pose = target_safe_pose[selected_target_pose_];
 			goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
