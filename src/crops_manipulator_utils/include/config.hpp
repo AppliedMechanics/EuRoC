@@ -19,7 +19,14 @@ typedef enum {
 	OBJ_GRABED,
 	OBJ_PLACED,
 	OBJ_FINISHED,
+} object_action_t;
+
+typedef enum {
+	OBJ_STATE_IN_WORLD=0,
+	OBJ_STATE_NOT_IN_WORLD,
+	OBJ_STATE_GRABBED
 } object_state_t;
+
 
 typedef enum {
 	EXECUTE_NOW=1,
@@ -163,7 +170,7 @@ typedef enum {
 static const uint32_t slow_moving_speed = 10; // in percent
 static const uint32_t std_moving_speed = 30; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
-static const uint32_t std_inter_steps = 5;
+static const uint32_t std_inter_steps = 10;//5
 
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";

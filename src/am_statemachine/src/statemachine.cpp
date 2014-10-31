@@ -91,7 +91,9 @@ Statemachine::Statemachine():
 	ros::param::get("/pause_in_loop",pause_in_loop_);
 
 	planning_mode_.object	= STANDARD_IK_7DOF;
+	planning_mode_.move_to_object	= STANDARD_IK_7DOF;
 	planning_mode_.target	= STANDARD_IK_7DOF;
+	planning_mode_.move_to_target_zone	= STANDARD_IK_7DOF;
 	planning_mode_.homing	= STANDARD_IK_7DOF;
 
 	obj_state_ = node_.advertise<am_msgs::ObjState>("obj_state", 1000);
@@ -1883,7 +1885,9 @@ int Statemachine::request_task()
 		case 1:
 		case 2:
 			planning_mode_.object	= MOVE_IT_7DOF;
+			planning_mode_.move_to_object	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;
 			planning_mode_.target	= MOVE_IT_7DOF;
+			planning_mode_.move_to_target_zone	= MOVE_IT_7DOF;//MOVE_IT_7DOF_MOVE_TO_OBJECT;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_STD_2;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1891,7 +1895,9 @@ int Statemachine::request_task()
 			break;
 		case 3:
 			planning_mode_.object	= MOVE_IT_9DOF;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.target	= MOVE_IT_9DOF;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1899,7 +1905,9 @@ int Statemachine::request_task()
 			break;
 		case 4:
 			planning_mode_.object	= MOVE_IT_9DOF;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.target	= MOVE_IT_9DOF;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -1908,7 +1916,9 @@ int Statemachine::request_task()
 		case 5:
 		case 6:
 			planning_mode_.object	= MOVE_IT_9DOF;
+			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.target	= MOVE_IT_9DOF;
+			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_STD_1;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -4061,7 +4071,7 @@ int Statemachine::move_to_object()
 
 #warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		goal_queue[0].planning_algorithm = planning_mode_.object;
+		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -4159,10 +4169,6 @@ int Statemachine::move_to_target_zone_safe()
 	{
 		ROS_INFO("move_to_target_zone_safe() called: OPEN");
 
-
-		//publish object state for motion planning
-		if(cur_obj_gripped_==false)
-			publish_obj_state(OBJ_PLACED);
 
 #if 0
 		//send goals to motion-planning
@@ -4447,7 +4453,7 @@ int Statemachine::move_to_target_zone()
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 #warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		goal_queue[0].planning_algorithm = planning_mode_.target;
+		goal_queue[0].planning_algorithm = planning_mode_.move_to_target_zone;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);

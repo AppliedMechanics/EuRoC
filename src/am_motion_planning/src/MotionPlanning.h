@@ -30,6 +30,11 @@
 #include <moveit_msgs/RobotState.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/planning_scene/planning_scene.h>
+
+#include <moveit_msgs/Constraints.h>
+#include <moveit/kinematic_constraints/kinematic_constraint.h>
+#include <moveit/kinematic_constraints/utils.h>
+
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -39,6 +44,7 @@
 #include <moveit_msgs/GetStateValidity.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
+
 
 
 // GEOMETRY
@@ -110,7 +116,7 @@ private:
 	// object state message subscriber
 	ros::Subscriber obj_state_sub_;
 
-	void get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg);
+	void object_manager_get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg);
 	std::vector<am_msgs::ObjState> obj_state_;
 	bool obj_data_loaded_;
 
@@ -118,6 +124,7 @@ private:
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
 	void getGoalPose_Feedback();
 
+	void moveToTargetCB();
 
 	ros::ServiceServer check_poses_service_;
 
@@ -195,31 +202,59 @@ private:
 	std::vector<moveit_msgs::CollisionObject> collision_objects_;
 
 
-	bool homingMoveIt();
-	bool getMoveItSolution();
+
+
+	bool MoveIt_homing();
+	bool MoveIt_getSolution();
 	//! get straight line in taskspace
-	bool getMoveItSolutionInTaskSpace();
-	bool initializeMoveGroup();
+	bool MoveIt_getSolutionInTaskSpace();
+	bool MoveIt_getSolution2();
+	bool MoveIt_initializeMoveGroup();
+	bool MoveIt_valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
+
+
+	bool euroc_getIKSolution7DOF();
+	bool euroc_setReset7DOF();
+	bool euroc_valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
+
+	bool octomap_manager_getOctomap();
+	bool octomap_manager_cleanupOctomap();
+
 	//! compute Waypoints for tcp to follow an straight line
 	bool computeWayPoints(std::vector< geometry_msgs::Pose > &waypoints_);
 	bool setPlanningTarget(unsigned algorithm);
-	bool valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
+	bool getTelemetry();
+	bool getLimits();
 
-	bool objectExists(int obj_index);
-	void createObject(int obj_index, geometry_msgs::Pose obj_pose);
-	void readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
+	bool transformToTCPFrame(std::string frame);
+	bool transformToLWRBase();
+
+	bool object_manager_objectExists(int obj_index);
+	void object_manager_createObject(int obj_index, geometry_msgs::Pose obj_pose);
+	void object_manager_readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
+	void object_manager_addObjectToWorld(int obj_index);
+	void object_manager_removeObjectFromWorld(int obj_index);
+	void object_manager_attachObject(int obj_index);
+	void object_manager_detachObject(int obj_index);
+	void object_manager_addObjectToTargetZone(int obj_index);
+
 	void setShapePositions(int obj_index, geometry_msgs::Pose obj_pose);//wird zur ZEit nicht verwendet
 	void initializePlanningScene();
-	void addObjectToWorld(int obj_index);
-	void removeObjectFromWorld(int obj_index);
-	void attachObject(int obj_index);
-	void detachObject(int obj_index);
-	void addObjectToTargetZone(int obj_index);
+
 	double getTargetObjectHeight(int obj_index);
 	double getTargetObjectRadius(int obj_index);
 	geometry_msgs::Pose getTargetObjectPose(int obj_index);
 	void readTargetZoneDataFromParamServer(int obj_index, TargetZoneInformation& tz_info);
 	sensor_msgs::JointState getCurrentJointState();
+
+
+
+
+	void getTimingAlongJointPath();
+	euroc_c2_msgs::Configuration getCurrentConfiguration();
+	void setMoveRequestJointLimits();
+	void setMoveRequestTCPLimits();
+
 
 
 	unsigned current_setTarget_algorithm_;
@@ -266,21 +301,6 @@ private:
 	uint8_t mtt_;
 
 
-	bool getOctomap();
-	bool cleanupOctomap();
-	bool getIKSolution7DOF();
-	bool getTelemetry();
-	bool getLimits();
-	bool setReset7DOF();
-	bool transformToTCPFrame(std::string frame);
-	bool transformToLWRBase();
-	bool valid_euroc_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
-
-	void getTimingAlongJointPath();
-	euroc_c2_msgs::Configuration getCurrentConfiguration();
-	void setMoveRequestJointLimits();
-	void setMoveRequestTCPLimits();
-	void moveToTargetCB();
 
 };
 

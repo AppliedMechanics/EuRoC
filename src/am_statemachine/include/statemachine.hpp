@@ -94,7 +94,10 @@ private:
 	//! motion planning algorithm
 	typedef struct{
 		uint32_t object;
+		uint32_t move_to_object;
 		uint32_t target;
+		uint32_t move_to_target;
+		uint32_t move_to_target_zone;
 		uint32_t homing;
 	}planning_mode_t;
 
