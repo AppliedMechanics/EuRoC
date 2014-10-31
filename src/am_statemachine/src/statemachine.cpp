@@ -1899,9 +1899,9 @@ int Statemachine::request_task()
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
-			explore_pose_type_ = EXPLORE_SNAKE;
+			explore_pose_type_ = EXPLORE_STD_2;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
-			max_explore_poses_ = 10;
+			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 4:
 			planning_mode_.object	= MOVE_IT_9DOF;

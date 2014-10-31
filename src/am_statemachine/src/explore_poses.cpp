@@ -19,38 +19,38 @@ ExplorePoses::ExplorePoses()
 	init_snake();
 
 	pose_blocks_.resize(N_POSE_BLOCKS);
-	pose_blocks_[block_nr_[0]].push_back(0);
-	pose_blocks_[block_nr_[0]].push_back(1);
-	pose_blocks_[block_nr_[0]].push_back(2);
-	pose_blocks_[block_nr_[0]].push_back(3);
-	pose_blocks_[block_nr_[0]].push_back(4);
+	pose_blocks_[0].push_back(0);
+	pose_blocks_[0].push_back(1);
+	pose_blocks_[0].push_back(2);
+	pose_blocks_[0].push_back(3);
+	pose_blocks_[0].push_back(4);
 
-	pose_blocks_[block_nr_[1]].push_back(5);
-	pose_blocks_[block_nr_[1]].push_back(6);
-	pose_blocks_[block_nr_[1]].push_back(7);
-	pose_blocks_[block_nr_[1]].push_back(8);
-	pose_blocks_[block_nr_[1]].push_back(9);
+	pose_blocks_[1].push_back(5);
+	pose_blocks_[1].push_back(6);
+	pose_blocks_[1].push_back(7);
+	pose_blocks_[1].push_back(8);
+	pose_blocks_[1].push_back(9);
 
-	pose_blocks_[block_nr_[2]].push_back(10);
-	pose_blocks_[block_nr_[2]].push_back(11);
-	pose_blocks_[block_nr_[2]].push_back(12);
-	pose_blocks_[block_nr_[2]].push_back(13);
+	pose_blocks_[2].push_back(10);
+	pose_blocks_[2].push_back(11);
+	pose_blocks_[2].push_back(12);
+	pose_blocks_[2].push_back(13);
 
-	pose_blocks_[block_nr_[3]].push_back(14);
-	pose_blocks_[block_nr_[3]].push_back(15);
+	pose_blocks_[3].push_back(14);
+	pose_blocks_[3].push_back(15);
 
-	pose_blocks_[block_nr_[4]].push_back(16);
-	pose_blocks_[block_nr_[4]].push_back(17);
+	pose_blocks_[4].push_back(16);
+	pose_blocks_[4].push_back(17);
 
-	pose_blocks_[block_nr_[5]].push_back(18);
-	pose_blocks_[block_nr_[5]].push_back(19);
+	pose_blocks_[5].push_back(18);
+	pose_blocks_[5].push_back(19);
 
 	rand_pose_block_vec_.clear();
 	for (int jj=0;jj<N_POSE_BLOCKS;jj++)
 	{
-		for (int ii=0;ii<(pose_blocks_[jj].size());ii++){
-			rand_pose_block_vec_.push_back(pose_blocks_[jj].at(ii));
-			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[jj].at(ii));
+		for (int ii=0;ii<(pose_blocks_[block_nr_[jj]].size());ii++){
+			rand_pose_block_vec_.push_back(pose_blocks_[block_nr_[jj]].at(ii));
+			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[block_nr_[jj]].at(ii));
 		}
 	}
 	ROS_INFO("Random Block sorting: %i %i %i %i %i %i ",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5]);
