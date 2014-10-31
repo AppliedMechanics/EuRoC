@@ -2159,7 +2159,8 @@ int Statemachine::parse_yaml_file()
 
 int Statemachine::check_object_finished()
 {
-	if((target_skip_vision[selected_target_pose_]==1)||(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING))
+	if((target_skip_vision[selected_target_pose_]==1)||(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)||
+			(cur_obj_.nr_shapes>1))
 	{
 		check_object_finished_state_=FINISHED;
 		ROS_INFO("skip check object in zone");
