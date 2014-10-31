@@ -3904,31 +3904,31 @@ int Statemachine::move_to_object_vision()
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
 		if((active_task_number_ == 3 || active_task_number_ == 4)&& (cur_obj_gripped_==false))
 		{
-		//send goals to motion-planning
-		active_goal_=0;
-		nr_goals_=3;
-		reached_active_goal_=false;
-		goal_queue.resize(nr_goals_);
+			//send goals to motion-planning
+			active_goal_=0;
+			nr_goals_=3;
+			reached_active_goal_=false;
+			goal_queue.resize(nr_goals_);
 
-		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
-		goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
-		goal_queue[0].planning_frame = GP_TCP;
-		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+			goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
+			goal_queue[0].planning_frame = GP_TCP;
+			goal_queue[0].inter_steps = 0;
+			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 
-		goal_queue[1].goal_pose.position.x = object_vision_pose[selected_object_pose_].position.x;
-		goal_queue[1].goal_pose.position.y = object_vision_pose[selected_object_pose_].position.y;
-		goal_queue[1].goal_pose.position.z = 0.0;
-		goal_queue[1].planning_algorithm = MOVE_IT_2DOF;
-		goal_queue[1].planning_frame = LWR_0; // should not affect MP
-		goal_queue[1].inter_steps = 0;
-		goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[1].goal_pose.position.x = object_vision_pose[selected_object_pose_].position.x;
+			goal_queue[1].goal_pose.position.y = object_vision_pose[selected_object_pose_].position.y;
+			goal_queue[1].goal_pose.position.z = 0.0;
+			goal_queue[1].planning_algorithm = MOVE_IT_2DOF;
+			goal_queue[1].planning_frame = LWR_0; // should not affect MP
+			goal_queue[1].inter_steps = 0;
+			goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
 
-		goal_queue[2].goal_pose = object_vision_pose[selected_object_pose_];
-		goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
-		goal_queue[2].planning_frame = GP_TCP;
-		goal_queue[2].inter_steps = 0;
-		goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[2].goal_pose = object_vision_pose[selected_object_pose_];
+			goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
+			goal_queue[2].planning_frame = GP_TCP;
+			goal_queue[2].inter_steps = 0;
+			goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
 		}
 		else
 		{
@@ -4330,7 +4330,8 @@ int Statemachine::move_to_target_zone_vision()
 	{
 		ROS_INFO("move_to_target_zone_vision() called: OPEN");
 
-		if(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)
+		if((ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)
+				|| (cur_obj_.nr_shapes>1))
 		{
 			move_to_target_zone_vision_state_=FINISHED;
 			return 0;
