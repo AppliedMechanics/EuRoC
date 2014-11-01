@@ -19,13 +19,13 @@ ExplorePoses::ExplorePoses()
 	init_snake();
 
 	pose_blocks_.resize(N_POSE_BLOCKS);
-	pose_blocks_[0].push_back(0);
+//	pose_blocks_[0].push_back(0);
 	pose_blocks_[0].push_back(1);
 	pose_blocks_[0].push_back(2);
 	pose_blocks_[0].push_back(3);
 	pose_blocks_[0].push_back(4);
 
-	pose_blocks_[1].push_back(5);
+//	pose_blocks_[1].push_back(5);
 	pose_blocks_[1].push_back(6);
 	pose_blocks_[1].push_back(7);
 	pose_blocks_[1].push_back(8);
@@ -45,6 +45,11 @@ ExplorePoses::ExplorePoses()
 	pose_blocks_[5].push_back(18);
 	pose_blocks_[5].push_back(19);
 
+	pose_blocks_[6].push_back(20);
+	pose_blocks_[6].push_back(21);
+	pose_blocks_[6].push_back(22);
+	pose_blocks_[6].push_back(23);
+
 	rand_pose_block_vec_.clear();
 	for (int jj=0;jj<N_POSE_BLOCKS;jj++)
 	{
@@ -53,7 +58,7 @@ ExplorePoses::ExplorePoses()
 			ROS_INFO("Pose Numbers: block nr %i pose nr %i",jj,pose_blocks_[block_nr_[jj]].at(ii));
 		}
 	}
-	ROS_INFO("Random Block sorting: %i %i %i %i %i %i ",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5]);
+	ROS_INFO("Random Block sorting: %i %i %i %i %i %i %i",block_nr_[0],block_nr_[1],block_nr_[2],block_nr_[3],block_nr_[4],block_nr_[5],block_nr_[6]);
 
 }
 
@@ -72,7 +77,7 @@ int ExplorePoses::size(uint8_t pose_type)
 		return explore_poses_std_v2_.size();
 		break;
 	case EXPLORE_SNAKE:
-		return explore_poses_snake_.size();
+		return rand_pose_block_vec_.size();//explore_poses_snake_.size();
 		break;
 	default:
 		msg_error("Unknown Pose Type requested.");
@@ -104,7 +109,7 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 		}
 		break;
 	case EXPLORE_SNAKE:
-		if (pose_nr < explore_poses_snake_.size())
+		if (pose_nr < rand_pose_block_vec_.size()) //explore_poses_snake_.size())
 			return explore_poses_snake_[rand_pose_block_vec_[pose_nr]];
 		else{
 			msg_warn("Requested Pose Nr not available. Returning last pose.");
@@ -127,12 +132,12 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 void ExplorePoses::randomSort()
 {
 	//! Block 3 at the beginning
-	block_nr_[0] = 2;
+	block_nr_[0] = rand() % 2;
 	//block_nr_[0] = rand() % 6;         // blocks_[0] in the range 0 to 5
 
 	for (int i=1;i<N_POSE_BLOCKS;i++)
 	{
-		do{block_nr_[i] = rand() % 6;}
+		do{block_nr_[i] = rand() % 7;}
 		while(checkDoublettes(i));
 	}
 
@@ -593,20 +598,20 @@ void ExplorePoses::init_snake()
 
 	// BLOCK 2
 	// # 1
-//	tmp_goal_.goal_pose.position.x = 0.39+0;
-//	tmp_goal_.goal_pose.position.y = 0.336+0.88;
-//	tmp_goal_.goal_pose.position.z = 0.526;
-//	q_temp_.setRPY(3.14,-0.87,-1.57);
-//	tmp_goal_.goal_config.q[0] = 0.0;
-//	tmp_goal_.goal_config.q[1] = 0.88;
-//	tmp_goal_.goal_config.q[2] = 1.572;
-//	tmp_goal_.goal_config.q[3] = -1.0;
-//	tmp_goal_.goal_config.q[4] = -1.572;
-//	tmp_goal_.goal_config.q[5] = 1.572;
-//	tmp_goal_.goal_config.q[6] = 0.13;
-//	tmp_goal_.goal_config.q[7] = -1.572;
-//	tmp_goal_.goal_config.q[8] = -1.572;
-//	setOrientationAndInsert(EXPLORE_SNAKE);
+	tmp_goal_.goal_pose.position.x = 0.39+0;
+	tmp_goal_.goal_pose.position.y = 0.336+0.88;
+	tmp_goal_.goal_pose.position.z = 0.526;
+	q_temp_.setRPY(3.14,-0.87,-1.57);
+	tmp_goal_.goal_config.q[0] = 0.0;
+	tmp_goal_.goal_config.q[1] = 0.88;
+	tmp_goal_.goal_config.q[2] = 1.572;
+	tmp_goal_.goal_config.q[3] = -1.0;
+	tmp_goal_.goal_config.q[4] = -1.572;
+	tmp_goal_.goal_config.q[5] = 1.572;
+	tmp_goal_.goal_config.q[6] = 0.13;
+	tmp_goal_.goal_config.q[7] = -1.572;
+	tmp_goal_.goal_config.q[8] = -1.572;
+	setOrientationAndInsert(EXPLORE_SNAKE);
 	// # 2
 	tmp_goal_.goal_pose.position.x = -0.39+0.4;
 	tmp_goal_.goal_pose.position.y = 0.336+0.88;
@@ -827,6 +832,69 @@ void ExplorePoses::init_snake()
 	tmp_goal_.goal_config.q[6] = -0.4;
 	tmp_goal_.goal_config.q[7] = 1.7;
 	tmp_goal_.goal_config.q[8] = 0;
+	setOrientationAndInsert(EXPLORE_SNAKE);
+
+
+	// BLOCK 7
+	// # 1
+	tmp_goal_.goal_pose.position.x = -0.88+0.353;
+	tmp_goal_.goal_pose.position.y = -0.88-0.48;
+	tmp_goal_.goal_pose.position.z = 0.593;
+	q_temp_.setRPY(-2.056,0,-0.868);
+	tmp_goal_.goal_config.q[0] = -0.88;
+	tmp_goal_.goal_config.q[1] = -0.88;
+	tmp_goal_.goal_config.q[2] = 0.7;
+	tmp_goal_.goal_config.q[3] = 0.786;
+	tmp_goal_.goal_config.q[4] = 1.572;
+	tmp_goal_.goal_config.q[5] = -1.572;
+	tmp_goal_.goal_config.q[6] = 0.3;
+	tmp_goal_.goal_config.q[7] = 1.572;
+	tmp_goal_.goal_config.q[8] = 0;
+	setOrientationAndInsert(EXPLORE_SNAKE);
+	// # 2
+	tmp_goal_.goal_pose.position.x = -0.88+0.246;
+	tmp_goal_.goal_pose.position.y = -0.88-0.363;
+	tmp_goal_.goal_pose.position.z = 0.592;
+	q_temp_.setRPY(-3.013,-0.978,1.284);
+	tmp_goal_.goal_config.q[0] = -0.88;
+	tmp_goal_.goal_config.q[1] = -0.88;
+	tmp_goal_.goal_config.q[2] = 1.1;
+	tmp_goal_.goal_config.q[3] = 0.786;
+	tmp_goal_.goal_config.q[4] = 1.7;
+	tmp_goal_.goal_config.q[5] = -1.7;
+	tmp_goal_.goal_config.q[6] = 0.2;
+	tmp_goal_.goal_config.q[7] = 1.7;
+	tmp_goal_.goal_config.q[8] = -1.572;
+	setOrientationAndInsert(EXPLORE_SNAKE);
+	// # 3
+	tmp_goal_.goal_pose.position.x = -0.88-0.39;
+	tmp_goal_.goal_pose.position.y = -0.35-0.39;
+	tmp_goal_.goal_pose.position.z = 0.398;
+	q_temp_.setRPY(3.14,0.95,-3.14);
+	tmp_goal_.goal_config.q[0] = -0.88;
+	tmp_goal_.goal_config.q[1] = -0.35;
+	tmp_goal_.goal_config.q[2] = 0;
+	tmp_goal_.goal_config.q[3] = 1.35;
+	tmp_goal_.goal_config.q[4] = 1.572;
+	tmp_goal_.goal_config.q[5] = -1.572;
+	tmp_goal_.goal_config.q[6] = -0.4;
+	tmp_goal_.goal_config.q[7] = 1.572;
+	tmp_goal_.goal_config.q[8] = 1.572;
+	setOrientationAndInsert(EXPLORE_SNAKE);
+	// # 4
+	tmp_goal_.goal_pose.position.x = -0.35-0.39;
+	tmp_goal_.goal_pose.position.y = -0.88-0.39;
+	tmp_goal_.goal_pose.position.z = 0.397;
+	q_temp_.setRPY(3.136,-0.95,1.575);
+	tmp_goal_.goal_config.q[0] = -0.35;
+	tmp_goal_.goal_config.q[1] = -0.88;
+	tmp_goal_.goal_config.q[2] = 1.572;
+	tmp_goal_.goal_config.q[3] = 1.35;
+	tmp_goal_.goal_config.q[4] = 1.572;
+	tmp_goal_.goal_config.q[5] = 1.572;
+	tmp_goal_.goal_config.q[6] = 0.4;
+	tmp_goal_.goal_config.q[7] = -1.572;
+	tmp_goal_.goal_config.q[8] = -1.572;
 	setOrientationAndInsert(EXPLORE_SNAKE);
 }
 

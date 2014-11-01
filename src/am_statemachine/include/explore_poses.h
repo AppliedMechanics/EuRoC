@@ -8,7 +8,7 @@
 #ifndef EXPLORE_POSES_H_
 #define EXPLORE_POSES_H_
 
-#define N_POSE_BLOCKS 6
+#define N_POSE_BLOCKS 7
 
 #include <stdlib.h>
 #include <time.h>

@@ -1911,7 +1911,7 @@ int Statemachine::request_task()
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
-			max_explore_poses_ = 6;
+			max_explore_poses_ = 10;
 			break;
 		case 5:
 		case 6:
