@@ -225,8 +225,9 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::Check
     {
       distanceX = std::abs(finalVoxelizedPC->points[i].x - zoneCenter.x);
       distanceY = std::abs(finalVoxelizedPC->points[i].y - zoneCenter.y);
-      if ( (distanceX*distanceX + distanceY*distanceY) < zoneRadius*zoneRadius )
-        minPointCounter++;
+      if ( ((distanceX*distanceX + distanceY*distanceY) < zoneRadius*zoneRadius))
+    	  if (finalVoxelizedPC->points[i].z>0.01)
+    		  minPointCounter++;
       if (minPointCounter > 5)
       {
         // found enough points on the zone to consider it as occupied
