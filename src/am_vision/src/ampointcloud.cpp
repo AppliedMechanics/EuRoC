@@ -292,8 +292,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::xyzTheresholdCloud(pcl::Point
 	pcl::PointCloud<pcl::PointXYZ>::Ptr theresholdedPointCloud;
 
 	// Hard-coded values, based on table measures (in meters)
-	float xthreshold = 1.9;
-	float ythreshold = 1.9;
+	float xthreshold = 1.1;
+	float ythreshold = 1.1;
 
 	theresholdedPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 

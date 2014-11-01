@@ -84,6 +84,7 @@ Vision::Vision():
   pub_3 = nh_.advertise<sensor_msgs::PointCloud2> ("/PointCloud_Octomap", 1);
 
   // Initialize finalScenePC Pointcloud
+  finalPC.reset (new pcl::PointCloud<pcl::PointXYZ> ());
   finalScenePC.reset (new pcl::PointCloud<pcl::PointXYZ> ());
   finalTcpPC.reset (new pcl::PointCloud<pcl::PointXYZ> ());
   finalBluePC.reset (new pcl::PointCloud<pcl::PointXYZ>());
@@ -105,6 +106,7 @@ Vision::Vision():
 
   // leaf size voxels
   leaf_size = 0.0025;
+//  leaf_size = 0.01;
   same_color_problem = false;
 
   // Create and set resolution of Octree
@@ -202,391 +204,47 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
 
 bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res)
 {
-	res.zones_occupied.resize(req.target_zones.size());
+  res.zones_occupied.resize(req.target_zones.size());
 
-    pcl::PointXYZ zoneCenter;
-	for(uint16_t ii=0;ii<req.target_zones.size();ii++)
-	{
-		// set up target zone position and radius
-	    zoneCenter.x = req.target_zones[ii].position.x;
-	    zoneCenter.y = req.target_zones[ii].position.y;
-	    zoneCenter.z = req.target_zones[ii].position.z;
-	    float zoneRadius = req.target_zones[ii].max_distance;
+  pcl::PointXYZ zoneCenter;
+  for(uint16_t ii=0;ii<req.target_zones.size();ii++) // iterate over target zones
+  {
+    // initialze the occupancy to zero
+    res.zones_occupied[ii]=0;
+    // set up target zone position and radius
+    zoneCenter.x = req.target_zones[ii].position.x;
+    zoneCenter.y = req.target_zones[ii].position.y;
+    zoneCenter.z = req.target_zones[ii].position.z;
+    float zoneRadius = req.target_zones[ii].max_distance;
 
-		int minPointCounter = 0;
-		float distanceX, distanceY;
-		for (int i=0; i<finalVoxelizedPC->points.size(); i++)
-		{
-			distanceX = std::abs(finalVoxelizedPC->points[i].x - zoneCenter.x);
-			distanceY = std::abs(finalVoxelizedPC->points[i].y - zoneCenter.y);
-			if ( distanceX < zoneRadius && distanceY < zoneRadius )
-				minPointCounter++;
-			if (minPointCounter > 5)
-			{
-				std::cout<<"an object is detected on target zone."<<ii<<" "<<std::endl;
-				res.zones_occupied[ii]=1;
-			}
-			else
-			{
-				res.zones_occupied[ii]=0;
+    // iterate over point cloud to find possible points on target zone
+    int minPointCounter = 0;
+    float distanceX, distanceY;
 
-			}
-		}
-	}
+    for (int i=0; i<finalVoxelizedPC->points.size(); i++)
+    {
+      distanceX = std::abs(finalVoxelizedPC->points[i].x - zoneCenter.x);
+      distanceY = std::abs(finalVoxelizedPC->points[i].y - zoneCenter.y);
+      if ( (distanceX*distanceX + distanceY*distanceY) < zoneRadius*zoneRadius )
+        minPointCounter++;
+      if (minPointCounter > 5)
+      {
+        // found enough points on the zone to consider it as occupied
+        ROS_INFO("[VISION]an object is detected on target zone #%d", ii);
+        res.zones_occupied[ii]=1;
+        break;
+      }
+    }
+    if (minPointCounter < 5)
+      ROS_INFO("[VISION]zone is free");
+  }
 
-	return true;
+  return true;
 }
 
 /*
  * END CALLBACKS
  */
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
-	ShapeGenerator<pcl::PointXYZ> shape_generator2;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr T_object_model(
-			new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr T_shape_model(
-			new pcl::PointCloud<pcl::PointXYZ>);
-	float step_size = 0.005;
-	Eigen::Quaternion<double> q2;
-	Eigen::Vector3d translation2;
-
-	//We have to generate the object which is bigger than our target, yet in the same colors
-	std::string part1 = "object_";
-	std::string part2 = "";
-	std::string part3 = "_nr_shapes_";
-	std::string part4 = "_color_";
-	std::string part6 = "_shape_";
-	int object_part_size_number = 0;
-	std::string part5 = "_length_";
-	std::string partx = "x_";
-	std::string party = "y_";
-	std::string partz = "z_";
-	std::string part9 = "_radius_";
-	std::string partw = "w_";
-	std::string part13 = "_size_";
-	std::string hold_obj_part = "";
-	std::string hold_size = "";
-	std::string pose_position = "_pose_position_";
-	std::string pose_orientation = "_pose_orientation_";
-	std::string string_with_shape_number = "";
-	std::string full_string_orientation = "";
-	std::string full_string_position = "";
-	std::string full_string_radius = "";
-	std::string full_string_length = "";
-	std::string full_string_size = "";
-	std::vector<std::string> part_position_vector_;
-	std::vector<std::string> part_orientation_vector_;
-	std::vector<std::string> cube_size_vector_;
-	std::vector<std::string> cylinder_radius_vector_;
-	std::vector<std::string> cylinder_length_vector_;
-	std::stringstream ss;
-	ss << problem_object_index;
-	part2 = ss.str();
-
-	for (int shapecounter_ = 0; shapecounter_ < Number_of_Shapes_List.back();
-			shapecounter_++) {
-		bool is_cylinder = false;
-		std::stringstream cs;
-		cs << shapecounter_;
-		hold_obj_part = cs.str();
-		string_with_shape_number = part1 + part2 + part4 + hold_obj_part;
-		std::cout << "[VISION]String with shape number: "
-				<< string_with_shape_number << std::endl;
-
-		cylinder_radius_vector_.push_back(string_with_shape_number + part9);
-		cylinder_length_vector_.push_back(string_with_shape_number + part5);
-
-		string keystring = "";
-		if (nh_.searchParam(cylinder_radius_vector_.back(), keystring)) {
-
-			nh_.getParam(keystring, cylinder_radius);
-
-			std::cout << "[VISION]****Cylinder radius is found: "
-					<< cylinder_radius << std::endl;
-			is_cylinder = true;
-
-		}
-
-		keystring = "";
-		if (nh_.searchParam(cylinder_length_vector_.back(), keystring)) {
-			nh_.getParam(keystring, cylinder_length);
-			is_cylinder = true;
-
-			std::cout << "[VISION]****Cylinder length is found: "
-					<< cylinder_length << std::endl;
-			std::cout << "[VISION]Cylinder_radius_vector:"
-					<< cylinder_radius_vector_[shapecounter_] << std::endl;
-			std::cout << "[VISION]Cylinder_length_vector:"
-					<< cylinder_length_vector_[shapecounter_] << std::endl;
-		}
-
-		//object_0_shape_0_pose_position_x
-		keystring = "";
-		part_position_vector_.push_back(
-				string_with_shape_number + pose_position + partx);
-		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_position_vector.push_back(temp);
-			std::cout << "[VISION]****Trouble Object part position x is found: "
-					<< trouble_object_position_vector.back() << std::endl;
-			keystring = "";
-		}
-		part_position_vector_.push_back(
-				string_with_shape_number + pose_position + party);
-		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_position_vector.push_back(temp);
-			std::cout << "[VISION]****Trouble Object part position y is found: "
-					<< trouble_object_position_vector.back() << std::endl;
-			keystring = "";
-		}
-		part_position_vector_.push_back(
-				string_with_shape_number + pose_position + partz);
-
-		if (nh_.searchParam(part_position_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_position_vector.push_back(temp);
-			std::cout << "[VISION]****Trouble Object part position z is found: "
-					<< trouble_object_position_vector.back() << std::endl;
-			keystring = "";
-		}
-
-		part_orientation_vector_.push_back(
-				string_with_shape_number + pose_orientation + partx);
-
-		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_orientation_vector.push_back(temp);
-			std::cout
-					<< "[VISION]****Trouble Object orientation position x is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
-			keystring = "";
-		}
-		part_orientation_vector_.push_back(
-				string_with_shape_number + pose_orientation + party);
-		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_orientation_vector.push_back(temp);
-			std::cout
-					<< "[VISION]****Trouble Object orientation position y is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
-			keystring = "";
-		}
-		part_orientation_vector_.push_back(
-				string_with_shape_number + pose_orientation + partz);
-		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_orientation_vector.push_back(temp);
-			std::cout
-					<< "[VISION]****Trouble Object orientation position z is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
-			keystring = "";
-		}
-		part_orientation_vector_.push_back(
-				string_with_shape_number + pose_orientation + partw);
-		if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
-			double temp = 0;
-			nh_.getParam(keystring, temp);
-			trouble_object_orientation_vector.push_back(temp);
-			std::cout
-					<< "[VISION]****Trouble Object orientation position w is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
-			keystring = "";
-		}
-
-		std::cout << "[VISION]part_orientation_vector_.partx): "
-				<< (part_orientation_vector_.front()) << std::endl;
-
-		//Find Cube Sizes- Cube always have 3 size
-		for (int sizenumber = 0; sizenumber < 3; sizenumber++) {
-			std::string holdsize = "";
-			std::stringstream cc;
-			cc << sizenumber;
-			holdsize = cc.str();
-			//object_0_shape_0_size_0/1/2_
-
-			cube_size_vector_.push_back(
-					string_with_shape_number + part13 + holdsize + "_");
-			std::string holdtemp = string_with_shape_number + part13 + holdsize
-					+ "_";
-			std::cout << "[VISION]****T.O. cube size is found: " << holdtemp
-					<< std::endl;
-
-			keystring = "";
-			if (nh_.searchParam(holdtemp, keystring)) {
-				double temp = 0;
-				nh_.getParam(keystring, temp);
-				trouble_object_cube_size_vector.push_back(temp);
-				std::cout << "[VISION]****cube size is found: "
-						<< trouble_object_cube_size_vector.back() << std::endl;
-			} //END OF IF
-		} //END OF FOR
-		if (is_cylinder) {
-			step_size = leaf_size;
-			shape_generator2.generateCylinder(step_size,
-					Eigen::Vector3f(0.0f, 0.0f, 0.0f),
-					cylinder_length * Eigen::Vector3f::UnitZ(),
-					cylinder_radius);
-
-			double w = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double z = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double y = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double x = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-			q2 = Eigen::Quaternion<double>(w, x, y, z);
-
-			float pz = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-			float py = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-			float px = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-			translation2[0] = px;
-			translation2[1] = py;
-			translation2[2] = -(cylinder_radius / 2) + pz;
-
-			pcl::transformPointCloud(*T_shape_model, *T_shape_model,
-					translation2, q2);
-
-			*T_object_model += *T_shape_model;
-
-			T_shape_model->clear();
-		} else //If box
-		{
-			step_size = leaf_size;
-			float side3 = trouble_object_cube_size_vector.back();
-			trouble_object_cube_size_vector.pop_back();
-			float side2 = trouble_object_cube_size_vector.back();
-			trouble_object_cube_size_vector.pop_back();
-			float side1 = trouble_object_cube_size_vector.back();
-			trouble_object_cube_size_vector.pop_back();
-
-			shape_generator2.generateBox(step_size,
-					Eigen::Vector3f(0.0f, 0.0f, 0.0f),
-					side3 * Eigen::Vector3f::UnitX(),
-					side1 * Eigen::Vector3f::UnitY(),
-					side1 * Eigen::Vector3f::UnitZ(), 0.0f, true, is_task5);
-			std::cout << "Object Size not 1 and Compound" << std::endl;
-
-			//transform Box PC to valid position
-			double w = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double z = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double y = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			double x = trouble_object_orientation_vector.back();
-			trouble_object_orientation_vector.pop_back();
-
-			q2 = Eigen::Quaternion<double>(w, x, y, z);
-
-			float pz = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-			float py = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-			float px = trouble_object_position_vector.back();
-			trouble_object_position_vector.pop_back();
-
-			translation2[0] = -(side2 / 2) + px;
-			translation2[1] = -(side2 / 2) + py;
-			translation2[2] = -(side3 / 2) + pz;
-
-			pcl::transformPointCloud(*T_shape_model, *T_shape_model,
-					translation2, q2);
-
-			*T_object_model += *T_shape_model;
-			T_shape_model->clear();
-		}
-
-	} //END OF FOR
-	  //*******************************************End of parameter search!****************************
-	return T_object_model;
-}			//END OF FAKE SHAPE GENERATOR, SAME COLOR PROBLEM
-
-bool Vision::same_colored_objects(const am_msgs::VisionGoal::ConstPtr &goal) {
-	same_color_problem = false;
-	std::string nrof_objects = "";
-	problem_object_index = 0;
-	total_nr_of_objects = 0;
-	int problem_obj_shape_number = 0;
-	if (nh_.searchParam("nr_objects_", nrof_objects)) {
-		nh_.getParam(nrof_objects, total_nr_of_objects);
-		std::cout << "[VISION]Total Number of Objects: " << total_nr_of_objects
-				<< std::endl;
-		ROS_INFO("TOTAL NUMBER OF OBJECTS IS FOUND!!!!");
-	} else
-		ROS_WARN("NUMBER OF OBJECTS COULD NOT BE FETCHED");
-
-	std::string object_color_param = "";
-	std::string object_nrshapes_param = "";
-	std::string part1 = "object_";
-	std::string part2 = "";
-	std::string part3 = "_nr_shapes_";
-	std::string part4 = "_color_";
-
-	for (int cnt = 0; cnt < total_nr_of_objects; cnt++) {
-		std::cout << "[VISION] ENTERED THE LOOP" << std::endl;
-		std::stringstream ss;
-		ss << cnt;
-		part2 = ss.str();
-		//std::cout<<"part2: "<<part2<<std::endl;
-
-		std::string full_string_color_param = part1 + part2 + part4;
-		std::string full_string_nrofshapes_param = part1 + part2 + part3;
-
-		std::cout << "[VISION] Full_string_nrofshapes_param: "
-				<< full_string_nrofshapes_param << std::endl;
-		std::cout << "[VISION] Full_string_color_param: "
-				<< full_string_color_param << std::endl;
-
-		if (nh_.searchParam(full_string_color_param, object_color_param)) {
-			std::cout << "Color of an object is found" << std::endl;
-			std::string colortemphold = "";
-			nh_.getParam(object_color_param, colortemphold);
-			Colour_String.push_back(colortemphold);
-			std::cout << "[VISION] COLOR OF AN OBJECT IS SAVED: "
-					<< colortemphold << std::endl;
-
-			if (nh_.searchParam(full_string_nrofshapes_param,
-					object_nrshapes_param)) {
-				int nr_of_shapes_hold = 0;
-				nh_.getParam(object_nrshapes_param, nr_of_shapes_hold);
-				Number_of_Shapes_List.push_back(nr_of_shapes_hold);
-				std::cout << "[VISION]THE OBJECT SHAPE NUMBER IS SAVED:"
-						<< nr_of_shapes_hold << std::endl;
-
-				if (((goal->object.color) == colortemphold)
-						&& ((nr_of_shapes_hold) > (goal->object.nr_shapes))) {
-					std::cout << "[VISION]SAME COLOR OBJECTS: Call alignment2"
-							<< std::endl;
-					same_color_problem = true;
-					problem_obj_shape_number = nr_of_shapes_hold;
-					problem_object_index = cnt;
-					return true; //Call Alignment 2
-
-				}
-			} //Object Shape Number
-		} //Color Comparison
-	} //END OF LOOP
-	return false;
-} // SAME_COLOR_PROBLEM
-
 
 void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 {
@@ -1114,7 +772,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
     double pan[8]  = {0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380, 0.380};
     double tilt[8] = {1.250,  0.800, 0.700, 0.800, 0.800, 0.300,  0.300, 0.300};
 
-    std::cout<<"[VISION]Scanning the scene with pan tilt cam..."<<std::endl;
+    ROS_INFO("[VISION]Scanning the scene with pan tilt cam...");
     while(panTiltCounter < 8)
 //    while(panTiltCounter < 3)
     {
@@ -1263,7 +921,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       *finalMagentaPC += *magentaFilteredPC;
 
 
-      std::cout<<"[VISION]Finished sweep "<<panTiltCounter<<std::endl;
+      ROS_INFO("[VISION]Finished sweep %d", panTiltCounter);
 
       // Set the time stamp of current image as the final stamp
       finalTimeStamp = stepTimeStampRGB;
@@ -1291,8 +949,10 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
     // for each point cloud, we have to create a voxelized version.
     pcl::VoxelGrid<pcl::PointXYZ> vg;
 
+    // copy the final result to finalGlobalPC
+    *finalPC += *finalScenePC;
     std::cout<<"[VISION]Voxelization: global point cloud..."<<std::endl;
-    vg.setInputCloud(finalScenePC);
+    vg.setInputCloud(finalPC);
     vg.setLeafSize (leaf_size, leaf_size, leaf_size);
     vg.filter (*finalVoxelizedPC);
 
@@ -1490,12 +1150,22 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 
   // Voxelize result point clouds
   // for each point cloud, we have to create a voxelized version.
+  finalVoxelizedPC       ->clear();
+  finalVoxelizedBluePC   ->clear();
+  finalVoxelizedGreenPC  ->clear();
+  finalVoxelizedRedPC    ->clear();
+  finalVoxelizedYellowPC ->clear();
+  finalVoxelizedCyanPC   ->clear();
+  finalVoxelizedMagentaPC->clear();
+
   pcl::VoxelGrid<pcl::PointXYZ> vg;
 
+  // copy the result to finalPC
+  *finalPC += *finalTcpPC;
   std::cout<<"[VISION]Voxelization: global point cloud..."<<std::endl;
-  vg.setInputCloud(threshPC);
+  vg.setInputCloud(finalPC);
   vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-  vg.filter (*tempVoxelizedPC);
+  vg.filter (*finalVoxelizedPC);
 
   std::cout<<"[VISION]Voxelization: blue point cloud..."<<std::endl;
   vg.setInputCloud(finalBluePC);
@@ -1529,13 +1199,13 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 
   std::cout<<"[VISION]Voxelization: finished."<<std::endl;
 
-  *finalVoxelizedPC += *tempVoxelizedPC;
-  *finalVoxelizedBluePC += *tempVoxelizedBluePC;
-  *finalVoxelizedGreenPC += *tempVoxelizedGreenPC;
-  *finalVoxelizedRedPC += *tempVoxelizedRedPC;
-  *finalVoxelizedYellowPC += *tempVoxelizedYellowPC;
-  *finalVoxelizedCyanPC += *tempVoxelizedCyanPC;
-  *finalVoxelizedMagentaPC += *tempVoxelizedMagentaPC;
+//  *finalVoxelizedPC += *tempVoxelizedPC;
+//  *finalVoxelizedBluePC += *tempVoxelizedBluePC;
+//  *finalVoxelizedGreenPC += *tempVoxelizedGreenPC;
+//  *finalVoxelizedRedPC += *tempVoxelizedRedPC;
+//  *finalVoxelizedYellowPC += *tempVoxelizedYellowPC;
+//  *finalVoxelizedCyanPC += *tempVoxelizedCyanPC;
+//  *finalVoxelizedMagentaPC += *tempVoxelizedMagentaPC;
 
 
   // Set the time stamp of current image
@@ -1549,6 +1219,67 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 
 }
 
+bool Vision::same_colored_objects(const am_msgs::VisionGoal::ConstPtr &goal) {
+        same_color_problem = false;
+        std::string nrof_objects = "";
+        problem_object_index = 0;
+        total_nr_of_objects = 0;
+        int problem_obj_shape_number = 0;
+        if (nh_.searchParam("nr_objects_", nrof_objects)) {
+                nh_.getParam(nrof_objects, total_nr_of_objects);
+                //std::cout << "[VISION]Total Number of Objects: " << total_nr_of_objects<< std::endl;
+                //ROS_INFO("TOTAL NUMBER OF OBJECTS IS FOUND!!!!");
+        } else
+                ROS_WARN("NUMBER OF OBJECTS COULD NOT BE FETCHED");
+
+        std::string object_color_param = "";
+        std::string object_nrshapes_param = "";
+        std::string part1 = "object_";
+        std::string part2 = "";
+        std::string part3 = "_nr_shapes_";
+        std::string part4 = "_color_";
+
+        for (int cnt = 0; cnt < total_nr_of_objects; cnt++) {
+                //std::cout << "[VISION] ENTERED THE LOOP" << std::endl;
+                std::stringstream ss;
+                ss << cnt;
+                part2 = ss.str();
+                //std::cout<<"part2: "<<part2<<std::endl;
+
+                std::string full_string_color_param = part1 + part2 + part4;
+                std::string full_string_nrofshapes_param = part1 + part2 + part3;
+
+                //std::cout << "[VISION] Full_string_nrofshapes_param: "<< full_string_nrofshapes_param << std::endl;
+                //std::cout << "[VISION] Full_string_color_param: "<< full_string_color_param << std::endl;
+
+                if (nh_.searchParam(full_string_color_param, object_color_param)) {
+                        //std::cout << "Color of an object is found" << std::endl;
+                        std::string colortemphold = "";
+                        nh_.getParam(object_color_param, colortemphold);
+                        Colour_String.push_back(colortemphold);
+                        //std::cout << "[VISION] COLOR OF AN OBJECT IS SAVED: "<< colortemphold << std::endl;
+
+                        if (nh_.searchParam(full_string_nrofshapes_param,
+                                        object_nrshapes_param)) {
+                                int nr_of_shapes_hold = 0;
+                                nh_.getParam(object_nrshapes_param, nr_of_shapes_hold);
+                                Number_of_Shapes_List.push_back(nr_of_shapes_hold);
+                                //std::cout << "[VISION]THE OBJECT SHAPE NUMBER IS SAVED:"<< nr_of_shapes_hold << std::endl;
+
+                                if (((goal->object.color) == colortemphold)
+                                                && ((nr_of_shapes_hold) > (goal->object.nr_shapes))) {
+                                        //std::cout << "[VISION]SAME COLOR OBJECTS: Call alignment2"<< std::endl;
+                                        same_color_problem = true;
+                                        problem_obj_shape_number = nr_of_shapes_hold;
+                                        problem_object_index = cnt;
+                                        return true; //Call Alignment 2
+
+                                }
+                        } //Object Shape Number
+                } //Color Comparison
+        } //END OF LOOP
+        return false;
+} // SAME_COLOR_PROBLEM
 
 /**
  * This function aligns a pre-defined object model with an input point cloud.
@@ -1631,11 +1362,288 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::reduced_object_input(
 
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
+        ShapeGenerator<pcl::PointXYZ> shape_generator2;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr T_object_model(
+                        new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr T_shape_model(
+                        new pcl::PointCloud<pcl::PointXYZ>);
+        float step_size = 0.005;
+        Eigen::Quaternion<double> q2;
+        Eigen::Vector3d translation2;
+
+        //We have to generate the object which is bigger than our target, yet in the same colors
+        std::string part1 = "object_";
+        std::string part2 = "";
+        std::string part3 = "_nr_shapes_";
+        std::string part4 = "_color_";
+        std::string part6 = "_shape_";
+        int object_part_size_number = 0;
+        std::string part5 = "_length_";
+        std::string partx = "x_";
+        std::string party = "y_";
+        std::string partz = "z_";
+        std::string part9 = "_radius_";
+        std::string partw = "w_";
+        std::string part13 = "_size_";
+        std::string hold_obj_part = "";
+        std::string hold_size = "";
+        std::string pose_position = "_pose_position_";
+        std::string pose_orientation = "_pose_orientation_";
+        std::string string_with_shape_number = "";
+        std::string full_string_orientation = "";
+        std::string full_string_position = "";
+        std::string full_string_radius = "";
+        std::string full_string_length = "";
+        std::string full_string_size = "";
+        std::vector<std::string> part_position_vector_;
+        std::vector<std::string> part_orientation_vector_;
+        std::vector<std::string> cube_size_vector_;
+        std::vector<std::string> cylinder_radius_vector_;
+        std::vector<std::string> cylinder_length_vector_;
+        std::stringstream ss;
+        ss << problem_object_index;
+        part2 = ss.str();
+
+        for (int shapecounter_ = 0; shapecounter_ < Number_of_Shapes_List.back();
+                        shapecounter_++) {
+                bool is_cylinder = false;
+                std::stringstream cs;
+                cs << shapecounter_;
+                hold_obj_part = cs.str();
+                string_with_shape_number = part1 + part2 + part4 + hold_obj_part;
+                std::cout << "[VISION]String with shape number: "
+                                << string_with_shape_number << std::endl;
+
+                cylinder_radius_vector_.push_back(string_with_shape_number + part9);
+                cylinder_length_vector_.push_back(string_with_shape_number + part5);
+
+                string keystring = "";
+                if (nh_.searchParam(cylinder_radius_vector_.back(), keystring)) {
+
+                        nh_.getParam(keystring, cylinder_radius);
+
+                        std::cout << "[VISION]****Cylinder radius is found: "
+                                        << cylinder_radius << std::endl;
+                        is_cylinder = true;
+
+                }
+
+                keystring = "";
+                if (nh_.searchParam(cylinder_length_vector_.back(), keystring)) {
+                        nh_.getParam(keystring, cylinder_length);
+                        is_cylinder = true;
+
+                        std::cout << "[VISION]****Cylinder length is found: "
+                                        << cylinder_length << std::endl;
+                        std::cout << "[VISION]Cylinder_radius_vector:"
+                                        << cylinder_radius_vector_[shapecounter_] << std::endl;
+                        std::cout << "[VISION]Cylinder_length_vector:"
+                                        << cylinder_length_vector_[shapecounter_] << std::endl;
+                }
+
+                //object_0_shape_0_pose_position_x
+                keystring = "";
+                part_position_vector_.push_back(
+                                string_with_shape_number + pose_position + partx);
+                if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_position_vector.push_back(temp);
+                        std::cout << "[VISION]****Trouble Object part position x is found: "
+                                        << trouble_object_position_vector.back() << std::endl;
+                        keystring = "";
+                }
+                part_position_vector_.push_back(
+                                string_with_shape_number + pose_position + party);
+                if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_position_vector.push_back(temp);
+                        std::cout << "[VISION]****Trouble Object part position y is found: "
+                                        << trouble_object_position_vector.back() << std::endl;
+                        keystring = "";
+                }
+                part_position_vector_.push_back(
+                                string_with_shape_number + pose_position + partz);
+
+                if (nh_.searchParam(part_position_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_position_vector.push_back(temp);
+                        std::cout << "[VISION]****Trouble Object part position z is found: "
+                                        << trouble_object_position_vector.back() << std::endl;
+                        keystring = "";
+                }
+
+                part_orientation_vector_.push_back(
+                                string_with_shape_number + pose_orientation + partx);
+
+                if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_orientation_vector.push_back(temp);
+                        std::cout
+                                        << "[VISION]****Trouble Object orientation position x is found: "
+                                        << trouble_object_orientation_vector.back() << std::endl;
+                        keystring = "";
+                }
+                part_orientation_vector_.push_back(
+                                string_with_shape_number + pose_orientation + party);
+                if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_orientation_vector.push_back(temp);
+                        std::cout
+                                        << "[VISION]****Trouble Object orientation position y is found: "
+                                        << trouble_object_orientation_vector.back() << std::endl;
+                        keystring = "";
+                }
+                part_orientation_vector_.push_back(
+                                string_with_shape_number + pose_orientation + partz);
+                if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_orientation_vector.push_back(temp);
+                        std::cout
+                                        << "[VISION]****Trouble Object orientation position z is found: "
+                                        << trouble_object_orientation_vector.back() << std::endl;
+                        keystring = "";
+                }
+                part_orientation_vector_.push_back(
+                                string_with_shape_number + pose_orientation + partw);
+                if (nh_.searchParam(part_orientation_vector_.back(), keystring)) {
+                        double temp = 0;
+                        nh_.getParam(keystring, temp);
+                        trouble_object_orientation_vector.push_back(temp);
+                        std::cout
+                                        << "[VISION]****Trouble Object orientation position w is found: "
+                                        << trouble_object_orientation_vector.back() << std::endl;
+                        keystring = "";
+                }
+
+                std::cout << "[VISION]part_orientation_vector_.partx): "
+                                << (part_orientation_vector_.front()) << std::endl;
+
+                //Find Cube Sizes- Cube always have 3 size
+                for (int sizenumber = 0; sizenumber < 3; sizenumber++) {
+                        std::string holdsize = "";
+                        std::stringstream cc;
+                        cc << sizenumber;
+                        holdsize = cc.str();
+                        //object_0_shape_0_size_0/1/2_
+
+                        cube_size_vector_.push_back(
+                                        string_with_shape_number + part13 + holdsize + "_");
+                        std::string holdtemp = string_with_shape_number + part13 + holdsize
+                                        + "_";
+                        std::cout << "[VISION]****T.O. cube size is found: " << holdtemp
+                                        << std::endl;
+
+                        keystring = "";
+                        if (nh_.searchParam(holdtemp, keystring)) {
+                                double temp = 0;
+                                nh_.getParam(keystring, temp);
+                                trouble_object_cube_size_vector.push_back(temp);
+                                std::cout << "[VISION]****cube size is found: "
+                                                << trouble_object_cube_size_vector.back() << std::endl;
+                        } //END OF IF
+                } //END OF FOR
+                if (is_cylinder) {
+                        step_size = leaf_size;
+                        shape_generator2.generateCylinder(step_size,
+                                        Eigen::Vector3f(0.0f, 0.0f, 0.0f),
+                                        cylinder_length * Eigen::Vector3f::UnitZ(),
+                                        cylinder_radius);
+
+                        double w = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double z = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double y = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double x = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+                        q2 = Eigen::Quaternion<double>(w, x, y, z);
+
+                        float pz = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+                        float py = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+                        float px = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+                        translation2[0] = px;
+                        translation2[1] = py;
+                        translation2[2] = -(cylinder_radius / 2) + pz;
+
+                        pcl::transformPointCloud(*T_shape_model, *T_shape_model,
+                                        translation2, q2);
+
+                        *T_object_model += *T_shape_model;
+
+                        T_shape_model->clear();
+                } else //If box
+                {
+                        step_size = leaf_size;
+                        float side3 = trouble_object_cube_size_vector.back();
+                        trouble_object_cube_size_vector.pop_back();
+                        float side2 = trouble_object_cube_size_vector.back();
+                        trouble_object_cube_size_vector.pop_back();
+                        float side1 = trouble_object_cube_size_vector.back();
+                        trouble_object_cube_size_vector.pop_back();
+
+                        shape_generator2.generateBox(step_size,
+                                        Eigen::Vector3f(0.0f, 0.0f, 0.0f),
+                                        side3 * Eigen::Vector3f::UnitX(),
+                                        side1 * Eigen::Vector3f::UnitY(),
+                                        side1 * Eigen::Vector3f::UnitZ(), 0.0f, true, is_task5);
+                        std::cout << "Object Size not 1 and Compound" << std::endl;
+
+                        //transform Box PC to valid position
+                        double w = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double z = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double y = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        double x = trouble_object_orientation_vector.back();
+                        trouble_object_orientation_vector.pop_back();
+
+                        q2 = Eigen::Quaternion<double>(w, x, y, z);
+
+                        float pz = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+                        float py = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+                        float px = trouble_object_position_vector.back();
+                        trouble_object_position_vector.pop_back();
+
+                        translation2[0] = -(side2 / 2) + px;
+                        translation2[1] = -(side2 / 2) + py;
+                        translation2[2] = -(side3 / 2) + pz;
+
+                        pcl::transformPointCloud(*T_shape_model, *T_shape_model,
+                                        translation2, q2);
+
+                        *T_object_model += *T_shape_model;
+                        T_shape_model->clear();
+                }
+
+        } //END OF FOR
+          //*******************************************End of parameter search!****************************
+        return T_object_model;
+}                       //END OF FAKE SHAPE GENERATOR, SAME COLOR PROBLEM
+
 /**
  * This function aligns a pre-defined object model with an input point cloud.
  * The input point cloud is calculated by functions from am_pointcloud class.
  **/
-
 Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder, bool is_task5)
 {
 
@@ -1712,8 +1720,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
   nest.setInputCloud (object_input);
   nest.compute (*object);
 
-  std::cout <<"scene points: " <<scene->points.size() <<"           " <<"object points: " <<object->points.size() <<std::endl
-      << "box: " <<box <<"      " <<"cylinder: "  <<cylinder  <<std::endl;
+  ROS_INFO(" > scene points: %f     object points: %f \n > box: %d     cylinder: %d");
 
   // Estimate features
   pcl::console::print_highlight ("Estimating features...\n");
@@ -1828,7 +1835,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
     if (align.hasConverged ())
     {
 
-      std::cout<<"nmbr_tries: "<<nmbr_tries<<std::endl;
+      std::cout<<"nmbr_tries: "<<nmbr_tries+1<<std::endl;
       // Print results
       printf ("\n");
       transform = align.getFinalTransformation ();
@@ -1852,7 +1859,7 @@ Eigen::Matrix4f Vision::align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr ob
       if(cylinder)
         iters+=150000;
       else
-        iters+=400000;
+        iters+=300000;
 
       align.setMaximumIterations (iters);
     }
@@ -2545,7 +2552,7 @@ bool Vision::search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr inpu
   float distanceX = std::abs(centerOfMass.x - zoneCenter.x);
   float distanceY = std::abs(centerOfMass.y - zoneCenter.y);
 
-  if ( distanceX < radius+0.005 && distanceY < radius+0.005 )
+  if ( (distanceX*distanceX + distanceY*distanceY) < radius*radius )
   {
     std::cout<<"Object placed within the correct radius."<<std::endl;
     return true;
@@ -2652,7 +2659,7 @@ std::vector<pcl::PointIndices> Vision::find_clusters(pcl::PointCloud<pcl::PointX
     float obj_length = get_shape_length(goal);
     //std::cout<<"current goal->shape length: "<<obj_length<<std::endl;
     // compare the distance between min & max
-    if( max_dist < obj_length+obj_length*0.3 ) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
+    if( max_dist < obj_length * 1.8 ) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
     {
       final_cluster_indices.resize( final_cluster_indices.size() + 1 );
       final_cluster_indices[finalClusterCounter].indices = it->indices; //http://www.pcl-users.org/IndicesPtr-from-PointIndices-td4020356.html

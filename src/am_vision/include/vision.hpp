@@ -119,6 +119,33 @@ private:
 	Mat thresholdCyan;
 	Mat thresholdMagenta;
 
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalTcpPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalBluePC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalGreenPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalRedPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedBluePC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedGreenPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedRedPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedYellowPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
+
+        // size of voxels
+        float leaf_size;
+
+        tf::Quaternion tfqt;
+        tf::Quaternion tfqtNew;
+        Eigen::Matrix4f transformation;
+
 	bool isSingleCube; // verifies whether the current object is a single cube
 	bool is_task5;
 
@@ -194,36 +221,8 @@ public:
 	octomap::OcTree* tree;
 	octomap::Pointcloud* OctoCloud;
 
-	tf::Quaternion tfqt;
-	tf::Quaternion tfqtNew;
-	Eigen::Matrix4f transformation;
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalTcpPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalBluePC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalGreenPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalRedPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedBluePC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedGreenPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedRedPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedYellowPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
-
 	//alignemt was successfull
 	bool obj_aligned_;
-
-	// size of voxels
-	float leaf_size;
-
-
 };
 
 #endif //VISION_HPP__
