@@ -349,6 +349,60 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeRobotFromPointCloud(pcl
 	return theresholdedPointCloud;
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filledPC;
+  pcl::PointXYZ p;
+
+//  int width = 1;
+//  int height = 1;
+  filledPC.reset(new pcl::PointCloud<pcl::PointXYZ> ());
+//  filledPC->resize(width * height);
+
+  int maxZ = 0;
+//  int n = 0;
+  for (int i = 0; i < cloud->points.size(); i++)
+  {
+    if( pcl_isfinite(cloud->points[i].x)
+        ||pcl_isfinite(cloud->points[i].y)
+        ||pcl_isfinite(cloud->points[i].z) )
+
+    {
+      maxZ = (int)(cloud->at(i).z / 0.01);
+
+      p.x = cloud->points[i].x;
+      p.y = cloud->points[i].y;
+      p.z = cloud->points[i].z;
+      filledPC->points.push_back(p);
+//      *filledPC += p;
+
+//      filledPC->points[n].x = cloud->points[i].x;
+//      filledPC->points[n].y = cloud->points[i].y;
+//      filledPC->points[n].z = cloud->points[i].z;
+//      n++;
+
+      for (int j = 0; j < maxZ; j++)
+      {
+        p.x = cloud->points[i].x;
+        p.y = cloud->points[i].y;
+        p.z = (float) j * 0.01;
+        filledPC->points.push_back(p);
+//        *filledPC += p;
+//        filledPC->points[n].x = cloud->points[i].x;
+//        filledPC->points[n].y = cloud->points[i].y;
+//        filledPC->points[n].z = j * 0.01;
+//        n++;
+      }
+    }
+  }
+  filledPC->width = filledPC->points.size ();
+  filledPC->height = 1;
+  filledPC->is_dense = true;
+
+  std::cout<<"returning the filledPC"<<std::endl;
+  return filledPC;
+}
+
 /*
  * This function roughly calculates the center of mass from a set of points in a point cloud.
  */

@@ -790,6 +790,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       pcl::PointCloud<pcl::PointXYZ>::Ptr worldPC;
       pcl::PointCloud<pcl::PointXYZ>::Ptr robotLessPC;
       pcl::PointCloud<pcl::PointXYZ>::Ptr threshPC;
+      pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
 
       ros::Time stepTimeStampRGB;
       ros::Time stepTimeStampDepth;
@@ -875,7 +876,8 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       // filter out the robot, table surface and irrelevant points
       robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
       threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
-
+      filledForOctomapPC = scenePointCloud->fillPointCloud(threshPC);
+      ROS_INFO("filled point cloud");
 #ifdef OCTOMAP_COMPLETE_OLD
       // Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
       OctoCloud->reserve(worldPC->points.size());
@@ -886,7 +888,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-      pcl::toROSMsg (*threshPC, msg);
+      pcl::toROSMsg (*filledForOctomapPC, msg);
       msg.header.frame_id = "/Origin";
       msg.header.stamp = ros::Time::now();
       pub_3.publish (msg);
@@ -931,7 +933,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       panTiltCounter++;
 
       // publish final thresholded point cloud
-      pcl::toROSMsg (*finalScenePC, msg);
+      pcl::toROSMsg (*finalVoxelizedPC, msg);
       msg.header.frame_id = "/Origin";
       msg.header.stamp = ros::Time::now();
       pub.publish (msg);
@@ -1021,6 +1023,7 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
   pcl::PointCloud<pcl::PointXYZ>::Ptr worldPC;
   pcl::PointCloud<pcl::PointXYZ>::Ptr robotLessPC;
   pcl::PointCloud<pcl::PointXYZ>::Ptr threshPC;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
   pcl::PointCloud<pcl::PointXYZ>::Ptr tempVoxelizedPC (new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr tempVoxelizedBluePC (new pcl::PointCloud<pcl::PointXYZ>());
   pcl::PointCloud<pcl::PointXYZ>::Ptr tempVoxelizedGreenPC (new pcl::PointCloud<pcl::PointXYZ>());
@@ -1106,6 +1109,7 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
   // filter out the robot, table surface and irrelevant points
   robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
   threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
+  filledForOctomapPC = scenePointCloud->fillPointCloud(threshPC);
 
 #ifdef OCTOMAP_COMPLETE_OLD
   // Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
@@ -1117,7 +1121,7 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 #endif
 
 #ifdef OCTOMAP_SERVER
-  pcl::toROSMsg (*threshPC, msg);
+  pcl::toROSMsg (*filledForOctomapPC, msg);
   msg.header.frame_id = "/Origin";
   msg.header.stamp = ros::Time::now();
   pub_3.publish (msg);

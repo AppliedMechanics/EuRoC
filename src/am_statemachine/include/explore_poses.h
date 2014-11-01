@@ -27,13 +27,13 @@ public:
 
 	int size(uint8_t pose_type);
 
-	am_msgs::goalPoseGoal getExploreGoalPose(uint8_t pose_nr,uint8_t pose_type);
+	am_msgs::goalPoseGoal getExploreGoalPose(uint8_t pose_nr,uint8_t pose_type, uint8_t success_count);
 
 private:
 
-	std::vector<am_msgs::goalPoseGoal> explore_poses_snake_;
-	std::vector<am_msgs::goalPoseGoal> explore_poses_std_v1_;
-	std::vector<am_msgs::goalPoseGoal> explore_poses_std_v2_;
+	std::vector<std::vector<am_msgs::goalPoseGoal> > explore_poses_snake_;
+	std::vector<am_msgs::goalPoseGoal> 				explore_poses_std_v1_;
+	std::vector<am_msgs::goalPoseGoal> 				explore_poses_std_v2_;
 
 	am_msgs::goalPoseGoal tmp_goal_;
 
@@ -42,6 +42,7 @@ private:
 	void init_snake();
 
 	void setOrientationAndInsert(uint8_t);
+	void setOrientationAndInsert(uint8_t,uint8_t);
 	void randomSort();
 	bool checkDoublettes(uint8_t idx);
 
@@ -52,7 +53,10 @@ private:
 
 	tf::Quaternion q_temp_;
 
-
+	uint8_t block_counter_;
+	uint8_t insideblock_success_counter_;
+	uint8_t insideblock_counter_;
+	uint8_t success_counter_;
 };
 
 #endif /* EXPLORE_POSES_H_ */

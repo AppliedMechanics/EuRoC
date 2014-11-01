@@ -36,7 +36,8 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" respawn="true" />
 
 <!-- State Machine -->
-  <node pkg="am_statemachine" type="statemachine" name="statemachine" required="true" output="screen"/> 
+ <!-- <node pkg="am_statemachine" type="statemachine" name="statemachine" required="true" output="screen"/> -->
+  <node pkg="am_statemachine" type="statemachine" name="statemachine" required="true" launch-prefix="xterm -geometry 100x30 -e"/> 
 
 <!-- Dynamic TF Broadcaster  -->
 	<node pkg="am_dyn_tf_broadcaster" type="am_tf_broadcaster" name="am_tf_broadcaster" respawn="true" />

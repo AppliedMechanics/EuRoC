@@ -1911,7 +1911,7 @@ int Statemachine::request_task()
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
-			max_explore_poses_ = 10;
+			max_explore_poses_ = 7;
 			break;
 		case 5:
 		case 6:
@@ -2642,7 +2642,7 @@ int Statemachine::explore_environment_motion()
 			motion_planning_action_client_->waitForServer();
 		}
 		ROS_INFO("Active Goal: %i Successful poses: %i",active_goal_,explore_success_count_);
-		motion_planning_action_client_->sendGoal(explore_poses_->getExploreGoalPose(active_goal_,explore_pose_type_),
+		motion_planning_action_client_->sendGoal(explore_poses_->getExploreGoalPose(active_goal_,explore_pose_type_, explore_success_count_),
 				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::explore_environment_motion_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::explore_environment_motion_feedback,this,_1));
