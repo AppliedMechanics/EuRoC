@@ -5,7 +5,7 @@ planner_configs:
     type: geometric::EST
   LBKPIECEkConfigDefault:
     type: geometric::LBKPIECE
-    projection_evaluator: joints(lwr_joint_1,lwr_joint_2)
+    projection_evaluator: joints(lwr_joint_1,lwr_joint_7)
     longest_valid_segment_fraction: 0.01
   LBKPIECEkConfigDefault_2DOF:
     type: geometric::LBKPIECE
@@ -13,11 +13,11 @@ planner_configs:
     longest_valid_segment_fraction: 0.01
   LBKPIECEkConfigDefault_7DOF:
     type: geometric::LBKPIECE
-    projection_evaluator: joints(lwr_joint_1,lwr_joint_2)
+    projection_evaluator: joints(lwr_joint_1,lwr_joint_7)
     longest_valid_segment_fraction: 0.01
   LBKPIECEkConfigDefault_9DOF:
     type: geometric::LBKPIECE
-    projection_evaluator: joints(axis_x,axis_y)
+    projection_evaluator: joints(axis_x,lwr_joint_7)
     longest_valid_segment_fraction: 0.01
   BKPIECEkConfigDefault:
     type: geometric::BKPIECE
@@ -48,7 +48,7 @@ LWR_9DOF:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
-  projection_evaluator: joints(axis_x,axis_y)
+  projection_evaluator: joints(axis_x,lwr_joint_7)
   longest_valid_segment_fraction: 0.01
 LWR_7DOF:
   planner_configs:
@@ -63,6 +63,7 @@ LWR_7DOF:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
+  projection_evaluator: joints(lwr_joint_1,lwr_joint_7)
   longest_valid_segment_fraction: 0.01
 LWR_2DOF:
   planner_configs:

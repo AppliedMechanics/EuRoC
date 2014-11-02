@@ -47,19 +47,19 @@ obj_data_loaded_(false)
 
 
 	// vector of ompl planners
-	ompl_planners.push_back("SBLkConfigDefault");
-	ompl_planners.push_back("ESTkConfigDefault");
-	ompl_planners.push_back("LBKPIECEkConfigDefault_2DOF");
-	ompl_planners.push_back("LBKPIECEkConfigDefault_7DOF");
-	ompl_planners.push_back("LBKPIECEkConfigDefault_9DOF");
-	ompl_planners.push_back("BKPIECEkConfigDefault");
-	ompl_planners.push_back("KPIECEkConfigDefault");
-	ompl_planners.push_back("RRTkConfigDefault");
-	ompl_planners.push_back("RRTConnectkConfigDefault");
-	ompl_planners.push_back("RRTstarkConfigDefault");
-	ompl_planners.push_back("TRRTkConfigDefault");
-	ompl_planners.push_back("PRMkConfigDefault");
-	ompl_planners.push_back("PRMstarkConfigDefault");
+	ompl_planners.push_back("SBLkConfigDefault");				//  0
+	ompl_planners.push_back("ESTkConfigDefault");               //  1
+	ompl_planners.push_back("LBKPIECEkConfigDefault_2DOF");     //  2
+	ompl_planners.push_back("LBKPIECEkConfigDefault_7DOF");     //  3
+	ompl_planners.push_back("LBKPIECEkConfigDefault_9DOF");     //  4
+	ompl_planners.push_back("BKPIECEkConfigDefault");           //  5
+	ompl_planners.push_back("KPIECEkConfigDefault");            //  6
+	ompl_planners.push_back("RRTkConfigDefault");               //  7
+	ompl_planners.push_back("RRTConnectkConfigDefault");        //  8
+	ompl_planners.push_back("RRTstarkConfigDefault");           //  9
+	ompl_planners.push_back("TRRTkConfigDefault");              // 10
+	ompl_planners.push_back("PRMkConfigDefault");               // 11
+	ompl_planners.push_back("PRMstarkConfigDefault");           // 12
 
 	// table axes
 	group_2DOF = new move_group_interface::MoveGroup("LWR_2DOF");
@@ -67,19 +67,22 @@ obj_data_loaded_(false)
 #warning Also Goal Tolerance for homing 2DOF (isn't used till now')
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
-	group_2DOF->setPlannerId(ompl_planners[2]);
+	group_2DOF->setPlannerId(ompl_planners[9]); // 2
+	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	group_7DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm group
 	group_7DOF->setPlannerId(ompl_planners[3]);
+	group_7DOF->setNumPlanningAttempts(2);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
-	group_9DOF->setPlannerId(ompl_planners[4]);
+	group_9DOF->setPlannerId(ompl_planners[4]); // 4
+	group_9DOF->setNumPlanningAttempts(2);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
@@ -2131,7 +2134,9 @@ bool MotionPlanning::getLimits()
 	table_axis1_limit_.max_acceleration = 0.2;//2.0;
 	table_axis2_limit_.max_acceleration = 0.2;//2.0;
 	for (int ii=0;ii<7;ii++)
-		joint_limits_[ii].max_acceleration = 100 * M_PI / 180.0;
+		joint_limits_[ii].max_acceleration = 200 * M_PI / 180.0;
+	joint_limits_[5].max_acceleration = 30 * M_PI / 180.0;
+
 	gripper_limit_.max_acceleration = 2.0;
 
 	table_axis1_limit_.max_velocity *= (double)speed_percentage_*0.01;
