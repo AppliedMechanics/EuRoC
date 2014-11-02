@@ -307,114 +307,114 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	case (MOVE_IT_7DOF_MOVE_TO_OBJECT)		:
 	case (MOVE_IT_9DOF_MOVE_TO_OBJECT)		:
 	{
-	ROS_WARN("Planning mode based on MoveIt! chosen.");
+		ROS_WARN("Planning mode based on MoveIt! chosen.");
 
-	//define groups
-	if(goal->planning_algorithm == MOVE_IT_9DOF_MOVE_TO_OBJECT)
-	{
-		ROS_INFO("Choosed 9DOF");
-		group = group_9DOF;
-		joint_model_group_ = joint_model_group_9DOF_;
-
-		// setting joint state target via the searchIKSolution srv is not considered
-		max_setTarget_attempts_ = 4;
-
-	}
-	else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
-	{
-		ROS_INFO("Choosed 7DOF");
-		group = group_7DOF;
-		joint_model_group_ = joint_model_group_7DOF_;
-
-		ROS_INFO_STREAM(group->getEndEffectorLink());
-
-
-		// in case of unsuccessful planning,
-		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 5;
-
-	}
-	else
-	{
-		msg_error("Unknown move group name.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
-		break;
-	}
-
-
-	//set target algorithm
-	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-
-	//to save goal pose
-	geometry_msgs::Pose goal_pose_GPTCP_old_ = goal_pose_GPTCP_;
-
-	std::vector< geometry_msgs::Pose > waypoints_;
-	//compute waypoints
-	computeWayPoints(waypoints_);
-
-	//initialize move group with current state
-	MoveIt_initializeMoveGroup();
-
-	planned_path_.clear();
-
-	for(uint64_t ii = 0; ii < waypoints_.size(); ii++)
-	{
-		goal_pose_GPTCP_ = waypoints_.at(ii);
-
-		// get moveit solution
-		if (!MoveIt_getSolutionNoInitialize())
+		//define groups
+		if(goal->planning_algorithm == MOVE_IT_9DOF_MOVE_TO_OBJECT)
 		{
-			msg_error("No MoveIT Solution found for waypoint %d.",ii);
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+			ROS_INFO("Choosed 9DOF");
+			group = group_9DOF;
+			joint_model_group_ = joint_model_group_9DOF_;
 
-			if(ii == waypoints_.size()-1)
+			// setting joint state target via the searchIKSolution srv is not considered
+			max_setTarget_attempts_ = 4;
+
+		}
+		else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
+		{
+			ROS_INFO("Choosed 7DOF");
+			group = group_7DOF;
+			joint_model_group_ = joint_model_group_7DOF_;
+
+			ROS_INFO_STREAM(group->getEndEffectorLink());
+
+
+			// in case of unsuccessful planning,
+			// the planning target is set as a joint state goal via the searchIKSolution srv
+			max_setTarget_attempts_ = 5;
+
+		}
+		else
+		{
+			msg_error("Unknown move group name.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
+			break;
+		}
+
+
+		//set target algorithm
+		current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
+		//to save goal pose
+		geometry_msgs::Pose goal_pose_GPTCP_old_ = goal_pose_GPTCP_;
+
+		std::vector< geometry_msgs::Pose > waypoints_;
+		//compute waypoints
+		computeWayPoints(waypoints_);
+
+		//initialize move group with current state
+		MoveIt_initializeMoveGroup();
+
+		planned_path_.clear();
+
+		for(uint64_t ii = 0; ii < waypoints_.size(); ii++)
+		{
+			goal_pose_GPTCP_ = waypoints_.at(ii);
+
+			// get moveit solution
+			if (!MoveIt_getSolutionNoInitialize())
 			{
-				msg_error("No MoveIT Solution found goal pose",ii);
+				msg_error("No MoveIT Solution found for waypoint %d.",ii);
 				goalPose_result_.reached_goal = false;
 				goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-				return;
 
+				if(ii == waypoints_.size()-1)
+				{
+					msg_error("No MoveIT Solution found goal pose",ii);
+					goalPose_result_.reached_goal = false;
+					goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+					return;
+
+				}
 			}
-		}
 
-		// set start state to last waypoint
-		if(planned_path_.empty() != true)
+			// set start state to last waypoint
+			if(planned_path_.empty() != true)
+			{
+				moveit_msgs::RobotState start_state;
+				start_state.joint_state.name = group->getActiveJoints();
+				start_state.joint_state.position = planned_path_.back().q;
+				start_state.joint_state.velocity.resize(group->getActiveJoints().size());
+				for(uint64_t jj = 0; jj < start_state.joint_state.velocity.size(); jj++)
+					start_state.joint_state.velocity.at(jj) = 0.0;
+
+				group->setStartState(start_state);
+			}
+
+		}
+		goal_pose_GPTCP_ = goal_pose_GPTCP_old_;
+
+		// fill move along joint path
+		move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+		move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+		for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
 		{
-			moveit_msgs::RobotState start_state;
-			start_state.joint_state.name = group->getActiveJoints();
-			start_state.joint_state.position = planned_path_.back().q;
-			start_state.joint_state.velocity.resize(group->getActiveJoints().size());
-			for(uint64_t jj = 0; jj < start_state.joint_state.velocity.size(); jj++)
-				start_state.joint_state.velocity.at(jj) = 0.0;
-
-			group->setStartState(start_state);
+			move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
 		}
 
-	}
-	goal_pose_GPTCP_ = goal_pose_GPTCP_old_;
-
-	// fill move along joint path
-	move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
-
-	move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
-	for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
-	{
-		move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
-	}
-
-	// set the joint limits (velocities/accelerations) of the move along joint path service request
-	setMoveRequestJointLimits();
-	// set the TCP limits of the move along joint path service
-	setMoveRequestTCPLimits();
+		// set the joint limits (velocities/accelerations) of the move along joint path service request
+		setMoveRequestJointLimits();
+		// set the TCP limits of the move along joint path service
+		setMoveRequestTCPLimits();
 
 
-	break;
+		break;
 	}
 	//------------------------------------------------------------------------------------------------
 	case (MOVE_IT_JT_9DOF):
-	ROS_WARN("Given JT based on MoveIt! chosen.");
+					ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -439,11 +439,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	getTimingAlongJointPath();
 	//------------------------------------------------------------------------------------------------
 
-	//! Set default speed percentage values for motion velocity
-	if (speed_percentage_ <= 0 || speed_percentage_ >100)
-		speed_percentage_ = 40;
-	//------------------------------------------------------------------------------------------------
-
 	//! Feedback
 	ros::Rate feedback_rate(feedback_frequency_);
 
@@ -453,8 +448,10 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	goalPose_server_.publishFeedback(goalPose_feedback_);
 
 	//------------------------------------------------------------------------------------------------
-
+	ROS_WARN("Estimated Motion Time: %f",estimated_motion_time_);
+//	if (estimated_motion_time_<goal_pose_goal_->allowed_time || goal_pose_goal_->allowed_time<1)
 	moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
+
 
 	mtt_=RUNNING;
 	//while (!goalPose_result_.reached_goal)
@@ -709,7 +706,7 @@ bool MotionPlanning::octomap_manager_getOctomap()
 
 	if(skip_vision_ && active_task_nr_==4 && ros::service::waitForService(octomap_,ros::Duration(4.0)))
 	{	
-	  // manuelles reinladen
+		// manuelles reinladen
 		octomap_client_.call(octomap_srv_);
 
 		ROS_INFO("Loading Octomap manually from file.");
@@ -985,9 +982,9 @@ bool MotionPlanning::MoveIt_getSolution()
 				setTarget_successful = setPlanningTarget(current_setTarget_algorithm_);
 				if (setTarget_successful)
 				{
-//					ROS_INFO("Planning!");
-//					ROS_INFO_STREAM(group->getName());
-//					ROS_INFO_STREAM(group->getPoseReferenceFrame());
+					//					ROS_INFO("Planning!");
+					//					ROS_INFO_STREAM(group->getName());
+					//					ROS_INFO_STREAM(group->getPoseReferenceFrame());
 					planning_successful = group->plan(motion_plan_);
 
 					if (planning_successful)
@@ -1080,9 +1077,9 @@ bool MotionPlanning::MoveIt_getSolutionNoInitialize()
 				setTarget_successful = setPlanningTarget(current_setTarget_algorithm_);
 				if (setTarget_successful)
 				{
-//					ROS_INFO("Planning!");
-//					ROS_INFO_STREAM(group->getName());
-//					ROS_INFO_STREAM(group->getPoseReferenceFrame());
+					//					ROS_INFO("Planning!");
+					//					ROS_INFO_STREAM(group->getName());
+					//					ROS_INFO_STREAM(group->getPoseReferenceFrame());
 					planning_successful = group->plan(motion_plan_);
 
 					if (planning_successful)
@@ -1345,13 +1342,13 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 		return false;
 	}
 
-//
-//	geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
-//
-//	ROS_INFO("Pose: ");
-//	ROS_INFO_STREAM(test.pose.orientation.w<<" "<<test.pose.orientation.x<<" "<<test.pose.orientation.y<<" "<<test.pose.orientation.z);
-//	ROS_INFO_STREAM(test.pose.position.x<<" "<<test.pose.position.y<<" "<<test.pose.position.z);
-//	ROS_INFO_STREAM(test.header.frame_id);
+	//
+	//	geometry_msgs::PoseStamped test = group->getCurrentPose(group->getEndEffectorLink());
+	//
+	//	ROS_INFO("Pose: ");
+	//	ROS_INFO_STREAM(test.pose.orientation.w<<" "<<test.pose.orientation.x<<" "<<test.pose.orientation.y<<" "<<test.pose.orientation.z);
+	//	ROS_INFO_STREAM(test.pose.position.x<<" "<<test.pose.position.y<<" "<<test.pose.position.z);
+	//	ROS_INFO_STREAM(test.header.frame_id);
 	//==========================================================================================
 	//DEBUG Informations
 
@@ -1479,24 +1476,24 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 
 euroc_c2_msgs::Configuration MotionPlanning::getCurrentConfiguration()
 {
-        euroc_c2_msgs::Configuration current_configuration;
+	euroc_c2_msgs::Configuration current_configuration;
 
-        if (getTelemetry())
-        {
-                // Populate a vector with all the lwr joint names
-                std::vector<std::string> lwr_joints = group->getActiveJoints();
-                current_configuration.q.resize(group->getActiveJoints().size());
+	if (getTelemetry())
+	{
+		// Populate a vector with all the lwr joint names
+		std::vector<std::string> lwr_joints = group->getActiveJoints();
+		current_configuration.q.resize(group->getActiveJoints().size());
 
-                // Get the current configuration from the telemetry message
-                for(unsigned int i = 0; i < group->getActiveJoints().size(); ++i)
-                {
-                      std::vector<std::string> &joint_names = (_telemetry.joint_names);
-                      unsigned int telemetry_index = std::find(joint_names.begin(), joint_names.end(), lwr_joints[i]) - joint_names.begin();
-                      current_configuration.q[i] = _telemetry.measured.position[telemetry_index];
-                }
-        }
+		// Get the current configuration from the telemetry message
+		for(unsigned int i = 0; i < group->getActiveJoints().size(); ++i)
+		{
+			std::vector<std::string> &joint_names = (_telemetry.joint_names);
+			unsigned int telemetry_index = std::find(joint_names.begin(), joint_names.end(), lwr_joints[i]) - joint_names.begin();
+			current_configuration.q[i] = _telemetry.measured.position[telemetry_index];
+		}
+	}
 
-        return current_configuration;
+	return current_configuration;
 }
 
 bool MotionPlanning::setPlanningTarget(unsigned algorithm)
@@ -1554,13 +1551,13 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			ik_seed_state = getCurrentConfiguration().q;
 		}
 
-//		// print seed state
-//		ROS_INFO("Seed state:");
-//		for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
-//			ROS_INFO_STREAM(ik_seed_state[idx]);
+		//		// print seed state
+		//		ROS_INFO("Seed state:");
+		//		for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
+		//			ROS_INFO_STREAM(ik_seed_state[idx]);
 
 
-//		ROS_INFO("computing KDL IK...");
+		//		ROS_INFO("computing KDL IK...");
 		std::vector<double> solution;
 		moveit_msgs::MoveItErrorCodes error_code;
 		if (!joint_model_group_->getSolverInstance()->getPositionIK(goal_pose_GPTCP_,
@@ -1574,9 +1571,9 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		else
 		{
 			ROS_INFO("KDL->getPositionIK() successful.");
-//			ROS_INFO("Solution state:");
-//			for (unsigned idx = 0; idx < solution.size(); ++idx)
-//				ROS_INFO_STREAM(solution[idx]);
+			//			ROS_INFO("Solution state:");
+			//			for (unsigned idx = 0; idx < solution.size(); ++idx)
+			//				ROS_INFO_STREAM(solution[idx]);
 
 
 			// do self collision checking!
@@ -1757,10 +1754,13 @@ void MotionPlanning::getTimingAlongJointPath()
 
 		estimated_motion_time_ = 0.0;
 
-		for (int i=0;i<time_at_path_points_.size();i++)
-		{
-			estimated_motion_time_ += time_at_path_points_[i].toSec();
-		}
+		if (time_at_path_points_.size()>1){
+			for (int i=1;i<time_at_path_points_.size();i++)
+			{
+				estimated_motion_time_ += time_at_path_points_[i].toSec()-time_at_path_points_[i-1].toSec();
+			}}
+		else
+			estimated_motion_time_ = time_at_path_points_[0].toSec();
 	}
 	else
 	{
@@ -2522,8 +2522,8 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 				object_manager_detachObject(msg->obj_index);
 
 				// update the robot state
-//				planning_scene_.robot_state.joint_state = getCurrentJointState();
-//				planning_scene_.robot_state.is_diff = true;
+				//				planning_scene_.robot_state.joint_state = getCurrentJointState();
+				//				planning_scene_.robot_state.is_diff = true;
 			}
 			else if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_IN_WORLD)
 			{
@@ -2532,8 +2532,8 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 			}
 
 			// update the robot state
-//			planning_scene_.robot_state.joint_state = getCurrentJointState();
-//			planning_scene_.robot_state.is_diff = true;
+			//			planning_scene_.robot_state.joint_state = getCurrentJointState();
+			//			planning_scene_.robot_state.is_diff = true;
 
 		}
 
@@ -2552,8 +2552,8 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		}
 
 		// update the robot state
-//		planning_scene_.robot_state.joint_state = getCurrentJointState();
-//		planning_scene_.robot_state.is_diff = true;
+		//		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		//		planning_scene_.robot_state.is_diff = true;
 
 		break;
 	case OBJ_GRABED:
@@ -2576,15 +2576,15 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		}
 
 		// update the robot state
-//		planning_scene_.robot_state.joint_state = getCurrentJointState();
-//		planning_scene_.robot_state.is_diff = true;
+		//		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		//		planning_scene_.robot_state.is_diff = true;
 
 		break;
 	}
 	case OBJ_PLACED:
 		ROS_INFO("state: OBJ_PLACED");
 
-//		setShapePositions(msg->obj_index, msg->obj_pose);
+		//		setShapePositions(msg->obj_index, msg->obj_pose);
 		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
 		{
 			// detach the object from the gripper
@@ -2598,8 +2598,8 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 
 
 		// update the robot state
-//		planning_scene_.robot_state.joint_state = getCurrentJointState();
-//		planning_scene_.robot_state.is_diff = true;
+		//		planning_scene_.robot_state.joint_state = getCurrentJointState();
+		//		planning_scene_.robot_state.is_diff = true;
 
 		break;
 	case OBJ_FINISHED:
@@ -3108,7 +3108,7 @@ void MotionPlanning::object_manager_addObjectToTargetZone(int obj_index)
 		moveit_msgs::CollisionObject placed_object;
 		placed_object.id = current_object.id;
 		placed_object.header.frame_id = "/Origin";
-//		placed_object.header.stamp = ros::Time::now();
+		//		placed_object.header.stamp = ros::Time::now();
 
 
 		shape_msgs::SolidPrimitive placed_shape;
@@ -3295,9 +3295,9 @@ bool MotionPlanning::computeWayPoints(std::vector< geometry_msgs::Pose > &waypoi
 	{
 		geometry_msgs::Pose cur_pose = get_dk_solution_srv_.response.ee_frame;
 
-//		double delta_x = goal_pose_LWRTCP_.position.x - cur_pose.position.x;
-//		double delta_y = goal_pose_LWRTCP_.position.y - cur_pose.position.y;
-//		double delta_z = goal_pose_LWRTCP_.position.z - cur_pose.position.z;
+		//		double delta_x = goal_pose_LWRTCP_.position.x - cur_pose.position.x;
+		//		double delta_y = goal_pose_LWRTCP_.position.y - cur_pose.position.y;
+		//		double delta_z = goal_pose_LWRTCP_.position.z - cur_pose.position.z;
 
 		double delta_x=goal_pose_GPTCP_.position.x - cur_pose.position.x;
 		double delta_y=goal_pose_GPTCP_.position.y - cur_pose.position.y;
@@ -3306,11 +3306,11 @@ bool MotionPlanning::computeWayPoints(std::vector< geometry_msgs::Pose > &waypoi
 
 		waypoints_.push_back(cur_pose);
 		ROS_INFO("current pose: [%4.3f %4.3f %4.3f]",
-					cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
-//		ROS_INFO("goal pose: [%4.3f %4.3f %4.3f]",
-//				goal_pose_LWRTCP_.position.x,goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z);
-				ROS_INFO("goal pose: [%4.3f %4.3f %4.3f]",
-						goal_pose_GPTCP_.position.x,goal_pose_GPTCP_.position.y,goal_pose_GPTCP_.position.z);
+				cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
+		//		ROS_INFO("goal pose: [%4.3f %4.3f %4.3f]",
+		//				goal_pose_LWRTCP_.position.x,goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z);
+		ROS_INFO("goal pose: [%4.3f %4.3f %4.3f]",
+				goal_pose_GPTCP_.position.x,goal_pose_GPTCP_.position.y,goal_pose_GPTCP_.position.z);
 
 		//necessary to get goal orientation!
 		cur_pose.orientation=goal_pose_GPTCP_.orientation;
@@ -3325,11 +3325,11 @@ bool MotionPlanning::computeWayPoints(std::vector< geometry_msgs::Pose > &waypoi
 			waypoints_.push_back(cur_pose);
 
 			//ROS_INFO("pose %d: [%4.3f %4.3f %4.3f]",ii,
-				//		cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
+			//		cur_pose.position.x,cur_pose.position.y,cur_pose.position.z);
 		}
 	}
 
-return true;
+	return true;
 }
 
 

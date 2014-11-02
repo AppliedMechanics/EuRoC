@@ -11,6 +11,7 @@ ExplorePoses::ExplorePoses()
 {
 	block_counter_ = 0;
 	insideblock_success_counter_ = 0;
+	success_counter_ = 0;
 
 	/* initialize random seed: */
 	srand (time(NULL));
@@ -103,87 +104,96 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 		block_counter_ = 0;
 		insideblock_success_counter_ = 0;
 		insideblock_counter_ = 0;
+		success_counter_ = 0;
 	}
 
-
-	switch (pose_type)
-	{
-	case EXPLORE_STD_1:
-		if (pose_nr < explore_poses_std_v1_.size())
-			return explore_poses_std_v1_[pose_nr];
-		else{
-			msg_warn("Requested Pose Nr not available. Returning last pose.");
-			return explore_poses_std_v1_[0];
-		}
-		break;
-	case EXPLORE_STD_2:
-		if (pose_nr < explore_poses_std_v2_.size())
-			return explore_poses_std_v2_[pose_nr];
-		else{
-			msg_warn("Requested Pose Nr not available. Returning last pose.");
-			return explore_poses_std_v2_[0];
-		}
-		break;
-	case EXPLORE_SNAKE:
-		if (pose_nr < size(EXPLORE_SNAKE)) {
-			// if at end of block, move to next block
-			while (insideblock_counter_>explore_poses_snake_[block_nr_[block_counter_]].size() && block_counter_<N_POSE_BLOCKS){
-				block_counter_++;
-				insideblock_counter_=0;
-				insideblock_success_counter_ = 0;
-//				msg_info("Reached end of the block. Trying next.");
+	try{
+		switch (pose_type)
+		{
+		case EXPLORE_STD_1:
+			if (pose_nr < explore_poses_std_v1_.size())
+				return explore_poses_std_v1_[pose_nr];
+			else{
+				msg_warn("Requested Pose Nr not available. Returning last pose.");
+				return explore_poses_std_v1_[0];
 			}
-			if (block_counter_<N_POSE_BLOCKS){
-				// increase own success counter
-				if (success_count > success_counter_){
-					success_counter_++;
-					insideblock_success_counter_++;
-//					msg_info("Increasing success counter.");
-				}
-				// if success counter = 2 --> next block
-				if (insideblock_success_counter_ > 1){
+			break;
+		case EXPLORE_STD_2:
+			if (pose_nr < explore_poses_std_v2_.size())
+				return explore_poses_std_v2_[pose_nr];
+			else{
+				msg_warn("Requested Pose Nr not available. Returning last pose.");
+				return explore_poses_std_v2_[0];
+			}
+			break;
+		case EXPLORE_SNAKE:
+			if (pose_nr < size(EXPLORE_SNAKE)) {
+				// if at end of block, move to next block
+				while (insideblock_counter_>explore_poses_snake_[block_nr_[block_counter_]].size() && block_counter_<N_POSE_BLOCKS){
 					block_counter_++;
 					insideblock_counter_=0;
 					insideblock_success_counter_ = 0;
-					msg_info("two successful poses. next block.");
+					msg_info("Reached end of the block. Trying next.");
 				}
-			}
-			else
-			{
-				msg_warn("maximum number of poses reached. resetting poses");
-				block_counter_ = 0;
-				insideblock_success_counter_ = 0;
-				insideblock_counter_ = 0;
-			}
-//			ROS_WARN("Block Counter %i inside Block COunter %i insideblock succ %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
+				if (block_counter_<N_POSE_BLOCKS){
+					// increase own success counter
+					if (success_count > success_counter_){
+						success_counter_++;
+						insideblock_success_counter_++;
+						msg_info("Increasing success counter.");
+					}
+					// if success counter = 2 --> next block
+					if (insideblock_success_counter_ > 1){
+						block_counter_++;
+						insideblock_counter_=0;
+						insideblock_success_counter_ = 0;
+						msg_info("two successful poses. next block.");
+					}
+				}
+				else
+				{
+					msg_warn("maximum number of poses reached. resetting poses");
+					block_counter_ = 0;
+					insideblock_success_counter_ = 0;
+					insideblock_counter_ = 0;
+				}
+				ROS_WARN("Block Counter %i inside Block Counter %i insideblocksucc %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
 
-			if (insideblock_counter_>0)
-			{
-				tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
-			}
-			else
-			{
-				tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
-				// Could insert the 2 DOF planning here?
-			}
-			insideblock_counter_++;
+				if (insideblock_counter_>0)
+				{
+					tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
+				}
+				else
+				{
+					tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
+					// Could insert the 2 DOF planning here?
+				}
+				insideblock_counter_++;
 
-			return tmp_goal_;
+				return tmp_goal_;
+			}
+			else{
+				msg_warn("Requested Pose Nr not available. Returning first pose.");
+				return explore_poses_snake_[block_nr_[0]].at(0);
+			}
+			break;
+		default:
+			msg_warn("Pose Type unknown. Returning Standard V1 Pose.");
+			if (pose_nr < explore_poses_std_v1_.size())
+				return explore_poses_std_v1_[pose_nr];
+			else{
+				msg_warn("Requested Pose Nr not available. Returning first pose.");
+				return explore_poses_std_v1_[0];
+			}
+			break;
 		}
-		else{
-			msg_warn("Requested Pose Nr not available. Returning first pose.");
-			return explore_poses_snake_[block_nr_[0]].at(0);
-		}
-		break;
-	default:
-		msg_warn("Pose Type unknown. Returning Standard V1 Pose.");
-		if (pose_nr < explore_poses_std_v1_.size())
-			return explore_poses_std_v1_[pose_nr];
-		else{
-			msg_warn("Requested Pose Nr not available. Returning first pose.");
-			return explore_poses_std_v1_[0];
-		}
-		break;
+	}
+	catch (...)
+	{
+		msg_error("Something Wrong happenend here.");
+		ROS_WARN("Block Counter %i inside Block Counter %i insideblocksucc %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
+		ROS_WARN("Request: pose_nr %i pose_type %i success %i",pose_nr,pose_type,success_count);
+		return explore_poses_snake_[block_nr_[0]].at(0);
 	}
 }
 
@@ -582,20 +592,20 @@ void ExplorePoses::init_snake()
 
 	// BLOCK 0
 	// # 1
-//	tmp_goal_.goal_pose.position.x = 0.336+0.88;
-//	tmp_goal_.goal_pose.position.y = 0.39+0;
-//	tmp_goal_.goal_pose.position.z = 0.525;
-//	q_temp_.setRPY(3.14,0.86,-0.003);
-//	tmp_goal_.goal_config.q[0] = 0.88;
-//	tmp_goal_.goal_config.q[1] = 0.0;
-//	tmp_goal_.goal_config.q[2] = 0.0;
-//	tmp_goal_.goal_config.q[3] = -1.0;
-//	tmp_goal_.goal_config.q[4] = -1.572;
-//	tmp_goal_.goal_config.q[5] = -1.572;
-//	tmp_goal_.goal_config.q[6] = -0.14;
-//	tmp_goal_.goal_config.q[7] = 1.572;
-//	tmp_goal_.goal_config.q[8] = 1.572;
-//	setOrientationAndInsert(EXPLORE_SNAKE,0);
+	//	tmp_goal_.goal_pose.position.x = 0.336+0.88;
+	//	tmp_goal_.goal_pose.position.y = 0.39+0;
+	//	tmp_goal_.goal_pose.position.z = 0.525;
+	//	q_temp_.setRPY(3.14,0.86,-0.003);
+	//	tmp_goal_.goal_config.q[0] = 0.88;
+	//	tmp_goal_.goal_config.q[1] = 0.0;
+	//	tmp_goal_.goal_config.q[2] = 0.0;
+	//	tmp_goal_.goal_config.q[3] = -1.0;
+	//	tmp_goal_.goal_config.q[4] = -1.572;
+	//	tmp_goal_.goal_config.q[5] = -1.572;
+	//	tmp_goal_.goal_config.q[6] = -0.14;
+	//	tmp_goal_.goal_config.q[7] = 1.572;
+	//	tmp_goal_.goal_config.q[8] = 1.572;
+	//	setOrientationAndInsert(EXPLORE_SNAKE,0);
 	// # 5
 	tmp_goal_.goal_pose.position.x = -0.245+0.88;
 	tmp_goal_.goal_pose.position.y = -0.37-0.88;

@@ -2670,6 +2670,7 @@ int Statemachine::explore_environment_motion()
 void Statemachine::explore_environment_motion_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
 {
 	ROS_INFO("explore_environment_motion_feedback() called");
+	ROS_WARN("Estimated Motion Time %f execution time %f",feedback->estimated_motion_time, feedback->execution_time);
 }
 
 void Statemachine::explore_environment_motion_done(const actionlib::SimpleClientGoalState& state,
