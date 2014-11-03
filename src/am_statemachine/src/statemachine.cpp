@@ -562,7 +562,8 @@ void Statemachine::scheduler_schedule()
 						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE; 		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::PLACE_OBJECT;
+							temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;  state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
 					}
