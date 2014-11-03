@@ -6,7 +6,8 @@
  */
 
 #include <ros/ros.h>
-#include "MotionPlanning.h"
+#include "T6MotionPlanning.h"
+//#include "MotionPlanning.h"
 #include <config.hpp>
 
 
@@ -24,7 +25,8 @@ int main(int argc, char** argv) {
 	ros::NodeHandle nodeHandle;
 	ros::Subscriber rs_=nodeHandle.subscribe("kill",1000,kill_cb);
 
-	MotionPlanning mp;
+//	MotionPlanning mp;
+	T6MotionPlanning mp;
 
 	ros::Rate r(FREQ*10); // 10 hz
 	while (ros::ok() && !kill_flag)
