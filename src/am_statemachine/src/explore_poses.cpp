@@ -163,10 +163,12 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 				if (insideblock_counter_>0)
 				{
 					tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
+					tmp_goal_.allowed_time = 10.0;
 				}
 				else
 				{
 					tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
+					tmp_goal_.allowed_time = 45.0;
 					// Could insert the 2 DOF planning here?
 				}
 				insideblock_counter_++;

@@ -22,6 +22,7 @@
 #include <am_msgs/ObjState.h>
 #include <am_msgs/CallSetStopConditions.h>
 #include <config.hpp>
+#include <fsm_state.hpp>
 #include <utils.hpp>
 
 // MOVEIT

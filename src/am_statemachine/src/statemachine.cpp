@@ -4046,6 +4046,7 @@ int Statemachine::move_to_object_safe()
 		goal_queue[0].planning_algorithm = planning_mode_.object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
+		goal_queue[0].allowed_time = 60.0;
 
 		if(cur_obj_gripped_==true)
 			goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -4165,6 +4166,7 @@ int Statemachine::move_to_object_vision()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		goal_queue[0].allowed_time = 60.0;
 #else
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
 		if((active_task_number_ == 3 || active_task_number_ == 4)&& (cur_obj_gripped_==false))
@@ -4180,6 +4182,7 @@ int Statemachine::move_to_object_vision()
 			goal_queue[0].planning_frame = GP_TCP;
 			goal_queue[0].inter_steps = 0;
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].allowed_time = 60.0;
 
 			goal_queue[1].goal_pose.position.x = object_vision_pose[selected_object_pose_].position.x;
 			goal_queue[1].goal_pose.position.y = object_vision_pose[selected_object_pose_].position.y;
@@ -4188,12 +4191,14 @@ int Statemachine::move_to_object_vision()
 			goal_queue[1].planning_frame = LWR_0; // should not affect MP
 			goal_queue[1].inter_steps = 0;
 			goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[1].allowed_time = 60.0;
 
 			goal_queue[2].goal_pose = object_vision_pose[selected_object_pose_];
 			goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
 			goal_queue[2].planning_frame = GP_TCP;
 			goal_queue[2].inter_steps = 0;
 			goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[2].allowed_time = 60.0;
 		}
 		else
 		{
@@ -4208,6 +4213,7 @@ int Statemachine::move_to_object_vision()
 			goal_queue[0].planning_frame = GP_TCP;
 			goal_queue[0].inter_steps = 0;
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].allowed_time = 60.0;
 		}
 #endif
 
@@ -4340,7 +4346,7 @@ int Statemachine::move_to_object()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
-
+		goal_queue[0].allowed_time = 60.0;
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
@@ -4447,7 +4453,7 @@ int Statemachine::move_to_object_t6()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
-
+		goal_queue[0].allowed_time = 60.0;
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
@@ -4537,6 +4543,7 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		goal_queue[0].allowed_time = 60.0;
 #else
 #warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
 		if((active_task_number_ == 3 || active_task_number_ == 4) && (cur_obj_gripped_==true))
@@ -4552,6 +4559,7 @@ int Statemachine::move_to_target_zone_safe()
 			goal_queue[0].planning_frame = GP_TCP;
 			goal_queue[0].inter_steps = 0;
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].allowed_time = 60.0;
 
 			goal_queue[1].goal_pose.position.x = target_safe_pose[selected_target_pose_].position.x;
 			goal_queue[1].goal_pose.position.y = target_safe_pose[selected_target_pose_].position.y;
@@ -4560,12 +4568,14 @@ int Statemachine::move_to_target_zone_safe()
 			goal_queue[1].planning_frame = LWR_0; // should not affect MP
 			goal_queue[1].inter_steps = 0;
 			goal_queue[1].speed_percentage = std_moving_speed;//*(1-speed_mod_);
+			goal_queue[1].allowed_time = 60.0;
 
 			goal_queue[2].goal_pose = target_safe_pose[selected_target_pose_];
 			goal_queue[2].planning_algorithm = MOVE_IT_9DOF;
 			goal_queue[2].planning_frame = GP_TCP;
 			goal_queue[2].inter_steps = 0;
 			goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[2].allowed_time = 60.0;
 		}
 		else
 		{
@@ -4580,6 +4590,7 @@ int Statemachine::move_to_target_zone_safe()
 			goal_queue[0].planning_frame = GP_TCP;
 			goal_queue[0].inter_steps = 0;
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].allowed_time = 60.0;
 		}
 #endif
 
@@ -4704,7 +4715,7 @@ int Statemachine::move_to_target_zone_vision()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
-
+		goal_queue[0].allowed_time = 60.0;
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
@@ -4813,7 +4824,7 @@ int Statemachine::move_to_target_zone()
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
-
+		goal_queue[0].allowed_time = 60.0;
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
@@ -4925,7 +4936,7 @@ int Statemachine::homing()
 		goal_queue[0].planning_algorithm = planning_mode_.homing;
 		goal_queue[0].inter_steps = 0;
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
-
+		goal_queue[0].allowed_time = 60.0;
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
 		{
