@@ -55,6 +55,7 @@ typedef enum {
 	CHECK_OBJECT_FINISHED,
 	CHECK_OBJECT_GRIPPED,
 	PAUSE,
+	NEW_OBJECT,
 
 	//events
 	NOP,

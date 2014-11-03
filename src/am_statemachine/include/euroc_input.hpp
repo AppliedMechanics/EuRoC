@@ -17,6 +17,7 @@
 #include "config.hpp"
 
 #include <tf/LinearMath/Quaternion.h>
+#include <tf/LinearMath/Transform.h>
 
 class EurocInput
 {
@@ -169,14 +170,21 @@ private:
 
 	//!Conveyor Belt
 	am_msgs::ConveyorBelt conv_belt_;
+
 	struct puzzle_piece_
 	{
 	  int part_index;
 	  bool x_first;
+	  bool push;
 	};
 
 	//!the final order for puzzle peace placement & info on how to place them
 	std::vector<puzzle_piece_> puzzle_order_;
+
+	//!place pose offset in puzzle fixture FOR
+	double place_x_offset;
+	double place_y_offset;
+	double place_z_offset;
 
 };
 

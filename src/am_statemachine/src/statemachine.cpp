@@ -541,6 +541,7 @@ void Statemachine::scheduler_schedule()
 						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE; 		state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::NEW_OBJECT;					state_queue.push_back(temp_state);
 					}
 					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 				}
@@ -3946,7 +3947,7 @@ int Statemachine::gripper_close()
 			gripper_control_srv_.request.object_width = object_grasp_width[selected_object_pose_]; //was 0
 			gripper_control_srv_.request.gripper_position = 0.0; //TODO Delete?
 		}
-		gripper_control_srv_.request.gripping_mode = FF_FORCE;
+		gripper_control_srv_.request.gripping_mode = POSITION; // FF_FORCE;
 		gripper_close_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::gripper_close_cb,this);
 		//gripper_close_cb();

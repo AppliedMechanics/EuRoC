@@ -36,7 +36,7 @@ StateObserver::StateObserver()
 	force_limits_max[4] = 100;
 	force_limits_max[5] = 30;
 	force_limits_max[6] = 30;
-	force_limits_max[7] = 200;  // max_gripper_force
+	force_limits_max[7] = 10;  // 200 max_gripper_force
 
 
 	for(int i = 0; i < 8; i++) // Initialise the limits to 100 Nm; SetJointTorqueLimits() will have to be called from main
