@@ -36,7 +36,6 @@ int main(int argc, char **argv)
 
 	GraspPose2 grasp_pose;
 	ros::ServiceServer service = grasp_pose.n.advertiseService("GraspPose_srv", &GraspPose2::return_grasp_pose, &grasp_pose);
-	ros::ServiceServer serviceT6 = grasp_pose.n.advertiseService("GraspPoseT6_srv", &GraspPose2::return_grasp_poseT6, &grasp_pose);
 	ROS_INFO("Ready to calculate Grasp-Pose.");
 
 	while (ros::ok() && !kill_flag)

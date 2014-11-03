@@ -1303,6 +1303,35 @@ am_msgs::Object EurocInput::get_active_object()
 	}
 }
 
+geometry_msgs::Pose EurocInput::get_active_target_pose()
+{
+        ROS_INFO("Get active targetpose in euroc-input");
+
+        geometry_msgs::Pose empty_Pose;
+
+    	if(task_nr_ != 5)
+    	{
+    		return empty_Pose;
+    	}
+        if(obj_queue_.size()==0)
+        {
+            msg_error("EurocInput: get_active_target_pose() failed. Index out of range (obj_queue_).");
+            return empty_Pose;
+        }
+        else
+        {
+          if(puzzle_target_poses_.size()>obj_queue_[0].obj_idx)
+          {
+                return puzzle_target_poses_[obj_queue_[0].obj_idx];
+          }
+          else
+          {
+                msg_error("EurocInput: get_active_target_pose() failed. Index out of range (puzzle_target_poses_).");
+                            return empty_Pose;
+          }
+        }
+}
+
 am_msgs::TargetZone EurocInput::get_active_target_zone()
 {
 	ROS_INFO("Get active targetzone in euroc-input");
@@ -1564,17 +1593,37 @@ void EurocInput::save_robot_to_parameter_server(ros::NodeHandle& n, bool show_lo
 
 void EurocInput::save_fixture_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
 {
-	if(task_nr_==5)
-	{
-		ROS_INFO("saving fixture pose to parameter server...");
-		n.setParam("fixture_pose_position_x_",fixture_pose_.position.x);
-		n.setParam("fixture_pose_position_y_",fixture_pose_.position.y);
-		n.setParam("fixture_pose_position_z_",fixture_pose_.position.z);
-		n.setParam("fixture_pose_orientation_x_",fixture_pose_.orientation.x);
-		n.setParam("fixture_pose_orientation_y_",fixture_pose_.orientation.y);
-		n.setParam("fixture_pose_orientation_z_",fixture_pose_.orientation.z);
-		n.setParam("fixture_pose_orientation_w_",fixture_pose_.orientation.w);
-	}
+    if(task_nr_==5)
+    {
+            ROS_INFO("saving fixture pose to parameter server...");
+            n.setParam("fixture_pose_position_x_",fixture_pose_.position.x);
+            n.setParam("fixture_pose_position_y_",fixture_pose_.position.y);
+            n.setParam("fixture_pose_position_z_",fixture_pose_.position.z);
+            n.setParam("fixture_pose_orientation_x_",fixture_pose_.orientation.x);
+            n.setParam("fixture_pose_orientation_y_",fixture_pose_.orientation.y);
+            n.setParam("fixture_pose_orientation_z_",fixture_pose_.orientation.z);
+            n.setParam("fixture_pose_orientation_w_",fixture_pose_.orientation.w);
+    }
+}
+
+void EurocInput::save_conveyorbelt_to_parameter_server(ros::NodeHandle& n, bool show_log_messages)
+{
+    if(task_nr_==6)
+    {
+            ROS_INFO("saving conveyor_belt to parameter server...");
+            n.setParam("conveyorbelt_move_direction_and_length_x_",conv_belt_.move_direction_and_length.x);
+            n.setParam("conveyorbelt_move_direction_and_length_y_",conv_belt_.move_direction_and_length.y);
+            n.setParam("conveyorbelt_move_direction_and_length_z_",conv_belt_.move_direction_and_length.z);
+
+            n.setParam("conveyorbelt_drop_center_point_x_",conv_belt_.drop_center_point.x);
+            n.setParam("conveyorbelt_drop_center_point_y_",conv_belt_.drop_center_point.y);
+            n.setParam("conveyorbelt_drop_center_point_z_",conv_belt_.drop_center_point.z);
+
+            n.setParam("conveyorbelt_drop_deviation_x_",conv_belt_.drop_deviation.x);
+            n.setParam("conveyorbelt_drop_deviation_y_",conv_belt_.drop_deviation.y);
+            n.setParam("conveyorbelt_drop_deviation_z_",conv_belt_.drop_deviation.z);
+
+    }
 }
 
 void EurocInput::print_object(am_msgs::Object*obj)

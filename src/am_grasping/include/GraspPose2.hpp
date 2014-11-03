@@ -20,7 +20,6 @@
 //am msgs
 #include <am_msgs/Object.h>
 #include <am_msgs/GetGraspPose.h>
-#include <am_msgs/GetGraspPoseT6.h>
 #include <am_msgs/CheckPoses.h>
 #include <am_msgs/ConveyorBelt.h>
 
@@ -28,6 +27,28 @@
 #include <config.hpp>
 #include <utils.hpp>
 #include <tf_rot.hpp>
+
+struct puzzle_box{
+  bool obj_x_free;
+  bool obj_y_free;
+  bool obj_z_free;
+
+  bool obj_xpos_free;
+  bool obj_xneg_free;
+  bool obj_ypos_free;
+  bool obj_yneg_free;
+  bool obj_zpos_free;
+  bool obj_zneg_free;
+};
+
+typedef enum {
+	POSE_XUP=0,
+	POSE_XDOWN,
+	POSE_YUP,
+	POSE_YDOWN,
+	POSE_ZUP,
+	POSE_ZDOWN
+} pose_orientation_type_t;
 
 class GraspPose2 {
 public:
@@ -37,20 +58,16 @@ public:
 	virtual ~GraspPose2();
 	// ROS-service function
 	bool return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPose::Response &res);
-	// ROS-service function for Task 6
-	bool return_grasp_poseT6(am_msgs::GetGraspPoseT6::Request &req, am_msgs::GetGraspPoseT6::Response &res);
 	// Transform for frame of object (received in service request)
-	tf::Transform transform_object;
-	//transform Broadcaster
-	tf::TransformBroadcaster br;
+	tf::Transform transform_object, transform_puzzlefixture;
 
 	//!node handle for this node
 	ros::NodeHandle n;
+	tf::TransformBroadcaster br;
 
 	//!client to check poses service from motion planning
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
-	am_msgs::ConveyorBelt conveyor_belt;
 
 	//stamped Transform from GPTCP to LWRTCP
 	tf::StampedTransform transform_GPTCP_2_LWRTCP_;
@@ -61,9 +78,14 @@ public:
 
 private:
 	// ------------------------- Class Properties -----------------------------
-	// "Object" as defined in ros message
+        std::string error_message;
+	uint16_t task_number_;
 	am_msgs::Object object_;
 	am_msgs::TargetZone target_zone_;
+	geometry_msgs::Pose rel_target_pose_, abs_target_pose_;
+	geometry_msgs::Pose puzzle_fixture_pose_;
+	tf::Vector3 conveyor_belt_move_direction_and_length;
+
 	// type of object (handle, cube, cylinder)
 	uint8_t object_type_;
 	// Mass of object
@@ -80,8 +102,11 @@ private:
 	tf::Vector3 shape_com_;
 	tf::Vector3 conn_;
 	// Center of object mass
-	tf::Vector3 b_object_com_;
-	tf::Vector3 o_object_com_;
+	tf::Vector3 b_object_com_, o_object_com_;
+	tf::Vector3 b_object_center_, o_object_center_;
+	std::vector<puzzle_box> puzzle_boxes;
+	double puzzle_boxsize;
+    geometry_msgs::Pose emptyPose;
 
 	std::vector<geometry_msgs::Pose> GPTCP_object_grip_pose;
 	std::vector<geometry_msgs::Pose> LWRTCP_object_grip_pose;
@@ -100,9 +125,11 @@ private:
 	std::vector<geometry_msgs::Pose> LWRTCP_target_vision_pose;
 	std::vector<uint16_t> target_skip_vision;
 	std::vector<uint16_t> place_pose_type;
+	std::vector<geometry_msgs::Pose> GPTCP_push_safe_pose;
+	std::vector<geometry_msgs::Pose> LWRTCP_push_safe_pose;
+	std::vector<geometry_msgs::Pose> GPTCP_push_target_pose;
+	std::vector<geometry_msgs::Pose> LWRTCP_push_target_pose;
 	std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
-	std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
-	std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
 
 	double gripping_angle_deg_;
 	double gripping_angle_rad_;
@@ -122,20 +149,34 @@ private:
 	double pi;
 
 	// ------------------------- Class Methods ----------------------------
-	// "set_object_data_()" sets the properties "object_", "quat_02obj", "A_obj20_", and calls method "compute_abs_shape_positions_()"
-	void set_object_data_(am_msgs::Object, am_msgs::TargetZone target_zone);
+	// "reset_grasping_node()" resets everything to default values
+	void reset_grasping_node();
+	// "get_info_from_parameterserver()" gets various infos from the parameter server and stores it locally
+	void get_info_from_parameterserver();
+	// "set_object_data_()" sets the object and determines its type
+	void set_object_data_(am_msgs::Object);
 	// "compute_abs_shape_positions_()" sets the property "r_02shape_0_"
 	void compute_abs_shape_poses_();
-	// "compute_object_height_()" sets the properties "object_height_" and "waiting_height_"
+	// "compute_object_CoM_()" computes the center of mass of the object
 	void compute_object_CoM_();
+	// "compute_object_center_()" computes the center of the object (only shpae-origins, no density)
+	void compute_object_center_();
 	// "compute_idx_shape_CoM_()" sets the property "idx_shape_CoM_"
 	void compute_idx_shape_CoM_();
 	// "compute_bounding_box()" calculates the bounding box of the object in the object frame
 	void compute_bounding_box_();
+	// "correct_puzzle_part_rotation()" rotates the object if its symmetric to avoid mistakes
+	void correct_puzzle_part_rotation();
+	// "compute_puzzle_free_sides_()" calculates the free sides of the boxes of a puzzle part in world-coordinates
+	void compute_puzzle_free_sides_();
 	// "compute_grasp_poses_()" computes the desired gripper pose in the gripper frame
 	void compute_grasp_poses_();
+	// "compute_grasp_posesT5_" computes the desired gripper pose in the gripper frame for Task 5
+	void compute_grasp_posesT5_();
 	// "compute_grasp_posesT6_" computes the desired gripper pose in the gripper frame for Task 6
 	void compute_grasp_posesT6_();
+	// "transform_poses_to_LWRTCP" compute the LWRTCP poses out of the GPTCP poses
+	void transform_poses_to_LWRTCP();
 	// "get_transform_GPTCP_2_LWRTCP()" returns the transform between GPTCP and LWRTCP
 	bool get_transform_GPTCP_2_LWRTCP();
 	// "transform_pose_GPTCP_2_LWRTCP_()" returns the desired gripper poses transformed into the LWR-TCP frame
@@ -152,6 +193,10 @@ private:
 	void send_poses_to_tf_broadcaster();
 	// "get_rotationmatrixfromaxis()" returns a transformation matrix to rotate around an axis (with given angle)
 	tf::Matrix3x3 get_rotationmatrixfromaxis(tf::Vector3 axis, double angle);
+	// "pose_to_transform()" transforms the given geometry_msgs::Pose object to a tf::transform object
+	tf::Transform pose_to_transform(geometry_msgs::Pose input_pose);
+	// "transform_to_pose()" transforms the given tf::transform object to a geometry_msgs::Pose object
+	geometry_msgs::Pose transform_to_pose(tf::Transform input_transform);
 };
 
 #endif /* GRASPPOSE2_H_ */

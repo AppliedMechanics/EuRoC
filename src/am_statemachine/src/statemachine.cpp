@@ -6,64 +6,68 @@
 #define ONE_TASK //run only one task and then quit
 
 Statemachine::Statemachine():
-					scenes_(1),
-					task_active_(false),
-					sim_running_(false),
-					speed_mod_(0),
-					nr_scenes_(0),
-					active_scene_(-1),
-					active_goal_(0),
-					max_explore_poses_(10),
-					explore_success_count_(0),
-					nr_goals_(0),
-					nr_exp_poses_(0),
-					explore_pose_type_(EXPLORE_STD_1),
-					skip_vision_(false),
-					skip_motion_(false),
-					pause_in_loop_(0),
-					reached_active_goal_(false),
-					request_task_state_(OPEN),
-					start_sim_state_(OPEN),
-					set_object_load_state_(OPEN),
-					pause_state_(OPEN),
-					parse_yaml_file_state_(OPEN),
-					stop_sim_state_(OPEN),
-					watch_scene_state_(OPEN),
-					watch_scene_counter_(0),
-					explore_environment_init_state_(OPEN),
-					explore_environment_motion_state_(OPEN),
-					explore_environment_image_state_(OPEN),
-					explore_environment_check_state_(OPEN),
-					explore_environment_image_counter_(0),
-					locate_object_global_state_(OPEN),
-					locate_object_global_counter_(0),
-					locate_all_objects_global_state_(OPEN),
-					locate_all_objects_global_counter_(0),
-					locate_object_close_range_state_(OPEN),
-					check_object_finished_state_(OPEN),
-					check_object_gripped_state_(OPEN),
-					check_object_gripped_counter_(0),
-					get_grasping_pose_state_(OPEN),
-					move_to_object_vision_state_(OPEN),
-					move_to_object_vision_counter_(0),
-					move_to_object_safe_state_(OPEN),
-					move_to_object_safe_counter_(0),
-					move_to_object_state_(OPEN),
-					move_to_object_counter_(0),
-					gripper_release_state_(OPEN),
-					gripper_release_counter_(0),
-					gripper_close_state_(OPEN),
-					gripper_close_counter_(0),
-					move_to_target_zone_safe_state_(OPEN),
-					move_to_target_zone_safe_counter_(0),
-					move_to_target_zone_vision_state_(OPEN),
-					move_to_target_zone_vision_counter_(0),
-					move_to_target_zone_state_(OPEN),
-					move_to_target_zone_counter_(0),
-					homing_state_(OPEN),
-					homing_counter_(0),
-					reset_state_(OPEN),
-					reset_counter_(0)
+		scenes_(1),
+		task_active_(false),
+		sim_running_(false),
+		speed_mod_(0),
+		nr_scenes_(0),
+		active_scene_(-1),
+		active_goal_(0),
+		max_explore_poses_(10),
+		explore_success_count_(0),
+		nr_goals_(0),
+		nr_exp_poses_(0),
+		explore_pose_type_(EXPLORE_STD_1),
+		skip_vision_(false),
+		skip_motion_(false),
+		pause_in_loop_(0),
+		reached_active_goal_(false),
+		request_task_state_(OPEN),
+		start_sim_state_(OPEN),
+		set_object_load_state_(OPEN),
+		pause_state_(OPEN),
+		parse_yaml_file_state_(OPEN),
+		stop_sim_state_(OPEN),
+		watch_scene_state_(OPEN),
+		watch_scene_counter_(0),
+		explore_environment_init_state_(OPEN),
+		explore_environment_motion_state_(OPEN),
+		explore_environment_image_state_(OPEN),
+		explore_environment_check_state_(OPEN),
+		explore_environment_image_counter_(0),
+		locate_object_global_state_(OPEN),
+		locate_object_global_counter_(0),
+		locate_all_objects_global_state_(OPEN),
+		locate_all_objects_global_counter_(0),
+		locate_object_close_range_state_(OPEN),
+		check_object_finished_state_(OPEN),
+		check_object_gripped_state_(OPEN),
+		check_object_gripped_counter_(0),
+		get_grasping_pose_state_(OPEN),
+		get_grasping_poseT5_state_(OPEN),
+		get_grasping_poseT6_state_(OPEN),
+		move_to_object_vision_state_(OPEN),
+		move_to_object_vision_counter_(0),
+		move_to_object_safe_state_(OPEN),
+		move_to_object_safe_counter_(0),
+		move_to_object_state_(OPEN),
+		move_to_object_counter_(0),
+		move_to_object_t6_state_(OPEN),
+		move_to_object_t6_counter_(0),
+		gripper_release_state_(OPEN),
+		gripper_release_counter_(0),
+		gripper_close_state_(OPEN),
+		gripper_close_counter_(0),
+		move_to_target_zone_safe_state_(OPEN),
+		move_to_target_zone_safe_counter_(0),
+		move_to_target_zone_vision_state_(OPEN),
+		move_to_target_zone_vision_counter_(0),
+		move_to_target_zone_state_(OPEN),
+		move_to_target_zone_counter_(0),
+		homing_state_(OPEN),
+		homing_counter_(0),
+		reset_state_(OPEN),
+		reset_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -248,6 +252,10 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 				return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
 			case fsm::GET_GRASPING_POSE:
 				return "SOLVE_TASK->GET_GRASPING_POSE";
+			case fsm::GET_GRASPING_POSE_T5:
+				return "SOLVE_TASK->GET_GRASPING_POSET5";
+			case fsm::GET_GRASPING_POSE_T6:
+				return "SOLVE_TASK->GET_GRASPING_POSET6";
 			case fsm::GRIPPER_RELEASE:
 				return "SOLVE_TASK->GRIPPER_RELEASE";
 			case fsm::GRIPPER_CLOSE:
@@ -260,6 +268,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_VISION";
 			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
 				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_SAFE";
+			case fsm::MOVE_TO_OBJECT_T6:
+				return "SOLVE_TASK->MOVE_TO_OBJECT_T6";
 			case fsm::CHECK_OBJECT_FINISHED:
 				return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
 			case fsm::CHECK_OBJECT_GRIPPED:
@@ -297,13 +307,13 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 					default:
 						return "SOLVE_TASK->default";
 			}
-			break;
-			case fsm::STOP_SIM:
-				return "STOP_SIM";
-			case fsm::RESET:
-				return "RESET";
-			default:
-				return "default";
+		break;
+		case fsm::STOP_SIM:
+			return "STOP_SIM";
+		case fsm::RESET:
+			return "RESET";
+		default:
+			return "default";
 	}
 }
 
@@ -373,6 +383,9 @@ void Statemachine::scheduler_schedule()
 			else if(active_task_number_==6) //schedule for task 5 and 6
 			{
 				//Nothing special right now
+				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;			state_queue.push_back(temp_state);
+				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
 			}
 		}
 		else
@@ -384,11 +397,13 @@ void Statemachine::scheduler_schedule()
 				msg_error("sort_objects failed!");
 			}
 		}
+
 		//Then make a new schedule inside the SOLVE_TASK
 		temp_state.sub.one=fsm::SOLVE_TASK;
 		temp_state.sub.two=fsm::SCHEDULER;								state_queue.push_back(temp_state);
 		scheduler_printqueue(); //print queue to console for debugging purposes
 		break;
+
 	case fsm::PAUSE:
 		if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
 		{
@@ -487,9 +502,6 @@ void Statemachine::scheduler_schedule()
 				{
 					//temp_state.sub.one=fsm::PAUSE;								state_queue.push_back(temp_state);
 					temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
-#ifndef ONE_TASK
-					temp_state.sub.one=fsm::RESET;							state_queue.push_back(temp_state);
-#endif
 				}
 				else	//otherwise start with next object
 				{
@@ -500,36 +512,41 @@ void Statemachine::scheduler_schedule()
 					temp_state.sub.one=fsm::SOLVE_TASK;
 					if(pause_in_loop_==true)
 					{
-						temp_state.sub.two=fsm::PAUSE;						state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::PAUSE;					    state_queue.push_back(temp_state);
 					}
-
-					if(planning_mode_.object == STANDARD_IK_7DOF)
+					if(active_task_number_<=4)
 					{
-						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
-					}
-
-					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;			state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
-					if (!skip_motion_)
-					{
-						scheduler_grasp_object(EXECUTE_LATER);
-
-						if(planning_mode_.object == STANDARD_IK_7DOF)
+						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::GET_GRASPING_POSE;          state_queue.push_back(temp_state);
+						if (!skip_motion_)
 						{
-							temp_state.sub.two=fsm::HOMING;					state_queue.push_back(temp_state);
+							scheduler_grasp_object(EXECUTE_LATER);
+							scheduler_place_object(EXECUTE_LATER);
 						}
-
-						scheduler_place_object(EXECUTE_LATER);
+						else
+						{
+							ein_->set_active_object_finished();
+							scheduler_next_object();
+						}
 					}
-					else
+					else if(active_task_number_==5)
 					{
-						ein_->set_active_object_finished();
-						scheduler_next_object();
+						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;       state_queue.push_back(temp_state);
+					}
+					else //task_number 6
+					{
+						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE; 		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 					}
 					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 				}
 				scheduler_printqueue(); //print queue to console for debugging purposes
 				break;
+
 			case fsm::PAUSE:
 				if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
 				{
@@ -555,9 +572,27 @@ void Statemachine::scheduler_schedule()
 			case fsm::GET_GRASPING_POSE:
 				if(get_grasping_pose_state_==FINISHEDWITHERROR)
 				{
-					//just start the state again
+					//just skip that object
 					ROS_INFO("Statemachine-Errorhandler: skipping object");
 					get_grasping_pose_state_=OPEN;
+					scheduler_skip_object();
+				}
+				break;
+			case fsm::GET_GRASPING_POSE_T5:
+				if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
+				{
+					//just start the state again
+					ROS_INFO("Statemachine-Errorhandler: skipping object");
+					get_grasping_poseT5_state_=OPEN;
+					scheduler_skip_object();
+				}
+				break;
+			case fsm::GET_GRASPING_POSE_T6:
+				if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
+				{
+					//just start the state again
+					ROS_INFO("Statemachine-Errorhandler: skipping object");
+					get_grasping_poseT6_state_=OPEN;
 					scheduler_skip_object();
 				}
 				break;
@@ -600,6 +635,14 @@ void Statemachine::scheduler_schedule()
 				}
 				break;
 
+			case fsm::MOVE_TO_OBJECT_T6:
+				if(move_to_object_t6_state_==FINISHEDWITHERROR)
+				{
+					msg_warn("move_to_object_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
+					move_to_object_t6_state_=OPEN;
+				}
+				break;
+
 			case fsm::MOVE_TO_TARGET_ZONE_VISION:
 				if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
 				{
@@ -634,6 +677,7 @@ void Statemachine::scheduler_schedule()
 				}
 				break;
 			case fsm::GRAB_OBJECT:
+			{
 				switch(state_.sub.three)
 				{
 				case fsm::MOVE_TO_OBJECT:
@@ -664,43 +708,49 @@ void Statemachine::scheduler_schedule()
 					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 				}
 				break;
-				case fsm::PLACE_OBJECT:
-					switch(state_.sub.three)
+			} //case fsm::GRAB_OBJECT
+
+			case fsm::PLACE_OBJECT:
+			{
+				switch(state_.sub.three)
+				{
+				case fsm::MOVE_TO_TARGET_ZONE:
+					if(move_to_target_zone_state_==FINISHEDWITHERROR)
 					{
-					case fsm::MOVE_TO_TARGET_ZONE:
-						if(move_to_target_zone_state_==FINISHEDWITHERROR)
-						{
-							scheduler_error_move_to_target_zone();
-						}
-						break;
-					case fsm::GRIPPER_RELEASE:
-						if(gripper_release_state_==FINISHEDWITHERROR)
-						{
-							scheduler_error_gripper_release();
-						}
-						if(set_object_load_state_==FINISHEDWITHERROR)
-						{
-							//just start the state again
-							ROS_INFO("Statemachine-Errorhandler: restarting state");
-							set_object_load_state_=OPEN;
-						}
-						break;
-					case fsm::MOVE_TO_TARGET_ZONE_SAFE:
-						if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
-						{
-							scheduler_error_move_to_target_zone_safe();
-						}
-						break;
-					default:
-						ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+						scheduler_error_move_to_target_zone();
 					}
 					break;
-					default:
-						ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-			}
-			break;
+				case fsm::GRIPPER_RELEASE:
+					if(gripper_release_state_==FINISHEDWITHERROR)
+					{
+						scheduler_error_gripper_release();
+					}
+					if(set_object_load_state_==FINISHEDWITHERROR)
+					{
+						//just start the state again
+						ROS_INFO("Statemachine-Errorhandler: restarting state");
+						set_object_load_state_=OPEN;
+					}
+					break;
+				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+					if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
+					{
+						scheduler_error_move_to_target_zone_safe();
+					}
+					break;
+				default:
+					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+				}
+				break;
+			}//case fsm::PLACE_OBJECT
+
 			default:
 				ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+
+			}
+		break;
+		default:
+			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 	}
 }
 
@@ -768,6 +818,9 @@ void Statemachine::scheduler_next_object()
 	{
 		cur_obj_ = ein_->get_active_object();
 		cur_zone_ = ein_->get_active_target_zone();
+		if(active_task_number_==5)
+			cur_target_pose_ = ein_->get_active_target_pose();
+
 		ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
 		cur_object_type_=OBJECT_UNKNOWN;
 		if(cur_obj_.nr_shapes==1 && (!cur_obj_.shape[0].type.compare("cylinder")))
@@ -811,17 +864,6 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.insert(++it,temp_state);
 		temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.insert(++it,temp_state);
-
-		//		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.insert(it,temp_state);
-		//		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.insert(it+1,temp_state);
-		//		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(it+2,temp_state);
-		//		//temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(it+3,temp_state);
-		//		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.insert(it+3,temp_state);
-		//		temp_state.sub.two=fsm::GRAB_OBJECT;
-		//			temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.insert(it+4,temp_state);
-		//			temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.insert(it+5,temp_state);
-		//			temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.insert(it+6,temp_state);
-		//		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.insert(it+7,temp_state);
 	}
 	else
 	{
@@ -829,7 +871,6 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.two=fsm::GRIPPER_RELEASE;				state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_VISION;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
-		//temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::GRAB_OBJECT;
 		temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
@@ -852,9 +893,9 @@ void Statemachine::scheduler_place_object(bool start)
 		temp_state.sub.one=fsm::SOLVE_TASK;
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.insert(it,temp_state);
 		temp_state.sub.two=fsm::PLACE_OBJECT;
-		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.insert(++it,temp_state);
-		temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.insert(++it,temp_state);
-		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		    state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::GRIPPER_RELEASE;			    state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	    state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.insert(++it,temp_state);
 	}
@@ -863,9 +904,9 @@ void Statemachine::scheduler_place_object(bool start)
 		temp_state.sub.one=fsm::SOLVE_TASK;
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::PLACE_OBJECT;
-		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		state_queue.push_back(temp_state);
-		temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
-		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		    state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::GRIPPER_RELEASE;			    state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	    state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_VISION;		state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
 	}
@@ -1624,6 +1665,12 @@ int Statemachine::tick()
 		case fsm::GET_GRASPING_POSE:
 			return get_grasping_pose();
 
+		case fsm::GET_GRASPING_POSE_T5:
+			return get_grasping_poseT5();
+
+		case fsm::GET_GRASPING_POSE_T6:
+			return get_grasping_poseT6();
+
 		case fsm::GRIPPER_RELEASE:
 			return gripper_release();
 
@@ -1635,6 +1682,9 @@ int Statemachine::tick()
 
 		case fsm::MOVE_TO_OBJECT_SAFE:
 			return move_to_object_safe();
+
+		case fsm::MOVE_TO_OBJECT_T6:
+			return move_to_object_t6();
 
 		case fsm::MOVE_TO_TARGET_ZONE_VISION:
 			return move_to_target_zone_vision();
@@ -1844,11 +1894,29 @@ int Statemachine::request_task()
 		//destroy thread
 		//lsc_.detach();
 
+#ifndef ONE_TASK
+		//find scene for task_name
+		std::string task_name_;
+		ros::param::get("/task_name",task_name_);
+		ROS_INFO("got task_name: %s",task_name_.c_str());
+
+		for(uint16_t ii=0;ii<nr_scenes_;ii++)
+		{
+			if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
+			{
+				active_scene_=ii;
+				break;
+			}
+		}
+		ROS_INFO("Scene number: %d",active_scene_);
+#else
+
 		std::cout<<"choose task: ";
 		int blub=8;
 		std::cin>>blub;
 		active_scene_=blub;
 
+#endif
 		//check which task has been chosen
 		std::string strTaskName = scenes_[active_scene_].name;
 		strTaskName=strTaskName.substr(0,5);
@@ -1990,7 +2058,7 @@ int Statemachine::start_sim()
 	{
 		ROS_INFO("start_sim() called: OPEN");
 
-		start_simulator_srv_.request.user_id = "oxofrmbl";
+		start_simulator_srv_.request.user_id = "oxofrmbl"; //"C2T14#4547344";
 		start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
 		start_sim_state_=RUNNING;
 		//lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
@@ -2128,6 +2196,7 @@ int Statemachine::parse_yaml_file()
 		try
 		{
 			ein_->save_fixture_to_parameter_server(node_,false);
+            ein_->save_conveyorbelt_to_parameter_server(node_,false);
 			ein_->save_objects_to_parameter_server(node_,false);
 			ein_->save_target_zone_to_parameter_server(node_,false);
 			ein_->save_robot_to_parameter_server(node_,false);
@@ -2419,7 +2488,7 @@ int Statemachine::stop_sim()
 
 		//==============================================
 		//Don't call scheduler_next()! The state has to be set manually to be able to quit in any situation.
-#ifdef ONE_TASK
+#ifndef ONE_TASK
 		state_.sub.one = fsm::FINISHED;
 #else
 		scheduler_next();
@@ -3066,7 +3135,19 @@ int Statemachine::locate_object_close_range()
 			//calc grasping pose again, if there's a new object pose:
 			fsm::fsm_state_t temp_state;
 			temp_state.sub.one=fsm::SOLVE_TASK;
-			temp_state.sub.two=fsm::GET_GRASPING_POSE;				state_queue.insert(state_queue.begin(),temp_state);
+			if(active_task_number_<=4)
+            {
+              temp_state.sub.two=fsm::GET_GRASPING_POSE;                            state_queue.insert(state_queue.begin(),temp_state);
+            }
+            else if(active_task_number_==5)
+            {
+              temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;                            state_queue.insert(state_queue.begin(),temp_state);
+            }
+            else
+            {
+              temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;                            state_queue.insert(state_queue.begin(),temp_state);
+            }
+
 		}
 		//==============================================
 		scheduler_next();
@@ -3159,53 +3240,11 @@ int Statemachine::get_grasping_pose()
 		lsc_.detach();
 
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
-
-		//old
-		//		geometry_msgs::Pose *pose= &get_grasp_pose_srv_.response.grasp_pose;
-		//		ROS_INFO("received grapsing pose: [%3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f]",
-		//				pose->position.x,pose->position.y,pose->position.z,pose->orientation.w,
-		//				pose->orientation.x,pose->orientation.y,pose->orientation.z);
-		//		object_grip_pose_old_=get_grasp_pose_srv_.response.grasp_pose;
-		//		r_tcp_curobjcom_=get_grasp_pose_srv_.response.r_tcp_com;
-		//		r_gp_curobjcom_=get_grasp_pose_srv_.response.r_gp_com;
-		//		r_gp_curobj_= get_grasp_pose_srv_.response.r_gp_obj;
-
-
-		object_grip_pose.clear();
-		object_safe_pose.clear();
-		object_vision_pose.clear();
-		grip_pose_type.clear();
-		object_skip_vision.clear();
-		object_grasp_width.clear();
-		target_place_pose.clear();
-		target_safe_pose.clear();
-		target_vision_pose.clear();
-		place_pose_type.clear();
-		target_skip_vision.clear();
-		object_grip_r_tcp_com.clear();
-		object_grip_r_gp_com.clear();
-		object_grip_r_gp_obj.clear();
-
-		object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
-		object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
-		object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
-		grip_pose_type=get_grasp_pose_srv_.response.grip_pose_type;
-
-		object_skip_vision=get_grasp_pose_srv_.response.object_skip_vision;
-
-		object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
-
-		target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
-		target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
-		target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
-
-		place_pose_type=get_grasp_pose_srv_.response.place_pose_type;
-
-		target_skip_vision=get_grasp_pose_srv_.response.target_skip_vision;
-
-		object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
-		object_grip_r_gp_com=get_grasp_pose_srv_.response.object_grip_r_gp_com;
-		object_grip_r_gp_obj=get_grasp_pose_srv_.response.object_grip_r_gp_obj;
+		if(get_grasp_pose_get_vectors()==false)
+		{
+                  get_grasping_pose_state_=FINISHEDWITHERROR;
+                  return 0;
+		}
 
 		if(-1==find_pose_set())
 		{
@@ -3216,54 +3255,6 @@ int Statemachine::get_grasping_pose()
 		ROS_INFO("Found pose set: ");
 		ROS_INFO("selected grip pose: %d",selected_object_pose_);
 		ROS_INFO("selected target pose: %d",selected_target_pose_);
-
-
-		if (object_grip_pose.size()<1)
-		{
-			msg_error("Error. no object poses received");
-			get_grasping_pose_state_=FINISHEDWITHERROR;
-			return 0;
-		}
-		if (target_place_pose.size()<1)
-		{
-			msg_error("Error. no target poses received");
-			get_grasping_pose_state_=FINISHEDWITHERROR;
-			return 0;
-		}
-		bool checksizes;
-		checksizes=true;
-		if (object_safe_pose.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (object_vision_pose.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (grip_pose_type.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (object_grasp_width.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (target_safe_pose.size()!=target_place_pose.size())
-			checksizes=false;
-		if (target_vision_pose.size()!=target_place_pose.size())
-			checksizes=false;
-		if (place_pose_type.size()!=target_place_pose.size())
-			checksizes=false;
-		if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (object_grip_r_gp_com.size()!=object_grip_pose.size())
-			checksizes=false;
-		if (object_grip_r_gp_obj.size()!=object_grip_pose.size())
-			checksizes=false;
-
-		if (checksizes!=true)
-		{
-			msg_error("Error. received vectors of grasping poses have invalid sizes! (check nr. %d failed)",checksizes);
-			ROS_INFO("vector-sizes: %d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",object_grip_pose.size(),object_safe_pose.size(),
-					object_vision_pose.size(),grip_pose_type.size(),object_grasp_width.size(),target_place_pose.size(),
-					target_safe_pose.size(),target_vision_pose.size(),place_pose_type.size(),object_grip_r_tcp_com.size(),
-					object_grip_r_gp_com.size(),object_grip_r_gp_obj.size());
-			get_grasping_pose_state_=FINISHEDWITHERROR;
-			return 0;
-		}
-
 
 		//
 		if(object_skip_vision[selected_object_pose_]==1)
@@ -3317,6 +3308,277 @@ int Statemachine::get_grasping_pose()
 	}
 
 	return 0;
+}
+
+bool Statemachine::get_grasp_pose_get_vectors()
+{
+  //first clean up all vectors
+  object_grip_pose.clear();
+  object_safe_pose.clear();
+  object_vision_pose.clear();
+  grip_pose_type.clear();
+  object_skip_vision.clear();
+  object_grasp_width.clear();
+  target_place_pose.clear();
+  target_safe_pose.clear();
+  target_vision_pose.clear();
+  place_pose_type.clear();
+  target_skip_vision.clear();
+  push_safe_pose.clear();
+  push_target_pose.clear();
+  object_grip_r_tcp_com.clear();
+
+  //then assign new vectors
+  object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
+  object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
+  object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
+  grip_pose_type=get_grasp_pose_srv_.response.grip_pose_type;
+  object_skip_vision=get_grasp_pose_srv_.response.object_skip_vision;
+  object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
+  target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
+  target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
+  target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
+  place_pose_type=get_grasp_pose_srv_.response.place_pose_type;
+  target_skip_vision=get_grasp_pose_srv_.response.target_skip_vision;
+  push_safe_pose=get_grasp_pose_srv_.response.push_safe_pose;
+  push_target_pose=get_grasp_pose_srv_.response.push_target_pose;
+  object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
+
+  //print vector sizes
+  ROS_INFO("Received pose vectors:");
+  ROS_INFO("object_grip_pose.size()=%d",object_grip_pose.size());
+  ROS_INFO("object_safe_pose.size()=%d",object_safe_pose.size());
+  ROS_INFO("object_vision_pose.size()=%d",object_vision_pose.size());
+  ROS_INFO("grip_pose_type.size()=%d",grip_pose_type.size());
+  ROS_INFO("object_skip_vision.size()=%d",object_skip_vision.size());
+  ROS_INFO("object_grasp_width.size()=%d",object_grasp_width.size());
+  ROS_INFO("target_place_pose.size()=%d",target_place_pose.size());
+  ROS_INFO("target_safe_pose.size()=%d",target_safe_pose.size());
+  ROS_INFO("target_vision_pose.size()=%d",target_vision_pose.size());
+  ROS_INFO("target_skip_vision.size()=%d",target_skip_vision.size());
+  ROS_INFO("place_pose_type.size()=%d",place_pose_type.size());
+  ROS_INFO("push_safe_pose.size()=%d",push_safe_pose.size());
+  ROS_INFO("push_target_pose.size()=%d",push_target_pose.size());
+  ROS_INFO("object_grip_r_tcp_com.size()=%d",object_grip_r_tcp_com.size());
+
+  //check the vector sizes
+  bool checksizes;
+  checksizes=true;
+
+  if (object_grip_pose.size()<1)
+  {
+          msg_error("Error. no object_grip_poses received");
+          checksizes=false;
+  }
+  if (target_place_pose.size()<1)
+  {
+          msg_error("Error. no target_place_poses received");
+          checksizes=false;
+  }
+  if (push_target_pose.size()<1 && active_task_number_==5)
+  {
+          msg_error("Error. no push_target_poses received (but necessary for task 5)");
+          checksizes=false;
+  }
+
+  if (object_safe_pose.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. object_safe_pose has wrong size");
+          checksizes=false;
+  }
+  if (object_vision_pose.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. object_vision_pose has wrong size");
+          checksizes=false;
+  }
+  if (object_skip_vision.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. object_skip_vision has wrong size");
+          checksizes=false;
+  }
+  if (grip_pose_type.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. grip_pose_type has wrong size");
+          checksizes=false;
+  }
+  if (object_grasp_width.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. object_grasp_width has wrong size");
+          checksizes=false;
+  }
+  if (target_safe_pose.size()!=target_place_pose.size())
+  {
+          msg_error("Error. target_safe_pose has wrong size");
+          checksizes=false;
+  }
+  if (target_vision_pose.size()!=target_place_pose.size())
+  {
+          msg_error("Error. target_vision_pose has wrong size");
+          checksizes=false;
+  }
+  if (place_pose_type.size()!=target_place_pose.size())
+  {
+          msg_error("Error. place_pose_type has wrong size");
+          checksizes=false;
+  }
+  if (target_skip_vision.size()!=target_place_pose.size())
+  {
+          msg_error("Error. target_skip_vision has wrong size");
+          checksizes=false;
+  }
+  if (push_safe_pose.size()!=push_target_pose.size())
+  {
+          msg_error("Error. push_safe_pose has wrong size");
+          checksizes=false;
+  }
+  if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
+  {
+          msg_error("Error. object_grip_r_tcp_com has wrong size");
+          checksizes=false;
+  }
+
+  return checksizes;
+}
+
+void Statemachine::get_grasping_poseT5_cb()
+{
+        ROS_INFO("get_grasping_poseT5_cb() running");
+
+        if(get_grasp_pose_client_.exists())
+        {
+                if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
+                {
+                        get_grasping_poseT5_state_=FINISHED;
+                }
+                else
+                {
+                        msg_error("Error. call of get_grasp_pose_client_ failed");
+                        get_grasping_poseT5_state_=FINISHEDWITHERROR;
+                }
+        }
+        else
+        {
+                msg_error("Error. get_grasp_pose_client_ is not available");
+                get_grasping_poseT5_state_=FINISHEDWITHERROR;
+        }
+        ROS_INFO("get_grasping_poseT5_cb() finished");
+}
+
+int Statemachine::get_grasping_poseT5()
+{
+        if(get_grasping_poseT5_state_==OPEN)
+        {
+                ROS_INFO("get_grasping_poseT5() called: OPEN");
+                get_grasp_pose_srv_.request.object=cur_obj_;
+                get_grasp_pose_srv_.request.target_pose=cur_target_pose_;
+
+                get_grasping_poseT5_state_=RUNNING;
+                lsc_ = boost::thread(&Statemachine::get_grasping_poseT5_cb,this);
+                //get_grasping_poseT5_cb();
+        }
+        else if(get_grasping_poseT5_state_==FINISHED)
+        {
+                ROS_INFO("get_grasping_poseT5() called: FINISHED");
+
+                //destroy thread
+                lsc_.detach();
+
+                cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+                if(get_grasp_pose_get_vectors()==false)
+                {
+                  get_grasping_poseT5_state_=FINISHEDWITHERROR;
+                  return 0;
+                }
+
+                selected_object_pose_=0;
+                selected_target_pose_=0;
+
+                //==============================================
+                scheduler_next();
+                //==============================================
+                //reset state
+                get_grasping_poseT5_state_=OPEN;
+        }
+        else if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
+        {
+                //destroy thread
+                lsc_.detach();
+
+                ROS_INFO("get_grasping_poseT5() called: FINISHEDWITHERROR");
+                scheduler_schedule(); //Call for Error-Handling
+        }
+
+        return 0;
+}
+
+void Statemachine::get_grasping_poseT6_cb()
+{
+        ROS_INFO("get_grasping_poseT6_cb() running");
+
+        if(get_grasp_pose_client_.exists())
+        {
+                if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
+                {
+                        get_grasping_poseT6_state_=FINISHED;
+                }
+                else
+                {
+                        msg_error("Error. call of get_grasp_pose_client_ failed");
+                        get_grasping_poseT6_state_=FINISHEDWITHERROR;
+                }
+        }
+        else
+        {
+                msg_error("Error. get_grasp_pose_client_ is not available");
+                get_grasping_poseT6_state_=FINISHEDWITHERROR;
+        }
+        ROS_INFO("get_grasping_poseT6_cb() finished");
+}
+
+int Statemachine::get_grasping_poseT6()
+{
+        if(get_grasping_poseT6_state_==OPEN)
+        {
+                ROS_INFO("get_grasping_poseT6() called: OPEN");
+                get_grasp_pose_srv_.request.object=cur_obj_;
+                get_grasp_pose_srv_.request.target_zone=cur_zone_;
+                get_grasping_poseT6_state_=RUNNING;
+                lsc_ = boost::thread(&Statemachine::get_grasping_poseT6_cb,this);
+                //get_grasping_poseT6_cb();
+        }
+        else if(get_grasping_poseT6_state_==FINISHED)
+        {
+                ROS_INFO("get_grasping_poseT6() called: FINISHED");
+
+                //destroy thread
+                lsc_.detach();
+
+                cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+                if(get_grasp_pose_get_vectors()==false)
+                {
+                  get_grasping_poseT6_state_=FINISHEDWITHERROR;
+                  return 0;
+                }
+
+                selected_object_pose_=0;
+                selected_target_pose_=0;
+
+                //==============================================
+                scheduler_next();
+                //==============================================
+                //reset state
+                get_grasping_poseT6_state_=OPEN;
+        }
+        else if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
+        {
+                //destroy thread
+                lsc_.detach();
+
+                ROS_INFO("get_grasping_poseT6() called: FINISHEDWITHERROR");
+                scheduler_schedule(); //Call for Error-Handling
+        }
+
+        return 0;
 }
 
 int Statemachine::find_pose_set()
@@ -4165,6 +4427,96 @@ void Statemachine::move_to_object_done(const actionlib::SimpleClientGoalState& s
 	}
 }
 
+int Statemachine::move_to_object_t6()
+{
+	if(move_to_object_t6_state_==OPEN)
+	{
+		ROS_INFO("move_to_object_t6() called: OPEN");
+
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=1;
+		goal_queue.resize(nr_goals_);
+
+		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
+
+#warning TO_DISCUSS
+		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
+		goal_queue[0].planning_frame = GP_TCP;
+		goal_queue[0].inter_steps = 0;
+		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+
+
+		//check isConnected before send goal -> otherwise destroy and recreate!
+		if(motion_planning_action_client_->isServerConnected()==0)
+		{
+			msg_warn("motion_planning_action_client_->isServerConnected=0!");
+
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			motion_planning_action_client_->waitForServer();
+		}
+
+		move_to_object_t6_state_=RUNNING;
+		motion_planning_action_client_->sendGoal(goal_queue[0],
+				boost::bind(&Statemachine::move_to_object_t6_done,this,_1,_2),
+				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_active(),
+				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
+		);
+	}
+	else if(move_to_object_t6_state_==FINISHED)
+	{
+		ROS_INFO("move_to_object_t6() called: FINISHED");
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		move_to_object_t6_state_=OPEN;
+		move_to_object_t6_counter_=0;
+	}
+	else if(move_to_object_t6_state_==FINISHEDWITHERROR)
+	{
+		ROS_INFO("move_to_object_t6() called: FINISHEDWITHERROR");
+		state_.sub.event_two = motion_planning_result_.error_reason;
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
+void Statemachine::move_to_object_t6_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+{
+	ROS_INFO("move_to_object_t6_feedback() called");
+}
+
+void Statemachine::move_to_object_t6_done(const actionlib::SimpleClientGoalState& state,
+		const am_msgs::goalPoseResultConstPtr& result)
+{
+	ROS_INFO("move_to_object_t6_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		move_to_object_t6_state_=FINISHED;
+		break;
+	case actionlib::SimpleClientGoalState::ACTIVE:
+	case actionlib::SimpleClientGoalState::PENDING:
+	case actionlib::SimpleClientGoalState::RECALLED:
+		break;
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::PREEMPTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+		move_to_object_t6_state_=FINISHEDWITHERROR;
+		motion_planning_result_ = *result;
+		break;
+	default:
+		break;
+	}
+}
+
 int Statemachine::move_to_target_zone_safe()
 {
 	if(move_to_target_zone_safe_state_==OPEN)
@@ -4706,8 +5058,8 @@ int Statemachine::check_time()
 		//state:
 		temp_state.sub.one=fsm::STOP_SIM;
 		state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::RESET;
-		state_queue.push_back(temp_state);
+		//temp_state.sub.one=fsm::RESET;
+		//state_queue.push_back(temp_state);
 #endif
 	}
 	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
@@ -4762,6 +5114,8 @@ int Statemachine::reset()
 		check_object_gripped_state_=OPEN;
 		check_object_gripped_counter_=0;
 		get_grasping_pose_state_=OPEN;
+        get_grasping_poseT5_state_=OPEN;
+        get_grasping_poseT6_state_=OPEN;
 		move_to_object_vision_state_=OPEN;
 		move_to_object_vision_counter_=0;
 		move_to_object_safe_state_=OPEN;

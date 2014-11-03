@@ -49,6 +49,8 @@ public:
 	//!tried every object once
 	bool is_active_object_last_object();
 
+	//!get the target pose which belongs to the current object (for puzzle)
+	geometry_msgs::Pose get_active_target_pose();
 
 	//!get for active_object the corresponding target_zone
 	am_msgs::TargetZone get_active_target_zone();
@@ -78,8 +80,10 @@ public:
 	void save_robot_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 	//!save target zone data to parameter server
 	void save_target_zone_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
-	//!save target zone data to parameter server
+	//!save puzzle fixture pose to parameter server
 	void save_fixture_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
+	//!save conveyor belt data to parameter server
+	void save_conveyorbelt_to_parameter_server(ros::NodeHandle& n, bool show_log_messages);
 
 
 	//!determine in which order the puzzle peaces need to be placed into the fixture

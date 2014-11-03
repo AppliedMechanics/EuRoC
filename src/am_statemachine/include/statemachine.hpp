@@ -194,6 +194,8 @@ private:
 	uint8_t cur_object_type_;
 	//!corresponding zone to this object
 	am_msgs::TargetZone cur_zone_;
+	//!corresponding target pose to this object
+	geometry_msgs::Pose cur_target_pose_;
 	//!current object mass
 	double cur_obj_mass_;
 	//!robot has cur obj gripped
@@ -213,9 +215,9 @@ private:
 	std::vector<geometry_msgs::Pose> target_vision_pose;
 	std::vector<uint16_t> place_pose_type;
 	std::vector<uint16_t> target_skip_vision;
+	std::vector<geometry_msgs::Pose> push_safe_pose;
+	std::vector<geometry_msgs::Pose> push_target_pose;
 	std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
-	std::vector<geometry_msgs::Vector3> object_grip_r_gp_com;
-	std::vector<geometry_msgs::Vector3> object_grip_r_gp_obj;
 
 	//transformation from gp-tcp to object origin
 	tf::Transform gp_obj_orig_;
@@ -387,8 +389,24 @@ private:
 	void get_grasping_pose_cb();
 	//!state of get_grasping_pose() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t get_grasping_pose_state_;
+	//!get the pose-vectors from the grasping node an assign it to the local vectors (true if everything is fine, false otherwise)
+	bool get_grasp_pose_get_vectors();
 	//!find a feasible pose set
 	int find_pose_set();
+
+	//!get grasping pose (Task 5)
+	int get_grasping_poseT5();
+	//!callback for get_grasping_poseT5() (Task 5)
+	void get_grasping_poseT5_cb();
+	//!state of get_grasping_poseT5() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t get_grasping_poseT5_state_;
+
+	//!get grasping pose (Task 6)
+	int get_grasping_poseT6();
+	//!callback for get_grasping_poseT6() (Task 6)
+	void get_grasping_poseT6_cb();
+	//!state of get_grasping_poseT6() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t get_grasping_poseT6_state_;
 
 	//!move to object safe
 	int move_to_object_safe();
@@ -416,6 +434,15 @@ private:
 	//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t move_to_object_state_;
 	uint8_t move_to_object_counter_;
+
+	//!move to object for task 6
+	int move_to_object_t6();
+	//!callbacks for move_to_object()
+	void move_to_object_t6_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+	void move_to_object_t6_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+	//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t move_to_object_t6_state_;
+	uint8_t move_to_object_t6_counter_;
 
 	//!check whether the object has been placed correctly
 	int check_object_finished();

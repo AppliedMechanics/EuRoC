@@ -40,6 +40,6 @@ add_executable(am_gripper_interface src/main_gripper_interface.cpp)
 target_link_libraries(am_gripper_interface ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 add_dependencies(am_gripper_interface  am_grasping_generate_messages_cpp)
 
-add_executable(am_grasping_srv src/GraspPose.cpp src/GraspPose2.cpp src/main_get_grasp_pose.cpp)
+add_executable(am_grasping_srv src/GraspPose2.cpp src/main_get_grasp_pose.cpp)
 target_link_libraries(am_grasping_srv ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 add_dependencies(am_grasping_srv  am_grasping_generate_messages_cpp)

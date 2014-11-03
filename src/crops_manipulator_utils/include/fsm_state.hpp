@@ -2,6 +2,7 @@
 #define _FSM_STATE_
 
 #include <stdint.h>
+
 namespace fsm{
 typedef union {
 	uint64_t all;
@@ -37,11 +38,14 @@ typedef enum {
 	LOCATE_ALL_OBJECTS_GLOBAL,
 	LOCATE_OBJECT_CLOSE_RANGE,
 	GET_GRASPING_POSE,
+	GET_GRASPING_POSE_T5,
+	GET_GRASPING_POSE_T6,
 	GRAB_OBJECT,
 	PLACE_OBJECT,
 	MOVE_TO_OBJECT_VISION,
 	MOVE_TO_OBJECT_SAFE,
 	MOVE_TO_OBJECT,
+	MOVE_TO_OBJECT_T6,
 	MOVE_TO_TARGET_ZONE_VISION,
 	MOVE_TO_TARGET_ZONE_SAFE,
 	MOVE_TO_TARGET_ZONE,
@@ -51,10 +55,6 @@ typedef enum {
 	CHECK_OBJECT_FINISHED,
 	CHECK_OBJECT_GRIPPED,
 	PAUSE,
-	//sub-states for move_to_object
-	//MOVE_WITH_METHOD_A,	//used?
-	//MOVE_WITH_METHOD_B, //used?
-	VISUAL_SERVOING,
 
 	//events
 	NOP,
