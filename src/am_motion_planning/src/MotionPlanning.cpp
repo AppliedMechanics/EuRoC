@@ -417,7 +417,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	}
 	//------------------------------------------------------------------------------------------------
 	case (MOVE_IT_JT_9DOF):
-							ROS_WARN("Given JT based on MoveIt! chosen.");
+									ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -450,40 +450,49 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 	goalPose_server_.publishFeedback(goalPose_feedback_);
 
-	//------------------------------------------------------------------------------------------------
-	if (estimated_motion_time_<goal_pose_goal_->allowed_time || goal_pose_goal_->allowed_time<0.5)
-	{
-		moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
-		mtt_=RUNNING;
-		//while (!goalPose_result_.reached_goal)
-		while(mtt_==RUNNING)
-		{
-			getGoalPose_Feedback();
-			goalPose_server_.publishFeedback(goalPose_feedback_);
-
-			feedback_rate.sleep();
-		}
-
-		moveToTarget.detach();
-	}
-	else
+	if (move_along_joint_path_srv_.request.path.size()<1 || move_along_joint_path_srv_.request.path.size()>999)
 	{
 		goalPose_result_.reached_goal = false;
 		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-		goalPose_server_.setPreempted(goalPose_result_,"Motion takes too long.");
-	}
-
-	if(mtt_==FINISHED)
-	{
-		goalPose_result_.reached_goal = true;
-		goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+		goalPose_server_.setPreempted(goalPose_result_,"Path length <1 OR >999");
 	}
 	else
 	{
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
-	}
+		//------------------------------------------------------------------------------------------------
+		if (estimated_motion_time_<goal_pose_goal_->allowed_time || goal_pose_goal_->allowed_time<0.5)
+		{
+			moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
+			mtt_=RUNNING;
+			//while (!goalPose_result_.reached_goal)
+			while(mtt_==RUNNING)
+			{
+				getGoalPose_Feedback();
+				goalPose_server_.publishFeedback(goalPose_feedback_);
 
+				feedback_rate.sleep();
+			}
+
+			moveToTarget.detach();
+		}
+		else
+		{
+			msg_warn("Estimated Motion Time %f > allowed Time %f",estimated_motion_time_,goal_pose_goal_->allowed_time);
+			goalPose_result_.reached_goal = false;
+			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+			goalPose_server_.setPreempted(goalPose_result_,"Motion takes too long.");
+		}
+
+		if(mtt_==FINISHED)
+		{
+			goalPose_result_.reached_goal = true;
+			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+		}
+		else
+		{
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
+		}
+	}
 
 }
 
@@ -1769,6 +1778,8 @@ void MotionPlanning::getTimingAlongJointPath()
 			}}
 		else
 			estimated_motion_time_ = time_at_path_points_[0].toSec();
+
+		msg_info("Estimated Motion Time: %f",estimated_motion_time_);
 	}
 	else
 	{

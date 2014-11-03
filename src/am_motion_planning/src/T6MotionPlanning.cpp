@@ -9,7 +9,7 @@
 
 T6MotionPlanning::T6MotionPlanning():
 MotionPlanning::MotionPlanning(),
-T6_goalPose_server_(nh_, "T6goalPoseAction", boost::bind(&T6MotionPlanning::executeGoalPose_CB, this, _1),false)
+T6_goalPose_server_(nh_, "T6goalPoseAction", boost::bind(&T6MotionPlanning::T6executeGoalPose_CB, this, _1),false)
 {
 	// TODO Auto-generated constructor stub
 	T6_goalPose_server_.start();
@@ -19,7 +19,7 @@ T6MotionPlanning::~T6MotionPlanning() {
 	// TODO Auto-generated destructor stub
 }
 
-void T6MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
+void T6MotionPlanning::T6executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
 
 	ros::param::get("/skip_vision", skip_vision_);

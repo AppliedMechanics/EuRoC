@@ -15,7 +15,7 @@ public:
 	T6MotionPlanning();
 	virtual ~T6MotionPlanning();
 
-	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
+	void T6executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
 
 private:
 	actionlib::SimpleActionServer<am_msgs::goalPoseAction> T6_goalPose_server_;

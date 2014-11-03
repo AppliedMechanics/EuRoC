@@ -125,7 +125,7 @@ protected:
 	bool obj_data_loaded_;
 
 	//! This function is executed, when a new goal goalPoseAction is received
-	virtual void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
+	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
 	void getGoalPose_Feedback();
 
 	void moveToTargetCB();
