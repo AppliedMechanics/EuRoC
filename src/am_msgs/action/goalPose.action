@@ -6,6 +6,8 @@ int32 speed_percentage
 int32 inter_steps
 string planning_frame
 float64 allowed_time
+time stamp
+
 ---
 #result definition
 geometry_msgs/Pose reached_pose

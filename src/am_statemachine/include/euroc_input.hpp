@@ -40,13 +40,14 @@ public:
 	//!get active object state
 	uint16_t get_active_object_state(){return obj_state_[obj_queue_[0].obj_idx];};
 	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
+	ros::Time get_active_object_stamp(){return obj_queue_[0].data->stamp;};
 
 	//!print object properties
 	void print_object(am_msgs::Object*obj);
 	//!set active_object_ to finished
 	void set_active_object_finished();
 	//!set abs. pose for current object
-	void set_object_pose(geometry_msgs::Pose abs_pose);
+	void set_object_pose(geometry_msgs::Pose abs_pose, ros::Time stamp);
 	//!tried every object once
 	bool is_active_object_last_object();
 
@@ -66,7 +67,7 @@ public:
 	//!hack
 	am_msgs::Object get_object(uint16_t idx){return objects_[idx];};
 	am_msgs::TargetZone get_target_zone(uint16_t idx){return target_zones_[idx];};
-	void set_object_pose(geometry_msgs::Pose abs_pose,uint16_t idx);
+	void set_object_pose(geometry_msgs::Pose abs_pose,uint16_t idx, ros::Time stamp);
 
 
 	//!all objects finished

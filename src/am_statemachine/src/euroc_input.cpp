@@ -957,7 +957,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		{
 			temp_obj.action=EIN_PLACE;
 			temp_obj.data=&objects_[puzzle_order_[ii].part_index];
-			temp_obj.obj_idx=puzzle_order_[ii].part_index;
+			temp_obj.obj_idx=ii;//puzzle_order_[ii].part_index;
 			temp_obj.target_zone_idx=0;
 			temp_obj.target_zone_occupied=0;
 
@@ -1655,19 +1655,21 @@ void EurocInput::save_conveyorbelt_to_parameter_server(ros::NodeHandle& n, bool 
 {
     if(task_nr_==6)
     {
-            ROS_INFO("saving conveyor_belt to parameter server...");
-            n.setParam("conveyorbelt_move_direction_and_length_x_",conv_belt_.move_direction_and_length.x);
-            n.setParam("conveyorbelt_move_direction_and_length_y_",conv_belt_.move_direction_and_length.y);
-            n.setParam("conveyorbelt_move_direction_and_length_z_",conv_belt_.move_direction_and_length.z);
+		ROS_INFO("saving conveyor_belt to parameter server...");
+		n.setParam("conveyorbelt_move_direction_and_length_x_",conv_belt_.move_direction_and_length.x);
+		n.setParam("conveyorbelt_move_direction_and_length_y_",conv_belt_.move_direction_and_length.y);
+		n.setParam("conveyorbelt_move_direction_and_length_z_",conv_belt_.move_direction_and_length.z);
 
-            n.setParam("conveyorbelt_drop_center_point_x_",conv_belt_.drop_center_point.x);
-            n.setParam("conveyorbelt_drop_center_point_y_",conv_belt_.drop_center_point.y);
-            n.setParam("conveyorbelt_drop_center_point_z_",conv_belt_.drop_center_point.z);
+		n.setParam("conveyorbelt_drop_center_point_x_",conv_belt_.drop_center_point.x);
+		n.setParam("conveyorbelt_drop_center_point_y_",conv_belt_.drop_center_point.y);
+		n.setParam("conveyorbelt_drop_center_point_z_",conv_belt_.drop_center_point.z);
 
-            n.setParam("conveyorbelt_drop_deviation_x_",conv_belt_.drop_deviation.x);
-            n.setParam("conveyorbelt_drop_deviation_y_",conv_belt_.drop_deviation.y);
-            n.setParam("conveyorbelt_drop_deviation_z_",conv_belt_.drop_deviation.z);
+		n.setParam("conveyorbelt_drop_deviation_x_",conv_belt_.drop_deviation.x);
+		n.setParam("conveyorbelt_drop_deviation_y_",conv_belt_.drop_deviation.y);
+		n.setParam("conveyorbelt_drop_deviation_z_",conv_belt_.drop_deviation.z);
 
+		n.setParam("conveyorbelt_start_speed_",conv_belt_.start_speed);
+		n.setParam("conveyorbelt_end_speed_",conv_belt_.end_speed);
     }
 }
 
@@ -1723,7 +1725,7 @@ void EurocInput::set_active_object_finished()
 	}
 }
 
-void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
+void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, ros::Time stamp)
 {
 	if(obj_queue_.size()==0)
 	{
@@ -1733,13 +1735,14 @@ void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose)
 	else
 	{
 		obj_queue_[0].data->abs_pose=abs_pose;
+		obj_queue_[0].data->stamp=stamp;
 		if(obj_state_[obj_queue_[0].obj_idx] == EIN_OBJ_INIT)
 			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_LOCATED;
 		return;
 	}
 }
 
-void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, uint16_t idx)
+void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, uint16_t idx, ros::Time stamp)
 {
 	if(objects_.size()==0)
 	{
@@ -1749,6 +1752,7 @@ void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, uint16_t idx)
 	else
 	{
 		objects_[idx].abs_pose=abs_pose;
+		objects_[idx].stamp=stamp;
 		obj_state_[idx] = EIN_OBJ_LOCATED;
 		return;
 	}

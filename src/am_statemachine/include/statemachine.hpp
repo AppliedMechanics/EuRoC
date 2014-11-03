@@ -22,6 +22,7 @@
 #include <euroc_c2_msgs/StartSimulator.h>
 #include <euroc_c2_msgs/StopSimulator.h>
 #include <euroc_c2_msgs/SetObjectLoad.h>
+#include <euroc_c2_msgs/RequestNextObject.h>
 
 //am msgs
 #include <am_msgs/Object.h>
@@ -114,6 +115,7 @@ private:
 	std::string euroc_c2_interface_;
 	std::string save_log_;
 	std::string set_object_load_;
+	std::string next_object_;
 
 	//!Euroc client to access available scenes
 	ros::ServiceClient list_scenes_client_;
@@ -135,6 +137,10 @@ private:
 	ros::ServiceClient set_object_load_client_;
 	//!object load message
 	euroc_c2_msgs::SetObjectLoad set_object_load_srv_;
+	//!Euroc client to request next object
+	euroc_c2_msgs::RequestNextObject next_object_srv_;
+	ros::ServiceClient next_object_client_;
+
 
 	//!action client for motionplanning-node (am_motionplanning)
 	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_;
@@ -200,6 +206,9 @@ private:
 	double cur_obj_mass_;
 	//!robot has cur obj gripped
 	bool cur_obj_gripped_;
+
+	//!object counter for task 6
+	uint16_t obj_counter_t6_;
 
 	//grasping poses
 	uint16_t selected_object_pose_;
@@ -451,6 +460,13 @@ private:
 	//!callbacks for check_object_finished()
 	void check_object_finished_done(const actionlib::SimpleClientGoalState& state,const am_msgs::VisionResultConstPtr& result);
 	void check_object_finished_feedback(const am_msgs::VisionFeedbackConstPtr feedback);
+
+	//!for task 6, request next object
+	int new_object_t6();
+	//!callback for new_object_t6()
+	void new_object_t6_cb();
+	//!state of new_object_t6() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t new_object_t6_state_;
 
 	//!check whether the object has been gripped correctly
 	int check_object_gripped();

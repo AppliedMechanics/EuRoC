@@ -18,6 +18,7 @@ Statemachine::Statemachine():
 		nr_goals_(0),
 		nr_exp_poses_(0),
 		explore_pose_type_(EXPLORE_STD_1),
+		obj_counter_t6_(1),
 		skip_vision_(false),
 		skip_motion_(false),
 		pause_in_loop_(0),
@@ -43,6 +44,7 @@ Statemachine::Statemachine():
 		check_object_finished_state_(OPEN),
 		check_object_gripped_state_(OPEN),
 		check_object_gripped_counter_(0),
+		new_object_t6_state_(OPEN),
 		get_grasping_pose_state_(OPEN),
 		get_grasping_poseT5_state_(OPEN),
 		get_grasping_poseT6_state_(OPEN),
@@ -89,10 +91,14 @@ Statemachine::Statemachine():
 	euroc_c2_interface_ = "/euroc_interface_node";
 	save_log_ = euroc_c2_interface_ + "/save_log";
 	set_object_load_ = euroc_c2_interface_ + "/set_object_load";
+	next_object_ = (euroc_c2_interface_ + "/request_next_object");
 
 	ros::param::get("/skip_vision",skip_vision_);
 	ros::param::get("/skip_motion",skip_motion_);
 	ros::param::get("/pause_in_loop",pause_in_loop_);
+
+	//first object drops automatically after starting the simulator with task 6
+	node_.setParam("object_counter_",obj_counter_t6_);
 
 	planning_mode_.object	= STANDARD_IK_7DOF;
 	planning_mode_.move_to_object	= STANDARD_IK_7DOF;
@@ -162,6 +168,8 @@ int Statemachine::init_sm()
 	check_zones_client_ = node_.serviceClient<am_msgs::CheckZones>("CheckZonesService");
 	state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
 	set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
+	next_object_client_ = node_.serviceClient<euroc_c2_msgs::RequestNextObject>(next_object_);
+
 	//check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
 	rm_grasping_area_collision_client_ = node_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
 	//wait for all action servers
@@ -274,6 +282,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 				return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
 			case fsm::CHECK_OBJECT_GRIPPED:
 				return "SOLVE_TASK->CHECK_OBJECT_GRIPPED";
+			case fsm::NEW_OBJECT_T6:
+				return "SOLVE_TASK->NEW_OBJECT_T6";
 			case fsm::GRAB_OBJECT:
 				switch(parstate.sub.three)
 				{
@@ -677,6 +687,12 @@ void Statemachine::scheduler_schedule()
 					scheduler_error_check_object_gripped();
 				}
 				break;
+			case fsm::NEW_OBJECT_T6:
+				if(new_object_t6_state_==FINISHEDWITHERROR)
+				{
+					msg_warn("Statemachine-Errorhandler: failed to call request object -> retry");
+					new_object_t6_state_=OPEN;
+				}
 			case fsm::GRAB_OBJECT:
 			{
 				switch(state_.sub.three)
@@ -1699,6 +1715,9 @@ int Statemachine::tick()
 		case fsm::CHECK_OBJECT_GRIPPED:
 			return check_object_gripped();
 
+		case fsm::NEW_OBJECT_T6:
+			return new_object_t6();
+
 		case fsm::LOCATE_OBJECT_CLOSE_RANGE:
 			return locate_object_close_range();
 
@@ -2432,6 +2451,52 @@ int Statemachine::check_object_gripped()
 	return 0;
 }
 
+
+int Statemachine::new_object_t6()
+{
+	if(new_object_t6_state_==OPEN)
+	{
+		ROS_INFO("new_object_t6() called: OPEN");
+
+		new_object_t6_state_=RUNNING;
+		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
+		if(!next_object_client_.call(next_object_srv_))
+		{
+			std::string &ls_error_message = next_object_srv_.response.error_message;
+			msg_error("failed to call next object client: %s ",ls_error_message.c_str());
+
+			new_object_t6_state_=FINISHEDWITHERROR;
+		}
+		else
+		{
+			new_object_t6_state_=FINISHED;
+			//increase global object counter
+			obj_counter_t6_++;
+			//and publish it to the parameter server
+			node_.setParam("object_counter_",obj_counter_t6_);
+		}
+	}
+	else if(new_object_t6_state_==FINISHED)
+	{
+		ROS_INFO("new_object_t6() called: FINISHED");
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		new_object_t6_state_=OPEN;
+	}
+	else if(new_object_t6_state_==FINISHEDWITHERROR)
+	{
+		//destroy thread
+		//lsc_.detach();
+
+		ROS_INFO("new_object_t6() called: FINISHEDWITHERROR");
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
 void Statemachine::stop_sim_cb()
 {
 	ROS_INFO("stop_sim_cb() running");
@@ -2935,7 +3000,7 @@ void Statemachine::locate_object_global_done(const actionlib::SimpleClientGoalSt
 		if(result->object_detected==true)
 		{
 			cur_obj_.abs_pose=result->abs_object_pose;
-			ein_->set_object_pose(result->abs_object_pose);
+			ein_->set_object_pose(result->abs_object_pose, result->stamp);
 
 			locate_object_global_state_=FINISHED;
 		}
@@ -3076,7 +3141,7 @@ void Statemachine::locate_all_objects_global_done(const actionlib::SimpleClientG
 		if(result->object_detected==true)
 		{
 			reached_active_goal_=true;
-			ein_->set_object_pose(result->abs_object_pose, active_goal_);
+			ein_->set_object_pose(result->abs_object_pose, active_goal_, result->stamp);
 		}
 		else
 		{
@@ -4458,8 +4523,9 @@ int Statemachine::move_to_object_t6()
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+		goal_queue[0].speed_percentage = slow_moving_speed;
 		goal_queue[0].allowed_time = 60.0;
+		goal_queue[0].stamp = ein_->get_active_object_stamp();
 
 		//check isConnected before send goal -> otherwise destroy and recreate!
 		if(motion_planning_action_client_->isServerConnected()==0)
@@ -4467,7 +4533,7 @@ int Statemachine::move_to_object_t6()
 			msg_warn("motion_planning_action_client_->isServerConnected=0!");
 
 			delete motion_planning_action_client_;
-			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("T6goalPoseAction", true);
 			msg_warn("motion planning action client recreated, waiting for server");
 			motion_planning_action_client_->waitForServer();
 		}
@@ -4874,7 +4940,7 @@ int Statemachine::move_to_target_zone()
 		tmp_pose.orientation.w=obj_orig.getRotation().getW();
 
 		//gp_obj_orig_=
-		ein_->set_object_pose(tmp_pose);
+		ein_->set_object_pose(tmp_pose, ros::Time::now());
 
 		//publish object state for motion planning
 		publish_obj_state(OBJ_PLACED);
