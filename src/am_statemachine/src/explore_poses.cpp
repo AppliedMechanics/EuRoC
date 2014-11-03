@@ -130,7 +130,7 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 		case EXPLORE_SNAKE:
 			if (pose_nr < size(EXPLORE_SNAKE)) {
 				// if at end of block, move to next block
-				while (insideblock_counter_>explore_poses_snake_[block_nr_[block_counter_]].size() && block_counter_<N_POSE_BLOCKS){
+				while (insideblock_counter_>=explore_poses_snake_[block_nr_[block_counter_]].size() && block_counter_<N_POSE_BLOCKS){
 					block_counter_++;
 					insideblock_counter_=0;
 					insideblock_success_counter_ = 0;
