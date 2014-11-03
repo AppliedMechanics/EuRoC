@@ -117,6 +117,12 @@ Vision::Vision():
 
   vision_server_.start();
   ROS_INFO("vision action server started.");
+
+
+//	obj_state_sub_ = nh_.subscribe("obj_state", 1000, &MotionPlanning::your function call here, this);
+//
+//in function:  if(msg->obj_state==OBJ_GRIPPING) ...
+
 }
 
 
@@ -938,6 +944,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
       msg.header.stamp = ros::Time::now();
       pub.publish (msg);
 
+      delete scenePointCloud;
     } // END While
 
     // Move camera to initial configuration
@@ -1221,6 +1228,8 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
   msg.header.frame_id = "/Origin";
   msg.header.stamp = ros::Time::now();
   pub.publish (msg);
+
+  delete scenePointCloud;
 
 }
 
@@ -2133,6 +2142,8 @@ double Vision::close_range_pose(string color)
   /*
    * END compute angles using corners
    */
+
+  delete cornersPointCloud;
 
   return (-1)*rotation;
 }
