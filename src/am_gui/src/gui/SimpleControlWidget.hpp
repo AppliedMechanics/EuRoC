@@ -16,6 +16,7 @@
 #include <tf/LinearMath/Matrix3x3.h>
 #include <geometry_msgs/Pose.h>
 #include "ROSinterface.hpp"
+#include <QSlider>
 
 class SimpleControlWidget : public QWidget
 {
@@ -40,6 +41,8 @@ private:
 	QLabel* joint_names_[12];
 
 	QLabel* fkPose[10];
+	QSlider*   speed_percentage_slider_;
+	QLabel*    speed_percentage_label_;
 
 public:
 

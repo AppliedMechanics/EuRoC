@@ -21,6 +21,7 @@ class ManipulatorStatusWidget : public QWidget
   ROSinterface  *rosinterface;
   QComboBox* taskSelection;
   QPushButton* callNextObjectButton_;
+
 public:
   
   explicit ManipulatorStatusWidget(QWidget *parent = 0);

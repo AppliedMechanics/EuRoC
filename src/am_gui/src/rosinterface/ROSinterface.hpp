@@ -124,11 +124,18 @@ private:
 
 	std::vector<jointinfo> system_limits_;
 
+	std::vector<euroc_c2_msgs::Limits> joint_limits_;
+	euroc_c2_msgs::Limits gripper_limit_;
+	euroc_c2_msgs::Limits table_axis1_limit_;
+	euroc_c2_msgs::Limits table_axis2_limit_;
+	int speed_percentage_;
+
 	void moveToTargetCB();
 	void sendServoTargetCB();
 
 	void getUrdfConf();
 	bool getSceneList();
+	bool getLimits();
 
 public:
 
@@ -146,6 +153,7 @@ void callSetStopConditions(std::vector<std::string>,std::vector<std::string>,std
 void callEnableServoMode(bool);
 void sendCurrentCfgOnce();
 void callGetFK();
+void setSpeedPercentage(int sp);
 
 void callSetCommandedConfiguration(int*,int*);
 

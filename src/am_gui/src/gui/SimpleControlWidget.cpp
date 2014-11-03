@@ -11,9 +11,26 @@
 SimpleControlWidget::SimpleControlWidget(QWidget *parent):
 QWidget(parent)
 {
+	speed_percentage_label_ = new QLabel("Speed Percentage");
+
+	speed_percentage_slider_ = new QSlider(Qt::Horizontal);
+	speed_percentage_slider_->setRange(0,100);
+	speed_percentage_slider_->setTracking(false);
+	speed_percentage_slider_->setValue(30.0);
+	speed_percentage_slider_->setTickPosition(QSlider::TicksBelow);
+	speed_percentage_slider_->setEnabled(true);
+
+//	connect(joint_servo_offsets_[i],SIGNAL(sliderPressed()),signalMapperPressed_,SLOT(map()));
+//	connect(joint_servo_offsets_[i],SIGNAL(sliderReleased()),this,SLOT(sendZero()));
+//    connect(joint_servo_offsets_[i],SIGNAL(valueChanged(int)),this,SLOT(sendServoCommand(int)));
 
 	// layouts
 	QVBoxLayout* mainLayout = new QVBoxLayout();
+
+	QGroupBox* speedGroupBox = new QGroupBox("Speed Percentage");
+	QHBoxLayout* speedLayout = new QHBoxLayout();
+	speedGroupBox->setLayout(speedLayout);
+	speedLayout->addWidget(speed_percentage_slider_);
 
 	QGroupBox* fkGroupBox = new QGroupBox("Forward Kinematics");
 	QHBoxLayout* fkBoxLayout = new QHBoxLayout();
@@ -32,6 +49,7 @@ QWidget(parent)
 	setLayout(mainLayout);
 	mainLayout->addWidget(fkGroupBox);
 	mainLayout->addWidget(targetPoseGroupBox);
+	mainLayout->addWidget(speedGroupBox);
 	mainLayout->addWidget(targetCfgGroupBox);
 	fkGroupBox->setLayout(fkBoxLayout);
 	fkBoxLayout->addLayout(fkLayout);
@@ -142,6 +160,8 @@ QWidget(parent)
 
 	connect(commandCfgButton,SIGNAL(clicked()),this,SLOT(moveToTargetCfgCallback()));
 	connect(this,SIGNAL(moveToTargetCfg(double*)),rosinterface,SLOT(callSetCustomGoalConfiguration(double*)));
+
+	connect(speed_percentage_slider_,SIGNAL(valueChanged(int)),rosinterface,SLOT(setSpeedPercentage(int)));
 }
 
 void SimpleControlWidget::moveToTargetPoseCallback()
