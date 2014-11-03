@@ -67,7 +67,7 @@ obj_data_loaded_(false)
 #warning Also Goal Tolerance for homing 2DOF (isn't used till now')
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
-	group_2DOF->setPlannerId(ompl_planners[9]); // 2
+	group_2DOF->setPlannerId(ompl_planners[7]); // 2
 	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
@@ -82,7 +82,7 @@ obj_data_loaded_(false)
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
 	group_9DOF->setPlannerId(ompl_planners[4]); // 4
-	group_9DOF->setNumPlanningAttempts(2);
+	group_9DOF->setNumPlanningAttempts(3);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");

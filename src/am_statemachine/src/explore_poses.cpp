@@ -11,6 +11,7 @@ ExplorePoses::ExplorePoses()
 {
 	block_counter_ = 0;
 	insideblock_success_counter_ = 0;
+	insideblock_counter_ = 0;
 	success_counter_ = 0;
 
 	/* initialize random seed: */
