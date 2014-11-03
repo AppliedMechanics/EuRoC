@@ -541,7 +541,7 @@ void Statemachine::scheduler_schedule()
 						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE; 		state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::NEW_OBJECT;					state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
 					}
 					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 				}
@@ -1984,14 +1984,20 @@ int Statemachine::request_task()
 			break;
 		case 5:
 		case 6:
-			planning_mode_.object	= MOVE_IT_9DOF;
-			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
+			planning_mode_.object	= MOVE_T6;
+			planning_mode_.move_to_object	= MOVE_T6;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= MOVE_IT_9DOF;
 			planning_mode_.move_to_target_zone	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
-			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
+			planning_mode_.homing	= HOMING_T6;
 			explore_pose_type_ = EXPLORE_STD_1;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
+
+			msg_info("task 6, changing action client to task6 action server!");
+			delete motion_planning_action_client_;
+			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("T6goalPoseAction", true);
+			msg_warn("motion planning action client recreated, waiting for server");
+			//motion_planning_action_client_->waitForServer();
 			break;
 		}
 

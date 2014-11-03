@@ -47,6 +47,9 @@ typedef enum {
 	MOVE_IT_JT_2DOF,
 	MOVE_IT_JT_7DOF,
 	MOVE_IT_JT_9DOF,
+
+	HOMING_T6,
+	MOVE_T6
 } motion_planning_mode_t;
 
 typedef enum {

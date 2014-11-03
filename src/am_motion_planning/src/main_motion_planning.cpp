@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 //	MotionPlanning mp;
 	T6MotionPlanning mp;
 
-	ros::Rate r(FREQ*10); // 10 hz
+	ros::Rate r(FREQ); // 100 hz
 	while (ros::ok() && !kill_flag)
 	{
 		ros::spinOnce();
