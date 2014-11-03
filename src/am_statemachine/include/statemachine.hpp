@@ -531,6 +531,8 @@ private:
 
 	//utililty functions:
 	int check_time();
+	int wait();
+	uint16_t wait_counter_;
 	int reset();
 	//! state of reset() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t reset_state_;

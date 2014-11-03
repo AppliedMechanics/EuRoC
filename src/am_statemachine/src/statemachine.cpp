@@ -248,6 +248,8 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 			{
 			case fsm::PAUSE:
 				return "SOLVE_TASK->PAUSE";
+			case fsm::WAIT:
+				return "SOLVE_TASK->WAIT";
 			case fsm::SCHEDULER:
 				return "SOLVE_TASK->SCHEDULER";
 			case fsm::HOMING:
@@ -543,9 +545,20 @@ void Statemachine::scheduler_schedule()
 					{
 						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;       state_queue.push_back(temp_state);
+						if (!skip_motion_)
+						{
+							scheduler_grasp_object(EXECUTE_LATER);
+							scheduler_place_object(EXECUTE_LATER);
+						}
+						else
+						{
+							ein_->set_active_object_finished();
+							scheduler_next_object();
+						}
 					}
 					else //task_number 6
 					{
+						temp_state.sub.two=fsm::WAIT;						state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
 						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
@@ -1664,6 +1677,9 @@ int Statemachine::tick()
 		{
 		case fsm::PAUSE:
 			return pause();
+
+		case fsm::WAIT:
+			return wait();
 
 		case fsm::SCHEDULER:
 			scheduler_schedule();	//make a schedule
@@ -5197,6 +5213,7 @@ int Statemachine::reset()
 		check_object_finished_state_=OPEN;
 		check_object_gripped_state_=OPEN;
 		check_object_gripped_counter_=0;
+		new_object_t6_state_=OPEN;
 		get_grasping_pose_state_=OPEN;
         get_grasping_poseT5_state_=OPEN;
         get_grasping_poseT6_state_=OPEN;
@@ -5206,6 +5223,8 @@ int Statemachine::reset()
 		move_to_object_safe_counter_=0;
 		move_to_object_state_=OPEN;
 		move_to_object_counter_=0;
+		move_to_object_t6_state_=OPEN;
+		move_to_object_t6_counter_=0;
 		gripper_release_state_=OPEN;
 		gripper_release_counter_=0;
 		gripper_close_state_=OPEN;
@@ -5218,6 +5237,7 @@ int Statemachine::reset()
 		move_to_target_zone_counter_=0;
 		homing_state_=OPEN;
 		homing_counter_=0;
+		wait_counter_=0;
 
 		ein_->reset();
 		lsc_.detach();
@@ -5257,4 +5277,18 @@ int Statemachine::reset()
 	}
 
 	return 0;
+}
+
+int Statemachine::wait()
+{
+	if(wait_counter_==0)
+		ROS_INFO("Statemachine waiting for %f seconds",wait_duration);
+
+	wait_counter_++;
+
+	if(wait_counter_>FREQ*wait_duration)
+	{
+		wait_counter_=0;
+		scheduler_next();
+	}
 }

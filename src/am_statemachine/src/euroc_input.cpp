@@ -1640,14 +1640,14 @@ void EurocInput::save_fixture_to_parameter_server(ros::NodeHandle& n, bool show_
 {
     if(task_nr_==5)
     {
-            ROS_INFO("saving fixture pose to parameter server...");
-            n.setParam("fixture_pose_position_x_",fixture_pose_.position.x);
-            n.setParam("fixture_pose_position_y_",fixture_pose_.position.y);
-            n.setParam("fixture_pose_position_z_",fixture_pose_.position.z);
-            n.setParam("fixture_pose_orientation_x_",fixture_pose_.orientation.x);
-            n.setParam("fixture_pose_orientation_y_",fixture_pose_.orientation.y);
-            n.setParam("fixture_pose_orientation_z_",fixture_pose_.orientation.z);
-            n.setParam("fixture_pose_orientation_w_",fixture_pose_.orientation.w);
+		ROS_INFO("saving fixture pose to parameter server...");
+		n.setParam("fixture_pose_position_x_",fixture_pose_.position.x);
+		n.setParam("fixture_pose_position_y_",fixture_pose_.position.y);
+		n.setParam("fixture_pose_position_z_",fixture_pose_.position.z);
+		n.setParam("fixture_pose_orientation_x_",fixture_pose_.orientation.x);
+		n.setParam("fixture_pose_orientation_y_",fixture_pose_.orientation.y);
+		n.setParam("fixture_pose_orientation_z_",fixture_pose_.orientation.z);
+		n.setParam("fixture_pose_orientation_w_",fixture_pose_.orientation.w);
     }
 }
 
@@ -1775,29 +1775,6 @@ bool EurocInput::all_finished()
 			cnt++;
 	}
 
-	//print object queue
-//	ROS_INFO("Object queue:");
-//	for(unsigned ii=0;ii<obj_queue_.size();ii++)
-//	{
-//		uint16_t obj_idx=obj_queue_[ii].obj_idx;
-//		ROS_INFO("# %d : Object %s",ii,objects_[obj_idx].name.c_str());
-//		ROS_INFO("Targetzone (%d) occupied: %s",obj_queue_[ii].target_zone_idx,obj_queue_[ii].target_zone_occupied ? "true":"false");
-//		switch(obj_queue_[ii].action)
-//		{
-//		case EIN_PLACE:
-//			ROS_INFO("action: EIN_PLACE");
-//			break;
-//		case EIN_PARKING:
-//			ROS_INFO("action: EIN_PARKING");
-//			break;
-//		case EIN_PLACE_FROM_PARKING:
-//			ROS_INFO("action: EIN_PLACE_FROM_PARKING");
-//			break;
-//		default:
-//			ROS_ERROR("action unknown!!");
-//			return -1;
-//		}
-//	}
 	if(cnt==nr_objects_)
 		return true;
 	else
