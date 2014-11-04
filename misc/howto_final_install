@@ -1,3 +1,10 @@
+Virtuelle Machine starten:
+
+
+Run Simulator nativ:
+/opt/euroc_c2s1/start_euroc_task_selector -c
+(reset later: /opt/euroc_c2s1/bin/configure_simclient_vm internal)
+
 compile with :
 catkin_make -DCMAKE_INSTALL_PREFIX=/opt/ros/hydro -DCMAKE_BUILD_TYPE=Release
 

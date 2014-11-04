@@ -158,6 +158,6 @@ catkin_package(
 
 ################################################################
 # INSTALLING
-# install(DIRECTORY .
-#  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
-#  PATTERN ".svn" EXCLUDE)
+install(DIRECTORY .
+ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+ PATTERN ".svn" EXCLUDE)
