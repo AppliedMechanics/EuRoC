@@ -1,4 +1,5 @@
 Virtuelle Machine starten:
+VBoxManage startvm "EuRoC C2 simclient"
 
 
 Run Simulator nativ:
