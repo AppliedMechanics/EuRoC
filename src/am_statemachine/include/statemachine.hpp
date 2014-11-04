@@ -294,6 +294,7 @@ private:
 	void scheduler_error_explore_environment_motion();
 	void scheduler_error_explore_environment_image();
 	void scheduler_error_locate_object_global();
+	void scheduler_error_locate_all_objects_global();
 
 	//!state for setting the object load in gripper_close() and gripper_release()
 	uint8_t set_object_load_state_;

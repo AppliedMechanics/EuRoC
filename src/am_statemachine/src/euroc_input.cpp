@@ -1041,7 +1041,8 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					cnt++;
 			//ROS_INFO("cnt=%d, obj_state_.size()=%d",cnt,obj_state_.size());
 
-			if(cnt!=obj_state_.size())
+			//if there is no object located try to find all objects at once
+			if(cnt==0)
 			{
 				ROS_INFO("2 Target zones are occupied! -> Try to locate all objects first");
 				ROS_INFO("Objects:");

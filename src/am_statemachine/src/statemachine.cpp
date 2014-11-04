@@ -80,7 +80,7 @@ Statemachine::Statemachine():
 	vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
 	// set motion planning action client
 	motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
-	ROS_INFO("Wait 3s");
+	ROS_INFO("Wait 0.1s");
 	boost::this_thread::sleep( boost::posix_time::milliseconds(100));
 
 
@@ -602,6 +602,14 @@ void Statemachine::scheduler_schedule()
 					scheduler_error_locate_object_global();
 				}
 				break;
+
+			case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
+				if(locate_all_objects_global_state_==FINISHEDWITHERROR)
+				{
+					scheduler_error_locate_all_objects_global();
+				}
+				break;
+
 			case fsm::GET_GRASPING_POSE:
 				if(get_grasping_pose_state_==FINISHEDWITHERROR)
 				{
@@ -1621,6 +1629,13 @@ void Statemachine::scheduler_error_locate_object_global()
 		scheduler_skip_object();
 		break;
 	}
+}
+void Statemachine::scheduler_error_locate_all_objects_global()
+{
+	msg_warn("Statemachine-Errorhandler: pose not found and try next pose");
+	//try it again with lower precision
+	locate_all_objects_global_state_=RUNNING;
+	reached_active_goal_=true;
 }
 
 int Statemachine::tick()
@@ -2807,16 +2822,6 @@ int Statemachine::explore_environment_motion()
 		//send actual goal
 		explore_environment_motion_state_=RUNNING;
 
-		//check isConnected before send goal -> otherwise destroy and recreate!
-		if(motion_planning_action_client_->isServerConnected()==0)
-		{
-			msg_warn("motion_planning_action_client_->isServerConnected=0!");
-
-			delete motion_planning_action_client_;
-			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
-			msg_warn("motion planning action client recreated, waiting for server");
-			motion_planning_action_client_->waitForServer();
-		}
 		ROS_INFO("Active Goal: %i Successful poses: %i",active_goal_,explore_success_count_);
 		motion_planning_action_client_->sendGoal(explore_poses_->getExploreGoalPose(active_goal_,explore_pose_type_, explore_success_count_),
 				boost::bind(&Statemachine::explore_environment_motion_done,this,_1,_2),
@@ -4114,9 +4119,12 @@ int Statemachine::gripper_close()
 		if (object_grip_r_tcp_com.size()>0)
 		{
 			set_object_load_srv_.request.center_of_gravity = object_grip_r_tcp_com[selected_object_pose_];
+			ROS_INFO("r_tcp_com=[%3.2f %3.2f %3.2f]^T",object_grip_r_tcp_com[selected_object_pose_].x,
+					object_grip_r_tcp_com[selected_object_pose_].y,object_grip_r_tcp_com[selected_object_pose_].z);
 		}
 		else
 		{
+			msg_warn("object_grip_r_tcp_com.size()=0, setting object load with zero-vec");
 			geometry_msgs::Vector3 emptyvector;
 			emptyvector.x=0;
 			emptyvector.y=0;
