@@ -1026,6 +1026,129 @@ void VisionDummy::loadScene(int scene)
 						modscene_poses_[2].orientation.z = q_tmp.getZ();
 						break;
 
+	case 51:
+	      modscene_poses_.resize(4);
+	      modscene_colors_.resize(4);
+
+	      modscene_colors_[0]="ff00ff"; //magenta
+	      modscene_colors_[1]="ff0000"; //red
+	      modscene_colors_[2]="00ff00"; //green
+	      modscene_colors_[3]="0000ff"; //blue
+
+	      //part1
+	      modscene_poses_[0].position.x = 0.2076033;
+	      modscene_poses_[0].position.y = -0.0033017;
+	      modscene_poses_[0].position.z = 0.0245;
+	      q_tmp.setRPY(0.639327, 1.570795, 2.502266);
+	      modscene_poses_[0].orientation.w = q_tmp.getW();
+	      modscene_poses_[0].orientation.x = q_tmp.getX();
+	      modscene_poses_[0].orientation.y = q_tmp.getY();
+	      modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+	      //part2:
+	      modscene_poses_[1].position.x = 0.4590240;
+	      modscene_poses_[1].position.y = 0.2621639;
+	      modscene_poses_[1].position.z = 0.024500;
+	      q_tmp.setRPY(0, 0, -2.706165);
+	      modscene_poses_[1].orientation.w = q_tmp.getW();
+	      modscene_poses_[1].orientation.x = q_tmp.getX();
+	      modscene_poses_[1].orientation.y = q_tmp.getY();
+	      modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+	      //part3:
+	      modscene_poses_[2].position.x = 0.3978365;
+	      modscene_poses_[2].position.y = -0.3982641;
+	      modscene_poses_[2].position.z = 0.024500;
+	      q_tmp.setRPY(0, 0, 2.981508);
+	      modscene_poses_[2].orientation.w = q_tmp.getW();
+	      modscene_poses_[2].orientation.x = q_tmp.getX();
+	      modscene_poses_[2].orientation.y = q_tmp.getY();
+	      modscene_poses_[2].orientation.z = q_tmp.getZ();
+
+	      //part4:
+	      modscene_poses_[3].position.x = 0.5478388;
+	      modscene_poses_[3].position.y = 0.3982641;
+	      modscene_poses_[3].position.z = 0.074500;
+	      q_tmp.setRPY(-1.570796, 0, 0.241714);
+	      modscene_poses_[3].orientation.w = q_tmp.getW();
+	      modscene_poses_[3].orientation.x = q_tmp.getX();
+	      modscene_poses_[3].orientation.y = q_tmp.getY();
+	      modscene_poses_[3].orientation.z = q_tmp.getZ();
+	      break;
+
+	case 52:
+	case 53:
+		  modscene_poses_.resize(6);
+		  modscene_colors_.resize(6);
+
+		  modscene_colors_[0]="ff00ff"; //magenta
+		  modscene_colors_[1]="ff0000"; //red
+		  modscene_colors_[2]="00ff00"; //green
+		  modscene_colors_[3]="0000ff"; //blue
+		  modscene_colors_[4]="00ffff"; //cyan
+		  modscene_colors_[5]="ffff00"; //yellow
+
+		  //part1
+		  modscene_poses_[0].position.x = -0.4233450;
+		  modscene_poses_[0].position.y = 0.7485522;
+		  modscene_poses_[0].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, 0.4612303);
+		  modscene_poses_[0].orientation.w = q_tmp.getW();
+		  modscene_poses_[0].orientation.x = q_tmp.getX();
+		  modscene_poses_[0].orientation.y = q_tmp.getY();
+		  modscene_poses_[0].orientation.z = q_tmp.getZ();
+
+		  //part2
+		  modscene_poses_[1].position.x = -0.8609471;
+		  modscene_poses_[1].position.y = -0.3583904;
+		  modscene_poses_[1].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, -3.0296945);
+		  modscene_poses_[1].orientation.w = q_tmp.getW();
+		  modscene_poses_[1].orientation.x = q_tmp.getX();
+		  modscene_poses_[1].orientation.y = q_tmp.getY();
+		  modscene_poses_[1].orientation.z = q_tmp.getZ();
+
+		  //part3
+		  modscene_poses_[2].position.x = -0.3068968;
+		  modscene_poses_[0].position.y = 0.6058005;
+		  modscene_poses_[0].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, -1.6903983);
+		  modscene_poses_[2].orientation.w = q_tmp.getW();
+		  modscene_poses_[2].orientation.x = q_tmp.getX();
+		  modscene_poses_[2].orientation.y = q_tmp.getY();
+		  modscene_poses_[2].orientation.z = q_tmp.getZ();
+
+		  //part4
+		  modscene_poses_[3].position.x = -0.5580633;
+		  modscene_poses_[3].position.y = 0.3948248;
+		  modscene_poses_[3].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, -0.8879643);
+		  modscene_poses_[3].orientation.w = q_tmp.getW();
+		  modscene_poses_[3].orientation.x = q_tmp.getX();
+		  modscene_poses_[3].orientation.y = q_tmp.getY();
+		  modscene_poses_[3].orientation.z = q_tmp.getZ();
+
+		  //part5
+		  modscene_poses_[4].position.x = -0.7336632;
+		  modscene_poses_[4].position.y = 0.7341572;
+		  modscene_poses_[4].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, -0.1913765);
+		  modscene_poses_[4].orientation.w = q_tmp.getW();
+		  modscene_poses_[4].orientation.x = q_tmp.getX();
+		  modscene_poses_[4].orientation.y = q_tmp.getY();
+		  modscene_poses_[4].orientation.z = q_tmp.getZ();
+
+		  //part6
+		  modscene_poses_[5].position.x = -0.2257772;
+		  modscene_poses_[5].position.y = -0.0307631;
+		  modscene_poses_[5].position.z = 0.0245000;
+		  q_tmp.setRPY(0, 0, 0.5343924);
+		  modscene_poses_[5].orientation.w = q_tmp.getW();
+		  modscene_poses_[5].orientation.x = q_tmp.getX();
+		  modscene_poses_[5].orientation.y = q_tmp.getY();
+		  modscene_poses_[5].orientation.z = q_tmp.getZ();
+		  break;
+
 	default:
 		msg_error("scene not implemented in vision dummy!");
 		break;

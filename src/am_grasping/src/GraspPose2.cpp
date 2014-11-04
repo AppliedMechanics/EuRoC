@@ -9,11 +9,12 @@
 
 GraspPose2::GraspPose2()
 {
-	//pi=3.1415926535897932384626433832795028841971693993751058;
 	pi=M_PI;
 	gripper_maxwidth_=0.06;	//Linear axis goes from 0 to 0.07, so there is a minimum safety distance of 0.01 between finger and object.
-	gripper_height_=0.06;
+	gripper_finger_height_=0.06;
 	gripper_finger_width=0.03;
+	gripper_width_=0.13;	//measured in rviz
+	gripper_height_=0.09;	//measured in rviz
 	grip_safety_dist_=0.01;
 	vertical_handle_safe_planar_offset=0.05;
 	vertical_handle_safe_z_offset=0.05;
@@ -26,6 +27,7 @@ GraspPose2::GraspPose2()
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(pi);
 	gripping_angleT6_deg_=45;
 	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
+	gripping_finger_overlapT5_=0.5;
 }
 
 GraspPose2::~GraspPose2() {
@@ -291,6 +293,7 @@ void GraspPose2::set_object_data_(am_msgs::Object object)
 
 	//setting object transform
 	transform_object=pose_to_transform(object_.abs_pose);
+	br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), ORIGIN, "object_"));
 }
 
 bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs::GetGraspPose::Response &res)
@@ -585,6 +588,7 @@ void GraspPose2::compute_puzzle_free_sides_()
 
     for(uint8_t ii=0; ii<object_.nr_shapes; ii++)
     {
+      puzzle_boxes[ii].num_free_face_pairs=0;
       puzzle_boxes[ii].obj_xpos_free=true;
       puzzle_boxes[ii].obj_xneg_free=true;
       puzzle_boxes[ii].obj_ypos_free=true;
@@ -634,19 +638,34 @@ void GraspPose2::compute_puzzle_free_sides_()
       }
 
       if(puzzle_boxes[ii].obj_xpos_free==true && puzzle_boxes[ii].obj_xneg_free==true)
-      { puzzle_boxes[ii].obj_x_free=true; }
+      {
+    	  puzzle_boxes[ii].obj_x_free=true;
+    	  puzzle_boxes[ii].num_free_face_pairs++;
+      }
       else
-      { puzzle_boxes[ii].obj_x_free=false; }
+      {
+    	  puzzle_boxes[ii].obj_x_free=false;
+      }
 
       if(puzzle_boxes[ii].obj_ypos_free==true && puzzle_boxes[ii].obj_yneg_free==true)
-      { puzzle_boxes[ii].obj_y_free=true; }
+      {
+    	  puzzle_boxes[ii].obj_y_free=true;
+    	  puzzle_boxes[ii].num_free_face_pairs++;
+      }
       else
-      { puzzle_boxes[ii].obj_y_free=false; }
+      {
+    	  puzzle_boxes[ii].obj_y_free=false;
+      }
 
       if(puzzle_boxes[ii].obj_zpos_free==true && puzzle_boxes[ii].obj_zneg_free==true)
-      { puzzle_boxes[ii].obj_z_free=true; }
+      {
+    	  puzzle_boxes[ii].obj_z_free=true;
+    	  puzzle_boxes[ii].num_free_face_pairs++;
+      }
       else
-      { puzzle_boxes[ii].obj_z_free=false; }
+      {
+    	  puzzle_boxes[ii].obj_z_free=false;
+      }
     }
 }
 
@@ -658,17 +677,29 @@ void GraspPose2::correct_puzzle_part_rotation()
 	tf::Vector3 x_obj, y_obj, z_obj;        	//object axes
 	tf::Vector3 x_virobj, y_virobj, z_virobj;   //virtual object axes
     tf::Vector3 x_tar, y_tar, z_tar;        	//target pose axes
-    tf::Vector3 tmp_x_axis, tmp_y_axis, tmp_z_axis;
+    tf::Vector3 tmp_x_axis, tmp_y_axis, tmp_z_axis, object_ref_axis1, object_ref_axis2;
 	tf::Transform tmptransform, transform_target;
-	tf::Transform virt_object, virt_target_1, virt_target_2;
-	tf::Vector3 o_vec_to_tarcenter, obj_upward_pointing_axis, tar_upward_pointing_axis;
+	tf::Transform virt_object, virt_target, virt_target_orig;
+	tf::Vector3 o_virt_target_center, dist_centers, tmp_vec;
+	tf::Vector3 obj_box_center, tar_box_center;
 	tf::Quaternion tmpQuaternion;
 	geometry_msgs::Pose tmpPose;
 	double dot_product;
 	double roll,pitch,yaw;
 	uint8_t object_pose_type, target_pose_type;
+	std::stringstream posename;
+	tf::StampedTransform tmp_stampedtransform;
+	std::vector<tf::Transform> o_virt_obj_shapes_, o_virt_tar_shapes_;
+	uint8_t matching_boxes, possible_matches;
+	double distance, tol_distance;
+
+	tol_distance=0.05*puzzle_boxsize;
+
+	o_virt_obj_shapes_.resize(object_.nr_shapes);
+	o_virt_tar_shapes_.resize(object_.nr_shapes);
 
 	transform_target=pose_to_transform(abs_target_pose_);
+	br.sendTransform(tf::StampedTransform(transform_target, ros::Time::now(), ORIGIN, "targetpose_"));
 
 	//getting the object and target pose axes
 	x_obj = transform_object.getBasis().getColumn(0);
@@ -680,81 +711,47 @@ void GraspPose2::correct_puzzle_part_rotation()
 
 	//find out which axis points up (object pose)
 	//default-value:
-	obj_upward_pointing_axis=x_obj;
 	object_pose_type=POSE_XUP;
 
 	dot_product = x_obj.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  obj_upward_pointing_axis=x_obj;
-	  object_pose_type=POSE_XUP;
-	}
+		{ object_pose_type=POSE_XUP; }
 	if (dot_product < -0.9)
-	{
-	  obj_upward_pointing_axis=-x_obj;
-	  object_pose_type=POSE_XDOWN;
-	}
+		{ object_pose_type=POSE_XDOWN; }
+
 	dot_product = y_obj.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  obj_upward_pointing_axis=y_obj;
-	  object_pose_type=POSE_YUP;
-	}
+		{ object_pose_type=POSE_YUP; }
 	if (dot_product < -0.9)
-	{
-	  obj_upward_pointing_axis=-y_obj;
-	  object_pose_type=POSE_YDOWN;
-	}
+		{ object_pose_type=POSE_YDOWN; }
+
 	dot_product = z_obj.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  obj_upward_pointing_axis=z_obj;
-	  object_pose_type=POSE_ZUP;
-	}
+		{ object_pose_type=POSE_ZUP; }
 	if (dot_product < -0.9)
-	{
-	  obj_upward_pointing_axis=z_obj;
-	  object_pose_type=POSE_ZDOWN;
-	}
+		{ object_pose_type=POSE_ZDOWN;}
 
 	//find out which axis points up (target pose)
 	//default-value:
-	tar_upward_pointing_axis=x_tar;
 	target_pose_type=POSE_XUP;
 
 	dot_product = x_tar.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  tar_upward_pointing_axis=x_tar;
-	  target_pose_type=POSE_XUP;
-	}
+		{ target_pose_type=POSE_XUP; }
 	if (dot_product < -0.9)
-	{
-	  tar_upward_pointing_axis=-x_tar;
-	  target_pose_type=POSE_XDOWN;
-	}
+		{ target_pose_type=POSE_XDOWN; }
+
 	dot_product = y_tar.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  tar_upward_pointing_axis=y_tar;
-	  target_pose_type=POSE_YUP;
-	}
+		{ target_pose_type=POSE_YUP; }
 	if (dot_product < -0.9)
-	{
-	  tar_upward_pointing_axis=-y_tar;
-	  target_pose_type=POSE_YDOWN;
-	}
+		{ target_pose_type=POSE_YDOWN; }
+
 	dot_product = z_tar.dot(z_axis);
 	if (dot_product > 0.9)
-	{
-	  tar_upward_pointing_axis=z_tar;
-	  target_pose_type=POSE_ZUP;
-	}
+		{ target_pose_type=POSE_ZUP; }
 	if (dot_product < -0.9)
-	{
-	  tar_upward_pointing_axis=-z_tar;
-	  target_pose_type=POSE_ZDOWN;
-	}
+		{ target_pose_type=POSE_ZDOWN; }
 
 	if(object_pose_type!=target_pose_type)
 	{
@@ -764,7 +761,7 @@ void GraspPose2::correct_puzzle_part_rotation()
 
 		//getting the initial poses
 		virt_object=transform_object;
-		virt_target_1=transform_target;
+		virt_target=transform_target;
 
 		//correct the orientation to avoid alignment errors
 		tmp_x_axis=virt_object.getBasis().getColumn(0);
@@ -791,43 +788,181 @@ void GraspPose2::correct_puzzle_part_rotation()
 		tmp_x_axis=tmp_x_axis/tmp_x_axis.length();
 		tmp_y_axis=tmp_y_axis/tmp_y_axis.length();
 		tmp_z_axis=tmp_z_axis/tmp_z_axis.length();
+		tmpPose=transform_to_pose(virt_object);
+		set_orientation_from_axes(tmpPose,tmp_x_axis,tmp_y_axis,tmp_z_axis);
+		virt_object=pose_to_transform(tmpPose);
 
-//		set_orientation_from_axes(virt_object,tmp_x_axis,tmp_y_axis,tmp_z_axis);
-//
-//		tmp_x_axis=virt_target_1.getBasis().getColumn(0);
-//		tmp_y_axis=virt_target_1.getBasis().getColumn(1);
-//		tmp_z_axis=virt_target_1.getBasis().getColumn(2);
-//		if(object_pose_type==POSE_XUP || object_pose_type==POSE_XDOWN)
-//		{
-//			tmp_x_axis.setValue(0,0,tmp_x_axis.getZ());
-//			tmp_y_axis.setZ(0);
-//			tmp_z_axis.setZ(0);
-//		}
-//		if(object_pose_type==POSE_YUP || object_pose_type==POSE_YDOWN)
-//		{
-//			tmp_x_axis.setZ(0);
-//			tmp_y_axis.setValue(0,0,tmp_y_axis.getZ());
-//			tmp_z_axis.setZ(0);
-//		}
-//		if(object_pose_type==POSE_ZUP || object_pose_type==POSE_ZDOWN)
-//		{
-//			tmp_x_axis.setZ(0);
-//			tmp_y_axis.setZ(0);
-//			tmp_z_axis.setValue(0,0,tmp_z_axis.getZ());
-//		}
-//		tmp_x_axis=tmp_x_axis/tmp_x_axis.length();
-//		tmp_y_axis=tmp_y_axis/tmp_y_axis.length();
-//		tmp_z_axis=tmp_z_axis/tmp_z_axis.length();
-//		set_orientation_from_axes(virt_object,tmp_x_axis,tmp_y_axis,tmp_z_axis);
+		tmp_x_axis=virt_target.getBasis().getColumn(0);
+		tmp_y_axis=virt_target.getBasis().getColumn(1);
+		tmp_z_axis=virt_target.getBasis().getColumn(2);
+		if(target_pose_type==POSE_XUP || target_pose_type==POSE_XDOWN)
+		{
+			tmp_x_axis.setValue(0,0,tmp_x_axis.getZ());
+			tmp_y_axis.setZ(0);
+			tmp_z_axis.setZ(0);
+		}
+		if(target_pose_type==POSE_YUP || target_pose_type==POSE_YDOWN)
+		{
+			tmp_x_axis.setZ(0);
+			tmp_y_axis.setValue(0,0,tmp_y_axis.getZ());
+			tmp_z_axis.setZ(0);
+		}
+		if(target_pose_type==POSE_ZUP || target_pose_type==POSE_ZDOWN)
+		{
+			tmp_x_axis.setZ(0);
+			tmp_y_axis.setZ(0);
+			tmp_z_axis.setValue(0,0,tmp_z_axis.getZ());
+		}
+		tmp_x_axis=tmp_x_axis/tmp_x_axis.length();
+		tmp_y_axis=tmp_y_axis/tmp_y_axis.length();
+		tmp_z_axis=tmp_z_axis/tmp_z_axis.length();
+		tmpPose=transform_to_pose(virt_target);
+		set_orientation_from_axes(tmpPose,tmp_x_axis,tmp_y_axis,tmp_z_axis);
+		virt_target=pose_to_transform(tmpPose);
 
+		//getting the (new) object and target pose axes
+		x_obj = virt_object.getBasis().getColumn(0);
+		y_obj = virt_object.getBasis().getColumn(1);
+		z_obj = virt_object.getBasis().getColumn(2);
+		x_tar = virt_target.getBasis().getColumn(0);
+		y_tar = virt_target.getBasis().getColumn(1);
+		z_tar = virt_target.getBasis().getColumn(2);
 
+		//check all 4 rotation possibilities
+		if(object_pose_type==POSE_XUP || object_pose_type==POSE_XDOWN)
+		{
+			object_ref_axis1=y_obj;
+			object_ref_axis2=z_obj;
+		}
+		if(object_pose_type==POSE_YUP || object_pose_type==POSE_YDOWN)
+		{
+			object_ref_axis1=x_obj;
+			object_ref_axis2=z_obj;
+		}
+		if(object_pose_type==POSE_ZUP || object_pose_type==POSE_ZDOWN)
+		{
+			object_ref_axis1=x_obj;
+			object_ref_axis2=y_obj;
+		}
+		//keep the original pose
+		virt_target_orig=virt_target;
 
+		for(int ii=1; ii<=4; ii++)
+		{
+			//first set to the original pose
+			virt_target=virt_target_orig;
 
-	  	//shifting the virtual object to the target pose (centers)
-//	  	tmptransform=pose_to_transform(rel_target_pose_);
-//	  	o_vec_to_tarcenter=transform_puzzlefixture(tmptransform(b_object_center_));
-//	  	virtual_object.setOrigin(virtual_object.getOrigin()+o_vec_to_tarcenter-o_object_center_);
+			//align the virtual target pose to the object pose
+			if(target_pose_type==POSE_XUP || target_pose_type==POSE_XDOWN)
+			{
+				if(ii==1)
+					y_tar=object_ref_axis1;
+				if(ii==2)
+					y_tar=-object_ref_axis1;
+				if(ii==3)
+					y_tar=object_ref_axis2;
+				if(ii==4)
+					y_tar=-object_ref_axis2;
+				z_tar = x_tar.cross(y_tar);
+			}
+			if(target_pose_type==POSE_YUP || target_pose_type==POSE_YDOWN)
+			{
+				if(ii==1)
+					x_tar=object_ref_axis1;
+				if(ii==2)
+					x_tar=-object_ref_axis1;
+				if(ii==3)
+					x_tar=object_ref_axis2;
+				if(ii==4)
+					x_tar=-object_ref_axis2;
+				z_tar = x_tar.cross(y_tar);
+			}
+			if(target_pose_type==POSE_ZUP || target_pose_type==POSE_ZDOWN)
+			{
+				if(ii==1)
+					x_tar=object_ref_axis1;
+				if(ii==2)
+					x_tar=-object_ref_axis1;
+				if(ii==3)
+					x_tar=object_ref_axis2;
+				if(ii==4)
+					x_tar=-object_ref_axis2;
+				y_tar = z_tar.cross(x_tar);
+			}
+			//rotate virtual target pose to new pose
+			tmpPose=transform_to_pose(virt_target);
+			set_orientation_from_axes(tmpPose,x_tar,y_tar,z_tar);
+			virt_target=pose_to_transform(tmpPose);
+			posename.str("");
+			posename << "virttarget_" << ii << "_rot";
+			tmp_stampedtransform=tf::StampedTransform(virt_target,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
 
+			//calculate target center point in global coordinate system
+			o_virt_target_center=virt_target(b_object_center_);
+
+			//shifting virtual target center to object center
+			dist_centers=o_object_center_-o_virt_target_center;
+			tmp_vec=virt_target.getOrigin()+dist_centers;
+			virt_target.setOrigin(tmp_vec);
+			posename.str("");
+			posename << "virttarget_" << ii << "_rottrans";
+			tmp_stampedtransform=tf::StampedTransform(virt_target,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+
+			//calculating virtual target shapes in the global coordinate system
+			for (int jj=0;jj<object_.nr_shapes;jj++)
+			{
+				o_virt_obj_shapes_[jj] = virt_object*b_transform_shapes_[jj];
+				o_virt_tar_shapes_[jj] = virt_target*b_transform_shapes_[jj];
+			}
+
+			//checking, if the boxes match
+			matching_boxes=0;
+			for (int jj=0;jj<object_.nr_shapes;jj++)
+			{
+				obj_box_center=o_virt_obj_shapes_[jj].getOrigin();
+				possible_matches=0;
+				for (int kk=0;kk<object_.nr_shapes;kk++)
+				{
+					tar_box_center=o_virt_obj_shapes_[jj].getOrigin();
+					tmp_vec=tar_box_center-obj_box_center;
+					distance=tmp_vec.length();
+					if(distance<=tol_distance)
+					{
+						possible_matches++;
+					}
+				}
+				if(possible_matches==1)
+				{
+					matching_boxes++;
+				}
+			}
+			if(matching_boxes==object_.nr_shapes)
+			{
+				//a matching corresponding pose was found
+				tmpPose=object_.abs_pose;
+				object_.abs_pose=transform_to_pose(virt_target);
+				transform_object=virt_target;
+				br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), ORIGIN, "object_corrected_"));
+
+				ROS_INFO("object pose corrected:");
+				ROS_INFO("--> from [%4.3f %4.3f %4.3f] [%4.3f %4.3f %4.3f %4.3f]",
+						tmpPose.position.x,tmpPose.position.y,tmpPose.position.z,
+						tmpPose.orientation.x,tmpPose.orientation.y,tmpPose.orientation.z,tmpPose.orientation.w);
+				ROS_INFO("--> to [%4.3f %4.3f %4.3f] [%4.3f %4.3f %4.3f %4.3f]",
+						object_.abs_pose.position.x,object_.abs_pose.position.y,object_.abs_pose.position.z,
+						object_.abs_pose.orientation.x,object_.abs_pose.orientation.y,object_.abs_pose.orientation.z,object_.abs_pose.orientation.w);
+				ROS_INFO("recalculating object pose related stuff...");
+				compute_object_CoM_();
+				compute_object_center_();
+				compute_idx_shape_CoM_();
+				compute_abs_shape_poses_();
+				compute_bounding_box_();
+				return;
+			}
+		}
+		ROS_INFO("no correction of object pose possible");
 	}
 	else
 	{
@@ -868,16 +1003,16 @@ void GraspPose2::compute_grasp_poses_()
 	double handle_grippingdistance_box;
 
 	GPTCP_object_grip_pose.clear();
-        GPTCP_object_safe_pose.clear();
-        GPTCP_object_vision_pose.clear();
-        grip_pose_type.clear();
-        object_grasp_width.clear();
-        GPTCP_target_place_pose.clear();
-        GPTCP_target_safe_pose.clear();
-        GPTCP_target_vision_pose.clear();
-        place_pose_type.clear();
-        GPTCP_push_safe_pose.clear();
-        GPTCP_push_target_pose.clear();
+	GPTCP_object_safe_pose.clear();
+	GPTCP_object_vision_pose.clear();
+	grip_pose_type.clear();
+	object_grasp_width.clear();
+	GPTCP_target_place_pose.clear();
+	GPTCP_target_safe_pose.clear();
+	GPTCP_target_vision_pose.clear();
+	place_pose_type.clear();
+	GPTCP_push_safe_pose.clear();
+	GPTCP_push_target_pose.clear();
 
 	switch (object_type_)
 	{
@@ -932,11 +1067,11 @@ void GraspPose2::compute_grasp_poses_()
 						grip_pose_type_=GRIP_POSE_CUBE_X_UP;
 						tmp_GPTCP_pose.position.x = o_object_com_.getX();
 						tmp_GPTCP_pose.position.y = o_object_com_.getY();
-						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
+						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
 						//avoid collision with floor
-						if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+						if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 						{
-							tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+							tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 						}
 						//avoid collision with object
 						if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].size[upward_pointing_axis]+grip_safety_dist_))
@@ -959,7 +1094,7 @@ void GraspPose2::compute_grasp_poses_()
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
-						tmp2_GPTCP_pose.position.z+=gripper_height_;
+						tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 						GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1011,14 +1146,14 @@ void GraspPose2::compute_grasp_poses_()
 							tmp_vec=tmp_vec-0.5*object_.shape[0].size[1]*y_obj;
 						tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 						//avoid collision with floor
-						if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-							tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+						if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+							tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 						tmp_GPTCP_pose.position.x = tmp_vec.getX();
 						tmp_GPTCP_pose.position.y = tmp_vec.getY();
 						tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
-						tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+						tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
 						tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 						tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1051,11 +1186,11 @@ void GraspPose2::compute_grasp_poses_()
 						grip_pose_type_=GRIP_POSE_CUBE_Y_UP;
 						tmp_GPTCP_pose.position.x = o_object_com_.getX();
 						tmp_GPTCP_pose.position.y = o_object_com_.getY();
-						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
+						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
 						//avoid collision with floor
-						if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+						if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 						{
-							tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+							tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 						}
 						//avoid collision with object
 						if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].size[upward_pointing_axis]+grip_safety_dist_))
@@ -1078,7 +1213,7 @@ void GraspPose2::compute_grasp_poses_()
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
-						tmp2_GPTCP_pose.position.z+=gripper_height_;
+						tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 						GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1130,14 +1265,14 @@ void GraspPose2::compute_grasp_poses_()
 							tmp_vec=tmp_vec-0.5*object_.shape[0].size[0]*x_obj;
 						tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 						//avoid collision with floor
-						if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-							tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+						if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+							tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 						tmp_GPTCP_pose.position.x = tmp_vec.getX();
 						tmp_GPTCP_pose.position.y = tmp_vec.getY();
 						tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
-						tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+						tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
 						tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 						tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1170,11 +1305,11 @@ void GraspPose2::compute_grasp_poses_()
 						grip_pose_type_=GRIP_POSE_CUBE_Z_UP;
 						tmp_GPTCP_pose.position.x = o_object_com_.getX();
 						tmp_GPTCP_pose.position.y = o_object_com_.getY();
-						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
+						tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
 						//avoid collision with floor
-						if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+						if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 						{
-							tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+							tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 						}
 						//avoid collision with object
 						if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].size[upward_pointing_axis]+grip_safety_dist_))
@@ -1197,7 +1332,7 @@ void GraspPose2::compute_grasp_poses_()
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
-						tmp2_GPTCP_pose.position.z+=gripper_height_;
+						tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 						GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1249,14 +1384,14 @@ void GraspPose2::compute_grasp_poses_()
 							tmp_vec=tmp_vec-0.5*object_.shape[0].size[0]*x_obj;
 						tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 						//avoid collision with floor
-						if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-							tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+						if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+							tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 						tmp_GPTCP_pose.position.x = tmp_vec.getX();
 						tmp_GPTCP_pose.position.y = tmp_vec.getY();
 						tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
-						tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+						tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
 						tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 						tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1293,10 +1428,10 @@ void GraspPose2::compute_grasp_poses_()
 					tmp_GPTCP_pose.position = target_zone_.position;
 					z_grp = -1.0*z_axis;
 					//same code as for gripping...
-					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
-					if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
+					if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 					{
-						tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+						tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 					}
 					if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].size[upward_pointing_axis]+grip_safety_dist_))
 					{
@@ -1318,7 +1453,7 @@ void GraspPose2::compute_grasp_poses_()
 					GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
-					tmp2_GPTCP_pose.position.z+=gripper_height_;
+					tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 					GPTCP_target_safe_pose.push_back(tmp2_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1443,15 +1578,15 @@ void GraspPose2::compute_grasp_poses_()
 					}
 					tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 					//avoid collision with floor
-					if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-						tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+					if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+						tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 					tmp_vec.setZ(tmp_vec.getZ()+place_falling_dist_);
 					tmp_GPTCP_pose.position.x = tmp_vec.getX();
 					tmp_GPTCP_pose.position.y = tmp_vec.getY();
 					tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 					GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
-					tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+					tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
 					tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 					tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1505,11 +1640,11 @@ void GraspPose2::compute_grasp_poses_()
 					set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
 					tmp_GPTCP_pose.position.x = o_object_com_.getX();
 					tmp_GPTCP_pose.position.y = o_object_com_.getY();
-					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
+					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
 					//avoid collision with floor
-					if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+					if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 					{
-						tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+						tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 					}
 					//avoid collision with object
 					if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].length+grip_safety_dist_))
@@ -1519,7 +1654,7 @@ void GraspPose2::compute_grasp_poses_()
 					GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
-					tmp2_GPTCP_pose.position.z+=gripper_height_;
+					tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 					GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1555,14 +1690,14 @@ void GraspPose2::compute_grasp_poses_()
 						tmp_vec=tmp_vec-object_.shape[0].radius*x_axis;
 					tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 					//avoid collision with floor
-					if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-						tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+					if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+						tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 					tmp_GPTCP_pose.position.x = tmp_vec.getX();
 					tmp_GPTCP_pose.position.y = tmp_vec.getY();
 					tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 					GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
-					tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+					tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
 					tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 					tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1594,10 +1729,10 @@ void GraspPose2::compute_grasp_poses_()
 					place_pose_type_=PLACE_POSE_CYLINDER_VERTICAL;
 					tmp_GPTCP_pose.position = target_zone_.position;
 					//same code as for gripping...
-					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_height_;
-					if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+					tmp_GPTCP_pose.position.z = o_object_com_.getZ()+0.5*gripper_finger_height_;
+					if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 					{
-						tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+						tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 					}
 					if (tmp_GPTCP_pose.position.z < (o_object_com_.getZ()+0.5*object_.shape[0].length+grip_safety_dist_))
 					{
@@ -1609,7 +1744,7 @@ void GraspPose2::compute_grasp_poses_()
 					GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
-					tmp2_GPTCP_pose.position.z+=gripper_height_;
+					tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 					GPTCP_target_safe_pose.push_back(tmp2_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1645,15 +1780,15 @@ void GraspPose2::compute_grasp_poses_()
 						tmp_vec=tmp_vec-object_.shape[0].radius*x_axis;
 					tmp_vec=tmp_vec-grip_safety_dist_*safe_to_grip_dir;
 					//avoid collision with floor
-					if(tmp_vec.getZ()<gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
-						tmp_vec.setZ(gripper_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
+					if(tmp_vec.getZ()<gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_)
+						tmp_vec.setZ(gripper_finger_height_*cos(gripping_angle_rad_)+0.5*gripper_finger_width*sin(gripping_angle_rad_)+grip_safety_dist_);
 					tmp_vec.setZ(tmp_vec.getZ()+place_falling_dist_);
 					tmp_GPTCP_pose.position.x = tmp_vec.getX();
 					tmp_GPTCP_pose.position.y = tmp_vec.getY();
 					tmp_GPTCP_pose.position.z = tmp_vec.getZ();
 					GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
-					tmp2_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+					tmp2_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
 					tmp2_GPTCP_pose.position.x = tmp2_vec.getX();
 					tmp2_GPTCP_pose.position.y = tmp2_vec.getY();
@@ -1767,11 +1902,11 @@ void GraspPose2::compute_grasp_poses_()
 				z_grp = -1.0*z_axis;
 				tmp_GPTCP_pose.position.x = o_transform_shapes_[handle_cylinder_idx].getOrigin().getX();
 				tmp_GPTCP_pose.position.y = o_transform_shapes_[handle_cylinder_idx].getOrigin().getY();
-				tmp_GPTCP_pose.position.z = o_transform_shapes_[handle_cylinder_idx].getOrigin().getZ()+0.5*gripper_height_;
+				tmp_GPTCP_pose.position.z = o_transform_shapes_[handle_cylinder_idx].getOrigin().getZ()+0.5*gripper_finger_height_;
 				//avoid collision with floor
-				if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+				if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 				{
-					tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+					tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 				}
 				//avoid collision with object
 				if (tmp_GPTCP_pose.position.z < (o_transform_shapes_[handle_cylinder_idx].getOrigin().getZ()+object_.shape[handle_cylinder_idx].radius+grip_safety_dist_))
@@ -1788,7 +1923,7 @@ void GraspPose2::compute_grasp_poses_()
 				GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 				tmp2_GPTCP_pose=tmp_GPTCP_pose;
-				tmp2_GPTCP_pose.position.z+=gripper_height_;
+				tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 				GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 				tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1816,7 +1951,7 @@ void GraspPose2::compute_grasp_poses_()
 				GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 				tmp2_GPTCP_pose=tmp_GPTCP_pose;
-				tmp2_GPTCP_pose.position.z+=gripper_height_;
+				tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 				GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 				tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1909,12 +2044,12 @@ void GraspPose2::compute_grasp_poses_()
 					{
 						tmp_GPTCP_pose.position.x = o_transform_shapes_[handle_grip_box_idx].getOrigin().getX();
 						tmp_GPTCP_pose.position.y = o_transform_shapes_[handle_grip_box_idx].getOrigin().getY();
-						tmp_GPTCP_pose.position.z = o_transform_shapes_[handle_grip_box_idx].getOrigin().getZ()+0.5*gripper_height_;
+						tmp_GPTCP_pose.position.z = o_transform_shapes_[handle_grip_box_idx].getOrigin().getZ()+0.5*gripper_finger_height_;
 
 						//avoid collision with floor
-						if (tmp_GPTCP_pose.position.z < (gripper_height_+grip_safety_dist_))
+						if (tmp_GPTCP_pose.position.z < (gripper_finger_height_+grip_safety_dist_))
 						{
-							tmp_GPTCP_pose.position.z = gripper_height_+grip_safety_dist_;
+							tmp_GPTCP_pose.position.z = gripper_finger_height_+grip_safety_dist_;
 						}
 						//avoid collision with object
 						if (tmp_GPTCP_pose.position.z < (o_transform_shapes_[handle_grip_box_idx].getOrigin().getZ()+0.5*object_.shape[handle_grip_box_idx].size[upward_pointing_axis]+grip_safety_dist_))
@@ -1929,7 +2064,7 @@ void GraspPose2::compute_grasp_poses_()
 						GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
-						tmp2_GPTCP_pose.position.z+=gripper_height_;
+						tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 						GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
 
 						tmp2_GPTCP_pose=tmp_GPTCP_pose;
@@ -1999,15 +2134,15 @@ void GraspPose2::compute_grasp_poses_()
 
 					safe_to_grip_dir=z_grp/z_grp.length();
 					min_distance_to_object=object_.shape[handle_cylinder_idx].radius+grip_safety_dist_;
-					if (min_distance_to_object > 0.5*gripper_height_)
+					if (min_distance_to_object > 0.5*gripper_finger_height_)
 					{
 						tmp_vec=o_transform_shapes_[handle_cylinder_idx].getOrigin()-safe_to_grip_dir*min_distance_to_object;
 						handle_grippingdistance_cylinder=min_distance_to_object;
 					}
 					else
 					{
-						tmp_vec=o_transform_shapes_[handle_cylinder_idx].getOrigin()-safe_to_grip_dir*0.5*gripper_height_;
-						handle_grippingdistance_cylinder=0.5*gripper_height_;
+						tmp_vec=o_transform_shapes_[handle_cylinder_idx].getOrigin()-safe_to_grip_dir*0.5*gripper_finger_height_;
+						handle_grippingdistance_cylinder=0.5*gripper_finger_height_;
 					}
 
 					tmp_GPTCP_pose.position.x=tmp_vec.getX();
@@ -2016,7 +2151,7 @@ void GraspPose2::compute_grasp_poses_()
 					GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 					tmp2_GPTCP_pose=tmp_GPTCP_pose;
-					tmp_vec=tmp_vec-safe_to_grip_dir*(gripper_height_+vertical_handle_safe_planar_offset);
+					tmp_vec=tmp_vec-safe_to_grip_dir*(gripper_finger_height_+vertical_handle_safe_planar_offset);
 					tmp_vec.setZ(tmp_vec.getZ()+vertical_handle_safe_z_offset);
 					tmp2_GPTCP_pose.position.x=tmp_vec.getX();
 					tmp2_GPTCP_pose.position.y=tmp_vec.getY();
@@ -2181,7 +2316,7 @@ void GraspPose2::compute_grasp_poses_()
 				GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 				tmp2_GPTCP_pose=tmp_GPTCP_pose;
-				tmp_vec=tmp_vec-safe_to_grip_dir*(gripper_height_+vertical_handle_safe_planar_offset);
+				tmp_vec=tmp_vec-safe_to_grip_dir*(gripper_finger_height_+vertical_handle_safe_planar_offset);
 				tmp_vec.setZ(tmp_vec.getZ()+vertical_handle_safe_z_offset);
 				tmp2_GPTCP_pose.position.x=tmp_vec.getX();
 				tmp2_GPTCP_pose.position.y=tmp_vec.getY();
@@ -2394,8 +2529,10 @@ void GraspPose2::compute_grasp_posesT5_()
         tf::Vector3 x_grp, y_grp, z_grp;
         uint16_t grip_pose_type_;
         uint16_t place_pose_type_;
-        tf::Transform tmptransform;
-        tf::Vector3 obj_upward_pointing_axis, tar_upward_pointing_axis;
+        tf::Transform tmptransform, grip_pose_transform, grp_obj_transform_;
+        tf::Vector3 obj_upward_pointing_axis, tmp_vec;
+        uint8_t grippingbox_idx;
+    	double object_height_, gripping_distance_;
 
         GPTCP_object_grip_pose.clear();
         GPTCP_object_safe_pose.clear();
@@ -2427,40 +2564,41 @@ void GraspPose2::compute_grasp_posesT5_()
         //find out which axis points up (object pose)
         //default-value:
         object_pose_type_=OBJECT_POSE_PUZZLE_XUP;
-        obj_upward_pointing_axis=x_obj;
 
         dot_product = x_obj.dot(z_axis);
         if (dot_product > 0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_XUP;
-          obj_upward_pointing_axis=x_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_XUP;
+            object_height_=bbox_x_;
         }
         if (dot_product < -0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_XDOWN;
-          obj_upward_pointing_axis=-x_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_XDOWN;
+            object_height_=bbox_x_;
         }
+
         dot_product = y_obj.dot(z_axis);
         if (dot_product > 0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_YUP;
-          obj_upward_pointing_axis=y_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_YUP;
+            object_height_=bbox_y_;
         }
         if (dot_product < -0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_YDOWN;
-          obj_upward_pointing_axis=-y_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_YDOWN;
+            object_height_=bbox_y_;
         }
+
         dot_product = z_obj.dot(z_axis);
         if (dot_product > 0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_ZUP;
-          obj_upward_pointing_axis=z_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_ZUP;
+            object_height_=bbox_z_;
         }
         if (dot_product < -0.9)
         {
-          object_pose_type_=OBJECT_POSE_PUZZLE_ZDOWN;
-          obj_upward_pointing_axis=z_obj;
+        	object_pose_type_=OBJECT_POSE_PUZZLE_ZDOWN;
+            object_height_=bbox_z_;
         }
 
         //find out which axis points up (target pose)
@@ -2471,64 +2609,325 @@ void GraspPose2::compute_grasp_posesT5_()
         if (dot_product > 0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_XUP;
-          tar_upward_pointing_axis=x_tar;
+          obj_upward_pointing_axis=x_obj;
         }
         if (dot_product < -0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_XDOWN;
-          tar_upward_pointing_axis=-x_tar;
+          obj_upward_pointing_axis=-x_obj;
         }
         dot_product = y_tar.dot(z_axis);
         if (dot_product > 0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_YUP;
-          tar_upward_pointing_axis=y_tar;
+          obj_upward_pointing_axis=y_obj;
         }
         if (dot_product < -0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_YDOWN;
-          tar_upward_pointing_axis=-y_tar;
+          obj_upward_pointing_axis=-y_obj;
         }
         dot_product = z_tar.dot(z_axis);
         if (dot_product > 0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_ZUP;
-          tar_upward_pointing_axis=z_tar;
+          obj_upward_pointing_axis=z_obj;
         }
         if (dot_product < -0.9)
         {
           place_pose_type_=PLACE_POSE_PUZZLE_ZDOWN;
-          tar_upward_pointing_axis=-z_tar;
+          obj_upward_pointing_axis=-z_obj;
         }
 
         //=================================================================
         //--------------------------GRIPPING-------------------------------
         //=================================================================
-        dot_product = obj_upward_pointing_axis.dot(tar_upward_pointing_axis);
+		gripping_distance_=gripper_finger_height_+0.5*puzzle_boxsize-gripping_finger_overlapT5_*puzzle_boxsize;
+
+        dot_product = obj_upward_pointing_axis.dot(z_axis);
         if(dot_product>0.9)
         {
-          //object has right side pointing up :)
-          ROS_INFO("object has right side pointing up :)");
+			//object has right side pointing up :)
+			ROS_INFO("object has right side pointing up :)");
+			grip_pose_type_=GRIP_POSE_PUZZLE_FROM_TOP;
+			z_grp=-z_axis;
+
+			//find box with at least 1 free face pair in the right direction
+			grippingbox_idx=-1;
+			for(uint8_t ii=0; ii<object_.nr_shapes; ii++)
+			{
+				switch(object_pose_type_)
+				{
+					case OBJECT_POSE_PUZZLE_XUP:
+					case OBJECT_POSE_PUZZLE_XDOWN:
+						if(puzzle_boxes[ii].obj_y_free==true)
+						{
+							x_grp=y_obj;
+							grippingbox_idx=ii;
+						}
+						else if(puzzle_boxes[ii].obj_z_free==true)
+						{
+							x_grp=z_obj;
+							grippingbox_idx=ii;
+						}
+						break;
+					case OBJECT_POSE_PUZZLE_YUP:
+					case OBJECT_POSE_PUZZLE_YDOWN:
+						if(puzzle_boxes[ii].obj_x_free==true)
+						{
+							x_grp=x_obj;
+							grippingbox_idx=ii;
+						}
+						else if(puzzle_boxes[ii].obj_z_free==true)
+						{
+							x_grp=z_obj;
+							grippingbox_idx=ii;
+						}
+						break;
+					case OBJECT_POSE_PUZZLE_ZUP:
+					case OBJECT_POSE_PUZZLE_ZDOWN:
+						if(puzzle_boxes[ii].obj_x_free==true)
+						{
+							x_grp=x_obj;
+							grippingbox_idx=ii;
+						}
+						else if(puzzle_boxes[ii].obj_y_free==true)
+						{
+							x_grp=y_obj;
+							grippingbox_idx=ii;
+						}
+						break;
+				}
+				if(grippingbox_idx!=-1)
+				{
+					//exit the loop if a possible pose was found
+					break;
+				}
+			}
+			if(grippingbox_idx==-1)
+			{
+				msg_warn("Warning. there are no faces free to grip!");
+				return;
+			}
+			x_grp.setZ(0);
+			y_grp=z_grp.cross(x_grp);
+			set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
+
+			tmp_GPTCP_pose.position.x = o_transform_shapes_[grippingbox_idx].getOrigin().getX();
+			tmp_GPTCP_pose.position.y = o_transform_shapes_[grippingbox_idx].getOrigin().getY();
+			tmp_GPTCP_pose.position.z = o_transform_shapes_[grippingbox_idx].getOrigin().getZ()+gripping_distance_;
+			GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
+
+			//storing relative transform from gripper pose to object pose
+			grip_pose_transform=pose_to_transform(tmp_GPTCP_pose);
+	        grp_obj_transform_.mult(grip_pose_transform.inverse(),transform_object);
+
+			tmp2_GPTCP_pose=tmp_GPTCP_pose;
+			tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
+			GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
+
+			tmp2_GPTCP_pose=tmp_GPTCP_pose;
+			tmp2_GPTCP_pose.position.z=object_height_+vision_distance_object_height_cube_;
+			GPTCP_object_vision_pose.push_back(tmp2_GPTCP_pose);
+
+			grip_pose_type.push_back(grip_pose_type_);
+			object_grasp_width.push_back(puzzle_boxsize);
+			object_skip_vision.push_back(1);
         }
         else if(dot_product<-0.9)
         {
-          //object has to be flipped :(
-          ROS_INFO("object has to be flipped :(");
+        	//object has to be flipped :(
+        	ROS_INFO("object has to be flipped :(");
+			grip_pose_type_=GRIP_POSE_PUZZLE_FLIPPING;
 
+			msg_warn("Warning. this case has not been implemented yet!");
+			return;
         }
         else
         {
-          //object has to be rotated :S
-          ROS_INFO("object has to be rotated :S");
+			//object has to be rotated :S
+			ROS_INFO("object has to be rotated :S");
+			grip_pose_type_=GRIP_POSE_PUZZLE_FROM_SIDE;
+			z_grp=-obj_upward_pointing_axis;
+			z_grp=z_grp/z_grp.length();
 
+			//find box with at least 1 free face pair in the right direction
+			grippingbox_idx=-1;
+			for(uint8_t ii=0; ii<object_.nr_shapes; ii++)
+			{
+				switch(object_pose_type_)
+				{
+					case OBJECT_POSE_PUZZLE_XUP:
+					case OBJECT_POSE_PUZZLE_XDOWN:
+						if(place_pose_type_==PLACE_POSE_PUZZLE_YUP || place_pose_type_==PLACE_POSE_PUZZLE_YDOWN)
+						{
+							if(puzzle_boxes[ii].obj_z_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_x_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						else
+						{
+							if(puzzle_boxes[ii].obj_y_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_x_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						break;
+					case OBJECT_POSE_PUZZLE_YUP:
+					case OBJECT_POSE_PUZZLE_YDOWN:
+						if(place_pose_type_==PLACE_POSE_PUZZLE_XUP || place_pose_type_==PLACE_POSE_PUZZLE_XDOWN)
+						{
+							if(puzzle_boxes[ii].obj_z_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_y_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						else
+						{
+							if(puzzle_boxes[ii].obj_x_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_y_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						break;
+					case OBJECT_POSE_PUZZLE_ZUP:
+					case OBJECT_POSE_PUZZLE_ZDOWN:
+						if(place_pose_type_==PLACE_POSE_PUZZLE_XUP || place_pose_type_==PLACE_POSE_PUZZLE_XDOWN)
+						{
+							if(puzzle_boxes[ii].obj_y_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_z_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						else
+						{
+							if(puzzle_boxes[ii].obj_x_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_height_+grip_safety_dist_)))
+							{
+								y_grp=-z_axis;
+								x_grp=y_grp.cross(z_grp);
+								grippingbox_idx=ii;
+							}
+							else if(puzzle_boxes[ii].obj_z_free==true && (o_transform_shapes_[ii].getOrigin().getZ()>=(0.5*gripper_width_+grip_safety_dist_)))
+							{
+								x_grp=-z_axis;
+								y_grp=z_grp.cross(x_grp);
+								grippingbox_idx=ii;
+							}
+						}
+						break;
+				}
+				if(grippingbox_idx!=-1)
+				{
+					//exit the loop if a possible pose was found
+					break;
+				}
+			}
+			if(grippingbox_idx==-1)
+			{
+				msg_warn("Warning. there are no faces free to grip!");
+				return;
+			}
+
+			set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
+
+			tmp_vec=o_transform_shapes_[grippingbox_idx].getOrigin()+gripping_distance_*obj_upward_pointing_axis;
+			tmp_GPTCP_pose.position.x = tmp_vec.getX();
+			tmp_GPTCP_pose.position.y = tmp_vec.getY();
+			tmp_GPTCP_pose.position.z = tmp_vec.getZ();
+			GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
+
+			//storing relative transform from gripper pose to object pose
+			grip_pose_transform=pose_to_transform(tmp_GPTCP_pose);
+			grp_obj_transform_.mult(grip_pose_transform.inverse(),transform_object);
+
+			tmp2_GPTCP_pose=tmp_GPTCP_pose;
+			tmp_vec=o_transform_shapes_[grippingbox_idx].getOrigin()+(0.5*puzzle_boxsize+gripper_finger_height_+grip_safety_dist_)*obj_upward_pointing_axis;
+			tmp2_GPTCP_pose.position.x=tmp_vec.getX();
+			tmp2_GPTCP_pose.position.y=tmp_vec.getY();
+			tmp2_GPTCP_pose.position.z=tmp_vec.getZ();
+			GPTCP_object_safe_pose.push_back(tmp2_GPTCP_pose);
+
+			z_grp=-z_axis;
+			y_grp=y_axis;
+			x_grp=y_grp.cross(z_grp);
+			set_orientation_from_axes(tmp2_GPTCP_pose,x_grp,y_grp,z_grp);
+			tmp2_GPTCP_pose.position.x=o_object_center_.getX();
+			tmp2_GPTCP_pose.position.y=o_object_center_.getY();
+			tmp2_GPTCP_pose.position.z=object_height_+vision_distance_object_height_cube_;
+			GPTCP_object_vision_pose.push_back(tmp2_GPTCP_pose);
+
+			grip_pose_type.push_back(grip_pose_type_);
+			object_grasp_width.push_back(puzzle_boxsize);
+			object_skip_vision.push_back(1);
         }
 
 
         //=================================================================
         //--------------------------PLACING--------------------------------
         //=================================================================
+        if(grip_pose_type_==GRIP_POSE_PUZZLE_FROM_TOP || grip_pose_type_==GRIP_POSE_PUZZLE_FROM_SIDE)
+        {
+			tmptransform.mult(pose_to_transform(abs_target_pose_),grp_obj_transform_.inverse());
+			tmp_GPTCP_pose=transform_to_pose(tmptransform);
+			tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+1.1*puzzle_boxsize;
+			GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
+			tmp2_GPTCP_pose=tmp_GPTCP_pose;
+			tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
+			GPTCP_target_safe_pose.push_back(tmp2_GPTCP_pose);
 
+			tmp2_GPTCP_pose=tmp_GPTCP_pose;
+			tmp2_GPTCP_pose.position.z=puzzle_boxsize+vision_distance_object_height_cube_;
+			GPTCP_target_vision_pose.push_back(tmp2_GPTCP_pose);
+
+			place_pose_type.push_back(place_pose_type_);
+			target_skip_vision.push_back(1);
+        }
+        if(grip_pose_type_==GRIP_POSE_PUZZLE_FLIPPING)
+        {
+        	//no gripping strategy implemented yet
+        }
 }
 
 void GraspPose2::compute_grasp_posesT6_()
@@ -2573,7 +2972,7 @@ void GraspPose2::compute_grasp_posesT6_()
 	safe_to_grip_dir=z_grp/z_grp.length();
 	tmp_vec=o_object_com_;
 	tmp_vec.setZ(tmp_vec.getZ()-0.5*bbox_z_);
-	tmp_vec=tmp_vec-gripper_height_*safe_to_grip_dir;
+	tmp_vec=tmp_vec-gripper_finger_height_*safe_to_grip_dir;
 	tmp_vec.setZ(tmp_vec.getZ()+0.5*gripper_finger_width*sin(gripping_angleT6_rad_)+grip_safety_dist_);
 
 	tmp_GPTCP_pose.position.x = tmp_vec.getX();
@@ -2591,7 +2990,7 @@ void GraspPose2::compute_grasp_posesT6_()
 	//=================================================================
 	tmp_GPTCP_pose.position = target_zone_.position;
 	z_grp = -1.0*z_axis;
-	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+gripper_height_+grip_safety_dist_+place_falling_distT6_;
+	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+gripper_finger_height_+grip_safety_dist_+place_falling_distT6_;
 	//calculate 4 possibilities
 	for(uint8_t ii=1; ii<=4; ii++)
 	{
@@ -2607,8 +3006,8 @@ void GraspPose2::compute_grasp_posesT6_()
 		set_orientation_from_axes(tmp_GPTCP_pose,x_grp,y_grp,z_grp);
 
 		GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
-		GPTCP_target_safe_pose.push_back(emptyPose);
-		GPTCP_target_vision_pose.push_back(emptyPose);
+	        GPTCP_target_safe_pose.push_back(emptyPose);
+	        GPTCP_target_vision_pose.push_back(emptyPose);
 		place_pose_type.push_back(PLACE_POSE_CUBE_TASK6);
 	}
 }
@@ -3394,6 +3793,15 @@ void GraspPose2::print_results()
 			case GRIP_POSE_HANDLE_BOX2_ZEQY_YNEGZ:
 				ROS_INFO(" [%d] | GRIP_POSE_HANDLE_BOX2_ZEQY_YNEGZ",ii);
 				break;
+			case GRIP_POSE_PUZZLE_FROM_TOP:
+				ROS_INFO(" [%d] | GRIP_POSE_PUZZLE_FROM_TOP",ii);
+				break;
+			case GRIP_POSE_PUZZLE_FROM_SIDE:
+				ROS_INFO(" [%d] | GRIP_POSE_PUZZLE_FROM_SIDE",ii);
+				break;
+			case GRIP_POSE_PUZZLE_FLIPPING:
+				ROS_INFO(" [%d] | GRIP_POSE_PUZZLE_FLIPPING",ii);
+				break;
 			default:
 				ROS_INFO("grip_pose_type_: UNKNOWN");
 				break;
@@ -3458,6 +3866,24 @@ void GraspPose2::print_results()
 			case PLACE_POSE_HANDLE_BOX2_YNEGZ_VERTICAL:
 				ROS_INFO(" [%d] | PLACE_POSE_HANDLE_BOX2_YNEGZ_VERTICAL",ii);
 				break;
+			case PLACE_POSE_PUZZLE_XUP:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_XUP",ii);
+				break;
+			case PLACE_POSE_PUZZLE_XDOWN:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_XDOWN",ii);
+				break;
+			case PLACE_POSE_PUZZLE_YUP:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_YUP",ii);
+				break;
+			case PLACE_POSE_PUZZLE_YDOWN:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_YDOWN",ii);
+				break;
+			case PLACE_POSE_PUZZLE_ZUP:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_ZUP",ii);
+				break;
+			case PLACE_POSE_PUZZLE_ZDOWN:
+				ROS_INFO(" [%d] | PLACE_POSE_PUZZLE_ZDOWN",ii);
+				break;
 			default:
 				ROS_INFO("place_pose_type_: UNKNOWN");
 				break;
@@ -3484,15 +3910,12 @@ void GraspPose2::print_results()
 void GraspPose2::send_poses_to_tf_broadcaster()
 {
 	ROS_INFO("send_poses_to_tf_broadcaster() called");
-	tf::TransformBroadcaster br;
 
 	tf::Vector3 tmp_Origin;
 	tf::Quaternion tmp_Rotation;
 	tf::Transform tmp_transform;
 	tf::StampedTransform tmp_stampedtransform;
 	std::stringstream posename;
-
-	br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), ORIGIN, "object_"));
 
 	for (uint16_t ii=0; ii<LWRTCP_object_grip_pose.size(); ii++)
 	{

@@ -29,6 +29,8 @@
 #include <tf_rot.hpp>
 
 struct puzzle_box{
+  int num_free_face_pairs;
+
   bool obj_x_free;
   bool obj_y_free;
   bool obj_z_free;
@@ -136,13 +138,16 @@ private:
 	double gripping_angleT6_deg_;
 	double gripping_angleT6_rad_;
 	double gripper_maxwidth_;
-	double gripper_height_;
+	double gripper_finger_height_;
 	double gripper_finger_width;
+	double gripper_width_;
+	double gripper_height_;
 	double grip_safety_dist_;
 	double vertical_handle_safe_planar_offset;
 	double vertical_handle_safe_z_offset;
 	double place_falling_dist_;
 	double place_falling_distT6_;
+	double gripping_finger_overlapT5_;
 	double vision_distance_object_height_cube_;
 	double vision_distance_object_height_cylinder_;
 	double vision_distance_object_height_handle_;

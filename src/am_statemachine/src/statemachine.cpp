@@ -3509,11 +3509,11 @@ bool Statemachine::get_grasp_pose_get_vectors()
           msg_error("Error. no target_place_poses received");
           checksizes=false;
   }
-  if (push_target_pose.size()<1 && active_task_number_==5)
-  {
-          msg_error("Error. no push_target_poses received (but necessary for task 5)");
-          checksizes=false;
-  }
+//  if (push_target_pose.size()<1 && active_task_number_==5)
+//  {
+//          msg_error("Error. no push_target_poses received (but necessary for task 5)");
+//          checksizes=false;
+//  }
 
   if (object_safe_pose.size()!=object_grip_pose.size())
   {
@@ -3560,11 +3560,11 @@ bool Statemachine::get_grasp_pose_get_vectors()
           msg_error("Error. target_skip_vision has wrong size");
           checksizes=false;
   }
-  if (push_safe_pose.size()!=push_target_pose.size())
-  {
-          msg_error("Error. push_safe_pose has wrong size");
-          checksizes=false;
-  }
+//  if (push_safe_pose.size()!=push_target_pose.size())
+//  {
+//          msg_error("Error. push_safe_pose has wrong size");
+//          checksizes=false;
+//  }
   if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
   {
           msg_error("Error. object_grip_r_tcp_com has wrong size");
@@ -3626,6 +3626,40 @@ int Statemachine::get_grasping_poseT5()
 
                 selected_object_pose_=0;
                 selected_target_pose_=0;
+
+				if(object_skip_vision[selected_object_pose_]==1)
+				{
+					ROS_INFO("Skip vision=1 for this pose -> skip move to object vision!");
+
+					uint16_t iter=state_queue.size()-2;
+					for(uint16_t ii=0;ii<iter;ii++)
+					{
+						if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+								(state_queue[ii].sub.two == fsm::MOVE_TO_OBJECT_VISION))
+						{
+							state_queue.erase(state_queue.begin()+ii);
+							state_queue.erase(state_queue.begin()+ii);
+							//state_queue.erase(state_queue.begin()+ii);
+							break;
+						}
+					}
+				}
+				if(target_skip_vision[selected_target_pose_]==1)
+				{
+					ROS_INFO("Skip vision=1 for this pose -> skip move to target zone vision!");
+
+					uint16_t iter=state_queue.size()-2;
+					for(uint16_t ii=0;ii<iter;ii++)
+					{
+						if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+								(state_queue[ii].sub.two == fsm::MOVE_TO_TARGET_ZONE_VISION))
+						{
+							state_queue.erase(state_queue.begin()+ii);
+							//state_queue.erase(state_queue.begin()+ii);
+							break;
+						}
+					}
+				}
 
                 //==============================================
                 scheduler_next();
