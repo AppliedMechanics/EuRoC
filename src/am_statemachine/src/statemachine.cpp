@@ -1520,13 +1520,13 @@ void Statemachine::scheduler_error_explore_environment_motion()
 	case fsm::NO_IK_SOL:
 		//skip this explore pose
 		explore_environment_motion_state_=OPEN;
-		msg_warn("skip this explore pose and insert homing");
+		msg_warn("skip this explore pose and DO NOT insert homing");
 		active_goal_++;
 		scheduler_next();
-
-		fsm::fsm_state_t temp_state;
-		temp_state.sub.one=fsm::SOLVE_TASK;
-		temp_state.sub.two=fsm::HOMING;			state_queue.insert(state_queue.begin(),temp_state);
+#warning Homing for explore poses disabled
+//		fsm::fsm_state_t temp_state;
+//		temp_state.sub.one=fsm::SOLVE_TASK;
+//		temp_state.sub.two=fsm::HOMING;			state_queue.insert(state_queue.begin(),temp_state);
 		scheduler_next();
 		break;
 

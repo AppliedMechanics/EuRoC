@@ -5,7 +5,7 @@
  *      Author: euroc_admin
  */
 
-#include "MotionPlanning.h"
+#include <MotionPlanning.h>
 
 MotionPlanning::MotionPlanning():
 goalPose_server_(nh_, "goalPoseAction", boost::bind(&MotionPlanning::executeGoalPose_CB, this, _1),false),
@@ -67,22 +67,22 @@ obj_data_loaded_(false)
 #warning Also Goal Tolerance for homing 2DOF (isn't used till now')
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
-	group_2DOF->setPlannerId(ompl_planners[7]); // 2
+//	group_2DOF->setPlannerId(ompl_planners[7]); // 2
 	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	group_7DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm group
-	group_7DOF->setPlannerId(ompl_planners[3]);
+//	group_7DOF->setPlannerId(ompl_planners[3]);
 	group_7DOF->setNumPlanningAttempts(2);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
-	group_9DOF->setPlannerId(ompl_planners[4]); // 4
-	group_9DOF->setNumPlanningAttempts(3);
+//	group_9DOF->setPlannerId(ompl_planners[4]); // 4
+	group_9DOF->setNumPlanningAttempts(2);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
@@ -262,7 +262,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		group = group_9DOF;
 		joint_model_group_ = joint_model_group_9DOF_;
 		// setting joint state target via the searchIKSolution srv is not considered
-		max_setTarget_attempts_ = 4;
+		max_setTarget_attempts_ = 3;
 
 	}
 	else if(goal->planning_algorithm == MOVE_IT_7DOF)
@@ -272,7 +272,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		joint_model_group_ = joint_model_group_7DOF_;
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 5;
+		max_setTarget_attempts_ = 4;
 
 	}
 	else if(goal->planning_algorithm == MOVE_IT_2DOF)
@@ -283,7 +283,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 5;
+		max_setTarget_attempts_ = 3;
 
 	}
 	else
@@ -320,7 +320,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			joint_model_group_ = joint_model_group_9DOF_;
 
 			// setting joint state target via the searchIKSolution srv is not considered
-			max_setTarget_attempts_ = 4;
+			max_setTarget_attempts_ = 3;
 
 		}
 		else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
@@ -334,7 +334,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 
 			// in case of unsuccessful planning,
 			// the planning target is set as a joint state goal via the searchIKSolution srv
-			max_setTarget_attempts_ = 5;
+			max_setTarget_attempts_ = 4;
 
 		}
 		else
@@ -479,7 +479,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			msg_warn("Estimated Motion Time %f > allowed Time %f",estimated_motion_time_,goal_pose_goal_->allowed_time);
 			goalPose_result_.reached_goal = false;
 			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-			goalPose_server_.setPreempted(goalPose_result_,"Motion takes too long.");
+			goalPose_server_.setAborted(goalPose_result_,"Motion takes too long.");
 		}
 
 		if(mtt_==FINISHED)

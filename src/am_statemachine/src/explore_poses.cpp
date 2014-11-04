@@ -160,10 +160,10 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 				}
 				ROS_WARN("Block Counter %i inside Block Counter %i insideblocksucc %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
 
-				if (insideblock_counter_>0)
+				if (insideblock_counter_>0 && insideblock_success_counter_>0)
 				{
 					tmp_goal_ = explore_poses_snake_[block_nr_[block_counter_]].at(insideblock_counter_);
-					tmp_goal_.allowed_time = 10.0;
+					tmp_goal_.allowed_time = 15.0;
 				}
 				else
 				{
