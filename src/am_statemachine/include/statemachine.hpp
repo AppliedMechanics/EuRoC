@@ -144,8 +144,6 @@ private:
 
 	//!action client for motionplanning-node (am_motionplanning)
 	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_;
-	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_t6_;
-	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_std_;
 
 	am_msgs::goalPoseResult motion_planning_result_;
 	//!action client for vision-node (am_vision)

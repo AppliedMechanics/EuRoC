@@ -128,6 +128,9 @@ protected:
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
 	void getGoalPose_Feedback();
 
+	virtual void executeGoalPoseT5(){msg_error("T5 call in MotioPlanning class. Did you set up the T5MotionPlanning class?");};
+	virtual void executeGoalPoseT6(){msg_error("T6 call in MotioPlanning class. Did you set up the T6MotionPlanning class?");};
+
 	void moveToTargetCB();
 
 	ros::ServiceServer check_poses_service_;

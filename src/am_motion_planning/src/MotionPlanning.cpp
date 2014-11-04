@@ -67,21 +67,21 @@ obj_data_loaded_(false)
 #warning Also Goal Tolerance for homing 2DOF (isn't used till now')
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
-//	group_2DOF->setPlannerId(ompl_planners[7]); // 2
+	//	group_2DOF->setPlannerId(ompl_planners[7]); // 2
 	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	group_7DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm group
-//	group_7DOF->setPlannerId(ompl_planners[3]);
+	//	group_7DOF->setPlannerId(ompl_planners[3]);
 	group_7DOF->setNumPlanningAttempts(2);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
-//	group_9DOF->setPlannerId(ompl_planners[4]); // 4
+	//	group_9DOF->setPlannerId(ompl_planners[4]); // 4
 	group_9DOF->setNumPlanningAttempts(2);
 
 	// robot model loader
@@ -126,6 +126,7 @@ MotionPlanning::~MotionPlanning()
 void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal)
 {
 	ros::param::get("/skip_vision", skip_vision_);
+	ros::param::get("/active_task_number_", active_task_nr_);
 
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
@@ -136,7 +137,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	//--------------------------------------------------------------------------------------
 	//! get kinematic limits
 	getLimits();
-
 
 	//--------------------------------------------------------------------------------------
 	//! set Planning Frame
@@ -157,7 +157,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		goal_pose_GPTCP_  = goal_pose_goal_->goal_pose;
 		goal_pose_LWRTCP_ = goal_pose_goal_->goal_pose;
 	}
-	else if (goal_pose_goal_->planning_algorithm!=HOMING_7DOF)
+	else if (goal_pose_goal_->planning_algorithm!=HOMING_7DOF && goal_pose_goal_->planning_algorithm!=HOMING_T6 && goal_pose_goal_->planning_algorithm!=HOMING_MOVE_IT_7DOF)
 		msg_error("Planning frame not properly defined.");
 
 	//--------------------------------------------------------------------------------------
@@ -171,170 +171,130 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		return;
 	}
 
-	//--------------------------------------------------------------------------------------
-	//! Plan
-	switch (goal->planning_algorithm)
-	{
+	//! Decision about T6 or T5
 
-	case HOMING_7DOF:
-		ROS_INFO("HOMING 7DOF planning mode chosen.");
-		if (!euroc_setReset7DOF())
-		{
-			msg_error("No IK Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-			return;
-		}
+	switch (active_task_nr_)
+	{
+	case 6:
+		executeGoalPoseT6();
 		break;
-
-	case HOMING_MOVE_IT_2DOF:
-		ROS_INFO("HOMING MOVEIT 2DOF planning mode chosen. - Goal tolerance = 0.5!");
-		group = group_2DOF;
-		joint_model_group_ = joint_model_group_2DOF_;
-		if (!MoveIt_homing())
-		{
-			msg_error("No Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
-			return;
-		}
+	case 5:
+		executeGoalPoseT5();
 		break;
-
-	case HOMING_MOVE_IT_7DOF:
-		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
-		group = group_7DOF;
-		joint_model_group_ = joint_model_group_7DOF_;
-		if (!MoveIt_homing())
+	default:
+		//--------------------------------------------------------------------------------------
+		//! Plan
+		switch (goal->planning_algorithm)
 		{
-			msg_error("No Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
-			return;
-		}
-		break;
 
-	case HOMING_MOVE_IT_9DOF:
-		ROS_INFO("HOMING MOVEIT 9DOF planning mode chosen.");
-		group = group_9DOF;
-		joint_model_group_ = joint_model_group_9DOF_;
-		if (!MoveIt_homing())
-		{
-			msg_error("No Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
-			return;
-		}
-		break;
+		case HOMING_7DOF:
+			ROS_INFO("HOMING 7DOF planning mode chosen.");
+			if (!euroc_setReset7DOF())
+			{
+				msg_error("No IK Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+				return;
+			}
+			break;
 
-	case STANDARD_IK_7DOF:
+		case HOMING_MOVE_IT_2DOF:
+			ROS_INFO("HOMING MOVEIT 2DOF planning mode chosen. - Goal tolerance = 0.5!");
+			group = group_2DOF;
+			joint_model_group_ = joint_model_group_2DOF_;
+			if (!MoveIt_homing())
+			{
+				msg_error("No Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+				return;
+			}
+			break;
 
-		ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
+		case HOMING_MOVE_IT_7DOF:
+			ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
+			group = group_7DOF;
+			joint_model_group_ = joint_model_group_7DOF_;
+			if (!MoveIt_homing())
+			{
+				msg_error("No Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+				return;
+			}
+			break;
 
-		//! Transform goal pose to LWR0 Base frame
-		if (!transformToLWRBase())
-		{
-			msg_warn("Transformation to LWR0 Base failed.");
+		case HOMING_MOVE_IT_9DOF:
+			ROS_INFO("HOMING MOVEIT 9DOF planning mode chosen.");
+			group = group_9DOF;
+			joint_model_group_ = joint_model_group_9DOF_;
+			if (!MoveIt_homing())
+			{
+				msg_error("No Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+				return;
+			}
+			break;
 
-			//			goalPose_result_.reached_goal = false;
-			//			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-			//			goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
-			//			return;
-		}
-		//! Find IK solution
-		if (!euroc_getIKSolution7DOF())
-		{
-			msg_error("No IK Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-			return;
-		}
-		break;
-		//------------------------------------------------------------------------------------------------
-	case (MOVE_IT_2DOF)		:
-	case (MOVE_IT_7DOF)		:
-	case (MOVE_IT_9DOF)		:
-	ROS_WARN("Planning mode based on MoveIt! chosen.");
+		case STANDARD_IK_7DOF:
 
-	//define groups
-	if(goal->planning_algorithm == MOVE_IT_9DOF)
-	{
-		ROS_INFO("Choosed 9DOF");
-		group = group_9DOF;
-		joint_model_group_ = joint_model_group_9DOF_;
-		// setting joint state target via the searchIKSolution srv is not considered
-		max_setTarget_attempts_ = 3;
+			ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
 
-	}
-	else if(goal->planning_algorithm == MOVE_IT_7DOF)
-	{
-		ROS_INFO("Choosed 7DOF");
-		group = group_7DOF;
-		joint_model_group_ = joint_model_group_7DOF_;
-		// in case of unsuccessful planning,
-		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 4;
+			//! Transform goal pose to LWR0 Base frame
+			if (!transformToLWRBase())
+			{
+				msg_warn("Transformation to LWR0 Base failed.");
 
-	}
-	else if(goal->planning_algorithm == MOVE_IT_2DOF)
-	{
-		ROS_INFO("Choosed 2DOF");
-		group = group_2DOF;
-		joint_model_group_ = joint_model_group_2DOF_;
-
-		// in case of unsuccessful planning,
-		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 3;
-
-	}
-	else
-	{
-		msg_error("Unknown move group name.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
-		break;
-	}
-
-	//set target algorithm
-	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-	// get moveit solution
-	if (!MoveIt_getSolution())
-	{
-		msg_error("No MoveIT Solution found.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-		return;
-	}
-	break;
-
-	//------------------------------------------------------------------------------------------------
-	case (MOVE_IT_7DOF_MOVE_TO_OBJECT)		:
-	case (MOVE_IT_9DOF_MOVE_TO_OBJECT)		:
-	{
+				//			goalPose_result_.reached_goal = false;
+				//			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+				//			goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+				//			return;
+			}
+			//! Find IK solution
+			if (!euroc_getIKSolution7DOF())
+			{
+				msg_error("No IK Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+				return;
+			}
+			break;
+			//------------------------------------------------------------------------------------------------
+		case (MOVE_IT_2DOF)		:
+		case (MOVE_IT_7DOF)		:
+		case (MOVE_IT_9DOF)		:
 		ROS_WARN("Planning mode based on MoveIt! chosen.");
 
 		//define groups
-		if(goal->planning_algorithm == MOVE_IT_9DOF_MOVE_TO_OBJECT)
+		if(goal->planning_algorithm == MOVE_IT_9DOF)
 		{
 			ROS_INFO("Choosed 9DOF");
 			group = group_9DOF;
 			joint_model_group_ = joint_model_group_9DOF_;
-
 			// setting joint state target via the searchIKSolution srv is not considered
 			max_setTarget_attempts_ = 3;
 
 		}
-		else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
+		else if(goal->planning_algorithm == MOVE_IT_7DOF)
 		{
 			ROS_INFO("Choosed 7DOF");
 			group = group_7DOF;
 			joint_model_group_ = joint_model_group_7DOF_;
-
-			ROS_INFO_STREAM(group->getEndEffectorLink());
-
-
 			// in case of unsuccessful planning,
 			// the planning target is set as a joint state goal via the searchIKSolution srv
 			max_setTarget_attempts_ = 4;
+
+		}
+		else if(goal->planning_algorithm == MOVE_IT_2DOF)
+		{
+			ROS_INFO("Choosed 2DOF");
+			group = group_2DOF;
+			joint_model_group_ = joint_model_group_2DOF_;
+
+			// in case of unsuccessful planning,
+			// the planning target is set as a joint state goal via the searchIKSolution srv
+			max_setTarget_attempts_ = 3;
 
 		}
 		else
@@ -345,155 +305,207 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 			break;
 		}
 
-
 		//set target algorithm
 		current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-
-		//to save goal pose
-		geometry_msgs::Pose goal_pose_GPTCP_old_ = goal_pose_GPTCP_;
-
-		std::vector< geometry_msgs::Pose > waypoints_;
-		//compute waypoints
-		computeWayPoints(waypoints_);
-
-		//initialize move group with current state
-		MoveIt_initializeMoveGroup();
-
-		planned_path_.clear();
-
-		for(uint64_t ii = 0; ii < waypoints_.size(); ii++)
+		// get moveit solution
+		if (!MoveIt_getSolution())
 		{
-			goal_pose_GPTCP_ = waypoints_.at(ii);
+			msg_error("No MoveIT Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+			return;
+		}
+		break;
 
-			// get moveit solution
-			if (!MoveIt_getSolutionNoInitialize())
+		//------------------------------------------------------------------------------------------------
+		case (MOVE_IT_7DOF_MOVE_TO_OBJECT)		:
+		case (MOVE_IT_9DOF_MOVE_TO_OBJECT)		:
+		{
+			ROS_WARN("Planning mode based on MoveIt! chosen.");
+
+			//define groups
+			if(goal->planning_algorithm == MOVE_IT_9DOF_MOVE_TO_OBJECT)
 			{
-				msg_error("No MoveIT Solution found for waypoint %d.",ii);
-				goalPose_result_.reached_goal = false;
-				goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+				ROS_INFO("Choosed 9DOF");
+				group = group_9DOF;
+				joint_model_group_ = joint_model_group_9DOF_;
 
-				if(ii == waypoints_.size()-1)
+				// setting joint state target via the searchIKSolution srv is not considered
+				max_setTarget_attempts_ = 3;
+
+			}
+			else if(goal->planning_algorithm == MOVE_IT_7DOF_MOVE_TO_OBJECT)
+			{
+				ROS_INFO("Choosed 7DOF");
+				group = group_7DOF;
+				joint_model_group_ = joint_model_group_7DOF_;
+
+				ROS_INFO_STREAM(group->getEndEffectorLink());
+
+
+				// in case of unsuccessful planning,
+				// the planning target is set as a joint state goal via the searchIKSolution srv
+				max_setTarget_attempts_ = 4;
+
+			}
+			else
+			{
+				msg_error("Unknown move group name.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
+				break;
+			}
+
+
+			//set target algorithm
+			current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
+			//to save goal pose
+			geometry_msgs::Pose goal_pose_GPTCP_old_ = goal_pose_GPTCP_;
+
+			std::vector< geometry_msgs::Pose > waypoints_;
+			//compute waypoints
+			computeWayPoints(waypoints_);
+
+			//initialize move group with current state
+			MoveIt_initializeMoveGroup();
+
+			planned_path_.clear();
+
+			for(uint64_t ii = 0; ii < waypoints_.size(); ii++)
+			{
+				goal_pose_GPTCP_ = waypoints_.at(ii);
+
+				// get moveit solution
+				if (!MoveIt_getSolutionNoInitialize())
 				{
-					msg_error("No MoveIT Solution found goal pose",ii);
+					msg_error("No MoveIT Solution found for waypoint %d.",ii);
 					goalPose_result_.reached_goal = false;
 					goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-					return;
 
+					if(ii == waypoints_.size()-1)
+					{
+						msg_error("No MoveIT Solution found goal pose",ii);
+						goalPose_result_.reached_goal = false;
+						goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+						return;
+
+					}
 				}
-			}
 
-			// set start state to last waypoint
-			if(planned_path_.empty() != true)
+				// set start state to last waypoint
+				if(planned_path_.empty() != true)
+				{
+					moveit_msgs::RobotState start_state;
+					start_state.joint_state.name = group->getActiveJoints();
+					start_state.joint_state.position = planned_path_.back().q;
+					start_state.joint_state.velocity.resize(group->getActiveJoints().size());
+					for(uint64_t jj = 0; jj < start_state.joint_state.velocity.size(); jj++)
+						start_state.joint_state.velocity.at(jj) = 0.0;
+
+					group->setStartState(start_state);
+				}
+
+			}
+			goal_pose_GPTCP_ = goal_pose_GPTCP_old_;
+
+			// fill move along joint path
+			move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+			move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+			for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
 			{
-				moveit_msgs::RobotState start_state;
-				start_state.joint_state.name = group->getActiveJoints();
-				start_state.joint_state.position = planned_path_.back().q;
-				start_state.joint_state.velocity.resize(group->getActiveJoints().size());
-				for(uint64_t jj = 0; jj < start_state.joint_state.velocity.size(); jj++)
-					start_state.joint_state.velocity.at(jj) = 0.0;
-
-				group->setStartState(start_state);
+				move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
 			}
 
+			// set the joint limits (velocities/accelerations) of the move along joint path service request
+			setMoveRequestJointLimits();
+			// set the TCP limits of the move along joint path service
+			setMoveRequestTCPLimits();
+
+
+			break;
 		}
-		goal_pose_GPTCP_ = goal_pose_GPTCP_old_;
-
-		// fill move along joint path
-		move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
-
-		move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
-		for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
-		{
-			move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
-		}
-
-		// set the joint limits (velocities/accelerations) of the move along joint path service request
-		setMoveRequestJointLimits();
-		// set the TCP limits of the move along joint path service
-		setMoveRequestTCPLimits();
-
-
-		break;
-	}
-	//------------------------------------------------------------------------------------------------
-	case (MOVE_IT_JT_9DOF):
-									ROS_WARN("Given JT based on MoveIt! chosen.");
-	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
-	group = group_9DOF;
-	joint_model_group_ = joint_model_group_9DOF_;
-	// setting joint state target via the searchIKSolution srv is not considered
-	max_setTarget_attempts_ = 3;
-	if (!MoveIt_getSolution())
-	{
-		msg_error("No MoveIT Solution found.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-		return;
-	}
-	break;
-
-	default:
-		msg_warn("unkown Mode in MotionPlanning!");
-		return;
-	}
-	//------------------------------------------------------------------------------------------------
-
-	//! get timing along path
-	getTimingAlongJointPath();
-	//------------------------------------------------------------------------------------------------
-
-	//! Feedback
-	ros::Rate feedback_rate(feedback_frequency_);
-
-	starting_time_ = ros::Time::now().toSec();
-	getGoalPose_Feedback();
-
-	goalPose_server_.publishFeedback(goalPose_feedback_);
-
-	if (move_along_joint_path_srv_.request.path.size()<1 || move_along_joint_path_srv_.request.path.size()>999)
-	{
-		goalPose_result_.reached_goal = false;
-		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-		goalPose_server_.setPreempted(goalPose_result_,"Path length <1 OR >999");
-	}
-	else
-	{
 		//------------------------------------------------------------------------------------------------
-		if (estimated_motion_time_<goal_pose_goal_->allowed_time || goal_pose_goal_->allowed_time<0.5)
+		case (MOVE_IT_JT_9DOF):
+											ROS_WARN("Given JT based on MoveIt! chosen.");
+		current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
+		group = group_9DOF;
+		joint_model_group_ = joint_model_group_9DOF_;
+		// setting joint state target via the searchIKSolution srv is not considered
+		max_setTarget_attempts_ = 3;
+		if (!MoveIt_getSolution())
 		{
-			moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
-			mtt_=RUNNING;
-			//while (!goalPose_result_.reached_goal)
-			while(mtt_==RUNNING)
-			{
-				getGoalPose_Feedback();
-				goalPose_server_.publishFeedback(goalPose_feedback_);
-
-				feedback_rate.sleep();
-			}
-
-			moveToTarget.detach();
+			msg_error("No MoveIT Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+			return;
 		}
-		else
+		break;
+
+		default:
+			msg_warn("unkown Mode in MotionPlanning!");
+			return;
+		}
+		//------------------------------------------------------------------------------------------------
+
+		//! get timing along path
+		getTimingAlongJointPath();
+		//------------------------------------------------------------------------------------------------
+
+		//! Feedback
+		ros::Rate feedback_rate(feedback_frequency_);
+
+		starting_time_ = ros::Time::now().toSec();
+		getGoalPose_Feedback();
+
+		goalPose_server_.publishFeedback(goalPose_feedback_);
+
+		if (move_along_joint_path_srv_.request.path.size()<1 || move_along_joint_path_srv_.request.path.size()>999)
 		{
-			msg_warn("Estimated Motion Time %f > allowed Time %f",estimated_motion_time_,goal_pose_goal_->allowed_time);
 			goalPose_result_.reached_goal = false;
 			goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-			goalPose_server_.setAborted(goalPose_result_,"Motion takes too long.");
-		}
-
-		if(mtt_==FINISHED)
-		{
-			goalPose_result_.reached_goal = true;
-			goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			goalPose_server_.setPreempted(goalPose_result_,"Path length <1 OR >999");
 		}
 		else
 		{
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
-		}
-	}
+			//------------------------------------------------------------------------------------------------
+			if (estimated_motion_time_<goal_pose_goal_->allowed_time || goal_pose_goal_->allowed_time<0.5)
+			{
+				moveToTarget = boost::thread(&MotionPlanning::moveToTargetCB,this);
+				mtt_=RUNNING;
+				//while (!goalPose_result_.reached_goal)
+				while(mtt_==RUNNING)
+				{
+					getGoalPose_Feedback();
+					goalPose_server_.publishFeedback(goalPose_feedback_);
 
+					feedback_rate.sleep();
+				}
+
+				moveToTarget.detach();
+			}
+			else
+			{
+				msg_warn("Estimated Motion Time %f > allowed Time %f",estimated_motion_time_,goal_pose_goal_->allowed_time);
+				goalPose_result_.reached_goal = false;
+				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+				goalPose_server_.setAborted(goalPose_result_,"Motion takes too long.");
+			}
+
+			if(mtt_==FINISHED)
+			{
+				goalPose_result_.reached_goal = true;
+				goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+			}
+			else
+			{
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
+			}
+		}
+		return;
+	}
 }
 
 void MotionPlanning::getGoalPose_Feedback()

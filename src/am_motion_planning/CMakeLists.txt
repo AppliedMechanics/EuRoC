@@ -49,7 +49,7 @@ include_directories(
 
 
 ## Declare a cpp executable
-add_executable(am_motion_planning src/T6MotionPlanning.cpp src/MotionPlanning.cpp src/main_motion_planning.cpp)
+add_executable(am_motion_planning src/T6MotionPlanning.cpp src/T5MotionPlanning.cpp src/MotionPlanning.cpp src/main_motion_planning.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

@@ -79,12 +79,9 @@ Statemachine::Statemachine():
 
 	vision_action_client_ = new actionlib::SimpleActionClient<am_msgs::VisionAction>("VisionAction", true);
 	// set motion planning action client
-	motion_planning_action_client_std_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
-	motion_planning_action_client_t6_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("T6goalPoseAction", true);
+	motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("goalPoseAction", true);
 	ROS_INFO("Wait 3s");
 	boost::this_thread::sleep( boost::posix_time::milliseconds(100));
-
-	motion_planning_action_client_ = motion_planning_action_client_std_;
 
 
 	cur_obj_gripped_=false;
@@ -127,8 +124,7 @@ Statemachine::~Statemachine()
 	delete broadcaster_;
 	delete explore_poses_;
 	delete vision_action_client_;
-	delete motion_planning_action_client_std_;
-	delete motion_planning_action_client_t6_;
+	delete motion_planning_action_client_;
 
 	if(sim_running_)
 	{
@@ -190,7 +186,7 @@ int Statemachine::init_sm()
 	while(CheckActionServerCounter<2)	//Loop until all action servers are connected
 	{
 		CheckActionServerCounter=0;	//reset counter
-		if(motion_planning_action_client_std_->isServerConnected())
+		if(motion_planning_action_client_->isServerConnected())
 		{ CheckActionServerCounter++; }
 		if(vision_action_client_->isServerConnected())
 		{ CheckActionServerCounter++; }
@@ -2021,7 +2017,6 @@ int Statemachine::request_task()
 			explore_pose_type_ = EXPLORE_STD_2;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
-			motion_planning_action_client_=motion_planning_action_client_std_;
 			break;
 		case 3:
 			planning_mode_.object	= MOVE_IT_9DOF;
@@ -2032,7 +2027,6 @@ int Statemachine::request_task()
 			explore_pose_type_ = EXPLORE_STD_2;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
-			motion_planning_action_client_=motion_planning_action_client_std_;
 			break;
 		case 4:
 			planning_mode_.object	= MOVE_IT_9DOF;
@@ -2043,7 +2037,6 @@ int Statemachine::request_task()
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = 7;
-			motion_planning_action_client_=motion_planning_action_client_std_;
 			break;
 		case 5:
 		case 6:
@@ -2057,18 +2050,6 @@ int Statemachine::request_task()
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
 			max_explore_poses_ = nr_exp_poses_;
 
-#if 0
-			msg_info("task 6, changing action client to task6 action server!");
-			ROS_WARN("Change motion client!");
-			delete motion_planning_action_client_;
-			motion_planning_action_client_ = new actionlib::SimpleActionClient<am_msgs::goalPoseAction>("T6goalPoseAction", true);
-			msg_warn("motion planning action client recreated, waiting for server");
-
-			ROS_INFO("waiting for 3 seconds for motion planning service...");
-			boost::this_thread::sleep( boost::posix_time::milliseconds(3000));
-#else
-			motion_planning_action_client_=motion_planning_action_client_t6_;
-#endif
 
 			//motion_planning_action_client_->waitForServer();
 			break;
@@ -5353,9 +5334,7 @@ int Statemachine::reset()
 
 		delete vision_action_client_;
 		vision_action_client_=0x0;
-		delete motion_planning_action_client_std_;
-		delete motion_planning_action_client_t6_;
-		motion_planning_action_client_=0x0;
+		delete motion_planning_action_client_;
 
 		reset_state_=RUNNING;
 	}

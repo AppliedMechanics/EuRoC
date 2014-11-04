@@ -8,18 +8,15 @@
 #ifndef T6MOTIONPLANNING_H_
 #define T6MOTIONPLANNING_H_
 
-#include <MotionPlanning.h>
+#include <T5MotionPlanning.h>
 
-class T6MotionPlanning: public MotionPlanning {
+class T6MotionPlanning: public T5MotionPlanning {
 public:
 	T6MotionPlanning();
 	virtual ~T6MotionPlanning();
 
-	void T6executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
-
 private:
-	actionlib::SimpleActionServer<am_msgs::goalPoseAction> T6_goalPose_server_;
-
+	void executeGoalPoseT6();
 };
 
 #endif /* T6MOTIONPLANNING_H_ */
