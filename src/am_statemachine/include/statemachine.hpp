@@ -144,6 +144,9 @@ private:
 
 	//!action client for motionplanning-node (am_motionplanning)
 	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_;
+	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_t6_;
+	actionlib::SimpleActionClient<am_msgs::goalPoseAction> *motion_planning_action_client_std_;
+
 	am_msgs::goalPoseResult motion_planning_result_;
 	//!action client for vision-node (am_vision)
 	actionlib::SimpleActionClient<am_msgs::VisionAction> *vision_action_client_;
@@ -452,6 +455,15 @@ private:
 	//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
 	uint8_t move_to_object_t6_state_;
 	uint8_t move_to_object_t6_counter_;
+
+	//!move to target zone for task 6
+	int move_to_target_zone_t6();
+	//!callbacks for move_to_target_zone_t6()
+	void move_to_target_zone_t6_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+	void move_to_target_zone_t6_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+	//!state of move_to_object() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t move_to_target_zone_t6_state_;
+	uint8_t move_to_target_zone_t6_counter_;
 
 	//!check whether the object has been placed correctly
 	int check_object_finished();

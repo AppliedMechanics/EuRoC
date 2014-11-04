@@ -7,6 +7,6 @@ Run Simulator nativ:
 (reset later: /opt/euroc_c2s1/bin/configure_simclient_vm internal)
 
 compile with :
-catkin_make -DCMAKE_INSTALL_PREFIX=/opt/ros/hydro -DCMAKE_BUILD_TYPE=Release
+catkin_make -DCMAKE_INSTALL_PREFIX=/opt/ros/hydro -DCMAKE_BUILD_TYPE=Release install
 
 (compiler optionen bei release: -O3 -DNDEBUG) 
