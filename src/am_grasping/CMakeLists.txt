@@ -40,6 +40,24 @@ add_executable(am_gripper_interface src/main_gripper_interface.cpp)
 target_link_libraries(am_gripper_interface ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 add_dependencies(am_gripper_interface  am_grasping_generate_messages_cpp)
 
-add_executable(am_grasping_srv src/GraspPose2.cpp src/main_get_grasp_pose.cpp)
-target_link_libraries(am_grasping_srv ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(am_grasping_srv  am_grasping_generate_messages_cpp)
+add_executable(am_grasping src/GraspPose2.cpp src/main_get_grasp_pose.cpp)
+target_link_libraries(am_grasping ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_dependencies(am_grasping  am_grasping_generate_messages_cpp)
+
+
+################################################################
+# INSTALLING
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
+)
+
+#install(DIRECTORY launch/
+#  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+#  PATTERN ".svn" EXCLUDE)

@@ -1,0 +1,4 @@
+compile with :
+catkin_make -DCMAKE_INSTALL_PREFIX=/opt/ros/hydro -DCMAKE_BUILD_TYPE=Release
+
+option release gcc flags: Release: -O3 -DNDEBUG 

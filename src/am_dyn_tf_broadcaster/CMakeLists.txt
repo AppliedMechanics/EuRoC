@@ -62,8 +62,24 @@ include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 ## Declare a cpp executable
 
-add_executable(am_tf_broadcaster src/TFBroadcaster.cpp src/main_tf_broadcaster.cpp)
-target_link_libraries(am_tf_broadcaster ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(am_tf_broadcaster  am_tf_broadcaster_generate_messages_cpp)
+add_executable(am_dyn_tf_broadcaster src/TFBroadcaster.cpp src/main_tf_broadcaster.cpp)
+target_link_libraries(am_dyn_tf_broadcaster ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_dependencies(am_dyn_tf_broadcaster  am_tf_broadcaster_generate_messages_cpp)
 
 
+################################################################
+# INSTALLING
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
+)
+
+#install(DIRECTORY launch/
+#  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+#  PATTERN ".svn" EXCLUDE)

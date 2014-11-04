@@ -33,3 +33,20 @@ include_directories(src include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 add_executable(am_stateobserver src/state_observer.cpp src/main_stateobserver.cpp)
 target_link_libraries(am_stateobserver ${catkin_LIBRARIES} ${Boost_LIBRARIES} crops_manipulator_utils)
 add_dependencies(am_stateobserver  ${am_stateobserver_EXPORTED_TARGETS})
+
+################################################################
+# INSTALLING
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
+)
+
+#install(DIRECTORY launch/
+#  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+#  PATTERN ".svn" EXCLUDE)

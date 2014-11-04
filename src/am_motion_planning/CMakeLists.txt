@@ -43,6 +43,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
 	src
+	include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -61,3 +62,19 @@ add_dependencies(am_motion_planning am_motion_planning_generate_messages_cpp)
  )
 
 
+################################################################
+# INSTALLING
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  PATTERN ".svn" EXCLUDE)

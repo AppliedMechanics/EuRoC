@@ -47,16 +47,22 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 # add_dependencies(draw_obstacles ${catkin_EXPORTED_TARGETS})
 
 
-#install targets (not required)
+################################################################
+# INSTALLING
+
 install(TARGETS ${PROJECT_NAME}
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-# install(DIRECTORY include/${PROJECT_NAME}/
-#         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#         PATTERN ".svn" EXCLUDE)
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(DIRECTORY include/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
+)
 
-
+#install(DIRECTORY launch/
+#  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+#  PATTERN ".svn" EXCLUDE)
 
 
 # <export> <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lcrops_manipulator_utils"/> </export>
