@@ -158,7 +158,7 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 					insideblock_success_counter_ = 0;
 					insideblock_counter_ = 0;
 				}
-				ROS_WARN("Block Counter %i inside Block Counter %i insideblocksucc %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
+				ROS_INFO("Block Counter %i inside Block Counter %i insideblocksucc %i success counter %i",block_counter_,insideblock_counter_,insideblock_success_counter_,success_counter_);
 
 				if (insideblock_counter_>0 && insideblock_success_counter_>0)
 				{
