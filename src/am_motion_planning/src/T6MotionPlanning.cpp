@@ -21,6 +21,7 @@ T5MotionPlanning::T5MotionPlanning()
 	standard_distance_dcp_planar_axis_ = 0.65;
 	n_objects_ = 0;
 	n_obj_ges_ = 10;
+	t_rdv = 0;
 
 
 	// gripper client
@@ -138,6 +139,11 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		return false;
 	}
 
+
+	//wait time until rdv
+	boost::this_thread::sleep( boost::posix_time::seconds(t_rdv - ros::Time::now().sec ));
+
+	//grap object
 	if(!T6_grap_object())
 	{
 		msg_error("grap object failed");
@@ -172,15 +178,21 @@ bool T6MotionPlanning::T6_grap_object()
 {
 	ROS_INFO("gripper_close_cb() running");
 
+	//gripper control
+	gripper_control_srv_.request.gripping_mode = POSITION;
+	gripper_control_srv_.request.gripper_position = 0.0;
+
 	if(gripper_control_client_.exists())
 	{
 		if(gripper_control_client_.call(gripper_control_srv_))
 		{
 			gripper_close_state_=FINISHED;
+			return true;
 		}
 		else
 		{
 			msg_error("Error. call of gripper_control_client_ failed");
+			return false;
 		}
 	}
 	else
@@ -435,11 +447,20 @@ bool T6MotionPlanning::T6_getNewPose(geometry_msgs::Pose& pose)
 		// TODO adaptiv T6_puffer_pose
 		T6_puffer_pose = 1 + n_objects_ * 0.1;
 
-		// stamp; x + (t2 - t1)*v + puffer;
-		pose.position.x = pose.position.x + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.x;
-		pose.position.y = pose.position.y + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.y;
-		pose.position.z = pose.position.z + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.z;
+		geometry_msgs::Pose old_pose; // ziel position
+		old_pose = pose;
 
+		// stamp; x + (t2 - t1)*v + puffer;
+		pose.position.x = old_pose.position.x + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.x;
+		pose.position.y = old_pose.position.y + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.y;
+		pose.position.z = old_pose.position.z + T6_puffer_pose * (ros::Time::now().sec - time_stamp_in_) * mdl.z;
+
+		double delta_s = sqrt( (pose.position.x - old_pose.position.x)*(pose.position.x - old_pose.position.x)
+				 	 	 	 + (pose.position.y - old_pose.position.y)*(pose.position.y - old_pose.position.y)
+				 	 	 	 + (pose.position.z - old_pose.position.z)*(pose.position.z - old_pose.position.z) );
+
+		double v = sqrt(pow(mdl.x,2) + pow(mdl.y,2) + pow(mdl.z,2));
+		t_rdv = delta_s / v;
 
 		return true;
 	}

@@ -69,6 +69,8 @@ private:
 	double T6_puffer_pose;
 	// time stamp
 	double time_stamp_in_;
+	// rendez-vous time
+	double t_rdv;
 	//Winkel um z achse
 	double winkel;
 	//!	radius of targetzone
