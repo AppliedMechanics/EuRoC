@@ -484,6 +484,17 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 				}
 
 				moveToTarget.detach();
+
+				if(mtt_==FINISHED)
+				{
+					goalPose_result_.reached_goal = true;
+					goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
+				}
+				else
+				{
+					goalPose_result_.reached_goal = false;
+					goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
+				}
 			}
 			else
 			{
@@ -493,16 +504,6 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 				goalPose_server_.setAborted(goalPose_result_,"Motion takes too long.");
 			}
 
-			if(mtt_==FINISHED)
-			{
-				goalPose_result_.reached_goal = true;
-				goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
-			}
-			else
-			{
-				goalPose_result_.reached_goal = false;
-				goalPose_server_.setPreempted(goalPose_result_,"Something strange happened.");
-			}
 		}
 		return;
 	}
