@@ -183,6 +183,8 @@ void ROSinterface::callSetCustomGoalConfiguration(double* commanded_joint_positi
 		move_along_joint_path_srv_.request.path.resize(1); // Our path has only one waypoint
 
 		getUrdfConf();
+		if (!getLimits())
+			ROS_WARN("No Limits found.");
 		// Initialize the velocity and acceleration limits of the joints
 		move_along_joint_path_srv_.request.joint_limits.resize(12);
 		for(unsigned int i = 0; i < 12; ++i){
