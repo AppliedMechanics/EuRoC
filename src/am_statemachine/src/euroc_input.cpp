@@ -1286,9 +1286,6 @@ void EurocInput::select_new_object()
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
 	}
-
-	if(obj_queue_[0].action==EIN_PARKING)
-		obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_PARKING;
 }
 
 am_msgs::Object EurocInput::get_active_object()
@@ -1714,15 +1711,11 @@ void EurocInput::set_active_object_finished()
 	{
 		if(obj_queue_[0].action == EIN_PARKING)
 		{
-			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_LOCATED;
+			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_PARKING;
 		}
 		else
 			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
 		obj_queue_.erase(obj_queue_.begin());
-
-
-		if(obj_queue_[0].action==EIN_PARKING)
-			obj_state_[obj_queue_[0].obj_idx]=EIN_OBJ_PARKING;
 	}
 }
 

@@ -1213,6 +1213,7 @@ void Statemachine::scheduler_error_move_to_object_safe()
 		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
 		explore_environment_motion_state_=OPEN;
 		break;
+
 	case fsm::RESTART_SIM:
 		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
 		explore_environment_motion_state_=OPEN;
@@ -1572,7 +1573,6 @@ void Statemachine::scheduler_error_gripper_close()
 	{
 	case fsm::SIM_SRV_NA:
 	case fsm::GRIPPING_ERROR:
-
 		msg_warn("Statemachine-Errorhandler: gripping error -> retry");
 		gripper_close_counter_++;
 		if(gripper_close_counter_ > 1)
@@ -1583,11 +1583,13 @@ void Statemachine::scheduler_error_gripper_close()
 			scheduler_skip_object();
 		}
 		break;
+
 	case fsm::STOP_COND:
 		msg_warn("Statemachine-Errorhandler: stop cond -> try slower");
 		//set object load and continue
 		gripper_close_state_=FINISHED;
 		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		gripper_close_state_=FINISHED;
@@ -2469,7 +2471,7 @@ int Statemachine::parse_yaml_file()
 
 int Statemachine::check_object_finished()
 {
-	if((target_skip_vision[selected_target_pose_]==1)||(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)||
+	if((target_skip_vision[selected_target_pose_]==1)||(ein_->get_active_object_action()==EurocInput::EIN_PARKING)||
 			(cur_obj_.nr_shapes>1))
 	{
 		check_object_finished_state_=FINISHED;
@@ -3123,7 +3125,8 @@ int Statemachine::locate_object_global()
 
 		//ROS_INFO("current object:");
 		//ein_->print_object(&cur_obj_);
-		if(ein_->get_active_object_state()==EurocInput::EIN_OBJ_LOCATED)
+		if((ein_->get_active_object_state()==EurocInput::EIN_OBJ_LOCATED)||
+				(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING))
 		{
 			ROS_INFO("object %s already located, skip locate_object_global()",cur_obj_.name.c_str());
 			locate_object_global_state_=FINISHED;
@@ -4905,7 +4908,7 @@ int Statemachine::move_to_target_zone_safe()
 
 
 		//publish object state for motion planning
-		if(cur_obj_gripped_==false)
+		if((cur_obj_gripped_==false) && (ein_->get_active_object_action()!=EurocInput::EIN_PARKING))
 			publish_obj_state(OBJ_FINISHED);
 
 		//==============================================
@@ -4961,7 +4964,7 @@ int Statemachine::move_to_target_zone_vision()
 	{
 		ROS_INFO("move_to_target_zone_vision() called: OPEN");
 
-		if((ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING)
+		if((ein_->get_active_object_action()==EurocInput::EIN_PARKING)
 				|| (cur_obj_.nr_shapes>1))
 		{
 			move_to_target_zone_vision_state_=FINISHED;
@@ -5067,6 +5070,9 @@ int Statemachine::move_to_target_zone()
 	{
 		ROS_INFO("move_to_target_zone() called: OPEN");
 
+		//publish object state for motion planning
+		publish_obj_state(OBJ_PLACED);
+
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -5115,8 +5121,6 @@ int Statemachine::move_to_target_zone()
 		//gp_obj_orig_=
 		ein_->set_object_pose(tmp_pose, ros::Time::now());
 
-		//publish object state for motion planning
-		publish_obj_state(OBJ_PLACED);
 		cur_obj_gripped_=false;
 
 		//==============================================

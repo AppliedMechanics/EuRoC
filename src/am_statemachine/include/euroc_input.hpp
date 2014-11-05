@@ -39,6 +39,7 @@ public:
 	am_msgs::Object get_active_object();
 	//!get active object state
 	uint16_t get_active_object_state(){return obj_state_[obj_queue_[0].obj_idx];};
+	uint16_t get_active_object_action(){return obj_queue_[0].action;};
 	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
 	ros::Time get_active_object_stamp(){return obj_queue_[0].data->stamp;};
 

@@ -1513,17 +1513,17 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	planning_scene_.robot_state.is_diff = true;
 
 	// Robot link padding
-	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-	{
-		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-			planning_scene_.link_padding[i].padding = 0.0;
-		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-			planning_scene_.link_padding[i].padding = 0.02;
-		else
-			planning_scene_.link_padding[i].padding = 0.01;
-	}
+//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+//	{
+//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+//			planning_scene_.link_padding[i].padding = 0.0;
+//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+//			planning_scene_.link_padding[i].padding = 0.02;
+//		else
+//			planning_scene_.link_padding[i].padding = 0.01;
+//	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
