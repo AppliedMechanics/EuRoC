@@ -205,6 +205,57 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::filterPointCloudByColor(pcl::
 	return resultCloud;
 
 }
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud)
+{
+    // search for nearest neighbors of shapeCloud in baseCloud
+    // Neighbors within radius search
+  baseCloud->is_dense = false;
+  shapeCloud->is_dense = false;
+  std::vector<int> index;
+  pcl::removeNaNFromPointCloud(*baseCloud, *baseCloud, index);
+  pcl::removeNaNFromPointCloud(*shapeCloud, *shapeCloud, index);
+
+    std::vector<int> pointIdxRadiusSearch;
+    std::vector<float> pointRadiusSquaredDistance;
+
+    std::cout << "[VISION] Number of points in SR function before of inliers:  "<<baseCloud->points.size()<<std::endl;
+
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud (baseCloud);
+    float radius = 0.005;
+
+    //  --> search for the neighbor points in baseCloud based on points in shapeCloud
+    //  --> remove the points found in baseCloud
+    for (int i=0; i<shapeCloud->points.size(); i++)
+    {
+        pcl::PointXYZ searchPoint;
+        searchPoint = shapeCloud->points[i];
+
+        //  --> search for the neighbor points in baseCloud based on points in shapeCloud
+        if ( kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0 )
+        {
+            for (size_t j = 0; j < pointIdxRadiusSearch.size (); ++j)
+            {
+#ifdef DEBUG
+                std::cout << "    "  <<   baseCloud->points[ pointIdxRadiusSearch[j] ].x
+                        << " " << baseCloud->points[ pointIdxRadiusSearch[j] ].y
+                        << " " << baseCloud->points[ pointIdxRadiusSearch[j] ].z
+                        << " (squared distance: " << pointRadiusSquaredDistance[i] << ")" << std::endl;
+#endif // DEBUG
+                //  --> remove the points found in baseCloud
+                baseCloud->points[ pointIdxRadiusSearch[j] ].x = std::numeric_limits<float>::quiet_NaN();
+                baseCloud->points[ pointIdxRadiusSearch[j] ].y = std::numeric_limits<float>::quiet_NaN();
+                baseCloud->points[ pointIdxRadiusSearch[j] ].z = std::numeric_limits<float>::quiet_NaN();
+            }
+        }
+    } // END FOR
+
+    std::cout<<"Shape has been removed!"<<std::endl;
+    std::cout << "[VISION] Number of points in SR function after removal of inliers:  "<<baseCloud->points.size()<<std::endl;
+
+    return baseCloud;
+
+}
 
 /*
  * This function transforms a point cloud (in this case in pan/tilt unit camera coordinate) to the world coordinate system
@@ -489,6 +540,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeCluster(pcl::PointCloud
   }
   return targetPC;
 }
+
+
 
 octomath::Vector3 am_pointcloud::getSensorOriginScene (int cameraType)
 {

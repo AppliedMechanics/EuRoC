@@ -11,6 +11,8 @@
 #include <ampointcloud.h>
 #include <am_msgs/TakeImage.h>
 #include <am_msgs/CheckZones.h>
+#include <am_msgs/ObjState.h>
+#include <std_srvs/Empty.h>
 #include <shape_generator.cpp>
 
 // Octomap includes
@@ -78,6 +80,8 @@ private:
 	int task_nr; // store parameter from active_task_number
 
 	ros::Time finalTimeStamp;
+	ros::Time tic;
+	ros::Time tac;
 
 	// Constants
 	static const int CAM_TCP = 0;
@@ -95,9 +99,11 @@ private:
 	bool same_color_problem; //two objects which are in same color
 	double cylinder_radius;
 	double cylinder_length;
-	std::vector<float>trouble_object_cube_size_vector;
+	std::vector<double>trouble_object_cube_size_vector;
 	std::vector<double>trouble_object_orientation_vector;
-	std::vector<float>trouble_object_position_vector;
+	std::vector<double>trouble_object_position_vector;
+	std::vector<double>puzzle_fixture_position_vector;
+	std::vector<double>puzzle_fixture_orientation_vector;
 
 	// topic and service names
 	std::string euroc_c2_interface;
@@ -119,32 +125,35 @@ private:
 	Mat thresholdCyan;
 	Mat thresholdMagenta;
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalTcpPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalBluePC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalGreenPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalRedPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalTcpPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalBluePC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalGreenPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalRedPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalYellowPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalCyanPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalMagentaPC;
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedBluePC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedGreenPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedRedPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedYellowPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedBluePC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedGreenPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedRedPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedYellowPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedCyanPC;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr finalVoxelizedMagentaPC;
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr object_model;
 
-        // size of voxels
-        float leaf_size;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr lastShapeToRemovePC;
 
-        tf::Quaternion tfqt;
-        tf::Quaternion tfqtNew;
-        Eigen::Matrix4f transformation;
+	// size of voxels
+	float leaf_size;
+	float small_leaf_size;
+
+	tf::Quaternion tfqt;
+	tf::Quaternion tfqtNew;
+	Eigen::Matrix4f transformation;
 
 	bool isSingleCube; // verifies whether the current object is a single cube
 	bool is_task5;
@@ -154,6 +163,7 @@ protected:
 	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res);
 	void scan_with_tcp(am_msgs::TakeImage::Response &res);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
+	Eigen::Matrix4f fast_cube_alignment(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	double close_range_pose(string);
 	void sort_corners(std::vector<cv::Point2f>&);
 	std::vector<int> find_perpendicular_lines(std::vector<cv::Vec4i>&);
@@ -162,9 +172,10 @@ protected:
 	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
 	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
-	//bool search_for_object_on_zone_initial(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
-	std::vector<pcl::PointIndices> find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
+	pcl::PointCloud<pcl::PointXYZ >::Ptr find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
 	float get_shape_length(const am_msgs::VisionGoal::ConstPtr &);
+	bool compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	pcl::PointCloud<pcl::PointXYZ >::Ptr get_task6_cloud();
 	bool master_reset();
 
 public:
@@ -180,12 +191,17 @@ public:
 	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
 	bool on_take_image_CB(am_msgs::TakeImage::Request &, am_msgs::TakeImage::Response &);
 	bool on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res);
+	void get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg);
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creater(bool);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(
-	pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input,bool box, bool cylinder);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input,bool box, bool cylinder);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, bool, bool, bool);
 	bool same_colored_objects(const am_msgs::VisionGoal::ConstPtr &);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle_fixture();
+	void fake_puzzle_fixture_param();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr removeInliers(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input);
+
 	//void Vision::Octomap_Update(OcTree* tree);
 
 	// create messages that are used to published feedback/result
@@ -194,8 +210,12 @@ public:
 
 	ros::ServiceServer take_img_service_;
 	ros::ServiceServer check_zones_service_;
+	ros::ServiceClient reset_octomap_client_;
 
 	bool failed;
+	//alignemt was successfull
+	bool obj_aligned_;
+	bool isFinalClusterEmpty;
 
 	cv_bridge::CvImagePtr _cv_image;
 	cv_bridge::CvImagePtr _cv_depthptr;
@@ -211,6 +231,8 @@ public:
 	ros::Subscriber camera_scene_depth_subscriber;
 	ros::Subscriber camera_tcp_rgb_subscriber;
 	ros::Subscriber camera_tcp_depth_subscriber;
+	// object state message subscriber
+	ros::Subscriber obj_state_sub_;
 
 	ros::Publisher pub;
 	ros::Publisher pub_2;
@@ -220,9 +242,6 @@ public:
 	// You can change resolution here
 	octomap::OcTree* tree;
 	octomap::Pointcloud* OctoCloud;
-
-	//alignemt was successfull
-	bool obj_aligned_;
 };
 
 #endif //VISION_HPP__

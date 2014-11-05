@@ -62,6 +62,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	static pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>);
+	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	octomath::Vector3 getSensorOriginScene (int cameraType);
 
 
