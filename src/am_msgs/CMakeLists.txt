@@ -60,6 +60,7 @@ add_message_files(
   Camera.msg
   Sensor.msg
   ConveyorBelt.msg
+  PushPose.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -75,6 +76,7 @@ add_service_files(
   AttachObject.srv
   DetachObject.srv
   CheckZones.srv
+  TactilePlace.srv
 )
 
 ## Generate actions in the 'action' folder

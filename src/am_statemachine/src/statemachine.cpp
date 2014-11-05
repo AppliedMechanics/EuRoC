@@ -557,7 +557,11 @@ void Statemachine::scheduler_schedule()
 						if (!skip_motion_)
 						{
 							scheduler_grasp_object(EXECUTE_LATER);
-							scheduler_place_object(EXECUTE_LATER);
+							temp_state.sub.one=fsm::SOLVE_TASK;
+							temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.insert(it,temp_state);
+							temp_state.sub.two=fsm::PLACE_OBJECT;
+							temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		    state_queue.insert(++it,temp_state);
+							//scheduler_place_object(EXECUTE_LATER);
 						}
 						else
 						{
@@ -1632,7 +1636,7 @@ void Statemachine::scheduler_error_locate_object_global()
 }
 void Statemachine::scheduler_error_locate_all_objects_global()
 {
-	msg_warn("Statemachine-Errorhandler: pose not found and try next pose");
+	msg_warn("Statemachine-Errorhandler: pose not found and try next object");
 	//try it again with lower precision
 	locate_all_objects_global_state_=RUNNING;
 	reached_active_goal_=true;
