@@ -70,6 +70,10 @@ Statemachine::Statemachine():
 		move_to_target_zone_counter_(0),
 		homing_state_(OPEN),
 		homing_counter_(0),
+		tactile_place_t5_state_(OPEN),
+		tactile_place_t5_counter_(0),
+		push_object_t5_state_(OPEN),
+		push_object_t5_counter_(0),
 		reset_state_(OPEN),
 		reset_counter_(0)
 {
@@ -232,6 +236,7 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 	case fsm::WATCH_SCENE:
 		return "WATCH_SCENE";
 	case fsm::EXPLORE_ENVIRONMENT:
+	{
 		switch(parstate.sub.two)
 		{
 		case fsm::PAUSE:
@@ -250,91 +255,103 @@ std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 			return "EXPLORE_ENVIRONMENT->default";
 		}
 		break;
-		case fsm::SOLVE_TASK:
-			switch(parstate.sub.two)
+	}
+	case fsm::SOLVE_TASK:
+	{
+		switch(parstate.sub.two)
+		{
+		case fsm::PAUSE:
+			return "SOLVE_TASK->PAUSE";
+		case fsm::WAIT:
+			return "SOLVE_TASK->WAIT";
+		case fsm::SCHEDULER:
+			return "SOLVE_TASK->SCHEDULER";
+		case fsm::HOMING:
+			return "SOLVE_TASK->HOMING";
+		case fsm::LOCATE_OBJECT_GLOBAL:
+			return "SOLVE_TASK->LOCATE_OBJECT_GLOBAL";
+		case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
+			return "SOLVE_TASK->LOCATE_ALL_OBJECTS_GLOBAL";
+		case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+			return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
+		case fsm::GET_GRASPING_POSE:
+			return "SOLVE_TASK->GET_GRASPING_POSE";
+		case fsm::GET_GRASPING_POSE_T5:
+			return "SOLVE_TASK->GET_GRASPING_POSET5";
+		case fsm::GET_GRASPING_POSE_T6:
+			return "SOLVE_TASK->GET_GRASPING_POSET6";
+		case fsm::GRIPPER_RELEASE:
+			return "SOLVE_TASK->GRIPPER_RELEASE";
+		case fsm::GRIPPER_CLOSE:
+			return "SOLVE_TASK->GRIPPER_CLOSE";
+		case fsm::MOVE_TO_OBJECT_VISION:
+			return "SOLVE_TASK->MOVE_TO_OBJECT_VISION";
+		case fsm::MOVE_TO_OBJECT_SAFE:
+			return "SOLVE_TASK->MOVE_TO_OBJECT_SAFE";
+		case fsm::MOVE_TO_TARGET_ZONE_VISION:
+			return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_VISION";
+		case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+			return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_SAFE";
+		case fsm::MOVE_TO_OBJECT_T6:
+			return "SOLVE_TASK->MOVE_TO_OBJECT_T6";
+		case fsm::MOVE_TO_TARGET_ZONE_T6:
+			return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_T6";
+		case fsm::CHECK_OBJECT_FINISHED:
+			return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
+		case fsm::CHECK_OBJECT_GRIPPED:
+			return "SOLVE_TASK->CHECK_OBJECT_GRIPPED";
+		case fsm::NEW_OBJECT_T6:
+			return "SOLVE_TASK->NEW_OBJECT_T6";
+		case fsm::GRAB_OBJECT:
+		{
+			switch(parstate.sub.three)
 			{
 			case fsm::PAUSE:
-				return "SOLVE_TASK->PAUSE";
-			case fsm::WAIT:
-				return "SOLVE_TASK->WAIT";
-			case fsm::SCHEDULER:
-				return "SOLVE_TASK->SCHEDULER";
-			case fsm::HOMING:
-				return "SOLVE_TASK->HOMING";
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				return "SOLVE_TASK->LOCATE_OBJECT_GLOBAL";
-			case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
-				return "SOLVE_TASK->LOCATE_ALL_OBJECTS_GLOBAL";
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				return "SOLVE_TASK->LOCATE_OBJECT_CLOSE_RANGE";
-			case fsm::GET_GRASPING_POSE:
-				return "SOLVE_TASK->GET_GRASPING_POSE";
-			case fsm::GET_GRASPING_POSE_T5:
-				return "SOLVE_TASK->GET_GRASPING_POSET5";
-			case fsm::GET_GRASPING_POSE_T6:
-				return "SOLVE_TASK->GET_GRASPING_POSET6";
-			case fsm::GRIPPER_RELEASE:
-				return "SOLVE_TASK->GRIPPER_RELEASE";
+				return "SOLVE_TASK->GRAB_OBJECT->PAUSE";
+			case fsm::MOVE_TO_OBJECT:
+				return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECT";
 			case fsm::GRIPPER_CLOSE:
-				return "SOLVE_TASK->GRIPPER_CLOSE";
-			case fsm::MOVE_TO_OBJECT_VISION:
-				return "SOLVE_TASK->MOVE_TO_OBJECT_VISION";
+				return "SOLVE_TASK->GRAB_OBJECT->GRIPPER_CLOSE";
 			case fsm::MOVE_TO_OBJECT_SAFE:
-				return "SOLVE_TASK->MOVE_TO_OBJECT_SAFE";
-			case fsm::MOVE_TO_TARGET_ZONE_VISION:
-				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_VISION";
-			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
-				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_SAFE";
-			case fsm::MOVE_TO_OBJECT_T6:
-				return "SOLVE_TASK->MOVE_TO_OBJECT_T6";
-			case fsm::MOVE_TO_TARGET_ZONE_T6:
-				return "SOLVE_TASK->MOVE_TO_TARGET_ZONE_T6";
-			case fsm::CHECK_OBJECT_FINISHED:
-				return "SOLVE_TASK->CHECK_OBJECT_FINISHED";
-			case fsm::CHECK_OBJECT_GRIPPED:
-				return "SOLVE_TASK->CHECK_OBJECT_GRIPPED";
-			case fsm::NEW_OBJECT_T6:
-				return "SOLVE_TASK->NEW_OBJECT_T6";
-			case fsm::GRAB_OBJECT:
-				switch(parstate.sub.three)
-				{
-				case fsm::PAUSE:
-					return "SOLVE_TASK->GRAB_OBJECT->PAUSE";
-				case fsm::MOVE_TO_OBJECT:
-					return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECT";
-				case fsm::GRIPPER_CLOSE:
-					return "SOLVE_TASK->GRAB_OBJECT->GRIPPER_CLOSE";
-				case fsm::MOVE_TO_OBJECT_SAFE:
-					return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECTSAFE";
-				default:
-					return "SOLVE_TASK->GRAB_OBJECT->default";
-				}
-				break;
-				case fsm::PLACE_OBJECT:
-					switch(parstate.sub.three)
-					{
-					case fsm::PAUSE:
-						return "SOLVE_TASK->PLACE_OBJECT->PAUSE";
-					case fsm::MOVE_TO_TARGET_ZONE:
-						return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE";
-					case fsm::GRIPPER_RELEASE:
-						return "SOLVE_TASK->PLACE_OBJECT->GRIPPER_RELEASE";
-					case fsm::MOVE_TO_TARGET_ZONE_SAFE:
-						return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE_SAFE";
-					default:
-						return "SOLVE_TASK->PLACE_OBJECT->default";
-					}
-					break;
-					default:
-						return "SOLVE_TASK->default";
+				return "SOLVE_TASK->GRAB_OBJECT->MOVE_TO_OBJECTSAFE";
+			default:
+				return "SOLVE_TASK->GRAB_OBJECT->default";
 			}
-		break;
-		case fsm::STOP_SIM:
-			return "STOP_SIM";
-		case fsm::RESET:
-			return "RESET";
+			break;
+		}
+		case fsm::PLACE_OBJECT:
+		{
+			switch(parstate.sub.three)
+			{
+			case fsm::PAUSE:
+				return "SOLVE_TASK->PLACE_OBJECT->PAUSE";
+			case fsm::MOVE_TO_TARGET_ZONE:
+				return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE";
+			case fsm::GRIPPER_RELEASE:
+				return "SOLVE_TASK->PLACE_OBJECT->GRIPPER_RELEASE";
+			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+				return "SOLVE_TASK->PLACE_OBJECT->MOVE_TO_TARGET_ZONE_SAFE";
+			case fsm::TACTILE_PLACE_T5:
+				return "SOLVE_TASK->PLACE_OBJECT->TACTILE_PLACE_T5";
+			case fsm::PUSH_OBJECT_T5:
+				return "SOLVE_TASK->PLACE_OBJECT->PUSH_OBJECT_T5";
+			default:
+				return "SOLVE_TASK->PLACE_OBJECT->default";
+			}
+			break;
+		} //case fsm::PLACE_OBJECT:
 		default:
-			return "default";
+			return "SOLVE_TASK->default";
+		}
+		break;
+	} //case fsm::SOLVE_TASK:
+
+	case fsm::STOP_SIM:
+		return "STOP_SIM";
+	case fsm::RESET:
+		return "RESET";
+	default:
+		return "default";
 	}
 }
 
@@ -473,6 +490,7 @@ void Statemachine::scheduler_schedule()
 		}
 		break;
 	case fsm::EXPLORE_ENVIRONMENT:
+	{
 		switch(state_.sub.two)
 		{
 		case fsm::HOMING:
@@ -484,7 +502,7 @@ void Statemachine::scheduler_schedule()
 		case fsm::EXPLORE_ENVIRONMENT_INIT:
 			if(explore_environment_init_state_==FINISHEDWITHERROR)	//something went wrong
 			{
-				msg_error("Error in explore environment init -> skipping exploration");
+				msg_error("Statemachine-Errorhandler: error in explore environment init -> skipping exploration");
 				explore_environment_init_state_=OPEN;
 
 				//skip explore environment:
@@ -508,149 +526,249 @@ void Statemachine::scheduler_schedule()
 		case fsm::EXPLORE_ENVIRONMENT_CHECK:
 			if(explore_environment_check_state_==FINISHEDWITHERROR)
 			{
-				msg_warn("error in explore_environment_check()");
+				msg_warn("Statemachine-Errorhandler: error in explore_environment_check(), just continuing...");
 			}
 			break;
 		default:
 			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
 		}
 		break;
-		case fsm::SOLVE_TASK:
-			switch(state_.sub.two)
+	}
+	case fsm::SOLVE_TASK:
+	{
+		switch(state_.sub.two)
+		{
+		case fsm::SCHEDULER:
+			if(ein_->all_finished()) //stop simulation, when all objects finished
 			{
-			case fsm::SCHEDULER:
-				if(ein_->all_finished()) //stop simulation, when all objects finished
-				{
-					//temp_state.sub.one=fsm::PAUSE;								state_queue.push_back(temp_state);
-					temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
-				}
-				else	//otherwise start with next object
-				{
-					//Get first object
-					scheduler_next_object();
+				//temp_state.sub.one=fsm::PAUSE;						state_queue.push_back(temp_state);
+				temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
+			}
+			else	//otherwise start with next object
+			{
+				//Get first object
+				scheduler_next_object();
 
-					//Following code can be modified according to specific object-properties
-					temp_state.sub.one=fsm::SOLVE_TASK;
-					if(pause_in_loop_==true)
+				//Following code can be modified according to specific object-properties
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				if(pause_in_loop_==true)
+				{
+					temp_state.sub.two=fsm::PAUSE;					    state_queue.push_back(temp_state);
+				}
+				if(active_task_number_<=4)
+				{
+					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::GET_GRASPING_POSE;          state_queue.push_back(temp_state);
+					if (!skip_motion_)
 					{
-						temp_state.sub.two=fsm::PAUSE;					    state_queue.push_back(temp_state);
+						scheduler_grasp_object(EXECUTE_LATER);
+						scheduler_place_object(EXECUTE_LATER);
 					}
-					if(active_task_number_<=4)
+					else
 					{
-						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::GET_GRASPING_POSE;          state_queue.push_back(temp_state);
-						if (!skip_motion_)
-						{
-							scheduler_grasp_object(EXECUTE_LATER);
-							scheduler_place_object(EXECUTE_LATER);
-						}
-						else
-						{
-							ein_->set_active_object_finished();
-							scheduler_next_object();
-						}
+						ein_->set_active_object_finished();
+						scheduler_next_object();
 					}
-					else if(active_task_number_==5)
+				}
+				else if(active_task_number_==5)
+				{
+					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;       state_queue.push_back(temp_state);
+					if (!skip_motion_)
 					{
-						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;       state_queue.push_back(temp_state);
-						if (!skip_motion_)
-						{
-							scheduler_grasp_object(EXECUTE_LATER);
-							temp_state.sub.one=fsm::SOLVE_TASK;
-							temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.insert(it,temp_state);
-							temp_state.sub.two=fsm::PLACE_OBJECT;
-							temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		    state_queue.insert(++it,temp_state);
-							//scheduler_place_object(EXECUTE_LATER);
-						}
-						else
-						{
-							ein_->set_active_object_finished();
-							scheduler_next_object();
-						}
+						scheduler_grasp_object(EXECUTE_LATER);
+
+						temp_state.sub.one=fsm::SOLVE_TASK;
+						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_SAFE;		state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::PLACE_OBJECT;
+						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE;		    state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::GRIPPER_RELEASE;			    state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	    state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::PUSH_OBJECT_T5; 				state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	    state_queue.push_back(temp_state);
+						temp_state.sub.three=fsm::PUSH_OBJECT_T5; 				state_queue.push_back(temp_state);
 					}
-					else //task_number 6
+					else
 					{
-						temp_state.sub.two=fsm::WAIT;						state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_T6;  	state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
-						temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
+						ein_->set_active_object_finished();
+						scheduler_next_object();
 					}
-					temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 				}
-				scheduler_printqueue(); //print queue to console for debugging purposes
-				break;
+				else //task_number 6
+				{
+					temp_state.sub.two=fsm::WAIT;						state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_T6;  	state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
+				}
+				temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
+			}
+			scheduler_printqueue(); //print queue to console for debugging purposes
+			break;
 
-			case fsm::PAUSE:
-				if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
-				{
-					state_queue.clear();	//throw plan away
-					temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
-					pause_state_=FINISHED;
-				}
-				break;
+		case fsm::PAUSE:
+			if(pause_state_==FINISHEDWITHERROR)	//user wants to exit
+			{
+				state_queue.clear();	//throw plan away
+				temp_state.sub.one=fsm::STOP_SIM;						state_queue.push_back(temp_state);
+				pause_state_=FINISHED;
+			}
+			break;
 
-			case fsm::HOMING:
-				if(homing_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_homing();
-				}
-				break;
+		case fsm::HOMING:
+			if(homing_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_homing();
+			}
+			break;
 
-			case fsm::LOCATE_OBJECT_GLOBAL:
-				if(locate_object_global_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_locate_object_global();
-				}
-				break;
+		case fsm::LOCATE_OBJECT_GLOBAL:
+			if(locate_object_global_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_locate_object_global();
+			}
+			break;
 
-			case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
-				if(locate_all_objects_global_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_locate_all_objects_global();
-				}
-				break;
+		case fsm::LOCATE_ALL_OBJECTS_GLOBAL:
+			if(locate_all_objects_global_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_locate_all_objects_global();
+			}
+			break;
 
-			case fsm::GET_GRASPING_POSE:
-				if(get_grasping_pose_state_==FINISHEDWITHERROR)
+		case fsm::GET_GRASPING_POSE:
+			if(get_grasping_pose_state_==FINISHEDWITHERROR)
+			{
+				//just skip that object
+				ROS_INFO("Statemachine-Errorhandler: skipping object");
+				get_grasping_pose_state_=OPEN;
+				scheduler_skip_object();
+			}
+			break;
+		case fsm::GET_GRASPING_POSE_T5:
+			if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
+			{
+				//just start the state again
+				ROS_INFO("Statemachine-Errorhandler: skipping object");
+				get_grasping_poseT5_state_=OPEN;
+				scheduler_skip_object();
+			}
+			break;
+		case fsm::GET_GRASPING_POSE_T6:
+			if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
+			{
+				//just start the state again
+				ROS_INFO("Statemachine-Errorhandler: skipping object");
+				get_grasping_poseT6_state_=OPEN;
+				scheduler_skip_object();
+			}
+			break;
+		case fsm::GRIPPER_RELEASE:
+			if(gripper_release_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_gripper_release();
+			}
+			if(set_object_load_state_==FINISHEDWITHERROR)
+			{
+				//just start the state again
+				ROS_INFO("Statemachine-Errorhandler: restarting state");
+				set_object_load_state_=OPEN;
+			}
+			break;
+		case fsm::GRIPPER_CLOSE:
+			if(gripper_close_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_gripper_close();
+			}
+			if(set_object_load_state_==FINISHEDWITHERROR)
+			{
+				//just start the state again
+				ROS_INFO("Statemachine-Errorhandler: restarting state");
+				set_object_load_state_=OPEN;
+			}
+			break;
+
+		case fsm::MOVE_TO_OBJECT_VISION:
+			if(move_to_object_vision_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_move_to_object_vision();
+			}
+			break;
+
+		case fsm::MOVE_TO_OBJECT_SAFE:
+			if(move_to_object_safe_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_move_to_object_safe();
+			}
+			break;
+
+		case fsm::MOVE_TO_OBJECT_T6:
+			if(move_to_object_t6_state_==FINISHEDWITHERROR)
+			{
+				msg_warn("move_to_object_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
+				move_to_object_t6_state_=FINISHED;
+			}
+			break;
+
+		case fsm::MOVE_TO_TARGET_ZONE_T6:
+			if(move_to_target_zone_t6_state_==FINISHEDWITHERROR)
+			{
+				msg_warn("move_to_target_zone_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
+				move_to_target_zone_t6_state_=FINISHED;
+			}
+			break;
+
+		case fsm::MOVE_TO_TARGET_ZONE_VISION:
+			if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_move_to_target_zone_vision();
+			}
+			break;
+		case fsm::MOVE_TO_TARGET_ZONE_SAFE:
+			if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_move_to_target_zone_safe();
+			}
+			break;
+		case fsm::CHECK_OBJECT_FINISHED:
+			if(check_object_finished_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_check_object_finished();
+			}
+			break;
+		case fsm::LOCATE_OBJECT_CLOSE_RANGE:
+			if(locate_object_close_range_state_==FINISHEDWITHERROR)
+			{
+				//-----------------------
+				ROS_INFO("Statemachine-Errorhandler: skipping this state...");
+				locate_object_close_range_state_ =FINISHED;
+				//-----------------------
+			}
+			break;
+		case fsm::CHECK_OBJECT_GRIPPED:
+			if(check_object_gripped_state_==FINISHEDWITHERROR)
+			{
+				scheduler_error_check_object_gripped();
+			}
+			break;
+		case fsm::NEW_OBJECT_T6:
+			if(new_object_t6_state_==FINISHEDWITHERROR)
+			{
+				msg_warn("Statemachine-Errorhandler: failed to call request object -> retry");
+				new_object_t6_state_=OPEN;
+			}
+			break;
+		case fsm::GRAB_OBJECT:
+		{
+			switch(state_.sub.three)
+			{
+			case fsm::MOVE_TO_OBJECT:
+				if(move_to_object_state_==FINISHEDWITHERROR)
 				{
-					//just skip that object
-					ROS_INFO("Statemachine-Errorhandler: skipping object");
-					get_grasping_pose_state_=OPEN;
-					scheduler_skip_object();
-				}
-				break;
-			case fsm::GET_GRASPING_POSE_T5:
-				if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: skipping object");
-					get_grasping_poseT5_state_=OPEN;
-					scheduler_skip_object();
-				}
-				break;
-			case fsm::GET_GRASPING_POSE_T6:
-				if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: skipping object");
-					get_grasping_poseT6_state_=OPEN;
-					scheduler_skip_object();
-				}
-				break;
-			case fsm::GRIPPER_RELEASE:
-				if(gripper_release_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_gripper_release();
-				}
-				if(set_object_load_state_==FINISHEDWITHERROR)
-				{
-					//just start the state again
-					ROS_INFO("Statemachine-Errorhandler: restarting state");
-					set_object_load_state_=OPEN;
+					scheduler_error_move_to_object();
 				}
 				break;
 			case fsm::GRIPPER_CLOSE:
@@ -665,41 +783,38 @@ void Statemachine::scheduler_schedule()
 					set_object_load_state_=OPEN;
 				}
 				break;
-
-			case fsm::MOVE_TO_OBJECT_VISION:
-				if(move_to_object_vision_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_move_to_object_vision();
-				}
-				break;
-
 			case fsm::MOVE_TO_OBJECT_SAFE:
 				if(move_to_object_safe_state_==FINISHEDWITHERROR)
 				{
 					scheduler_error_move_to_object_safe();
 				}
 				break;
+			default:
+				ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+			}
+			break;
+		} //case fsm::GRAB_OBJECT
 
-			case fsm::MOVE_TO_OBJECT_T6:
-				if(move_to_object_t6_state_==FINISHEDWITHERROR)
+		case fsm::PLACE_OBJECT:
+		{
+			switch(state_.sub.three)
+			{
+			case fsm::MOVE_TO_TARGET_ZONE:
+				if(move_to_target_zone_state_==FINISHEDWITHERROR)
 				{
-					msg_warn("move_to_object_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
-					move_to_object_t6_state_=FINISHED;
+					scheduler_error_move_to_target_zone();
 				}
 				break;
-
-			case fsm::MOVE_TO_TARGET_ZONE_T6:
-				if(move_to_target_zone_t6_state_==FINISHEDWITHERROR)
+			case fsm::GRIPPER_RELEASE:
+				if(gripper_release_state_==FINISHEDWITHERROR)
 				{
-					msg_warn("move_to_target_zone_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
-					move_to_target_zone_t6_state_=FINISHED;
+					scheduler_error_gripper_release();
 				}
-				break;
-
-			case fsm::MOVE_TO_TARGET_ZONE_VISION:
-				if(move_to_target_zone_vision_state_==FINISHEDWITHERROR)
+				if(set_object_load_state_==FINISHEDWITHERROR)
 				{
-					scheduler_error_move_to_target_zone_vision();
+					//just start the state again
+					ROS_INFO("Statemachine-Errorhandler: restarting state");
+					set_object_load_state_=OPEN;
 				}
 				break;
 			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
@@ -708,110 +823,34 @@ void Statemachine::scheduler_schedule()
 					scheduler_error_move_to_target_zone_safe();
 				}
 				break;
-			case fsm::CHECK_OBJECT_FINISHED:
-				if(check_object_finished_state_==FINISHEDWITHERROR)
+			case fsm::TACTILE_PLACE_T5:
+				if(tactile_place_t5_state_==FINISHEDWITHERROR)
 				{
-					scheduler_error_check_object_finished();
+					msg_warn("tactile_place_t5_state_==FINISHEDWITHERROR ->IMPLEMENT_ME");
+					tactile_place_t5_state_=FINISHED;
 				}
-				break;
-			case fsm::LOCATE_OBJECT_CLOSE_RANGE:
-				if(locate_object_close_range_state_==FINISHEDWITHERROR)
+			case fsm::PUSH_OBJECT_T5:
+				if(push_object_t5_state_==FINISHEDWITHERROR)
 				{
-					//-----------------------
-					ROS_INFO("Statemachine-Errorhandler: skipping this state...");
-					locate_object_close_range_state_ =FINISHED;
-					//-----------------------
+					msg_warn("push_object_t5_state_==FINISHEDWITHERROR ->IMPLEMENT_ME");
+					push_object_t5_state_=FINISHED;
 				}
-				break;
-			case fsm::CHECK_OBJECT_GRIPPED:
-				if(check_object_gripped_state_==FINISHEDWITHERROR)
-				{
-					scheduler_error_check_object_gripped();
-				}
-				break;
-			case fsm::NEW_OBJECT_T6:
-				if(new_object_t6_state_==FINISHEDWITHERROR)
-				{
-					msg_warn("Statemachine-Errorhandler: failed to call request object -> retry");
-					new_object_t6_state_=OPEN;
-				}
-				break;
-			case fsm::GRAB_OBJECT:
-			{
-				switch(state_.sub.three)
-				{
-				case fsm::MOVE_TO_OBJECT:
-					if(move_to_object_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_move_to_object();
-					}
-					break;
-				case fsm::GRIPPER_CLOSE:
-					if(gripper_close_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_gripper_close();
-					}
-					if(set_object_load_state_==FINISHEDWITHERROR)
-					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						set_object_load_state_=OPEN;
-					}
-					break;
-				case fsm::MOVE_TO_OBJECT_SAFE:
-					if(move_to_object_safe_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_move_to_object_safe();
-					}
-					break;
-				default:
-					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-				}
-				break;
-			} //case fsm::GRAB_OBJECT
-
-			case fsm::PLACE_OBJECT:
-			{
-				switch(state_.sub.three)
-				{
-				case fsm::MOVE_TO_TARGET_ZONE:
-					if(move_to_target_zone_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_move_to_target_zone();
-					}
-					break;
-				case fsm::GRIPPER_RELEASE:
-					if(gripper_release_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_gripper_release();
-					}
-					if(set_object_load_state_==FINISHEDWITHERROR)
-					{
-						//just start the state again
-						ROS_INFO("Statemachine-Errorhandler: restarting state");
-						set_object_load_state_=OPEN;
-					}
-					break;
-				case fsm::MOVE_TO_TARGET_ZONE_SAFE:
-					if(move_to_target_zone_safe_state_==FINISHEDWITHERROR)
-					{
-						scheduler_error_move_to_target_zone_safe();
-					}
-					break;
-				default:
-					ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-				}
-				break;
-			}//case fsm::PLACE_OBJECT
-
 			default:
 				ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
-
 			}
-		break;
+			break;
+		}//case fsm::PLACE_OBJECT
+
 		default:
 			ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+
+		}
+		break;
 	}
+
+	default:
+		ROS_INFO("Scheduler: Don't know what to do! (%s)",get_state_name(state_).c_str()); break;
+	} //switch(state.sub.one)
 }
 
 void Statemachine::scheduler_printqueue()
@@ -920,9 +959,9 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::GRAB_OBJECT;
-		temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.insert(++it,temp_state);
-		temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.insert(++it,temp_state);
-		temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_OBJECT;				state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::GRIPPER_CLOSE;				state_queue.insert(++it,temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.insert(++it,temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.insert(++it,temp_state);
 	}
 	else
@@ -933,9 +972,9 @@ void Statemachine::scheduler_grasp_object(bool start)
 		temp_state.sub.two=fsm::LOCATE_OBJECT_CLOSE_RANGE;		state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::GRAB_OBJECT;
-		temp_state.sub.three=fsm::MOVE_TO_OBJECT;			state_queue.push_back(temp_state);
-		temp_state.sub.three=fsm::GRIPPER_CLOSE;			state_queue.push_back(temp_state);
-		temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;		state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_OBJECT;				state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::GRIPPER_CLOSE;				state_queue.push_back(temp_state);
+		temp_state.sub.three=fsm::MOVE_TO_OBJECT_SAFE;			state_queue.push_back(temp_state);
 		temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;			state_queue.push_back(temp_state);
 	}
 }
@@ -1010,6 +1049,24 @@ void Statemachine::scheduler_error_homing()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		homing_state_=FINISHED;
@@ -1034,8 +1091,6 @@ void Statemachine::scheduler_error_move_to_object_vision()
 			scheduler_next();
 			//skip locate object close range
 			scheduler_next();
-			//skip get grasping pose
-			scheduler_next();
 		}
 		break;
 
@@ -1055,8 +1110,6 @@ void Statemachine::scheduler_error_move_to_object_vision()
 			selected_object_pose_=0;
 			scheduler_next();
 			//skip locate object close range
-			scheduler_next();
-			//skip get grasping pose
 			scheduler_next();
 		}
 		break;
@@ -1078,10 +1131,28 @@ void Statemachine::scheduler_error_move_to_object_vision()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_object_vision_state_=FINISHED;
-
 		break;
 	}
 }
@@ -1137,6 +1208,24 @@ void Statemachine::scheduler_error_move_to_object_safe()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_object_safe_state_=FINISHED;
@@ -1165,24 +1254,6 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 		}
 		break;
 
-//	case fsm::NO_IK_SOL:
-//		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-//
-//		if(selected_target_pose_ < target_vision_pose.size()-1)
-//		{
-//			move_to_target_zone_vision_state_=OPEN;
-//			selected_target_pose_++;
-//		}
-//		else
-//		{
-//			//skip vision pose
-//			move_to_target_zone_vision_state_=OPEN;
-//			//skip final vision check
-//			check_object_finished_state_=FINISHED;
-//			scheduler_next();
-//		}
-//		break;
-
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_target_zone_vision_state_=OPEN;
 		msg_error("IMPLEMENT ME!!!!!!!!");
@@ -1200,6 +1271,24 @@ void Statemachine::scheduler_error_move_to_target_zone_vision()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_target_zone_vision_state_=FINISHED;
@@ -1258,6 +1347,24 @@ void Statemachine::scheduler_error_move_to_target_zone_safe()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_target_zone_safe_state_=FINISHED;
@@ -1284,21 +1391,6 @@ void Statemachine::scheduler_error_move_to_object()
 		}
 		break;
 
-//	case fsm::NO_IK_SOL:
-//		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-//
-//		if(selected_object_pose_ < object_vision_pose.size()-1)
-//		{
-//			move_to_object_state_=OPEN;
-//			selected_object_pose_++;
-//		}
-//		else
-//		{
-//			//skip vision pose and try to grasp the object
-//			move_to_object_state_=FINISHED;
-//		}
-//		break;
-
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_object_state_=FINISHED;
 		msg_error("IMPLEMENT ME!!!!!!!!");
@@ -1318,6 +1410,25 @@ void Statemachine::scheduler_error_move_to_object()
 		//try to close the gripper
 		move_to_object_state_=FINISHED;
 		break;
+
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		move_to_object_state_=FINISHED;
@@ -1373,6 +1484,23 @@ void Statemachine::scheduler_error_move_to_target_zone()
 			speed_mod_+=0.33;
 		else
 			move_to_target_zone_state_=FINISHED;
+		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
 		break;
 
 	default:
@@ -1568,6 +1696,24 @@ void Statemachine::scheduler_error_explore_environment_motion()
 		else
 			speed_mod_= 0.8;
 		break;
+
+	case fsm::SIM_SRV_NA:
+		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
+		explore_environment_motion_state_=OPEN;
+		break;
+	case fsm::RESTART_SIM:
+		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
+		explore_environment_motion_state_=OPEN;
+
+		state_queue.clear();
+		fsm::fsm_state_t temp_state;
+		//insert stop sim:
+		temp_state.sub.one=fsm::STOP_SIM;
+		state_queue.push_back(temp_state);
+
+		scheduler_next();
+		break;
+
 	default:
 		msg_error("Statemachine Errorhandler: Unknown error!");
 		explore_environment_motion_state_=FINISHED;
@@ -1815,6 +1961,12 @@ int Statemachine::tick()
 
 			case fsm::MOVE_TO_TARGET_ZONE_SAFE:
 				return move_to_target_zone_safe();
+
+			case fsm::TACTILE_PLACE_T5:
+				return tactile_place_t5();
+
+			case fsm::PUSH_OBJECT_T5:
+				return push_object_t5();
 
 			default:
 				msg_error("Error. unknown state of level three (SOLVE_TASK->PLACE_OBJECT) in tick()");
@@ -2614,11 +2766,7 @@ int Statemachine::stop_sim()
 
 		//==============================================
 		//Don't call scheduler_next()! The state has to be set manually to be able to quit in any situation.
-#ifndef ONE_TASK
 		state_.sub.one = fsm::FINISHED;
-#else
-		scheduler_next();
-#endif
 		//==============================================
 		//reset state
 		stop_sim_state_=OPEN;
@@ -2929,6 +3077,7 @@ int Statemachine::explore_environment_check()
 		else
 			test=check_zones_srv_.response.zones_occupied;
 
+		//build up object queue in EurocInput
 		int16_t ret=ein_->sort_objects(test);
 		if(ret==-1)
 		{
@@ -5188,6 +5337,153 @@ void Statemachine::homing_done(const actionlib::SimpleClientGoalState& state,
 	}
 }
 
+//tactile place
+void Statemachine::tactile_place_t5_cb()
+{
+	ROS_INFO("tactile_place_t5_cb() running");
+
+//	if(save_log_client_.exists())
+//	{
+//		if(!save_log_client_.call(save_log_srv_))
+//		{
+//			msg_error("Error. call of save_log_client_ failed");
+//			tactile_place_t5_state_=FINISHEDWITHERROR;
+//		}
+//	}
+//	else
+//	{
+//		msg_error("Error. tactile_place_t5_client is not available");
+//		tactile_place_t5_state_=FINISHEDWITHERROR;
+//	}
+
+	tactile_place_t5_state_=FINISHED;
+	ROS_INFO("tactile_place_t5_cb() finished");
+}
+
+int Statemachine::tactile_place_t5()
+{
+	if(tactile_place_t5_state_==OPEN)
+	{
+		ROS_INFO("tactile_place_t5() called: OPEN");
+
+		tactile_place_t5_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::tactile_place_t5_cb,this);
+	}
+	else if(tactile_place_t5_state_==FINISHED)
+	{
+		ROS_INFO("tactile_place_t5() called: FINISHED");
+
+		lsc_.detach();
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		tactile_place_t5_state_=OPEN;
+	}
+	return 0;
+}
+
+int Statemachine::push_object_t5()
+{
+	if(push_object_t5_state_==OPEN)
+	{
+		ROS_INFO("push_object_t5() called: OPEN");
+
+		//send goals to motion-planning
+		active_goal_=0;
+		nr_goals_=3;
+		reached_active_goal_=false;
+		goal_queue.resize(nr_goals_);
+
+//		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+//		goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
+//		goal_queue[0].planning_frame = GP_TCP;
+//		goal_queue[0].inter_steps = 0;
+//		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+//		goal_queue[0].allowed_time = 60.0;
+//		goal_queue[1].goal_pose.position.x = ...
+
+		//send first goal
+		move_to_object_vision_state_=RUNNING;
+		motion_planning_action_client_->sendGoal(goal_queue[0],
+				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
+				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+		);
+	}
+	else if (push_object_t5_state_==RUNNING && reached_active_goal_==true)
+	{
+		reached_active_goal_=false;
+		active_goal_++;
+
+		if(active_goal_==nr_goals_)
+		{
+			push_object_t5_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("push_object_t5() called: RUNNING (remaining goals)");
+		}
+
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
+				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
+				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+		);
+	}
+	else if(push_object_t5_state_==FINISHED)
+	{
+		ROS_INFO("push_object_t5() called: FINISHED");
+
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		push_object_t5_state_=OPEN;
+		push_object_t5_counter_=0;
+	}
+	else if(push_object_t5_state_==FINISHEDWITHERROR)
+	{
+		ROS_INFO("push_object_t5() called: FINISHEDWITHERROR");
+		state_.sub.event_three = motion_planning_result_.error_reason;
+		scheduler_schedule(); //Call for Error-Handling
+	}
+	return 0;
+}
+
+void Statemachine::push_object_t5_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback)
+{
+	ROS_INFO("push_object_t5_feedback() called");
+}
+
+void Statemachine::push_object_t5_done(const actionlib::SimpleClientGoalState& state,
+		const am_msgs::goalPoseResultConstPtr& result)
+{
+	ROS_INFO("push_object_t5_done() called, state: %s",state.toString().c_str());
+
+	switch(state.state_)
+	{
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		reached_active_goal_=true;
+		break;
+	case actionlib::SimpleClientGoalState::ACTIVE:
+	case actionlib::SimpleClientGoalState::PENDING:
+	case actionlib::SimpleClientGoalState::RECALLED:
+		break;
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::PREEMPTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+		push_object_t5_state_=FINISHEDWITHERROR;
+		motion_planning_result_ = *result;
+		break;
+	default:
+		break;
+	}
+}
+
 void Statemachine::publish_obj_state(uint16_t state)
 {
 	obj_state_msg_.obj_index=ein_->get_active_object_idx();
@@ -5334,6 +5630,10 @@ int Statemachine::reset()
 		homing_state_=OPEN;
 		homing_counter_=0;
 		wait_counter_=0;
+		tactile_place_t5_state_=OPEN;
+		tactile_place_t5_counter_=0;
+		push_object_t5_state_=OPEN;
+		push_object_t5_counter_=0;
 
 		ein_->reset();
 		lsc_.detach();

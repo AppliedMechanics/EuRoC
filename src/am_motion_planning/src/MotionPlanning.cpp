@@ -1843,6 +1843,7 @@ void MotionPlanning::moveToTargetCB()
 		{
 			mtt_=FINISHEDWITHERROR;
 			msg_error("%s", move_along_joint_path_srv_.response.error_message.c_str());
+			goalPose_result_.error_reason = fsm::RESTART_SIM;
 			return;
 		}
 		else

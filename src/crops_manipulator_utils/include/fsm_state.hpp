@@ -58,6 +58,8 @@ typedef enum {
 	CHECK_OBJECT_GRIPPED,
 	PAUSE,
 	NEW_OBJECT_T6,
+	TACTILE_PLACE_T5,
+	PUSH_OBJECT_T5,
 
 	//events
 	NOP,
@@ -72,6 +74,7 @@ typedef enum {
 	NO_DK_SOL,
 	MAX_LIMIT_REACHED,
 	STOP_COND,
+	RESTART_SIM, //needs to be tested -> restart sim necessary due to emergency stop
 
 	//gripper error events:
 	GRIPPING_ERROR,

@@ -539,6 +539,23 @@ private:
 	uint8_t homing_state_;
 	uint8_t homing_counter_;
 
+	//!push object for task 5 function
+	int tactile_place_t5();
+	//!callback for tactile_place_t5
+	void tactile_place_t5_cb();
+	//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t tactile_place_t5_state_;
+	uint8_t tactile_place_t5_counter_;
+
+	//!push object for task 5 function
+	int push_object_t5();
+	//!callbacks for push_object_t5
+	void push_object_t5_done(const actionlib::SimpleClientGoalState& state,const am_msgs::goalPoseResultConstPtr& result);
+	void push_object_t5_feedback(const am_msgs::goalPoseFeedbackConstPtr feedback);
+	//!state of homing() (OPEN,RUNNING,FINISHED,FINISHEDWITHERRORS)
+	uint8_t push_object_t5_state_;
+	uint8_t push_object_t5_counter_;
+
 
 	//utililty functions:
 	int check_time();
