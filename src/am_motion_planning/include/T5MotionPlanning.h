@@ -16,7 +16,7 @@ public:
 	virtual ~T5MotionPlanning();
 
 private:
-	void executeGoalPoseT5();
+	bool executeGoalPoseT5();
 };
 
 #endif /* T5MOTIONPLANNING_H_ */

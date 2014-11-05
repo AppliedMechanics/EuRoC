@@ -126,10 +126,20 @@ protected:
 
 	//! This function is executed, when a new goal goalPoseAction is received
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
+	bool executeStd();//move along joint path call
 	void getGoalPose_Feedback();
 
-	virtual void executeGoalPoseT5(){msg_error("T5 call in MotioPlanning class. Did you set up the T5MotionPlanning class?");};
-	virtual void executeGoalPoseT6(){msg_error("T6 call in MotioPlanning class. Did you set up the T6MotionPlanning class?");};
+	bool executeGoalPoseStd();// standard implementation of execute goal
+	virtual bool executeGoalPoseT5()
+	{
+		msg_error("T5 call in MotioPlanning class. Did you set up the T5MotionPlanning class?");
+		return false;
+	}
+	virtual bool executeGoalPoseT6()
+	{
+		msg_error("T6 call in MotioPlanning class. Did you set up the T6MotionPlanning class?");
+		return false;
+	}
 
 	void moveToTargetCB();
 

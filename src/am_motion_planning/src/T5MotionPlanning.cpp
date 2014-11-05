@@ -18,9 +18,10 @@ T5MotionPlanning::~T5MotionPlanning() {
 	// TODO Auto-generated destructor stub
 }
 
-void T5MotionPlanning::executeGoalPoseT5()
+bool T5MotionPlanning::executeGoalPoseT5()
 {
 
 	msg_info("Here comes your code T5.");
 
+	return true;
 }
