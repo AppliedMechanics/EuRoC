@@ -17,7 +17,8 @@ EurocInput::EurocInput():
 	nr_sensors(0),
 	place_x_offset(0.06),
 	place_y_offset(0.06),
-	place_z_offset(0.06)
+	place_z_offset(0.06),
+	same_color_counter_(0)
 {
 
 }
@@ -933,6 +934,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 	//ret: -1 -> error happend, ret:0 -> sort successful,continue, ret=1 -> problem with targetzone
 	if(task_nr_==6)
 	{
+		//build a queue with always the same object and target zone
 		obj_queue_t temp_obj;
 		obj_queue_.clear();
 		for(uint16_t ii=0;ii<nr_objects_;ii++)
@@ -963,7 +965,45 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 
 			obj_queue_.push_back(temp_obj);
 		}
-	}
+
+		//check for two objects with the same color
+		for(uint16_t ii=0;ii<(obj_queue_.size())-1;ii++)
+		{
+			std::string col=obj_queue_[ii].data->color;
+			for(uint16_t jj=ii+1;jj<obj_queue_.size();jj++)
+			{
+				if((strcmp(obj_queue_[jj].data->color.c_str(),col.c_str())==0) && (ii!=jj))
+				{
+					ROS_INFO("Objects %s and %s have same color", obj_queue_[ii].data->name.c_str(),
+							obj_queue_[jj].data->name.c_str());
+
+					//find larger object and queue it first
+					if(obj_queue_[jj].data->nr_shapes > obj_queue_[ii].data->nr_shapes)
+					{
+						ROS_INFO("inserting Object %s to locate it first",obj_queue_[jj].data->name.c_str());
+						temp_obj=obj_queue_[jj];
+						same_color_counter_++;
+					}
+					else if(obj_queue_[jj].data->nr_shapes < obj_queue_[ii].data->nr_shapes)
+					{
+						ROS_INFO("inserting Object %s to locate it first",obj_queue_[ii].data->name.c_str());
+						temp_obj=obj_queue_[ii];
+						same_color_counter_++;
+					}
+				}
+			}
+		}
+
+		//return 1 to let statemachine know that an additional locate object global is necessary
+		if(same_color_counter_>0)
+		{
+			obj_queue_.insert(obj_queue_.begin(),temp_obj);
+			return 1;
+		}
+		else
+			return 0;
+
+	} //else if(task_nr==5)
 	else
 	{
 		//copy target zone data
@@ -999,7 +1039,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			}
 		} //for(uint16_t oo=0;oo<nr_objects_;oo++)
 
-		//1. sort objects by type (put handle-bar at the end)
+		//1. sort objects by type (put handle at the end)
 		obj_queue_.clear();
 		obj_queue_t temp_obj;
 		for(unsigned ii=0;ii<nr_objects_;ii++)
@@ -1009,7 +1049,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			temp_obj.action=EIN_PLACE;
 			temp_obj.target_zone_occupied=target_zone_occupied_[ii];
 			temp_obj.target_zone_idx=target_zone_idx_[ii];
-			if(objects_[ii].nr_shapes==1 && task_nr_!= 5)
+			if(objects_[ii].nr_shapes==1)
 			{
 				obj_queue_.insert(obj_queue_.begin(),temp_obj);
 			}
@@ -1022,6 +1062,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		//2. sort objects by target zone state
 		if(nr_occupied<2)
 		{
+			//for one occupied target zone -> move corresponding object to the end
 			for(unsigned ii=0;ii<nr_objects_;ii++)
 			{
 				if(obj_queue_[ii].target_zone_occupied==1)
@@ -1076,7 +1117,6 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			}
 			else
 			{
-				//msg_info("implement me!!");
 				//vector of objects on zones, indizes are stored in a tupel
 				std::vector<std::vector<int16_t> >obj_idx_on_zone_;
 				//def: (obj idx,target zone idx)
@@ -1139,7 +1179,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					}
 				}
 
-				//find objects with one shape (= not handlebar)
+				//find objects with one shape (= not handle)
 				int cnt_1shape=0;
 				int handle_idx=0;
 				for(uint16_t ii=0;ii<obj_idx_on_zone_.size();ii++)
@@ -1151,7 +1191,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					else
 					{
 						handle_idx=obj_idx_on_zone_[ii][0];
-						obj_idx_on_zone_.erase(obj_idx_on_zone_.begin()+ii);
+						//obj_idx_on_zone_.erase(obj_idx_on_zone_.begin()+ii);
 					}
 				}
 
@@ -1259,7 +1299,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 
 void EurocInput::select_new_object()
 {
-	ROS_INFO("Select new object in euroc-input:");
+	//ROS_INFO("Select new object in euroc-input:");
 
 	if(obj_queue_.size()==0)
 	{
@@ -1791,6 +1831,7 @@ void EurocInput::reset()
 	nr_sensors=0;
 	puzzle_target_poses_.clear();
 	puzzle_order_.clear();
+	same_color_counter_=0;
 }
 
 void EurocInput::order_of_puzzle_pieces()

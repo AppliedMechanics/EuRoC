@@ -188,6 +188,9 @@ private:
 	double place_y_offset;
 	double place_z_offset;
 
+public:
+	//!counter for objects with the same color (only for task 5)
+	uint16_t same_color_counter_;
 };
 
 #endif //#define __EUROC_INPUT_HPP__

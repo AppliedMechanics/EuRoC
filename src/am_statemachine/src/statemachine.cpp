@@ -123,7 +123,7 @@ Statemachine::Statemachine():
 
 Statemachine::~Statemachine()
 {
-	ROS_INFO("destructor called");
+	ROS_INFO("Statemachine::~Statemachine called");
 	delete ein_;
 	delete broadcaster_;
 	delete explore_poses_;
@@ -3096,15 +3096,33 @@ int Statemachine::explore_environment_check()
 		}
 		else if(ret==1)
 		{
-			msg_warn("insert locate all objects global in state-queue");
-			fsm::fsm_state_t temp_state;
-			temp_state.sub.one=fsm::SOLVE_TASK;
-			temp_state.sub.two=fsm::LOCATE_ALL_OBJECTS_GLOBAL;
-			state_queue.insert(state_queue.begin(),temp_state);
+			if(active_task_number_<5)
+			{
+				msg_warn("insert locate all objects global in state-queue");
+				fsm::fsm_state_t temp_state;
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::LOCATE_ALL_OBJECTS_GLOBAL;
+				state_queue.insert(state_queue.begin(),temp_state);
 
-			temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
-			temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;
-			state_queue.insert(state_queue.begin()+1,temp_state);
+				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
+				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;
+				state_queue.insert(state_queue.begin()+1,temp_state);
+
+				scheduler_printqueue();
+			}
+			else if(active_task_number_==5)
+			{
+				msg_warn("insert additional locate object in state-queue");
+				fsm::fsm_state_t temp_state;
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;
+				state_queue.insert(state_queue.begin(),temp_state);
+//
+//				temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;
+//				state_queue.insert(state_queue.begin()+1,temp_state);
+
+				scheduler_printqueue();
+			}
 		}
 
 		explore_environment_check_state_=OPEN;

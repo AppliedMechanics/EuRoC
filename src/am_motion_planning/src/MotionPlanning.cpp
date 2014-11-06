@@ -183,7 +183,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		}
 		break;
 	case 5:
-		if ( !executeGoalPoseT5() )
+		if ( !executeGoalPoseStd())//executeGoalPoseT5() )
 		{
 			msg_error("executeGoalPoseT5() failed");
 			return;
