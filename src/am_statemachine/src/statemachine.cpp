@@ -3120,11 +3120,12 @@ int Statemachine::explore_environment_check()
 				temp_state.sub.one=fsm::SOLVE_TASK;
 				temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;
 				state_queue.insert(state_queue.begin(),temp_state);
-//
-//				temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;
-//				state_queue.insert(state_queue.begin()+1,temp_state);
+
+				temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;
+				state_queue.insert(state_queue.begin()+1,temp_state);
 
 				scheduler_printqueue();
+				scheduler_next_object();
 			}
 		}
 
@@ -5438,13 +5439,15 @@ int Statemachine::push_object_t5()
 //		goal_queue[0].allowed_time = 60.0;
 //		goal_queue[1].goal_pose.position.x = ...
 
-		//send first goal
-		move_to_object_vision_state_=RUNNING;
-		motion_planning_action_client_->sendGoal(goal_queue[0],
-				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
-		);
+//		//send first goal
+//		push_object_t5_state_=RUNNING;
+//		motion_planning_action_client_->sendGoal(goal_queue[0],
+//				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
+//				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+//				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+//		);
+
+		push_object_t5_state_=FINISHED;
 	}
 	else if (push_object_t5_state_==RUNNING && reached_active_goal_==true)
 	{

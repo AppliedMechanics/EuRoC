@@ -960,7 +960,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		{
 			temp_obj.action=EIN_PLACE;
 			temp_obj.data=&objects_[puzzle_order_[ii].part_index];
-			temp_obj.obj_idx=ii;//puzzle_order_[ii].part_index;
+			temp_obj.obj_idx=puzzle_order_[ii].part_index;
 			temp_obj.target_zone_idx=0;
 			temp_obj.target_zone_occupied=0;
 
@@ -984,12 +984,14 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 						ROS_INFO("inserting Object %s to locate it first",obj_queue_[jj].data->name.c_str());
 						temp_obj=obj_queue_[jj];
 						same_color_counter_++;
+						break;
 					}
 					else if(obj_queue_[jj].data->nr_shapes < obj_queue_[ii].data->nr_shapes)
 					{
 						ROS_INFO("inserting Object %s to locate it first",obj_queue_[ii].data->name.c_str());
 						temp_obj=obj_queue_[ii];
 						same_color_counter_++;
+						break;
 					}
 				}
 			}
@@ -998,7 +1000,14 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		//return 1 to let statemachine know that an additional locate object global is necessary
 		if(same_color_counter_>0)
 		{
-			obj_queue_.insert(obj_queue_.begin(),temp_obj);
+			temp_obj.action=EIN_PARKING;
+			obj_queue_.insert(obj_queue_.begin(),temp_obj);//print object queue
+			ROS_INFO("Object queue:");
+			for(unsigned ii=0;ii<obj_queue_.size();ii++)
+			{
+				uint16_t obj_idx=obj_queue_[ii].obj_idx;
+				ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
+			}
 			return 1;
 		}
 		else
