@@ -15,10 +15,11 @@ EurocInput::EurocInput():
 	active_zone_(-1),
 	time_limit_(3000),
 	nr_sensors(0),
-	place_x_offset(0.06),
-	place_y_offset(0.06),
+	place_x_offset(0.01),
+	place_y_offset(0.01),
 	place_z_offset(0.06),
-	same_color_counter_(0)
+	same_color_counter_(0),
+    gripper_offset(0.02)
 {
 
 }
@@ -951,7 +952,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 	else if(task_nr_==5)
 	{
 		ROS_INFO("calling order puzzle pieces:");
-		order_of_puzzle_pieces();
+		puzzle_order_of_pieces();
 
 		obj_queue_t temp_obj;
 		obj_queue_.clear();
@@ -1361,9 +1362,9 @@ geometry_msgs::Pose EurocInput::get_active_target_pose()
 	}
 	else
 	{
-	  if(puzzle_target_poses_.size()>obj_queue_[0].obj_idx)
-	  {
-		  geometry_msgs::Pose tmp=puzzle_target_poses_[obj_queue_[0].obj_idx];
+		if(puzzle_target_poses_.size()>puzzle_order_[obj_queue_[0].obj_idx].part_index)//obj_queue_[0].obj_idx)
+		{
+			geometry_msgs::Pose tmp=puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index]; //obj_queue_[0].obj_idx];
 
 		  //add offsets
 		  if(puzzle_order_[obj_queue_[0].obj_idx].push)
@@ -1410,8 +1411,225 @@ geometry_msgs::Pose EurocInput::get_active_target_pose()
 	  else
 	  {
 			msg_error("EurocInput: get_active_target_pose() failed. Index out of range (puzzle_target_poses_).");
-						return empty_Pose;
-	  }
+			return empty_Pose;
+		}
+	}
+}
+
+void EurocInput::puzzle_get_push_position() // Only provides the push pose points, no orientation!!
+{
+	double object_x_min = 0;
+	double object_x_max = 0;
+	double object_y_min = 0;
+	double object_y_max = 0;
+
+	double shape_size_x_max = 0;
+	double shape_size_y_max = 0;
+
+	geometry_msgs::Pose rel_push_pose_in_x;
+	geometry_msgs::Pose rel_push_pose_in_y;
+
+	geometry_msgs::Pose rel_push_target_pose_in_x;
+	geometry_msgs::Pose rel_push_target_pose_in_y;
+
+	geometry_msgs::Pose rel_push_pose_A;
+	geometry_msgs::Pose rel_push_pose_B;
+	geometry_msgs::Pose abs_push_pose_A;
+	geometry_msgs::Pose abs_push_pose_B;
+	geometry_msgs::Pose temp_push_pose_A;
+	geometry_msgs::Pose temp_push_pose_B;
+
+	geometry_msgs::Pose rel_push_target_pose_A;
+	geometry_msgs::Pose rel_push_target_pose_B;
+	geometry_msgs::Pose abs_push_target_pose_A;
+	geometry_msgs::Pose abs_push_target_pose_B;
+	geometry_msgs::Pose temp_push_target_pose_A;
+	geometry_msgs::Pose temp_push_target_pose_B;
+
+	ROS_INFO("Get gripper push positions in euroc-input");
+
+	if(task_nr_ != 5)
+	{
+		msg_error("EurocInput: puzzle_get_push_position() failed. Wrong task number.");
+		return;
+	}
+	if(obj_queue_.size()==0)
+	{
+		msg_error("EurocInput: puzzle_get_push_position() failed. Index out of range (obj_queue_).");
+		return;
+	}
+	else
+	{
+		if(puzzle_order_[obj_queue_[0].obj_idx].push)
+		{
+			for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+			{
+
+				if (object_x_min > objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)
+				{
+					object_x_min = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
+				}
+				if (object_x_max < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)
+				{
+					object_x_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
+				}
+				if (object_y_min > objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y)
+				{
+					object_y_min = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
+				}
+				if (object_y_max < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y)
+				{
+					object_y_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
+				}
+
+				if (shape_size_x_max < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].size[0])
+				{
+					shape_size_x_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].size[0];
+				}
+				if (shape_size_y_max < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].size[1])
+				{
+					shape_size_y_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].size[1];
+				}
+			}
+
+			ROS_INFO("x min = %f, x max = %f", object_x_min, object_x_max);
+			ROS_INFO("y min = %f, y max = %f", object_y_min, object_y_max);
+			ROS_INFO("x size max = %f", shape_size_x_max);
+
+			//			tf::Vector3 x_grp;
+			//			tf::Vector3 y_grp;
+			//			tf::Vector3 z_grp;
+
+			// puzzlepart relative to fixture
+			tf::Transform puzzlepart;
+			puzzlepart.setOrigin(tf::Vector3(puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].position.x,
+					puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].position.y,
+					puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].position.z));
+			puzzlepart.setRotation(tf::Quaternion(puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].orientation.x,
+					puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].orientation.y,
+					puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].orientation.z,
+					puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index].orientation.w));
+
+			// fixture relative to global origin
+			tf::Transform fixture;
+			fixture.setOrigin(tf::Vector3(fixture_pose_.position.x,
+					fixture_pose_.position.y,fixture_pose_.position.z));
+			fixture.setRotation(tf::Quaternion(fixture_pose_.orientation.x,
+					fixture_pose_.orientation.y,fixture_pose_.orientation.z,
+					fixture_pose_.orientation.w));
+
+			// push pose in puzzle piece coordinate system
+			//			z_grp.setValue(0,0,-1);
+			//			y_grp.setValue(1,0,0);
+			//			x_grp=y_grp.cross(z_grp);
+			//			set_orientation_from_axes(rel_push_pose_in_x,x_grp,y_grp,z_grp);
+			rel_push_pose_in_x.position.x = object_x_max + shape_size_x_max/2.0 + gripper_offset;
+			rel_push_pose_in_x.position.y = (object_y_max + object_y_min)/2.0;
+			rel_push_pose_in_x.position.z = 0.0;
+			rel_push_pose_in_x.orientation.x = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.x;
+			rel_push_pose_in_x.orientation.y = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.y;
+			rel_push_pose_in_x.orientation.z = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.z;
+			rel_push_pose_in_x.orientation.w = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.w;
+
+			rel_push_target_pose_in_x.position.x = object_x_max + shape_size_x_max/2.0;
+			rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
+			rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
+			rel_push_target_pose_in_x.orientation = rel_push_pose_in_x.orientation;
+
+			// push pose in puzzle piece coordinate system
+			//			z_grp.setValue(0,0,-1);
+			//			y_grp.setValue(0,1,0);
+			//			x_grp=y_grp.cross(z_grp);
+			//			set_orientation_from_axes(rel_push_pose_in_y,x_grp,y_grp,z_grp);
+			rel_push_pose_in_y.position.x = (object_x_max + object_x_min)/2.0;
+			rel_push_pose_in_y.position.y = object_y_max + shape_size_y_max/2.0 + gripper_offset;
+			rel_push_pose_in_y.position.z = 0.0;
+			rel_push_pose_in_y.orientation = rel_push_pose_in_x.orientation;
+
+			rel_push_target_pose_in_y.position.x = rel_push_pose_in_y.position.x;
+			rel_push_target_pose_in_y.position.y = object_y_max + shape_size_y_max/2.0;
+			rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
+			rel_push_target_pose_in_y.orientation = rel_push_pose_in_y.orientation;
+
+			if (puzzle_order_[obj_queue_[0].obj_idx].x_first) // if first pushed in x direction, assign offset accordingly -> in x = push pose A
+			{
+				rel_push_pose_in_x.position.x += place_x_offset;
+				rel_push_pose_in_x.position.y += place_y_offset;
+				rel_push_pose_in_y.position.y += place_y_offset;
+
+				rel_push_pose_A = rel_push_pose_in_x;
+				rel_push_pose_B = rel_push_pose_in_y;
+
+				rel_push_target_pose_in_x.position.y += place_y_offset;
+
+				rel_push_target_pose_A = rel_push_target_pose_in_x;
+				rel_push_target_pose_B = rel_push_target_pose_in_y;
+
+			}
+			else  // if first pushed in y direction -> in y = pose A
+			{
+				rel_push_pose_in_x.position.x += place_x_offset;
+				rel_push_pose_in_y.position.x += place_x_offset;
+				rel_push_pose_in_y.position.y += place_y_offset;
+
+				rel_push_pose_A = rel_push_pose_in_y;
+				rel_push_pose_B = rel_push_pose_in_x;
+
+				rel_push_target_pose_in_y.position.x += place_x_offset;
+
+				rel_push_target_pose_A = rel_push_target_pose_in_y;
+				rel_push_target_pose_B = rel_push_target_pose_in_x;
+
+			}
+
+			// push poses relative to the fixture origin
+			temp_push_pose_A = transform_to_pose(puzzlepart*pose_to_transform(rel_push_pose_A));
+			temp_push_pose_B = transform_to_pose(puzzlepart*pose_to_transform(rel_push_pose_B));
+
+			temp_push_target_pose_A = transform_to_pose(puzzlepart*pose_to_transform(rel_push_target_pose_A));
+			temp_push_target_pose_B = transform_to_pose(puzzlepart*pose_to_transform(rel_push_target_pose_B));
+
+			//-----------------------------------------------------------------------------------------------
+//			ROS_INFO("relative push pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_A.position.x,temp_push_pose_A.position.y,temp_push_pose_A.position.z);
+//			ROS_INFO("relative push target pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_A.position.x,temp_push_target_pose_A.position.y,temp_push_target_pose_A.position.z);
+//			ROS_INFO("relative push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
+//
+//			ROS_INFO("relative push pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_B.position.x,temp_push_pose_B.position.y,temp_push_pose_B.position.z);
+//			ROS_INFO("relative push target pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_B.position.x,temp_push_target_pose_B.position.y,temp_push_target_pose_B.position.z);
+//			ROS_INFO("relative push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
+			//-----------------------------------------------------------------------------------------------
+
+			// push poses in the global coordinate system
+			abs_push_pose_A = transform_to_pose(fixture*pose_to_transform(temp_push_pose_A));
+			abs_push_pose_B = transform_to_pose(fixture*pose_to_transform(temp_push_pose_B));
+
+			abs_push_target_pose_A = transform_to_pose(fixture*pose_to_transform(temp_push_target_pose_A));
+			abs_push_target_pose_B = transform_to_pose(fixture*pose_to_transform(temp_push_target_pose_B));
+
+			//abs_target_pose_ = transform_to_pose(transform_puzzlefixture*pose_to_transform(rel_target_pose_));
+			puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point = abs_push_pose_A.position;
+			puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point = abs_push_pose_B.position;
+
+			puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point = abs_push_target_pose_A.position;
+			puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point = abs_push_target_pose_B.position;
+
+			//-----------------------------------------------------------------------------------------------
+			ROS_INFO("absolute push pose A position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.z);
+			ROS_INFO("absolute push target pose A position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.z);
+//			ROS_INFO("absolute push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
+
+			ROS_INFO("absolute push pose B position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.z);
+			ROS_INFO("absolute push target pose B position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.z);
+//			ROS_INFO("absolute push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
+			//-----------------------------------------------------------------------------------------------
+
+		}
+		else
+		{
+			msg_error("EurocInput: puzzle_get_push_position() failed. Puzzle piece should not be pushed.");
+			return;
+		}
+
 	}
 }
 
@@ -1834,7 +2052,7 @@ void EurocInput::reset()
 	same_color_counter_=0;
 }
 
-void EurocInput::order_of_puzzle_pieces()
+void EurocInput::puzzle_order_of_pieces()
 {
 	bool fix_x_below = false;
 	bool fix_y_below = false;
@@ -2485,4 +2703,55 @@ void EurocInput::order_of_puzzle_pieces()
 	//---------------------------------------------------------------------------------
 
 	ROS_INFO("EurocInput: The right order for puzzle pieces found.");
+}
+
+
+void EurocInput::set_orientation_from_axes(geometry_msgs::Pose &tmp_pose, tf::Vector3 x_axis, tf::Vector3 y_axis, tf::Vector3 z_axis)
+{
+	double roll,pitch,yaw;
+	tf::Matrix3x3 dcm;
+	tf::Quaternion q_tmp;
+
+	//	dcm.setValue(x_axis.getX(),x_axis.getY(),x_axis.getZ(),y_axis.getX(),y_axis.getY(),y_axis.getZ(),
+	//				 z_axis.getX(),z_axis.getY(),z_axis.getZ());
+	//transposed matrix seems to be the right one :)
+	dcm.setValue(x_axis.getX(),y_axis.getX(),z_axis.getX(),x_axis.getY(),y_axis.getY(),z_axis.getY(),
+			x_axis.getZ(),y_axis.getZ(),z_axis.getZ());
+	dcm.getRPY(roll,pitch,yaw);
+	q_tmp.setRPY(roll,pitch,yaw);
+
+	tmp_pose.orientation.x = q_tmp.getX();
+	tmp_pose.orientation.y = q_tmp.getY();
+	tmp_pose.orientation.z = q_tmp.getZ();
+	tmp_pose.orientation.w = q_tmp.getW();
+}
+
+tf::Transform EurocInput::pose_to_transform(geometry_msgs::Pose input_pose)
+{
+	tf::Transform tmptransform;
+	tf::Vector3 tmpvec;
+	tf::Quaternion tmpquat;
+
+	tmpvec.setValue(input_pose.position.x,input_pose.position.y,input_pose.position.z);
+	tmpquat.setValue(input_pose.orientation.x,input_pose.orientation.y,input_pose.orientation.z,input_pose.orientation.w);
+
+	tmptransform.setOrigin(tmpvec);
+	tmptransform.setRotation(tmpquat);
+
+	return tmptransform;
+}
+
+geometry_msgs::Pose EurocInput::transform_to_pose(tf::Transform input_transform)
+{
+	geometry_msgs::Pose tmpPose;
+
+	tmpPose.position.x = input_transform.getOrigin().getX();
+	tmpPose.position.y = input_transform.getOrigin().getY();
+	tmpPose.position.z = input_transform.getOrigin().getZ();
+	tmpPose.orientation.x = input_transform.getRotation().getX();
+	tmpPose.orientation.y = input_transform.getRotation().getY();
+	tmpPose.orientation.z = input_transform.getRotation().getZ();
+	tmpPose.orientation.w = input_transform.getRotation().getW();
+
+	return tmpPose;
 }

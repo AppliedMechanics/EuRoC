@@ -918,7 +918,10 @@ void Statemachine::scheduler_next_object()
 		cur_obj_ = ein_->get_active_object();
 		cur_zone_ = ein_->get_active_target_zone();
 		if(active_task_number_==5)
+		{
 			cur_target_pose_ = ein_->get_active_target_pose();
+			ein_->puzzle_get_push_position();//cur_target_pose_);
+		}
 
 		ROS_INFO("new object-name: %s",cur_obj_.name.c_str());
 		cur_object_type_=OBJECT_UNKNOWN;

@@ -11,6 +11,8 @@
 #include <am_msgs/TargetZone.h>
 #include <am_msgs/Sensor.h>
 #include <am_msgs/ConveyorBelt.h>
+#include <am_msgs/PushPose.h>
+
 
 // Includes for parsing yaml data
 #include <yaml-cpp/yaml.h>
@@ -90,8 +92,14 @@ public:
 
 
 	//!determine in which order the puzzle peaces need to be placed into the fixture
-	void order_of_puzzle_pieces();
+	void puzzle_order_of_pieces();
+	//!gripper placement for each puzzle piece to insert it into the puzzle fixture
+	void puzzle_get_push_position(); //geometry_msgs::Pose active_target_pose);
 
+	void set_orientation_from_axes(geometry_msgs::Pose &tmp_pose, tf::Vector3 x_axis, tf::Vector3 y_axis, tf::Vector3 z_axis);
+
+	tf::Transform pose_to_transform(geometry_msgs::Pose input_pose);
+	geometry_msgs::Pose transform_to_pose(tf::Transform input_transform);
 
 	typedef enum{
 		EIN_OBJ_INIT=0,
@@ -176,8 +184,10 @@ private:
 	struct puzzle_piece_
 	{
 	  int part_index;
-	  bool x_first;
 	  bool push;
+	  bool x_first;
+	  am_msgs::PushPose push_pose_A;
+	  am_msgs::PushPose push_pose_B;
 	};
 
 	//!the final order for puzzle peace placement & info on how to place them
@@ -187,6 +197,9 @@ private:
 	double place_x_offset;
 	double place_y_offset;
 	double place_z_offset;
+
+	//! gripper offset in relation with the puzzle part to be pushed
+	double gripper_offset;
 
 public:
 	//!counter for objects with the same color (only for task 5)
