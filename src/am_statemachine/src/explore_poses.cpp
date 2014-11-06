@@ -13,6 +13,7 @@ ExplorePoses::ExplorePoses()
 	insideblock_success_counter_ = 0;
 	insideblock_counter_ = 0;
 	success_counter_ = 0;
+	first_block_failed_=false;
 
 	/* initialize random seed: */
 	srand (time(NULL));
@@ -137,18 +138,26 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 					msg_info("Reached end of the block. Trying next.");
 				}
 				if (block_counter_<N_POSE_BLOCKS){
-					// increase own success counter
-					if (success_count > success_counter_){
-						success_counter_++;
-						insideblock_success_counter_++;
-						msg_info("Increasing success counter.");
+					if (block_counter_==1 && success_count==0)
+					{
+						first_block_failed_ = true;
+						randomSort();
 					}
-					// if success counter = 2 --> next block
-					if (insideblock_success_counter_ > 1){
-						block_counter_++;
-						insideblock_counter_=0;
-						insideblock_success_counter_ = 0;
-						msg_info("two successful poses. next block.");
+					else
+					{
+						// increase own success counter
+						if (success_count > success_counter_){
+							success_counter_++;
+							insideblock_success_counter_++;
+							msg_info("Increasing success counter.");
+						}
+						// if success counter = 2 --> next block
+						if (insideblock_success_counter_ > 1){
+							block_counter_++;
+							insideblock_counter_=0;
+							insideblock_success_counter_ = 0;
+							msg_info("two successful poses. next block.");
+						}
 					}
 				}
 				else
@@ -203,11 +212,22 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 
 void ExplorePoses::randomSort()
 {
-	//! Block 3 at the beginning
-	block_nr_[0] = rand() % 2;
 	//block_nr_[0] = rand() % 6;         // blocks_[0] in the range 0 to 5
+	int begin_random = 1;
+	if (first_block_failed_)
+	{
+		begin_random = 2;
+		if (block_nr_[0]==0)
+			block_nr_[1] = 1;
+		else
+			block_nr_[1] = 0;
+	}
+	else
+	{
+		block_nr_[0] = rand() % 2;
+	}
 
-	for (int i=1;i<N_POSE_BLOCKS;i++)
+	for (int i=begin_random;i<N_POSE_BLOCKS;i++)
 	{
 		do{block_nr_[i] = rand() % 7;}
 		while(checkDoublettes(i));

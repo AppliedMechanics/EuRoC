@@ -57,6 +57,8 @@ private:
 	uint8_t insideblock_success_counter_;
 	uint8_t insideblock_counter_;
 	uint8_t success_counter_;
+
+	bool first_block_failed_;
 };
 
 #endif /* EXPLORE_POSES_H_ */

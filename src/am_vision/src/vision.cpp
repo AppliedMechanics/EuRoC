@@ -308,19 +308,19 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		//			*finalVoxelizedYellowPC += *tempPC;
 		//		}
 		// Update the OctoMap
-		try{
-			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
-			{
-				msg_error("reset octomap service failed!");
-				return;
-			}
-			else
-				msg_info("octomap successfully resetted.");
-		}
-		catch (...)
-		{
-			msg_error("reset octomap service failed! TRYCATCH");
-		}
+		//		try{
+		//			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
+		//			{
+		//				msg_error("reset octomap service failed!");
+		//				return;
+		//			}
+		//			else
+		//				msg_info("octomap successfully resetted.");
+		//		}
+		//		catch (...)
+		//		{
+		//			msg_error("reset octomap service failed! TRYCATCH");
+		//		}
 
 #ifdef OCTOMAP_SERVER
 		//		pcl::toROSMsg (*finalVoxelizedPC, msg);
