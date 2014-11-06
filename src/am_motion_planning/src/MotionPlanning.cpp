@@ -13,7 +13,7 @@ goalPose_action_name_("goalPoseAction"),
 time_at_path_points_(1),
 active_task_nr_(1),
 octree_file(0.01),
-collision_object_scaler_(1.0),
+collision_object_scaler_(1.3),
 obj_data_loaded_(false)
 //randomObjectAttached(false)
 {
