@@ -129,11 +129,16 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	ros::param::get("/skip_vision", skip_vision_);
 	ros::param::get("/active_task_number_", active_task_nr_);
 
+
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
 	inter_steps_ = goal_pose_goal_->inter_steps;
 	planning_frame_ = goal_pose_goal_->planning_frame;
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
+
+
+	ROS_INFO_STREAM("goal received:");
+	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
 
 	//--------------------------------------------------------------------------------------
 	//! get kinematic limits
@@ -1644,7 +1649,7 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			// do self collision checking!
 			ROS_INFO("Checking solution for self collision...-disabled because motion planning chrashes!");
 
-#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
+//#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
 			//--------------------------------------------------------------------------------
 			//                    collision_detection::CollisionRequest collision_request;
 			//                    collision_detection::CollisionResult collision_result;
@@ -2478,6 +2483,15 @@ void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_po
 		// read the information of all shapes forming the object
 		object_manager_readObjectDataFromParamServer(obj_index, obj_info);
 
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
+		{
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
+		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject* current_object = &am_collision_objects_[obj_index].collision_object_;
+
 		// store object pose in a tf
 		tf::Transform tf_object;
 		tf_object.setOrigin(tf::Vector3(obj_pose.position.x,
@@ -2488,48 +2502,33 @@ void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_po
 				obj_pose.orientation.z,
 				obj_pose.orientation.w));
 
+		// clear the old shape poses
+		current_object->primitive_poses.clear();
 
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
+		for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				// it now refers to the appropriate element of collision_objects_
-				// the new position of each shape can be computed
+			tf::Transform tf_shape_local, tf_shape_global;
+			tf_shape_local.setOrigin(tf::Vector3(obj_info.shape_poses[i].position.x,
+					obj_info.shape_poses[i].position.y,
+					obj_info.shape_poses[i].position.z));
+			tf_shape_local.setRotation(tf::Quaternion(obj_info.shape_poses[i].orientation.x,
+					obj_info.shape_poses[i].orientation.y,
+					obj_info.shape_poses[i].orientation.z,
+					obj_info.shape_poses[i].orientation.w));
 
-				// clear the old shape poses
-				it->primitive_poses.clear();
+			tf_shape_global.mult(tf_object, tf_shape_local);
 
-				for (unsigned i = 0; i < obj_info.nr_shapes; ++i)
-				{
-					tf::Transform tf_shape_local, tf_shape_global;
-					tf_shape_local.setOrigin(tf::Vector3(obj_info.shape_poses[i].position.x,
-							obj_info.shape_poses[i].position.y,
-							obj_info.shape_poses[i].position.z));
-					tf_shape_local.setRotation(tf::Quaternion(obj_info.shape_poses[i].orientation.x,
-							obj_info.shape_poses[i].orientation.y,
-							obj_info.shape_poses[i].orientation.z,
-							obj_info.shape_poses[i].orientation.w));
+			geometry_msgs::Pose current_primitive_pose;
+			current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
+			current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
+			current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
+			current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
+			current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
+			current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
+			current_primitive_pose.orientation.w = tf_shape_global.getRotation().getW();
 
-					tf_shape_global.mult(tf_object, tf_shape_local);
+			current_object->primitive_poses.push_back(current_primitive_pose);
 
-					geometry_msgs::Pose current_primitive_pose;
-					current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
-					current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
-					current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
-					current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
-					current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
-					current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
-					current_primitive_pose.orientation.w = tf_shape_global.getRotation().getW();
-
-					it->primitive_poses.push_back(current_primitive_pose);
-
-				}
-				break;
-			}
 		}
 	}
 }
@@ -2544,11 +2543,12 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 
 		int nr_obj;
 		ros::param::get("/nr_objects_",nr_obj);
-		obj_state_.resize(nr_obj);
-		for(unsigned int ii = 0; ii<obj_state_.size();ii++)
+		am_collision_objects_.resize(nr_obj);
+
+		for(unsigned int ii = 0; ii<am_collision_objects_.size();ii++)
 		{
-			obj_state_[ii].obj_state = OBJ_STATE_NOT_IN_WORLD;
-			obj_state_[ii].obj_index = -1;
+			am_collision_objects_[ii].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
+			am_collision_objects_[ii].obj_state_.obj_index = -1;
 		}
 	}
 
@@ -2558,26 +2558,28 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 	case OBJ_LOCATED:
 		ROS_INFO("state: OBJ_LOCATED");
 
-		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
-		{
-			object_manager_detachObject(msg->obj_index);
-			object_manager_addObjectToWorld(msg->obj_index);
-
-			// update the robot state
-			//planning_scene_.robot_state.is_diff = true;
-		}
 
 		// if the current object doesn't exist yet in the environment
 		if (!object_manager_objectExists(msg->obj_index))
 		{
 			// create one
 			object_manager_createObject(msg->obj_index, msg->obj_pose);
-
-			// and add it to the planning scene
-			object_manager_addObjectToWorld(msg->obj_index);
-
-			ROS_INFO("Object added to the environment.");
 		}
+		else if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_GRABBED)
+		{
+			ROS_INFO("Object allready grabbed!");
+			object_manager_detachObject(msg->obj_index);
+		}
+		else if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_IN_WORLD)
+		{
+			ROS_INFO("Object allready in World!");
+			break;
+		}
+
+
+		// and add it to the planning scene
+		ROS_INFO("Object added to the environment.");
+		object_manager_addObjectToWorld(msg->obj_index);
 
 		break;
 	case OBJ_NOT_LOCATED:
@@ -2586,7 +2588,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		// if the current object doesn't exist yet in the environment
 		if (object_manager_objectExists(msg->obj_index))
 		{
-			if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
+			if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_GRABBED)
 			{
 				object_manager_detachObject(msg->obj_index);
 
@@ -2594,7 +2596,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 				//                                planning_scene_.robot_state.joint_state = getCurrentJointState();
 				//                                planning_scene_.robot_state.is_diff = true;
 			}
-			else if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_IN_WORLD)
+			else if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_IN_WORLD)
 			{
 				// remove the object from the world
 				object_manager_removeObjectFromWorld(msg->obj_index);
@@ -2610,7 +2612,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 	case OBJ_GRIPPING:
 		ROS_INFO("state: OBJ GRIPPING");
 
-		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_IN_WORLD)
+		if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_IN_WORLD)
 		{
 			// remove the object from the world
 			object_manager_removeObjectFromWorld(msg->obj_index);
@@ -2629,7 +2631,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 	{
 		ROS_INFO("state: OBJ_GRABED");
 
-		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_NOT_IN_WORLD)
+		if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_NOT_IN_WORLD)
 		{
 			// attach the object to the gripper
 			object_manager_attachObject(msg->obj_index);
@@ -2654,7 +2656,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		ROS_INFO("state: OBJ_PLACED");
 
 		//                setShapePositions(msg->obj_index, msg->obj_pose);
-		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
+		if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_GRABBED)
 		{
 			// detach the object from the gripper
 			object_manager_detachObject(msg->obj_index);
@@ -2674,13 +2676,13 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 	case OBJ_FINISHED:
 		ROS_INFO("state: OBJ_FINISHED");
 
-		if(obj_state_[msg->obj_index].obj_state == OBJ_STATE_NOT_IN_WORLD)
+		if(am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_NOT_IN_WORLD)
 		{
 			// add the object to its target zone
 			object_manager_addObjectToTargetZone(msg->obj_index);
 			planning_scene_.robot_state.is_diff = true;
 		}
-		else if (obj_state_[msg->obj_index].obj_state == OBJ_STATE_GRABBED)
+		else if (am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_GRABBED)
 		{
 			ROS_WARN("OBJ STATE GRABBED");
 			// detach the object from the gripper
@@ -2689,7 +2691,7 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 			object_manager_addObjectToTargetZone(msg->obj_index);
 		}
 
-		else if (obj_state_[msg->obj_index].obj_state == OBJ_STATE_IN_WORLD)
+		else if (am_collision_objects_[msg->obj_index].obj_state_.obj_state == OBJ_STATE_IN_WORLD)
 		{
 			ROS_WARN("OBJ STATE IN WORLD");
 			// detach the object from the gripper
@@ -2724,16 +2726,13 @@ bool MotionPlanning::object_manager_objectExists(int obj_index)
 {
 	ROS_WARN("Checking if object already exists...");
 	ROS_INFO_STREAM("Index of the object to search: " << obj_index);
-	// convert object idx to a string (maybe a better way)
-	std::stringstream ss;
-	ss << obj_index;
 
-	if (!collision_objects_.empty())
+	if (!am_collision_objects_.empty())
 	{
-		for (unsigned i = 0; i < collision_objects_.size(); ++i)
+		for (unsigned i = 0; i < am_collision_objects_.size(); ++i)
 		{
-			ROS_INFO_STREAM("Index of the current collision object it is compared with: " << collision_objects_[i].id);
-			if (!ss.str().compare(collision_objects_[i].id))
+			ROS_INFO_STREAM("Index of the current collision object it is compared with: " << am_collision_objects_[i].collision_object_.id);
+			if (obj_index == am_collision_objects_[i].obj_state_.obj_index)
 			{
 				ROS_WARN("Object already exists in the environment.");
 				return true;
@@ -2828,10 +2827,17 @@ void MotionPlanning::object_manager_createObject(int obj_index, geometry_msgs::P
 
 	}
 
-	collision_objects_.push_back(collision_object);
-
-	obj_state_[obj_index].obj_state = OBJ_STATE_NOT_IN_WORLD;
-	obj_state_[obj_index].obj_index = obj_index;
+	if(am_collision_objects_[obj_index].obj_state_.obj_index == -1)
+	{
+		am_collision_objects_[obj_index].collision_object_ = collision_object;
+		am_collision_objects_[obj_index].obj_state_.obj_index = obj_index;
+		am_collision_objects_[obj_index].obj_state_.obj_pose = obj_pose;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
+	}
+	else
+	{
+		ROS_WARN("Object allready exists?");
+	}
 
 	ROS_WARN("Creating object finished.");
 }
@@ -3007,20 +3013,14 @@ void MotionPlanning::object_manager_addObjectToWorld(int obj_index)
 	{
 		ROS_INFO("Adding object to the environment...");
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object;
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end(); ++it)
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				current_object = *it;
-				ROS_INFO("Object found.");
-				break;
-			}
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
 		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
 		// add object to the environment
 		planning_scene_.world.collision_objects.clear();
@@ -3032,7 +3032,7 @@ void MotionPlanning::object_manager_addObjectToWorld(int obj_index)
 		ROS_INFO("Adding object to the environment finished.");
 
 
-		obj_state_[obj_index].obj_state = OBJ_STATE_IN_WORLD;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_IN_WORLD;
 	}
 	else
 		ROS_WARN("Object cannot be added to the environment. It must be created first.");
@@ -3045,20 +3045,14 @@ void MotionPlanning::object_manager_removeObjectFromWorld(int obj_index)
 	{
 		ROS_INFO("Removing object from the environment...");
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object;
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				current_object = *it;
-				break;
-			}
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
 		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
 		// remove object from the environment
 		planning_scene_.world.collision_objects.clear();
@@ -3071,7 +3065,7 @@ void MotionPlanning::object_manager_removeObjectFromWorld(int obj_index)
 
 		ROS_INFO("Removing object from the environment finished.");
 
-		obj_state_[obj_index].obj_state = OBJ_STATE_NOT_IN_WORLD;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
 	}
 	else
 		ROS_WARN("Object cannot be removed from the world. It must be created first.");
@@ -3085,20 +3079,14 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 	{
 		ROS_INFO("Attaching object to the gripper...");
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object;
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				current_object = *it;
-				break;
-			}
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
 		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
 		// attach object to the gripper
 		planning_scene_.robot_state.attached_collision_objects.clear();
@@ -3108,7 +3096,7 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 		attached_object.object.operation = attached_object.object.ADD;
 		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
 
-		obj_state_[obj_index].obj_state = OBJ_STATE_GRABBED;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_GRABBED;
 		ROS_INFO("Attaching object to the gripper finished.");
 	}
 	else
@@ -3123,20 +3111,15 @@ void MotionPlanning::object_manager_detachObject(int obj_index)
 	{
 		ROS_INFO("Detaching object from the gripper...");
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object;
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
+
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				current_object = *it;
-				break;
-			}
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
 		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
 		// detach object from the gripper
 		planning_scene_.robot_state.attached_collision_objects.clear();
@@ -3145,7 +3128,7 @@ void MotionPlanning::object_manager_detachObject(int obj_index)
 		detached_object.object.operation = detached_object.object.REMOVE;
 		planning_scene_.robot_state.attached_collision_objects.push_back(detached_object);
 
-		obj_state_[obj_index].obj_state = OBJ_STATE_NOT_IN_WORLD;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
 		ROS_INFO("Detaching object from the gripper finished.");
 	}
 	else
@@ -3165,20 +3148,15 @@ void MotionPlanning::object_manager_addObjectToTargetZone(int obj_index)
 		// read the information of all shapes forming the object
 		object_manager_readObjectDataFromParamServer(obj_index, obj_info);
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object;
-		std::stringstream id;
-		id << obj_index;
-		for (std::vector<moveit_msgs::CollisionObject>::iterator it = collision_objects_.begin();
-				it != collision_objects_.end();
-				++it)
+
+		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
-			if (!id.str().compare((*it).id))
-			{
-				current_object = *it;
-				break;
-			}
+			msg_error("Obj_index does not coincide with position in vector????");
+			return;
 		}
+
+		// get the appropriate object
+		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
 		// reinsert object into the environment
 		planning_scene_.world.collision_objects.clear();
@@ -3201,7 +3179,7 @@ void MotionPlanning::object_manager_addObjectToTargetZone(int obj_index)
 		placed_object.operation = placed_object.ADD;
 		planning_scene_.world.collision_objects.push_back(placed_object);
 
-		obj_state_[obj_index].obj_state = OBJ_STATE_IN_WORLD;
+		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_IN_WORLD;
 		ROS_INFO("Adding object to the target zone finished.");
 
 	}
@@ -3283,7 +3261,7 @@ void MotionPlanning::readTargetZoneDataFromParamServer(int obj_index, TargetZone
 	std::stringstream obj_nr;
 	obj_nr << obj_index;
 
-	for (unsigned tz_index = 0; tz_index < obj_state_.size(); ++tz_index)
+	for (unsigned tz_index = 0; tz_index < am_collision_objects_.size(); ++tz_index)
 	{
 		std::stringstream _tz_obj_nr;
 		_tz_obj_nr << "/target_zone_" << tz_index << "_obj_nr_";

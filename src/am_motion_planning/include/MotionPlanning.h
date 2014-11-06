@@ -96,6 +96,12 @@ struct TargetZoneInformation
 	double r;
 };
 
+struct AMCollisionObject
+{
+	am_msgs::ObjState obj_state_;
+	moveit_msgs::CollisionObject collision_object_;
+};
+
 
 
 
@@ -120,9 +126,10 @@ protected:
 	// object state message subscriber
 	ros::Subscriber obj_state_sub_;
 
+
 	void object_manager_get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg);
-	std::vector<am_msgs::ObjState> obj_state_;
 	bool obj_data_loaded_;
+	std::vector<AMCollisionObject> am_collision_objects_;
 
 	//! This function is executed, when a new goal goalPoseAction is received
 	void executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &goal);
@@ -216,7 +223,6 @@ protected:
 
 
 	moveit_msgs::PlanningScene planning_scene_;
-	std::vector<moveit_msgs::CollisionObject> collision_objects_;
 	double collision_object_scaler_;
 
 
