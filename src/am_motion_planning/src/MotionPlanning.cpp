@@ -2411,8 +2411,8 @@ void MotionPlanning::initializePlanningScene()
 
 	moveit_msgs::CollisionObject object;
 	object.id = "ground";
-	object.header.frame_id = "/Origin";
-	object.header.stamp = ros::Time::now();
+	object.header.frame_id = ORIGIN;
+	object.header.stamp = ros::Time(0);
 	object.operation = object.ADD;
 	object.primitives.push_back(primitive);
 	object.primitive_poses.push_back(primitive_pose);
@@ -2449,7 +2449,8 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
 
 	moveit_msgs::CollisionObject pan_tilt_object;
-	pan_tilt_object.header.frame_id = "/Origin";
+	pan_tilt_object.header.frame_id = ORIGIN;
+	pan_tilt_object.header.stamp = ros::Time(0);
 	pan_tilt_object.id = "pan_tilt_mast";
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
@@ -2508,8 +2509,9 @@ void MotionPlanning::initializePlanningScene()
 		puzzle_fixture_c2_pose.orientation.z = 0;
 		puzzle_fixture_c2_pose.orientation.w = 1;
 
-		puzzle_fixture_object.header.frame_id = "/Puzzle_Fixture";
-		puzzle_fixture_object.id = "/Puzzle_Fixture";
+		puzzle_fixture_object.header.frame_id = PUZZLE_FIXTURE;
+		puzzle_fixture_object.header.stamp = ros::Time(0);
+		puzzle_fixture_object.id = "puzzle_fixture";
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c0);
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c1);
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c2);
@@ -2524,7 +2526,7 @@ void MotionPlanning::initializePlanningScene()
 
 	static_scene_.is_diff = true;
 	planning_scene_diff_publisher_.publish(static_scene_);
-	//static_scene_.world.collision_objects.clear();
+//	static_scene_.world.collision_objects.clear();
 
 	ROS_INFO("Finished adding ground plane and pan tilt station.");
 
@@ -2586,7 +2588,7 @@ void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_po
 			geometry_msgs::Pose current_primitive_pose;
 			current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
 			current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
-			current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();
+			current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ()+0.173;
 			current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
 			current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
 			current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
@@ -3156,7 +3158,7 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 		// attach object to the gripper
 		planning_scene_.robot_state.attached_collision_objects.clear();
 		moveit_msgs::AttachedCollisionObject attached_object;
-		attached_object.link_name = "gripper_tcp";
+		attached_object.link_name = "link7";//"gripper_tcp";
 		attached_object.object = current_object;
 		attached_object.object.operation = attached_object.object.ADD;
 		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
