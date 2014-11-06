@@ -80,7 +80,7 @@ public:
 
 private:
 	// ------------------------- Class Properties -----------------------------
-        std::string error_message;
+	std::string error_message;
 	uint16_t task_number_;
 	am_msgs::Object object_;
 	am_msgs::TargetZone target_zone_;

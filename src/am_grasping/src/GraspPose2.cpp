@@ -991,7 +991,7 @@ void GraspPose2::correct_puzzle_part_rotation()
 				possible_matches=0;
 				for (int kk=0;kk<object_.nr_shapes;kk++)
 				{
-					tar_box_center=o_virt_obj_shapes_[jj].getOrigin();
+					tar_box_center=o_virt_obj_shapes_[kk].getOrigin();
 					tmp_vec=tar_box_center-obj_box_center;
 					distance=tmp_vec.length();
 					if(distance<=tol_distance)
@@ -999,6 +999,7 @@ void GraspPose2::correct_puzzle_part_rotation()
 						possible_matches++;
 					}
 				}
+				ROS_INFO("-->box %d: %d possible matches found",jj,possible_matches);
 				if(possible_matches==1)
 				{
 					matching_boxes++;
@@ -2706,8 +2707,8 @@ void GraspPose2::compute_grasp_posesT5_()
 	}
 
 	//=================================================================
-			//--------------------------GRIPPING-------------------------------
-			//=================================================================
+	//--------------------------GRIPPING-------------------------------
+	//=================================================================
 	gripping_distance_=gripper_finger_height_+0.5*puzzle_boxsize-gripping_finger_overlapT5_*puzzle_boxsize;
 
 	dot_product = obj_upward_pointing_axis.dot(z_axis);

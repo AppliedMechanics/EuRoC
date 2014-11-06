@@ -4654,11 +4654,11 @@ int Statemachine::move_to_object()
 
 #warning remove area from octomap
 		if (!skip_vision_){
-			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.04;
-			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.04;
+			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
+			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
 			rm_grasping_area_collision_srv_.request.max.z = 1.0;
-			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.04;
-			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.04;
+			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
+			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
 			rm_grasping_area_collision_srv_.request.min.z = 0.0;
 			try{
 				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
@@ -4941,7 +4941,8 @@ int Statemachine::move_to_target_zone_safe()
 
 
 		//publish object state for motion planning
-		if((cur_obj_gripped_==false) && (ein_->get_active_object_action()!=EurocInput::EIN_PARKING))
+		if((cur_obj_gripped_==false) && (ein_->get_active_object_action()!=EurocInput::EIN_PARKING)
+				&&(active_task_number_<5))
 			publish_obj_state(OBJ_FINISHED);
 		else if(ein_->get_active_object_action()==EurocInput::EIN_PARKING)
 			publish_obj_state(OBJ_LOCATED);
