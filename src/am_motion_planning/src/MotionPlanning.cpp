@@ -2411,7 +2411,7 @@ void MotionPlanning::initializePlanningScene()
 
 	moveit_msgs::CollisionObject object;
 	object.id = "ground";
-	object.header.frame_id = ORIGIN;
+	object.header.frame_id = "/Origin";
 	object.header.stamp = ros::Time::now();
 	object.operation = object.ADD;
 	object.primitives.push_back(primitive);
@@ -2449,7 +2449,7 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
 
 	moveit_msgs::CollisionObject pan_tilt_object;
-	pan_tilt_object.header.frame_id = ORIGIN;
+	pan_tilt_object.header.frame_id = "/Origin";
 	pan_tilt_object.id = "pan_tilt_mast";
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
@@ -2508,7 +2508,7 @@ void MotionPlanning::initializePlanningScene()
 		puzzle_fixture_c2_pose.orientation.z = 0;
 		puzzle_fixture_c2_pose.orientation.w = 1;
 
-		puzzle_fixture_object.header.frame_id = PUZZLE_FIXTURE;
+		puzzle_fixture_object.header.frame_id = "/Puzzle_Fixture";
 		puzzle_fixture_object.id = "/Puzzle_Fixture";
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c0);
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c1);
