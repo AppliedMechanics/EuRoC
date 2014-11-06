@@ -4932,6 +4932,8 @@ int Statemachine::move_to_target_zone_safe()
 		//publish object state for motion planning
 		if((cur_obj_gripped_==false) && (ein_->get_active_object_action()!=EurocInput::EIN_PARKING))
 			publish_obj_state(OBJ_FINISHED);
+		else if(ein_->get_active_object_action()==EurocInput::EIN_PARKING)
+			publish_obj_state(OBJ_LOCATED);
 
 		//==============================================
 		scheduler_next();

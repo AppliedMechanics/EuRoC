@@ -1216,7 +1216,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=obj_idx_on_zone_[box_idx][0];
 					temp_obj.data=&objects_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.action=EIN_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.target_zone_occupied=1;
 					temp_obj.target_zone_obj_idx=1-box_idx;
 
@@ -1225,7 +1225,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=obj_idx_on_zone_[1-box_idx][0];
 					temp_obj.data=&objects_[obj_idx_on_zone_[1-box_idx][0]];
 					temp_obj.action=EIN_PLACE;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-box_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-box_idx][0]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
@@ -1234,7 +1234,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=obj_idx_on_zone_[box_idx][0];
 					temp_obj.data=&objects_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.action=EIN_PLACE_FROM_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[box_idx][0]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
@@ -1245,7 +1245,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=obj_idx_on_zone_[1-handle_idx][0];
 					temp_obj.data=&objects_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.action=EIN_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.target_zone_occupied=1;
 					temp_obj.target_zone_obj_idx=handle_idx;
 
@@ -1254,7 +1254,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=handle_idx;
 					temp_obj.data=&objects_[obj_idx_on_zone_[handle_idx][0]];
 					temp_obj.action=EIN_PLACE;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[handle_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[handle_idx][0]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
@@ -1263,7 +1263,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 					temp_obj.obj_idx=obj_idx_on_zone_[1-handle_idx][0];
 					temp_obj.data=&objects_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.action=EIN_PLACE_FROM_PARKING;
-					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][1]];
+					temp_obj.target_zone_idx=target_zone_idx_[obj_idx_on_zone_[1-handle_idx][0]];
 					temp_obj.target_zone_occupied=0;
 					temp_obj.target_zone_obj_idx=-1;
 
@@ -1282,7 +1282,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		{
 			uint16_t obj_idx=obj_queue_[ii].obj_idx;
 			ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
-			ROS_INFO("Targetzone (%d) occupied: %s",target_zone_idx_[obj_idx],target_zone_occupied_[obj_idx] ? "true":"false");
+			ROS_INFO("Targetzone (%d) occupied: %s",obj_queue_[ii].target_zone_idx,obj_queue_[ii].target_zone_occupied? "true":"false");
 			switch(obj_queue_[ii].action)
 			{
 			case EIN_PLACE:
