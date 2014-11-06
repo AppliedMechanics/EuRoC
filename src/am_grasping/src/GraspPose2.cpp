@@ -2984,6 +2984,7 @@ void GraspPose2::compute_grasp_posesT6_()
 
 	GPTCP_object_safe_pose.push_back(emptyPose);
 	GPTCP_object_vision_pose.push_back(emptyPose);
+	object_skip_vision.push_back(1);
 
 	//=================================================================
 	//--------------------PLACING CUBE ON TARGET ZONE------------------
@@ -3009,6 +3010,7 @@ void GraspPose2::compute_grasp_posesT6_()
 		GPTCP_target_safe_pose.push_back(emptyPose);
 		GPTCP_target_vision_pose.push_back(emptyPose);
 		place_pose_type.push_back(PLACE_POSE_CUBE_TASK6);
+		target_skip_vision.push_back(1);
 	}
 }
 
@@ -3094,10 +3096,10 @@ void GraspPose2::compute_relative_vectors_()
 	for(int ii=0; ii<LWRTCP_object_grip_pose.size();ii++)
 	{
 		//calculate relative vector (LWR-TCP -> Object-CoM)
-		tmpvec.x=-1.0*(o_object_com_.x()-LWRTCP_object_grip_pose[ii].position.x);
-		tmpvec.y=-1.0*(o_object_com_.y()-LWRTCP_object_grip_pose[ii].position.y);
-		tmpvec.z=-1.0*(o_object_com_.z()-LWRTCP_object_grip_pose[ii].position.z);
-		object_grip_r_tcp_com.push_back(tmpvec);
+	  tmpvec.x=-o_object_com_.x()+LWRTCP_object_grip_pose[ii].position.x;
+          tmpvec.y=-o_object_com_.y()+LWRTCP_object_grip_pose[ii].position.y;
+          tmpvec.z=-o_object_com_.z()+LWRTCP_object_grip_pose[ii].position.z;
+          object_grip_r_tcp_com.push_back(tmpvec);
 	}
 }
 
@@ -3543,6 +3545,9 @@ void GraspPose2::print_results()
 	case OBJECT_POSE_CUBE_Z_UP:
 		ROS_INFO("object_pose_type_: OBJECT_POSE_CUBE_Z_UP");
 		break;
+	case OBJECT_POSE_CUBE_TASK6:
+		ROS_INFO("object_pose_type_: OBJECT_POSE_CUBE_TASK6");
+		break;
 	case OBJECT_POSE_CYLINDER_HORIZONTAL:
 		ROS_INFO("object_pose_type_: OBJECT_POSE_CYLINDER_HORIZONTAL");
 		break;
@@ -3639,30 +3644,33 @@ void GraspPose2::print_results()
 				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
 				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
 	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_object_safe_pose;
-	ROS_INFO("LWRTCP_object_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
-	for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+	if(task_number_!=6)
 	{
-		ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
-				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
-	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_object_vision_pose;
-	ROS_INFO("LWRTCP_object_vision_pose: PoseNr | pos (XYZ) | ori (XYZW) | skip");
-	if(object_skip_vision.size()==tmpPoseArray.size())
-	{
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_object_safe_pose;
+		ROS_INFO("LWRTCP_object_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
 		for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
 		{
-			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f] | %d",ii,tmpPoseArray[ii].position.x,
+			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
 					tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w,object_skip_vision[ii]);
+					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
 		}
-	}
-	else
-	{
-		msg_error("Error. object_skip_vision has wrong size of %d (should be %d)",object_skip_vision.size(),tmpPoseArray.size());
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_object_vision_pose;
+		ROS_INFO("LWRTCP_object_vision_pose: PoseNr | pos (XYZ) | ori (XYZW) | skip");
+		if(object_skip_vision.size()==tmpPoseArray.size())
+		{
+			for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+			{
+				ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f] | %d",ii,tmpPoseArray[ii].position.x,
+						tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
+						tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w,object_skip_vision[ii]);
+			}
+		}
+		else
+		{
+			msg_error("Error. object_skip_vision has wrong size of %d (should be %d)",object_skip_vision.size(),tmpPoseArray.size());
+		}
 	}
 	tmpPoseArray.clear();
 	tmpPoseArray=LWRTCP_target_place_pose;
@@ -3673,48 +3681,54 @@ void GraspPose2::print_results()
 				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
 				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
 	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_target_safe_pose;
-	ROS_INFO("LWRTCP_target_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
-	for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+	if(task_number_!=6)
 	{
-		ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
-				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
-	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_target_vision_pose;
-	ROS_INFO("LWRTCP_target_vision_pose: PoseNr | pos (XYZ) | ori (XYZW) | skip");
-	if(target_skip_vision.size()==tmpPoseArray.size())
-	{
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_target_safe_pose;
+		ROS_INFO("LWRTCP_target_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
 		for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
 		{
-			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f] | %d",ii,tmpPoseArray[ii].position.x,
+			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
 					tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w,target_skip_vision[ii]);
+					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
+		}
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_target_vision_pose;
+		ROS_INFO("LWRTCP_target_vision_pose: PoseNr | pos (XYZ) | ori (XYZW) | skip");
+		if(target_skip_vision.size()==tmpPoseArray.size())
+		{
+			for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+			{
+				ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f] | %d",ii,tmpPoseArray[ii].position.x,
+						tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
+						tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w,target_skip_vision[ii]);
+			}
+		}
+		else
+		{
+			msg_error("Error. target_skip_vision has wrong size of %d (should be %d)",target_skip_vision.size(),tmpPoseArray.size());
 		}
 	}
-	else
+	if(task_number_==5)
 	{
-		msg_error("Error. target_skip_vision has wrong size of %d (should be %d)",target_skip_vision.size(),tmpPoseArray.size());
-	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_push_target_pose;
-	ROS_INFO("LWRTCP_push_target_pose: PoseNr | pos (XYZ) | ori (XYZW)");
-	for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
-	{
-		ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
-				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
-	}
-	tmpPoseArray.clear();
-	tmpPoseArray=LWRTCP_push_safe_pose;
-	ROS_INFO("LWRTCP_push_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
-	for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
-	{
-		ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
-				tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
-				tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_push_target_pose;
+		ROS_INFO("LWRTCP_push_target_pose: PoseNr | pos (XYZ) | ori (XYZW)");
+		for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+		{
+			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
+					tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
+					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
+		}
+		tmpPoseArray.clear();
+		tmpPoseArray=LWRTCP_push_safe_pose;
+		ROS_INFO("LWRTCP_push_safe_pose: PoseNr | pos (XYZ) | ori (XYZW)");
+		for(uint8_t ii=0; ii<tmpPoseArray.size(); ii++)
+		{
+			ROS_INFO(" [%d] | [%4.3f %4.3f %4.3f] | [%4.3f %4.3f %4.3f %4.3f]",ii,tmpPoseArray[ii].position.x,
+					tmpPoseArray[ii].position.y,tmpPoseArray[ii].position.z,tmpPoseArray[ii].orientation.x,tmpPoseArray[ii].orientation.y,
+					tmpPoseArray[ii].orientation.z,tmpPoseArray[ii].orientation.w);
+		}
 	}
 	ROS_INFO("grip_pose_type: PoseNr | type");
 	for(uint8_t ii=0; ii<grip_pose_type.size(); ii++)
@@ -3926,23 +3940,26 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
 	}
-	for (uint16_t ii=0; ii<LWRTCP_object_safe_pose.size(); ii++)
+	if(task_number_!=6)
 	{
-		//send safe pose
-		tmp_transform=pose_to_transform(LWRTCP_object_safe_pose[ii]);
-		posename.str("");
-		posename << "object_safe_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
-	}
-	for (uint16_t ii=0; ii<LWRTCP_object_vision_pose.size(); ii++)
-	{
-		//send vision pose
-		tmp_transform=pose_to_transform(LWRTCP_object_vision_pose[ii]);
-		posename.str("");
-		posename << "object_vision_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
+		for (uint16_t ii=0; ii<LWRTCP_object_safe_pose.size(); ii++)
+		{
+			//send safe pose
+			tmp_transform=pose_to_transform(LWRTCP_object_safe_pose[ii]);
+			posename.str("");
+			posename << "object_safe_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
+		for (uint16_t ii=0; ii<LWRTCP_object_vision_pose.size(); ii++)
+		{
+			//send vision pose
+			tmp_transform=pose_to_transform(LWRTCP_object_vision_pose[ii]);
+			posename.str("");
+			posename << "object_vision_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
 	}
 
 	for (uint16_t ii=0; ii<LWRTCP_target_place_pose.size(); ii++)
@@ -3954,41 +3971,48 @@ void GraspPose2::send_poses_to_tf_broadcaster()
 		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
 		br.sendTransform(tmp_stampedtransform);
 	}
-	for (uint16_t ii=0; ii<LWRTCP_target_safe_pose.size(); ii++)
+	if(task_number_!=6)
 	{
-		//send safe pose
-		tmp_transform=pose_to_transform(LWRTCP_target_safe_pose[ii]);
-		posename.str("");
-		posename << "target_safe_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
+		for (uint16_t ii=0; ii<LWRTCP_target_safe_pose.size(); ii++)
+		{
+			//send safe pose
+			tmp_transform=pose_to_transform(LWRTCP_target_safe_pose[ii]);
+			posename.str("");
+			posename << "target_safe_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
+		for (uint16_t ii=0; ii<LWRTCP_target_vision_pose.size(); ii++)
+		{
+			//send vision pose
+			tmp_transform=pose_to_transform(LWRTCP_target_vision_pose[ii]);
+			posename.str("");
+			posename << "target_vision_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
 	}
-	for (uint16_t ii=0; ii<LWRTCP_target_vision_pose.size(); ii++)
+
+	if(task_number_==5)
 	{
-		//send vision pose
-		tmp_transform=pose_to_transform(LWRTCP_target_vision_pose[ii]);
-		posename.str("");
-		posename << "target_vision_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
-	}
-	for (uint16_t ii=0; ii<LWRTCP_push_safe_pose.size(); ii++)
-	{
-		//send push safe pose
-		tmp_transform=pose_to_transform(LWRTCP_push_safe_pose[ii]);
-		posename.str("");
-		posename << "push_safe_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
-	}
-	for (uint16_t ii=0; ii<LWRTCP_push_target_pose.size(); ii++)
-	{
-		//send push safe pose
-		tmp_transform=pose_to_transform(LWRTCP_push_target_pose[ii]);
-		posename.str("");
-		posename << "push_target_" << ii;
-		tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
-		br.sendTransform(tmp_stampedtransform);
+		for (uint16_t ii=0; ii<LWRTCP_push_safe_pose.size(); ii++)
+		{
+			//send push safe pose
+			tmp_transform=pose_to_transform(LWRTCP_push_safe_pose[ii]);
+			posename.str("");
+			posename << "push_safe_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
+		for (uint16_t ii=0; ii<LWRTCP_push_target_pose.size(); ii++)
+		{
+			//send push safe pose
+			tmp_transform=pose_to_transform(LWRTCP_push_target_pose[ii]);
+			posename.str("");
+			posename << "push_target_" << ii;
+			tmp_stampedtransform=tf::StampedTransform(tmp_transform,ros::Time::now(),ORIGIN,posename.str().c_str());
+			br.sendTransform(tmp_stampedtransform);
+		}
 	}
 }
 
