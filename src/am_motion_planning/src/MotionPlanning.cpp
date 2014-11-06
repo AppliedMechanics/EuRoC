@@ -13,6 +13,7 @@ goalPose_action_name_("goalPoseAction"),
 time_at_path_points_(1),
 active_task_nr_(1),
 octree_file(0.01),
+collision_object_scaler_(1.0),
 obj_data_loaded_(false)
 //randomObjectAttached(false)
 {
@@ -2948,6 +2949,10 @@ void MotionPlanning::object_manager_readObjectDataFromParamServer(int obj_index,
 			_shape_size_2 << i;
 			_shape_size_2 << "_size_2_";
 			ros::param::get(_shape_size_2.str(), shape_size.z);
+			// scale the dimensions of the object
+			shape_size.x *= collision_object_scaler_;
+			shape_size.y *= collision_object_scaler_;
+			shape_size.z *= collision_object_scaler_;
 			obj_info.shape_sizes.push_back(shape_size);
 
 
@@ -2973,6 +2978,8 @@ void MotionPlanning::object_manager_readObjectDataFromParamServer(int obj_index,
 			_shape_length << i;
 			_shape_length << "_length_";
 			ros::param::get(_shape_length.str(), shape_length);
+			// scale the dimensions of the object
+			shape_length *= collision_object_scaler_;
 			obj_info.shape_lengths.push_back(shape_length);
 
 			double shape_radius;
@@ -2983,6 +2990,8 @@ void MotionPlanning::object_manager_readObjectDataFromParamServer(int obj_index,
 			_shape_radius << i;
 			_shape_radius << "_radius_";
 			ros::param::get(_shape_radius.str(), shape_radius);
+			// scale the dimensions of the object
+			shape_radius *= collision_object_scaler_;
 			obj_info.shape_radii.push_back(shape_radius);
 
 			break;

@@ -217,6 +217,7 @@ protected:
 
 	moveit_msgs::PlanningScene planning_scene_;
 	std::vector<moveit_msgs::CollisionObject> collision_objects_;
+	double collision_object_scaler_;
 
 
 
