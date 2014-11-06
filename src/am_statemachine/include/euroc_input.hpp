@@ -198,8 +198,9 @@ private:
 	double place_y_offset;
 	double place_z_offset;
 
-	//! gripper offset in relation with the puzzle part to be pushed
+	//! gripper offset in relation with the puzzle part to be pushed. Gripper min ofset = 0.015 (half of gripper jaw width)
 	double gripper_offset;
+	double gripper_min_offset;
 
 public:
 	//!counter for objects with the same color (only for task 5)

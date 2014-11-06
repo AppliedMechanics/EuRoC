@@ -9,17 +9,17 @@
 
 
 EurocInput::EurocInput():
-	task_nr_(1),
-	nr_objects_(0),
-	nr_zones_(0),
-	active_zone_(-1),
-	time_limit_(3000),
-	nr_sensors(0),
-	place_x_offset(0.01),
-	place_y_offset(0.01),
-	place_z_offset(0.06),
-	same_color_counter_(0),
-    gripper_offset(0.02)
+task_nr_(1),
+nr_objects_(0),
+nr_zones_(0),
+active_zone_(-1),
+time_limit_(3000),
+nr_sensors(0),
+place_x_offset(0.01),
+place_y_offset(0.01),
+place_z_offset(0.01),
+gripper_offset(0.04),
+gripper_min_offset(0.015)
 {
 
 }
@@ -1427,13 +1427,19 @@ geometry_msgs::Pose EurocInput::get_active_target_pose()
 
 void EurocInput::puzzle_get_push_position() // Only provides the push pose points, no orientation!!
 {
-	double object_x_min = 0;
-	double object_x_max = 0;
-	double object_y_min = 0;
-	double object_y_max = 0;
+	double object_x_min = 0.0;  //centre point of shape smallest in x
+	double object_x_max = 0.0;  //centre point of shape greatest in x
+	double object_y_min = 0.0;
+	double object_y_max = 0.0;
 
-	double shape_size_x_max = 0;
-	double shape_size_y_max = 0;
+	double object_centre_x;  //Centre of each side of the current object
+	double object_centre_y;
+
+	double shape_size_x_max = 0.0;
+	double shape_size_y_max = 0.0;
+
+	bool can_be_pushed_in_x = false;
+	bool can_be_pushed_in_y = false;
 
 	geometry_msgs::Pose rel_push_pose_in_x;
 	geometry_msgs::Pose rel_push_pose_in_y;
@@ -1501,13 +1507,12 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 				}
 			}
 
+			object_centre_x = (object_x_max + object_x_min)/2.0;
+			object_centre_y = (object_y_max + object_y_min)/2.0;
+
 			ROS_INFO("x min = %f, x max = %f", object_x_min, object_x_max);
 			ROS_INFO("y min = %f, y max = %f", object_y_min, object_y_max);
 			ROS_INFO("x size max = %f", shape_size_x_max);
-
-			//			tf::Vector3 x_grp;
-			//			tf::Vector3 y_grp;
-			//			tf::Vector3 z_grp;
 
 			// puzzlepart relative to fixture
 			tf::Transform puzzlepart;
@@ -1527,37 +1532,161 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 					fixture_pose_.orientation.y,fixture_pose_.orientation.z,
 					fixture_pose_.orientation.w));
 
-			// push pose in puzzle piece coordinate system
-			//			z_grp.setValue(0,0,-1);
-			//			y_grp.setValue(1,0,0);
-			//			x_grp=y_grp.cross(z_grp);
-			//			set_orientation_from_axes(rel_push_pose_in_x,x_grp,y_grp,z_grp);
-			rel_push_pose_in_x.position.x = object_x_max + shape_size_x_max/2.0 + gripper_offset;
-			rel_push_pose_in_x.position.y = (object_y_max + object_y_min)/2.0;
-			rel_push_pose_in_x.position.z = 0.0;
+			//-----------------------------------------------------------------------------------------------
+
+			double centre_y_max_x = 0.0;
+			if(int(1000*object_centre_y)%50 == 0)
+			{
+				int counter = 0;
+				double where_y_in_x_max = 0.0;
+
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if(centre_y_max_x < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x
+							&& fabs(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y - object_centre_y)
+					< 0.03)
+					{
+						centre_y_max_x = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
+					}
+				}
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if(int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x+0.000005))
+							== int(1000*(centre_y_max_x+0.000005))
+							&& fabs(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y - object_centre_y)
+							< 0.03)
+					{
+						where_y_in_x_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
+						counter++;
+					}
+				}
+				if(counter == 2)
+				{
+					rel_push_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_offset;
+					rel_push_pose_in_x.position.y = object_centre_y;
+					rel_push_pose_in_x.position.z = 0.0;
+
+					rel_push_target_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_min_offset;
+					rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
+					rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
+				}
+				else if (counter == 1)
+				{
+					rel_push_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_offset;
+					rel_push_pose_in_x.position.y = where_y_in_x_max;
+					rel_push_pose_in_x.position.z = 0.0;
+
+					rel_push_target_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_min_offset;
+					rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
+					rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
+				}
+				else if (counter == 0)
+				{
+					//ERROR
+				}
+			}
+			else
+			{
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if (centre_y_max_x < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x
+							&& int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y)+0.000005) == int(1000*(object_centre_y+0.000005)))
+					{
+						centre_y_max_x = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
+					}
+				}
+				rel_push_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_offset;
+				rel_push_pose_in_x.position.y = object_centre_y;
+				rel_push_pose_in_x.position.z = 0.0;
+
+				rel_push_target_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_min_offset;
+				rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
+				rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
+
+				ROS_INFO("centre y max x = %f", centre_y_max_x);
+			}
+			//-----------------------------------------------------------------------------------------------
+			double centre_x_max_y = 0.0;
+			if(int(1000*object_centre_x)%50 == 0)
+			{
+				int counter = 0;
+				double where_x_in_y_max = 0.0;
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if(centre_x_max_y < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y
+							&& fabs(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x - object_centre_x)
+					< 0.03)
+					{
+						centre_x_max_y = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
+					}
+				}
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if(int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y+0.000005))
+							== int(1000*(centre_x_max_y+0.000005))
+							&& fabs(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x - object_centre_x)
+							< 0.03)
+					{
+						where_x_in_y_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
+						counter++;
+					}
+				}
+				if(counter == 2)
+				{
+					rel_push_pose_in_y.position.x = object_centre_x;
+					rel_push_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_offset;
+					rel_push_pose_in_y.position.z = 0.0;
+
+					rel_push_target_pose_in_y.position.x = rel_push_pose_in_y.position.x;
+					rel_push_target_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_min_offset;
+					rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
+				}
+				else if (counter == 1)
+				{
+					rel_push_pose_in_y.position.x = where_x_in_y_max;
+					rel_push_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_offset;
+					rel_push_pose_in_y.position.z = 0.0;
+
+					rel_push_target_pose_in_y.position.x = rel_push_pose_in_y.position.x;
+					rel_push_target_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_min_offset;
+					rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
+				}
+				else if (counter == 0)
+				{
+					//ERROR
+				}
+			}
+			else
+			{
+				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
+				{
+					if (centre_x_max_y < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y
+							&& int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)+0.000005) == int(1000*(object_centre_x+0.000005)))
+					{
+						centre_x_max_y = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
+					}
+				}
+				rel_push_pose_in_y.position.x = object_centre_x;
+				rel_push_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_offset;
+				rel_push_pose_in_y.position.z = 0.0;
+
+				rel_push_target_pose_in_y.position.x = rel_push_pose_in_y.position.x;
+				rel_push_target_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_min_offset;
+				rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
+
+				ROS_INFO("centre x max y = %f", centre_x_max_y);
+			}
+			//-----------------------------------------------------------------------------------------------
+
 			rel_push_pose_in_x.orientation.x = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.x;
 			rel_push_pose_in_x.orientation.y = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.y;
 			rel_push_pose_in_x.orientation.z = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.z;
 			rel_push_pose_in_x.orientation.w = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[0].pose.orientation.w;
 
-			rel_push_target_pose_in_x.position.x = object_x_max + shape_size_x_max/2.0;
-			rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
-			rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
 			rel_push_target_pose_in_x.orientation = rel_push_pose_in_x.orientation;
 
-			// push pose in puzzle piece coordinate system
-			//			z_grp.setValue(0,0,-1);
-			//			y_grp.setValue(0,1,0);
-			//			x_grp=y_grp.cross(z_grp);
-			//			set_orientation_from_axes(rel_push_pose_in_y,x_grp,y_grp,z_grp);
-			rel_push_pose_in_y.position.x = (object_x_max + object_x_min)/2.0;
-			rel_push_pose_in_y.position.y = object_y_max + shape_size_y_max/2.0 + gripper_offset;
-			rel_push_pose_in_y.position.z = 0.0;
 			rel_push_pose_in_y.orientation = rel_push_pose_in_x.orientation;
 
-			rel_push_target_pose_in_y.position.x = rel_push_pose_in_y.position.x;
-			rel_push_target_pose_in_y.position.y = object_y_max + shape_size_y_max/2.0;
-			rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
 			rel_push_target_pose_in_y.orientation = rel_push_pose_in_y.orientation;
 
 			if (puzzle_order_[obj_queue_[0].obj_idx].x_first) // if first pushed in x direction, assign offset accordingly -> in x = push pose A
@@ -1599,13 +1728,13 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 			temp_push_target_pose_B = transform_to_pose(puzzlepart*pose_to_transform(rel_push_target_pose_B));
 
 			//-----------------------------------------------------------------------------------------------
-//			ROS_INFO("relative push pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_A.position.x,temp_push_pose_A.position.y,temp_push_pose_A.position.z);
-//			ROS_INFO("relative push target pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_A.position.x,temp_push_target_pose_A.position.y,temp_push_target_pose_A.position.z);
-//			ROS_INFO("relative push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
-//
-//			ROS_INFO("relative push pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_B.position.x,temp_push_pose_B.position.y,temp_push_pose_B.position.z);
-//			ROS_INFO("relative push target pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_B.position.x,temp_push_target_pose_B.position.y,temp_push_target_pose_B.position.z);
-//			ROS_INFO("relative push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
+						ROS_INFO("relative push pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_A.position.x,temp_push_pose_A.position.y,temp_push_pose_A.position.z);
+						ROS_INFO("relative push target pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_A.position.x,temp_push_target_pose_A.position.y,temp_push_target_pose_A.position.z);
+						ROS_INFO("relative push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
+
+						ROS_INFO("relative push pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_B.position.x,temp_push_pose_B.position.y,temp_push_pose_B.position.z);
+						ROS_INFO("relative push target pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_B.position.x,temp_push_target_pose_B.position.y,temp_push_target_pose_B.position.z);
+						ROS_INFO("relative push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
 			//-----------------------------------------------------------------------------------------------
 
 			// push poses in the global coordinate system
@@ -1625,11 +1754,9 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 			//-----------------------------------------------------------------------------------------------
 			ROS_INFO("absolute push pose A position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.start_point.z);
 			ROS_INFO("absolute push target pose A position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_A.end_point.z);
-//			ROS_INFO("absolute push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
 
 			ROS_INFO("absolute push pose B position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.start_point.z);
 			ROS_INFO("absolute push target pose B position: x=%4.3f y=%4.3f z=%4.3f",puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.x,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.y,puzzle_order_[obj_queue_[0].obj_idx].push_pose_B.end_point.z);
-//			ROS_INFO("absolute push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
 			//-----------------------------------------------------------------------------------------------
 
 		}
@@ -2455,18 +2582,18 @@ void EurocInput::puzzle_order_of_pieces()
 
 	//----------------------------------------------------------------------------------
 
-//	ROS_INFO("The right order:");
-//	for(int k=0; k < nr_objects_; k++)
-//	{
-//		try
-//		{
-//			ROS_INFO("piece %d", puzzle_order_[k].part_index);
-//		}
-//		catch (...)
-//		{
-//			ROS_ERROR("Failed to print out right order");
-//		}
-//	}
+	ROS_INFO("The right order:");
+	for(int k=0; k < nr_objects_; k++)
+	{
+		try
+		{
+			ROS_INFO("piece %d", puzzle_order_[k].part_index);
+		}
+		catch (...)
+		{
+			ROS_ERROR("Failed to print out right order");
+		}
+	}
 
 	//---------------------------------------------------------------------------------
 
@@ -2640,74 +2767,29 @@ void EurocInput::puzzle_order_of_pieces()
 					search_until = i;
 				}
 			}
-			//
-			//			for(int organised_object = 0; organised_object < search_until; organised_object++)
-			//			{
-			//				if (puzzle_order_[organised_object].part_index != puzzle_order_[fix_object].part_index)
-			//				{
-			//					for (int fix_shape = 0; fix_shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; fix_shape++)
-			//					{
-			//						for (int organised_shape = 0; organised_shape < objects_[puzzle_order_[organised_object].part_index].nr_shapes; organised_shape++)
-			//						{
-			//							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
-			//									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
-			//									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
-			//									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)))
-			//							{
-			//								no_blocks_x = false;
-			//							}
-			//							//          ROS_INFO("fix %d, organised %d: ", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
-			//							//          ROS_INFO("x: %d & %d: ", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005)));
-			//							//          ROS_INFO("y: %d & %d: ", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)));
-			//							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
-			//									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
-			//									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
-			//									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)))
-			//							{
-			//								//              ROS_INFO("fix %d, organised %d, !no_blocks_y", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
-			//								no_blocks_y = false;
-			//							}
-			//						}
-			//					}
-			//				}
-			//			}
-			//
-			//			if (no_blocks_y && !no_blocks_x)
-			//			{
-			//				//      ROS_INFO("fix_object %d no_blocks_y && !no_blocks_x", puzzle_order_[fix_object].part_index);
-			//				puzzle_order_[fix_object].x_first = false;
-			//			}
-			//			else if (!no_blocks_y && !no_blocks_x)
-			//			{
-			//				ROS_INFO("fix_object %d THIS IS AN ERROR", puzzle_order_[fix_object].part_index);
-			//			}
-			//			else
-			//			{
-			//				puzzle_order_[fix_object].x_first = true;
-			//			}
 		}
 	}
 
 	//---------------------------------------------------------------------------------
 
-//	for(int i = 0; i < nr_objects_; i++)
-//	{
-//		if(puzzle_order_[i].push)
-//		{
-//			if(puzzle_order_[i].x_first)
-//			{
-//				ROS_INFO("Piece %d to be pushed first in x direction", puzzle_order_[i].part_index);
-//			}
-//			else
-//			{
-//				ROS_INFO("Piece %d to be pushed first in y direction", puzzle_order_[i].part_index);
-//			}
-//		}
-//		else
-//		{
-//			ROS_INFO("Piece %d to be picked up an placed into the fixture", puzzle_order_[i].part_index);
-//		}
-//	}
+	for(int i = 0; i < nr_objects_; i++)
+	{
+		if(puzzle_order_[i].push)
+		{
+			if(puzzle_order_[i].x_first)
+			{
+				ROS_INFO("Piece %d to be pushed first in x direction", puzzle_order_[i].part_index);
+			}
+			else
+			{
+				ROS_INFO("Piece %d to be pushed first in y direction", puzzle_order_[i].part_index);
+			}
+		}
+		else
+		{
+			ROS_INFO("Piece %d to be picked up an placed into the fixture", puzzle_order_[i].part_index);
+		}
+	}
 
 	//---------------------------------------------------------------------------------
 
