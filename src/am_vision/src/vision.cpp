@@ -318,7 +318,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 //		pub.publish(msg);
 //#endif
 
-	}
+//	}
 }
 
 /*

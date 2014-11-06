@@ -942,7 +942,6 @@ void Statemachine::scheduler_next_object()
 			cur_object_type_=OBJECT_HANDLE;
 			ROS_INFO("new object-type: HANDLE");
 		}
-		if(())
 
 		//reset speed modification
 		speed_mod_=0;
@@ -2946,7 +2945,7 @@ int Statemachine::explore_environment_image()
 	{
 		ROS_INFO("explore_environment_image() called: FINISHED");
 
-		if(first && (active_goal_<4) && active_task_number_==4)
+		if(first && (active_goal_<4) && (active_task_number_==4))
 		{
 			first=false;
 			explore_environment_image_state_=RUNNING;

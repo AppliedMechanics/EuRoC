@@ -9,6 +9,7 @@
 
 GraspPose2::GraspPose2()
 {
+	task5_pose_counter_=3;
 	pi=M_PI;
 	gripper_maxwidth_=0.06;	//Linear axis goes from 0 to 0.07, so there is a minimum safety distance of 0.01 between finger and object.
 	gripper_finger_height_=0.06;
@@ -239,6 +240,11 @@ void GraspPose2::set_object_data_(am_msgs::Object object)
 
 	ROS_INFO("set_object_data_() called");
 	object_ = object;
+	//correction of object alignment
+	if(task_number_==5 || task_number_==6)
+	{
+		correct_object_alignment();
+	}
 
 	dist_COM_shape_.resize(object_.nr_shapes);
 	b_transform_shapes_.resize(object_.nr_shapes);
@@ -291,8 +297,8 @@ void GraspPose2::set_object_data_(am_msgs::Object object)
 		}
 	}
 
-	//setting object transform
 	transform_object=pose_to_transform(object_.abs_pose);
+	//sending object pose to Broadcaster
 	br.sendTransform(tf::StampedTransform(transform_object, ros::Time::now(), ORIGIN, "object_"));
 }
 
@@ -308,9 +314,9 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	target_zone_ = req.target_zone;
 	rel_target_pose_ = req.target_pose;
 	abs_target_pose_ = transform_to_pose(transform_puzzlefixture*pose_to_transform(rel_target_pose_));
+	set_object_data_(req.object);
 
 	//compute poses
-	set_object_data_(req.object);
 	compute_object_CoM_();
 	compute_object_center_();
 	compute_idx_shape_CoM_();
@@ -366,6 +372,66 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	return true;
 }
 
+void GraspPose2::correct_object_alignment()
+{
+	ROS_INFO("correct_object_alignment() called...");
+	tf::Vector3 z_axis(0,0,1);
+	tf::Vector3 x_obj, y_obj, z_obj;        //object pose
+	tf::Transform tmp_Transform;
+	geometry_msgs::Pose tmp_Pose;
+
+	tmp_Transform=pose_to_transform(object_.abs_pose);
+	x_obj = tmp_Transform.getBasis().getColumn(0);
+	y_obj = tmp_Transform.getBasis().getColumn(1);
+	z_obj = tmp_Transform.getBasis().getColumn(2);
+	double dot_product;
+
+	//check upward pointing axis and correct the alignment
+	dot_product = x_obj.dot(z_axis);
+	if (am_abs(dot_product) > 0.9)
+	{
+		//x-axis points up or down
+		ROS_INFO("x-axis is vertical axis");
+		x_obj.setX(0);
+		x_obj.setY(0);
+
+		y_obj.setZ(0);
+		z_obj.setZ(0);
+	}
+
+	dot_product = y_obj.dot(z_axis);
+	if (am_abs(dot_product) > 0.9)
+	{
+		//y-axis points up or down
+		ROS_INFO("y-axis is vertical axis");
+		y_obj.setX(0);
+		y_obj.setY(0);
+
+		x_obj.setZ(0);
+		z_obj.setZ(0);
+	}
+
+	dot_product = z_obj.dot(z_axis);
+	if (am_abs(dot_product) > 0.9)
+	{
+		//y-axis points up or down
+		ROS_INFO("z-axis is vertical axis");
+		z_obj.setX(0);
+		z_obj.setY(0);
+
+		x_obj.setZ(0);
+		y_obj.setZ(0);
+	}
+
+	x_obj=x_obj/x_obj.length();
+	y_obj=y_obj/y_obj.length();
+	z_obj=z_obj/z_obj.length();
+
+	tmp_Pose=transform_to_pose(tmp_Transform);
+	set_orientation_from_axes(tmp_Pose,x_obj,y_obj,z_obj);
+
+	object_.abs_pose=tmp_Pose;
+}
 void GraspPose2::compute_abs_shape_poses_()
 {
 	ROS_INFO("compute_abs_shape_poses_() called");
@@ -2927,6 +2993,36 @@ void GraspPose2::compute_grasp_posesT5_()
 	if(grip_pose_type_==GRIP_POSE_PUZZLE_FLIPPING)
 	{
 		//no gripping strategy implemented yet
+	}
+
+	//copy the poses several times
+	for(uint8_t ii=2; ii<=task5_pose_counter_; ii++)
+	{
+		if(GPTCP_object_grip_pose.size()>0)
+			GPTCP_object_grip_pose.push_back(GPTCP_object_grip_pose[0]);
+		if(GPTCP_object_safe_pose.size()>0)
+			GPTCP_object_safe_pose.push_back(GPTCP_object_safe_pose[0]);
+		if(GPTCP_object_vision_pose.size()>0)
+			GPTCP_object_vision_pose.push_back(GPTCP_object_vision_pose[0]);
+
+		if(grip_pose_type.size()>0)
+			grip_pose_type.push_back(grip_pose_type[0]);
+		if(object_grasp_width.size()>0)
+			object_grasp_width.push_back(object_grasp_width[0]);
+		if(object_skip_vision.size()>0)
+			object_skip_vision.push_back(object_skip_vision[0]);
+
+		if(GPTCP_target_place_pose.size()>0)
+			GPTCP_target_place_pose.push_back(GPTCP_target_place_pose[0]);
+		if(GPTCP_target_safe_pose.size()>0)
+			GPTCP_target_safe_pose.push_back(GPTCP_target_safe_pose[0]);
+		if(GPTCP_target_vision_pose.size()>0)
+			GPTCP_target_vision_pose.push_back(GPTCP_target_vision_pose[0]);
+
+		if(place_pose_type.size()>0)
+			place_pose_type.push_back(place_pose_type[0]);
+		if(target_skip_vision.size()>0)
+			target_skip_vision.push_back(target_skip_vision[0]);
 	}
 }
 

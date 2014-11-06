@@ -133,6 +133,7 @@ private:
 	std::vector<geometry_msgs::Pose> LWRTCP_push_target_pose;
 	std::vector<geometry_msgs::Vector3> object_grip_r_tcp_com;
 
+	uint8_t task5_pose_counter_;
 	double gripping_angle_deg_;
 	double gripping_angle_rad_;
 	double gripping_angleT6_deg_;
@@ -160,6 +161,8 @@ private:
 	void get_info_from_parameterserver();
 	// "set_object_data_()" sets the object and determines its type
 	void set_object_data_(am_msgs::Object);
+	// "correct_object_alignment()" corrects the object pose orientation
+	void correct_object_alignment();
 	// "compute_abs_shape_positions_()" sets the property "r_02shape_0_"
 	void compute_abs_shape_poses_();
 	// "compute_object_CoM_()" computes the center of mass of the object
