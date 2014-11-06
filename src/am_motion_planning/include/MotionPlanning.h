@@ -220,6 +220,7 @@ protected:
 	moveit::planning_interface::MoveGroup::Plan motion_plan_;
 
 	std::vector<euroc_c2_msgs::Configuration> planned_path_;
+	double allowed_planning_time_;
 
 
 	moveit_msgs::PlanningScene planning_scene_;

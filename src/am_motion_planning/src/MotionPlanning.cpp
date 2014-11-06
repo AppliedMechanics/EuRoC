@@ -13,7 +13,8 @@ goalPose_action_name_("goalPoseAction"),
 time_at_path_points_(1),
 active_task_nr_(1),
 octree_file(0.01),
-collision_object_scaler_(1.3),
+allowed_planning_time_(30),
+collision_object_scaler_(1.2),
 obj_data_loaded_(false)
 //randomObjectAttached(false)
 {
@@ -1457,7 +1458,7 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	//    ROS_INFO_STREAM("Pose reference frame: " << group->getPoseReferenceFrame());
 	//    // print default planning time
 	//    ROS_INFO_STREAM("Default planning time: " << group->getPlanningTime() << " seconds.");
-	group->setPlanningTime(20);
+	group->setPlanningTime(allowed_planning_time_);
 	//    ROS_INFO_STREAM("Planning time set to " << group->getPlanningTime() << " seconds.");
 	//    // print the name of the end effector
 	//    ROS_INFO_STREAM("End effector: " << group->getEndEffector());

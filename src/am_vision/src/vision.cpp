@@ -226,90 +226,99 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::Check
 	return true;
 }
 
-void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg)
+void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 {
 	msg_info("starting get_object_state_CB()!");
-	//
-	//	if(msg->obj_state==OBJ_GRIPPING)
-	//	{
-	//		// remove the aligned shape from the
-	//		// 1. complete point cloud
-	//		// 2. respective color point cloud
-	//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
-	//		tempPC = am_pointcloud::removeShape(finalVoxelizedPC, lastShapeToRemovePC);
-	//		finalVoxelizedPC->clear();
-	//		finalVoxelizedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//		*finalVoxelizedPC += *tempPC;
-	//
-	//		tempPC->clear();
-	//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//
-	//		if(!_currentGoal->object.color.compare("ff0000"))
-	//		{
-	//			// Goal: Red object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedRedPC, lastShapeToRemovePC);
-	//			finalVoxelizedRedPC->clear();
-	//			finalVoxelizedRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedRedPC += *tempPC;
-	//
-	//		}
-	//		else if (!_currentGoal->object.color.compare("00ff00"))
-	//		{
-	//			// Goal: Green object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedGreenPC, lastShapeToRemovePC);
-	//			finalVoxelizedGreenPC->clear();
-	//			finalVoxelizedGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedGreenPC += *tempPC;
-	//
-	//		}
-	//		else if (!_currentGoal->object.color.compare("0000ff"))
-	//		{
-	//			// Goal: Blue object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedBluePC, lastShapeToRemovePC);
-	//			finalVoxelizedBluePC->clear();
-	//			finalVoxelizedBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedBluePC += *tempPC;
-	//
-	//		}
-	//		else if (!_currentGoal->object.color.compare("00ffff"))
-	//		{
-	//			// Goal: Cyan object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedCyanPC, lastShapeToRemovePC);
-	//			finalVoxelizedCyanPC->clear();
-	//			finalVoxelizedCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedCyanPC += *tempPC;
-	//		}
-	//		else if (!_currentGoal->object.color.compare("ff00ff"))
-	//		{
-	//			// Goal: Magenta object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedMagentaPC, lastShapeToRemovePC);
-	//			finalVoxelizedMagentaPC->clear();
-	//			finalVoxelizedMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedMagentaPC += *tempPC;
-	//		}
-	//		else if (!_currentGoal->object.color.compare("ffff00"))
-	//		{
-	//			// Goal: Yellow object
-	//			tempPC = am_pointcloud::removeShape(finalVoxelizedYellowPC, lastShapeToRemovePC);
-	//			finalVoxelizedYellowPC->clear();
-	//			finalVoxelizedYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-	//			*finalVoxelizedYellowPC += *tempPC;
-	//		}
-	//
-	//		// Update the OctoMap
-	//		if ( !reset_octomap_client_.call(std_srvs::Empty) )
-	//		{
-	//			msg_error("reset octomap service failed!");
-	//			return;
-	//		}
-	//#ifdef OCTOMAP_SERVER
-	//      pcl::toROSMsg (*finalVoxelizedPC, msg);
-	//      msg.header.frame_id = "/Origin";
-	//      msg.header.stamp = ros::Time::now();
-	//      pub_3.publish (msg);
-	//#endif
-	//
-	//	}
+
+//	if(msg_in->obj_state==OBJ_GRIPPING)
+//	{
+//		// remove the aligned shape from the
+//		// 1. complete point cloud
+//		// 2. respective color point cloud
+//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
+//		tempPC = am_pointcloud::removeShape(finalVoxelizedPC, lastShapeToRemovePC);
+//		finalVoxelizedPC->clear();
+//		finalVoxelizedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//		*finalVoxelizedPC += *tempPC;
+//
+//		tempPC->clear();
+//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//
+//		if(!_currentGoal->object.color.compare("ff0000"))
+//		{
+//			// Goal: Red object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedRedPC, lastShapeToRemovePC);
+//			finalVoxelizedRedPC->clear();
+//			finalVoxelizedRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedRedPC += *tempPC;
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("00ff00"))
+//		{
+//			// Goal: Green object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedGreenPC, lastShapeToRemovePC);
+//			finalVoxelizedGreenPC->clear();
+//			finalVoxelizedGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedGreenPC += *tempPC;
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("0000ff"))
+//		{
+//			// Goal: Blue object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedBluePC, lastShapeToRemovePC);
+//			finalVoxelizedBluePC->clear();
+//			finalVoxelizedBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedBluePC += *tempPC;
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("00ffff"))
+//		{
+//			// Goal: Cyan object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedCyanPC, lastShapeToRemovePC);
+//			finalVoxelizedCyanPC->clear();
+//			finalVoxelizedCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedCyanPC += *tempPC;
+//		}
+//		else if (!_currentGoal->object.color.compare("ff00ff"))
+//		{
+//			// Goal: Magenta object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedMagentaPC, lastShapeToRemovePC);
+//			finalVoxelizedMagentaPC->clear();
+//			finalVoxelizedMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedMagentaPC += *tempPC;
+//		}
+//		else if (!_currentGoal->object.color.compare("ffff00"))
+//		{
+//			// Goal: Yellow object
+//			tempPC = am_pointcloud::removeShape(finalVoxelizedYellowPC, lastShapeToRemovePC);
+//			finalVoxelizedYellowPC->clear();
+//			finalVoxelizedYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalVoxelizedYellowPC += *tempPC;
+//		}
+////		std_srvs::Empty empty_srv;
+////		// Update the OctoMap
+////		try{
+////		if (!(reset_octomap_client_.call(empty_srv)))
+////		{
+////			msg_error("reset octomap service failed!");
+////			return;
+////		}
+////		else
+////			msg_info("octomap successfully resetted.");
+////		}
+////		catch (...)
+////		{
+////			msg_error("reset octomap service failed! TRYCATCH");
+////		}
+//
+//#ifdef OCTOMAP_SERVER
+//		pcl::toROSMsg (*finalVoxelizedPC, msg);
+//		msg.header.frame_id = "/Origin";
+//		msg.header.stamp = ros::Time::now();
+//		pub.publish(msg);
+//#endif
+
+	}
 }
 
 /*

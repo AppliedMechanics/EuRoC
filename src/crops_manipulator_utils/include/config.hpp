@@ -82,7 +82,8 @@ typedef enum {
 
 typedef enum {
 	SCENE_CAM=0,
-	TCP_CAM
+	TCP_CAM,
+	SCENE_CAM_WITHOUT_ROBOT
 } camera_type_t;
 
 typedef enum {
