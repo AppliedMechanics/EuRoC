@@ -331,7 +331,10 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	}
 	if(task_number_==5)
 	{
-		correct_puzzle_part_rotation();
+		if(does_puzzle_part_lie_flat()==true)
+		{
+			correct_puzzle_part_rotation();
+		}
 		compute_puzzle_free_sides_();
 		compute_grasp_posesT5_();
 		transform_poses_to_LWRTCP();
@@ -732,6 +735,39 @@ void GraspPose2::compute_puzzle_free_sides_()
 		{
 			puzzle_boxes[ii].obj_z_free=false;
 		}
+	}
+}
+
+bool GraspPose2::does_puzzle_part_lie_flat()
+{
+	ROS_INFO("does_puzzle_part_lie_flat() called");
+	double minZ, maxZ;
+	double Zdiff;
+
+	minZ=o_transform_shapes_[0].getOrigin().getZ();
+	maxZ=o_transform_shapes_[0].getOrigin().getZ();
+
+	for(uint8_t ii=1; ii<object_.nr_shapes;ii++)
+	{
+		if(o_transform_shapes_[ii].getOrigin().getZ() > maxZ)
+		{
+			maxZ=o_transform_shapes_[ii].getOrigin().getZ();
+		}
+		if(o_transform_shapes_[ii].getOrigin().getZ() < minZ)
+		{
+			minZ=o_transform_shapes_[ii].getOrigin().getZ();
+		}
+	}
+	Zdiff = maxZ-minZ;
+	if(Zdiff>0.5*puzzle_boxsize)
+	{
+		ROS_INFO("Zdiff=%4.3f>%4.3f --> puzzle part is vertical!",Zdiff,0.5*puzzle_boxsize);
+		return false;
+	}
+	else
+	{
+		ROS_INFO("Zdiff=%4.3f<%4.3f --> puzzle part is lying flat!",Zdiff,0.5*puzzle_boxsize);
+		return true;
 	}
 }
 

@@ -173,6 +173,8 @@ private:
 	void compute_idx_shape_CoM_();
 	// "compute_bounding_box()" calculates the bounding box of the object in the object frame
 	void compute_bounding_box_();
+	// "does_puzzle_part_lie_flat()" detects wheter the puzzle part is standing vertical (false) or flat on the floor (true)
+	bool does_puzzle_part_lie_flat();
 	// "correct_puzzle_part_rotation()" rotates the object if its symmetric to avoid mistakes
 	void correct_puzzle_part_rotation();
 	// "compute_puzzle_free_sides_()" calculates the free sides of the boxes of a puzzle part in world-coordinates
