@@ -27,7 +27,7 @@ GraspPose2::GraspPose2()
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(pi);
 	gripping_angleT6_deg_=60; // angle with which objects are awaited; default = 45
 	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
-	gripping_finger_overlapT5_=0.5;
+	gripping_finger_overlapT5_=0.8;
 }
 
 GraspPose2::~GraspPose2() {
@@ -2910,7 +2910,7 @@ void GraspPose2::compute_grasp_posesT5_()
 	{
 		tmptransform.mult(pose_to_transform(abs_target_pose_),grp_obj_transform_.inverse());
 		tmp_GPTCP_pose=transform_to_pose(tmptransform);
-		tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+1.1*puzzle_boxsize;
+		tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+0.8*puzzle_boxsize;
 		GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 		tmp2_GPTCP_pose=tmp_GPTCP_pose;

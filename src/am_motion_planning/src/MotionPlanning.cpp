@@ -138,8 +138,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
 
 
-	ROS_INFO_STREAM("goal received:");
-	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
+//	ROS_INFO_STREAM("goal received:");
+//	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
 
 	//--------------------------------------------------------------------------------------
 	//! get kinematic limits

@@ -9,17 +9,17 @@
 
 
 EurocInput::EurocInput():
-task_nr_(1),
-nr_objects_(0),
-nr_zones_(0),
-active_zone_(-1),
-time_limit_(3000),
-nr_sensors(0),
-place_x_offset(0.01),
-place_y_offset(0.01),
-place_z_offset(0.01),
-gripper_offset(0.04),
-gripper_min_offset(0.015)
+	task_nr_(1),
+	nr_objects_(0),
+	nr_zones_(0),
+	active_zone_(-1),
+	time_limit_(3000),
+	nr_sensors(0),
+	place_x_offset(0.01),
+	place_y_offset(0.01),
+	place_z_offset(0.01),
+	gripper_offset(0.04),
+	gripper_min_offset(0.015)
 {
 
 }

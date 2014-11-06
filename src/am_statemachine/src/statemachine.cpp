@@ -587,6 +587,7 @@ void Statemachine::scheduler_schedule()
 						temp_state.sub.three=fsm::PUSH_OBJECT_T5; 				state_queue.push_back(temp_state);
 						temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	    state_queue.push_back(temp_state);
 						temp_state.sub.three=fsm::PUSH_OBJECT_T5; 				state_queue.push_back(temp_state);
+						temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;			state_queue.push_back(temp_state);
 					}
 					else
 					{
@@ -603,6 +604,7 @@ void Statemachine::scheduler_schedule()
 					temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_T6;  	state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;		state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 			}
@@ -935,11 +937,12 @@ void Statemachine::scheduler_next_object()
 			cur_object_type_=OBJECT_CUBE;
 			ROS_INFO("new object-type: CUBE");
 		}
-		if(cur_obj_.nr_shapes==3)
+		if((cur_obj_.nr_shapes==3) && (active_task_number_!=5))
 		{
 			cur_object_type_=OBJECT_HANDLE;
 			ROS_INFO("new object-type: HANDLE");
 		}
+		if(())
 
 		//reset speed modification
 		speed_mod_=0;
@@ -2924,6 +2927,7 @@ void Statemachine::explore_environment_image_cb()
 
 int Statemachine::explore_environment_image()
 {
+	static bool first=true;
 	if(explore_environment_image_state_==OPEN)
 	{
 		ROS_INFO("explore_environment_image() called: OPEN");
@@ -2941,6 +2945,14 @@ int Statemachine::explore_environment_image()
 	else if(explore_environment_image_state_==FINISHED)
 	{
 		ROS_INFO("explore_environment_image() called: FINISHED");
+
+		if(first && (active_goal_<4) && active_task_number_==4)
+		{
+			first=false;
+			explore_environment_image_state_=RUNNING;
+			take_image_srv_.request.camera = SCENE_CAM_WITHOUT_ROBOT;
+			lsc_ = boost::thread(&Statemachine::explore_environment_image_cb,this);
+		}
 
 		//destroy thread
 		lsc_.detach();
