@@ -45,9 +45,9 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 
 Vision::Vision():
-		  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
-		  vision_action_name_("VisionAction"),
-		  obj_aligned_(false)
+								  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
+								  vision_action_name_("VisionAction"),
+								  obj_aligned_(false)
 {
 
 	failed = false;
@@ -83,7 +83,7 @@ Vision::Vision():
 	// Check Zones Service
 	check_zones_service_ = nh_.advertiseService("CheckZonesService", &Vision::on_check_zones_CB,this);
 	// Reset Octomap Service
-	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>("/octomap_server/reset");
+	reset_octomap_client_ = nh_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
 
 	// Show PointCloud in rviz
 	pub = nh_.advertise<sensor_msgs::PointCloud2> ("PointCloud_1", 1);
@@ -122,6 +122,14 @@ Vision::Vision():
 
 	// Create and set resolution of Octree
 	tree = new octomap::OcTree(0.005);
+
+	// Remove BoundingBox Query for octomap reset
+	reset_octomap_bbx_srv_.request.min.x = -1.0;
+	reset_octomap_bbx_srv_.request.min.y = -1.0;
+	reset_octomap_bbx_srv_.request.min.z =  0.0;
+	reset_octomap_bbx_srv_.request.max.x =  1.0;
+	reset_octomap_bbx_srv_.request.max.y =  1.0;
+	reset_octomap_bbx_srv_.request.max.z =  2.0;
 
 	// Create octomap::PointCloud
 	OctoCloud = new octomap::Pointcloud();
@@ -167,7 +175,7 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
 	switch (req.camera) {
 	case SCENE_CAM:
 		std::cout<<"[VISION]callback: SCENE CAM!"<<std::endl;
-		scan_with_pan_tilt(res);
+		scan_with_pan_tilt(res,true);
 		break;
 
 	case TCP_CAM:
@@ -177,6 +185,10 @@ bool Vision::on_take_image_CB(am_msgs::TakeImage::Request &req, am_msgs::TakeIma
 		std::cout<<"[VISION]TCP Pointcloud updated"<<std::endl;
 		break;
 
+	case SCENE_CAM_WITHOUT_ROBOT:
+		std::cout<<"[VISION]callback: SCENE CAM WITHOUT ROBOT!"<<std::endl;
+		scan_with_pan_tilt(res,false);
+		break;
 	default:
 		ROS_WARN("Unknown camera type!");
 		res.error_reason=fsm::VISION_ERROR;
@@ -230,96 +242,95 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 {
 	msg_info("starting get_object_state_CB()!");
 
-//	if(msg_in->obj_state==OBJ_GRIPPING)
-//	{
-//		// remove the aligned shape from the
-//		// 1. complete point cloud
-//		// 2. respective color point cloud
-//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
-//		tempPC = am_pointcloud::removeShape(finalVoxelizedPC, lastShapeToRemovePC);
-//		finalVoxelizedPC->clear();
-//		finalVoxelizedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//		*finalVoxelizedPC += *tempPC;
-//
-//		tempPC->clear();
-//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//
-//		if(!_currentGoal->object.color.compare("ff0000"))
-//		{
-//			// Goal: Red object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedRedPC, lastShapeToRemovePC);
-//			finalVoxelizedRedPC->clear();
-//			finalVoxelizedRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedRedPC += *tempPC;
-//
-//		}
-//		else if (!_currentGoal->object.color.compare("00ff00"))
-//		{
-//			// Goal: Green object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedGreenPC, lastShapeToRemovePC);
-//			finalVoxelizedGreenPC->clear();
-//			finalVoxelizedGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedGreenPC += *tempPC;
-//
-//		}
-//		else if (!_currentGoal->object.color.compare("0000ff"))
-//		{
-//			// Goal: Blue object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedBluePC, lastShapeToRemovePC);
-//			finalVoxelizedBluePC->clear();
-//			finalVoxelizedBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedBluePC += *tempPC;
-//
-//		}
-//		else if (!_currentGoal->object.color.compare("00ffff"))
-//		{
-//			// Goal: Cyan object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedCyanPC, lastShapeToRemovePC);
-//			finalVoxelizedCyanPC->clear();
-//			finalVoxelizedCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedCyanPC += *tempPC;
-//		}
-//		else if (!_currentGoal->object.color.compare("ff00ff"))
-//		{
-//			// Goal: Magenta object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedMagentaPC, lastShapeToRemovePC);
-//			finalVoxelizedMagentaPC->clear();
-//			finalVoxelizedMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedMagentaPC += *tempPC;
-//		}
-//		else if (!_currentGoal->object.color.compare("ffff00"))
-//		{
-//			// Goal: Yellow object
-//			tempPC = am_pointcloud::removeShape(finalVoxelizedYellowPC, lastShapeToRemovePC);
-//			finalVoxelizedYellowPC->clear();
-//			finalVoxelizedYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-//			*finalVoxelizedYellowPC += *tempPC;
-//		}
-////		std_srvs::Empty empty_srv;
-////		// Update the OctoMap
-////		try{
-////		if (!(reset_octomap_client_.call(empty_srv)))
-////		{
-////			msg_error("reset octomap service failed!");
-////			return;
-////		}
-////		else
-////			msg_info("octomap successfully resetted.");
-////		}
-////		catch (...)
-////		{
-////			msg_error("reset octomap service failed! TRYCATCH");
-////		}
-//
-//#ifdef OCTOMAP_SERVER
-//		pcl::toROSMsg (*finalVoxelizedPC, msg);
-//		msg.header.frame_id = "/Origin";
-//		msg.header.stamp = ros::Time::now();
-//		pub.publish(msg);
-//#endif
+	if(msg_in->obj_state==OBJ_GRIPPING)
+	{
+		//		// remove the aligned shape from the
+		//		// 1. complete point cloud
+		//		// 2. respective color point cloud
+		//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
+		//		tempPC = am_pointcloud::removeShape(finalVoxelizedPC, lastShapeToRemovePC);
+		//		finalVoxelizedPC->clear();
+		//		finalVoxelizedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//		*finalVoxelizedPC += *tempPC;
+		//
+		//		tempPC->clear();
+		//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//
+		//		if(!_currentGoal->object.color.compare("ff0000"))
+		//		{
+		//			// Goal: Red object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedRedPC, lastShapeToRemovePC);
+		//			finalVoxelizedRedPC->clear();
+		//			finalVoxelizedRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedRedPC += *tempPC;
+		//
+		//		}
+		//		else if (!_currentGoal->object.color.compare("00ff00"))
+		//		{
+		//			// Goal: Green object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedGreenPC, lastShapeToRemovePC);
+		//			finalVoxelizedGreenPC->clear();
+		//			finalVoxelizedGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedGreenPC += *tempPC;
+		//
+		//		}
+		//		else if (!_currentGoal->object.color.compare("0000ff"))
+		//		{
+		//			// Goal: Blue object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedBluePC, lastShapeToRemovePC);
+		//			finalVoxelizedBluePC->clear();
+		//			finalVoxelizedBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedBluePC += *tempPC;
+		//
+		//		}
+		//		else if (!_currentGoal->object.color.compare("00ffff"))
+		//		{
+		//			// Goal: Cyan object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedCyanPC, lastShapeToRemovePC);
+		//			finalVoxelizedCyanPC->clear();
+		//			finalVoxelizedCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedCyanPC += *tempPC;
+		//		}
+		//		else if (!_currentGoal->object.color.compare("ff00ff"))
+		//		{
+		//			// Goal: Magenta object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedMagentaPC, lastShapeToRemovePC);
+		//			finalVoxelizedMagentaPC->clear();
+		//			finalVoxelizedMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedMagentaPC += *tempPC;
+		//		}
+		//		else if (!_currentGoal->object.color.compare("ffff00"))
+		//		{
+		//			// Goal: Yellow object
+		//			tempPC = am_pointcloud::removeShape(finalVoxelizedYellowPC, lastShapeToRemovePC);
+		//			finalVoxelizedYellowPC->clear();
+		//			finalVoxelizedYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		//			*finalVoxelizedYellowPC += *tempPC;
+		//		}
+		// Update the OctoMap
+		try{
+			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
+			{
+				msg_error("reset octomap service failed!");
+				return;
+			}
+			else
+				msg_info("octomap successfully resetted.");
+		}
+		catch (...)
+		{
+			msg_error("reset octomap service failed! TRYCATCH");
+		}
 
-//	}
+#ifdef OCTOMAP_SERVER
+		//		pcl::toROSMsg (*finalVoxelizedPC, msg);
+		//		msg.header.frame_id = "/Origin";
+		//		msg.header.stamp = ros::Time::now();
+		//		pub_3.publish(msg);
+#endif
+	}
 }
+
 
 /*
  * END CALLBACKS
@@ -1183,7 +1194,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
  * All point clouds are voxelized at the end of the process for memory and performance purposes.
  *
  */
-void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
+void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res, bool scan_full)
 {
 
 	std::cout<<"[VISION]Entered Vision::scan_with_pan_tilt()..."<<std::endl;
@@ -1196,19 +1207,26 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 		MovePantilt* mpt;
 		mpt = mpt->get_instance();
 		int panTiltCounter = 0;
+		int maxPanTiltCounter = 8;
+		if (!scan_full)
+			maxPanTiltCounter = 1;
 
 		// store initial pan-tilt values
 		double pan_zero = mpt->get_pan();
 		double tilt_zero = mpt->get_tilt();
 
 		// Initialize pan + tilt values
-		double pan[8]  = {0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380, 0.380};
-		double tilt[8] = {1.250,  0.800, 0.700, 0.800, 0.800, 0.300,  0.300, 0.300};
+		double pan[9]  = {0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380, 0.380, 0.0};
+		double tilt[9] = {1.250,  0.800, 0.700, 0.800, 0.800, 0.300,  0.300, 0.300, 0.34};
 
 		ROS_INFO("[VISION]Scanning the scene with pan tilt cam...");
-		while(panTiltCounter < 8)
+		while(panTiltCounter < maxPanTiltCounter)
 			//    while(panTiltCounter < 3)
 		{
+
+			if (!scan_full)
+				panTiltCounter = 8;
+
 			// temporary variables for each sweep
 			am_pointcloud *scenePointCloud;
 			pcl::PointCloud<pcl::PointXYZ>::Ptr initialPC;
@@ -1384,6 +1402,19 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res)
 
 		// Voxelize result point clouds
 		// for each point cloud, we have to create a voxelized version.
+
+		if (!scan_full)
+		{
+			finalVoxelizedPC       ->clear();
+			finalVoxelizedBluePC   ->clear();
+			finalVoxelizedGreenPC  ->clear();
+			finalVoxelizedRedPC    ->clear();
+			finalVoxelizedYellowPC ->clear();
+			finalVoxelizedCyanPC   ->clear();
+			finalVoxelizedMagentaPC->clear();
+		}
+
+
 		pcl::VoxelGrid<pcl::PointXYZ> vg;
 
 		// copy the final result to finalGlobalPC

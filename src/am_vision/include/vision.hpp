@@ -21,7 +21,7 @@
 #include <octomap/OcTree.h>
 #include <octomap/Pointcloud.h>
 #include <octomap/math/Vector3.h>
-
+#include <octomap_msgs/BoundingBoxQuery.h>
 
 // PCL includes
 #include <pcl/common/transforms.h>
@@ -160,7 +160,7 @@ private:
 
 protected:
 	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
-	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res);
+	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res,bool scan_full);
 	void scan_with_tcp(am_msgs::TakeImage::Response &res);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
 	Eigen::Matrix4f fast_cube_alignment(pcl::PointCloud<pcl::PointXYZ>::Ptr);
@@ -211,6 +211,7 @@ public:
 	ros::ServiceServer take_img_service_;
 	ros::ServiceServer check_zones_service_;
 	ros::ServiceClient reset_octomap_client_;
+	octomap_msgs::BoundingBoxQuery reset_octomap_bbx_srv_;
 
 	bool failed;
 	//alignemt was successfull
