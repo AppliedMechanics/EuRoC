@@ -208,6 +208,7 @@ const std::string PT_0 = "PT_0";
 const std::string PT_TCP = "PT_TCP";
 const std::string S_RGB = "S_RGB";
 const std::string S_DEPTH = "S_DEPTH";
+const std::string PUZZLE_FIXTURE = "Puzzle_Fixture";
 //! KUKA joints
 const std::string lwr_1 = "joint1";
 const std::string lwr_2 = "joint2";

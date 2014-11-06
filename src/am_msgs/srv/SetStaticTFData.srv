@@ -9,7 +9,7 @@ geometry_msgs/TransformStamped T_CM
 geometry_msgs/TransformStamped T_PT_Base
 geometry_msgs/TransformStamped T_SRGB
 geometry_msgs/TransformStamped T_SDEPTH
-
+geometry_msgs/TransformStamped T_PUZZLE
 ---
 #  returns success
 bool success

@@ -110,11 +110,6 @@ obj_data_loaded_(false)
 
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
-	// initialize Planning Scene -> add ground + pan tilt to environment
-	initializePlanningScene();
-
-
-
 }
 
 MotionPlanning::~MotionPlanning()
@@ -130,6 +125,12 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	ros::param::get("/skip_vision", skip_vision_);
 	ros::param::get("/active_task_number_", active_task_nr_);
 
+	static bool first=true;
+	if (first){
+		// initialize Planning Scene -> add ground + pan tilt to environment
+		initializePlanningScene();
+		first = false;
+	}
 
 	goal_pose_goal_ = goal;
 	speed_percentage_ = goal_pose_goal_->speed_percentage;
@@ -2410,7 +2411,7 @@ void MotionPlanning::initializePlanningScene()
 
 	moveit_msgs::CollisionObject object;
 	object.id = "ground";
-	object.header.frame_id = "/Origin";
+	object.header.frame_id = ORIGIN;
 	object.header.stamp = ros::Time::now();
 	object.operation = object.ADD;
 	object.primitives.push_back(primitive);
@@ -2448,7 +2449,7 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_primitive_cam.dimensions[0] = 0.25;//0.3;// radius
 
 	moveit_msgs::CollisionObject pan_tilt_object;
-	pan_tilt_object.header.frame_id = "/Origin";
+	pan_tilt_object.header.frame_id = ORIGIN;
 	pan_tilt_object.id = "pan_tilt_mast";
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_mast);
 	pan_tilt_object.primitives.push_back(pan_tilt_primitive_cam);
@@ -2456,6 +2457,69 @@ void MotionPlanning::initializePlanningScene()
 	pan_tilt_object.primitive_poses.push_back(pan_tilt_pose_cam);
 
 	static_scene_.world.collision_objects.push_back(pan_tilt_object);
+
+
+	// Puzzle Fixture for task 5
+	if (active_task_nr_ == 5)
+	{
+		shape_msgs::SolidPrimitive puzzle_fixture_c0, puzzle_fixture_c1, puzzle_fixture_c2;
+		geometry_msgs::Pose puzzle_fixture_c0_pose, puzzle_fixture_c1_pose, puzzle_fixture_c2_pose;
+		moveit_msgs::CollisionObject puzzle_fixture_object;
+		// Puzzle Fixture C0
+		puzzle_fixture_c0.type = puzzle_fixture_c0.BOX;
+		puzzle_fixture_c0.dimensions.resize(3);
+		puzzle_fixture_c0.dimensions[0] = 0.3;
+		puzzle_fixture_c0.dimensions[1] = 0.3;
+		puzzle_fixture_c0.dimensions[2] = 0.01;
+		// Puzzle Fixture C1
+		puzzle_fixture_c1.type = puzzle_fixture_c1.BOX;
+		puzzle_fixture_c1.dimensions.resize(3);
+		puzzle_fixture_c1.dimensions[0] = 0.3;
+		puzzle_fixture_c1.dimensions[1] = 0.01;
+		puzzle_fixture_c1.dimensions[2] = 0.06;
+		// Puzzle Fixture C2
+		puzzle_fixture_c2.type = puzzle_fixture_c2.BOX;
+		puzzle_fixture_c2.dimensions.resize(3);
+		puzzle_fixture_c2.dimensions[0] = 0.01;
+		puzzle_fixture_c2.dimensions[1] = 0.31;
+		puzzle_fixture_c2.dimensions[2] = 0.06;
+		// Puzzle fixture poses C0
+		puzzle_fixture_c0_pose.position.x = 0.15;
+		puzzle_fixture_c0_pose.position.y = 0.15;
+		puzzle_fixture_c0_pose.position.z = -0.005;
+		puzzle_fixture_c0_pose.orientation.x = 0;
+		puzzle_fixture_c0_pose.orientation.y = 0;
+		puzzle_fixture_c0_pose.orientation.z = 0;
+		puzzle_fixture_c0_pose.orientation.w = 1;
+		// Puzzle fixture poses C1
+		puzzle_fixture_c1_pose.position.x = 0.15;
+		puzzle_fixture_c1_pose.position.y = -0.005;
+		puzzle_fixture_c1_pose.position.z = 0.02;
+		puzzle_fixture_c1_pose.orientation.x = 0;
+		puzzle_fixture_c1_pose.orientation.y = 0;
+		puzzle_fixture_c1_pose.orientation.z = 0;
+		puzzle_fixture_c1_pose.orientation.w = 1;
+		// Puzzle fixture poses C2
+		puzzle_fixture_c2_pose.position.x = -0.005;
+		puzzle_fixture_c2_pose.position.y = 0.145;
+		puzzle_fixture_c2_pose.position.z = 0.02;
+		puzzle_fixture_c2_pose.orientation.x = 0;
+		puzzle_fixture_c2_pose.orientation.y = 0;
+		puzzle_fixture_c2_pose.orientation.z = 0;
+		puzzle_fixture_c2_pose.orientation.w = 1;
+
+		puzzle_fixture_object.header.frame_id = PUZZLE_FIXTURE;
+		puzzle_fixture_object.id = "/Puzzle_Fixture";
+		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c0);
+		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c1);
+		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c2);
+		puzzle_fixture_object.primitive_poses.push_back(puzzle_fixture_c0_pose);
+		puzzle_fixture_object.primitive_poses.push_back(puzzle_fixture_c1_pose);
+		puzzle_fixture_object.primitive_poses.push_back(puzzle_fixture_c2_pose);
+
+		static_scene_.world.collision_objects.push_back(puzzle_fixture_object);
+		ROS_INFO("Finished adding Puzzle Fixture.");
+	}
 
 
 	static_scene_.is_diff = true;

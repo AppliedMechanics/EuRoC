@@ -41,6 +41,9 @@ StaticTFBroadcaster::StaticTFBroadcaster() {
 	set_static_tf_data_srv_.request.T_SDEPTH.header.frame_id = S_RGB;
 	set_static_tf_data_srv_.request.T_SDEPTH.child_frame_id  = S_DEPTH;
 
+	set_static_tf_data_srv_.request.T_PUZZLE.header.frame_id = ORIGIN;
+	set_static_tf_data_srv_.request.T_PUZZLE.child_frame_id  = PUZZLE_FIXTURE;
+
 }
 
 StaticTFBroadcaster::~StaticTFBroadcaster() {
@@ -49,6 +52,18 @@ StaticTFBroadcaster::~StaticTFBroadcaster() {
 
 void StaticTFBroadcaster::fill_tf_information(EurocInput*data)
 {
+
+	int active_task_nr = 0;
+	ros::param::get("/active_task_number_", active_task_nr);
+
+	if (active_task_nr==5)
+	{
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.x = data->fixture_pose_.position.x;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.y = data->fixture_pose_.position.y;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.z = data->fixture_pose_.position.z;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation      = data->fixture_pose_.orientation;
+	}
+
 	set_static_tf_data_srv_.request.T_LA_Base.transform.translation.x = data->robot_.pose.position.x;
 	set_static_tf_data_srv_.request.T_LA_Base.transform.translation.y = data->robot_.pose.position.y;
 	set_static_tf_data_srv_.request.T_LA_Base.transform.translation.z = data->robot_.pose.position.z;

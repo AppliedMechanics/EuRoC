@@ -63,6 +63,7 @@ private:
 	geometry_msgs::TransformStamped T_PT_Base_;
 	geometry_msgs::TransformStamped T_SRGB_;
 	geometry_msgs::TransformStamped T_SDEPTH_;
+	geometry_msgs::TransformStamped T_PUZZLE_;
 
 	std::string euroc_c2_interface_;
 	std::string telemetry_;

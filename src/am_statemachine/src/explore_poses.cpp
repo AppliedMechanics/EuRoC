@@ -142,6 +142,7 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 					{
 						first_block_failed_ = true;
 						randomSort();
+						first_block_failed_ = false;
 					}
 					else
 					{

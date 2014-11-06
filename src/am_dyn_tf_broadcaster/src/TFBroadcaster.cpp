@@ -94,6 +94,7 @@ bool TFBroadcaster::set_static_tf_data(am_msgs::SetStaticTFData::Request &req, a
 	T_PT_Base_ = req.T_PT_Base;
 	T_SRGB_    = req.T_SRGB;
 	T_SDEPTH_  = req.T_SDEPTH;
+	T_PUZZLE_  = req.T_PUZZLE;
 
 	res.success = true;
 
@@ -234,15 +235,16 @@ void TFBroadcaster::update_tf()
 			//br.sendTransform(tf::StampedTransform(A_LWR_TCP7, ros::Time::now(),lwr_7,LWR_TCP));
 
 
-			T_LA_Base_.header.stamp 	= now_;
+			T_LA_Base_.header.stamp = now_;
 			T_GP_.header.stamp 		= now_;
 			T_GP_TCP_.header.stamp 	= now_;
 			T_TRGB_.header.stamp 	= now_;
 			T_TDEPTH_.header.stamp 	= now_;
 			T_CM_.header.stamp 		= now_;
-			T_PT_Base_.header.stamp 	= now_;
+			T_PT_Base_.header.stamp = now_;
 			T_SRGB_.header.stamp 	= now_;
 			T_SDEPTH_.header.stamp 	= now_;
+			T_PUZZLE_.header.stamp  = now_;
 
 			br_.sendTransform(T_LA_Base_);
 			br_.sendTransform(T_GP_);
@@ -253,6 +255,7 @@ void TFBroadcaster::update_tf()
 			br_.sendTransform(T_PT_Base_);
 			br_.sendTransform(T_SRGB_);
 			br_.sendTransform(T_SDEPTH_);
+			br_.sendTransform(T_PUZZLE_);
 		}
 	}
 	catch (...)
