@@ -14,7 +14,7 @@ time_at_path_points_(1),
 active_task_nr_(1),
 octree_file(0.01),
 allowed_planning_time_(30),
-collision_object_scaler_(1.2),
+collision_object_scaler_(1.0),
 obj_data_loaded_(false)
 //randomObjectAttached(false)
 {
@@ -2463,6 +2463,9 @@ void MotionPlanning::initializePlanningScene()
 	// Puzzle Fixture for task 5
 	if (active_task_nr_ == 5)
 	{
+		tf::TransformListener tf_listener;
+		tf_listener.waitForTransform(ORIGIN,PUZZLE_FIXTURE,ros::Time(0),ros::Duration(2.0));
+
 		shape_msgs::SolidPrimitive puzzle_fixture_c0, puzzle_fixture_c1, puzzle_fixture_c2;
 		geometry_msgs::Pose puzzle_fixture_c0_pose, puzzle_fixture_c1_pose, puzzle_fixture_c2_pose;
 		moveit_msgs::CollisionObject puzzle_fixture_object;
