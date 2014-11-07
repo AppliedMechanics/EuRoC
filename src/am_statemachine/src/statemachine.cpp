@@ -2955,12 +2955,20 @@ int Statemachine::explore_environment_image()
 	{
 		ROS_INFO("explore_environment_image() called: FINISHED");
 
-		if(first && (active_goal_<4) && (active_task_number_==4))
+		if(first && (active_goal_<8) && (active_task_number_==4))
 		{
 			first=false;
 			explore_environment_image_state_=RUNNING;
 			take_image_srv_.request.camera = SCENE_CAM_WITHOUT_ROBOT;
 			lsc_ = boost::thread(&Statemachine::explore_environment_image_cb,this);
+
+			publish_obj_state(OBJ_REMOVE_SHADOW);
+			return 0;
+		}
+		else if(first && (active_goal_>=8) && (active_task_number_==4))
+		{
+			publish_obj_state(OBJ_REMOVE_SHADOW);
+			first=false;
 		}
 
 		//destroy thread
@@ -4662,19 +4670,19 @@ int Statemachine::move_to_object()
 		if(cur_obj_gripped_==false)
 			publish_obj_state(OBJ_GRIPPING);
 
-#warning remove area from octomap
-		if (!skip_vision_){
-			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
-			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
-			rm_grasping_area_collision_srv_.request.max.z = 1.0;
-			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
-			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
-			rm_grasping_area_collision_srv_.request.min.z = 0.0;
-			try{
-				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-					msg_warn("Grasping area clearing failed.");
-			}catch (...){msg_error("Grasping area clearing failed.");}
-		}
+//#warning remove area from octomap
+//		if (!skip_vision_){
+//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
+//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
+//			rm_grasping_area_collision_srv_.request.max.z = 1.0;
+//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
+//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
+//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+//			try{
+//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+//					msg_warn("Grasping area clearing failed.");
+//			}catch (...){msg_error("Grasping area clearing failed.");}
+//		}
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -5547,7 +5555,9 @@ void Statemachine::push_object_t5_done(const actionlib::SimpleClientGoalState& s
 
 void Statemachine::publish_obj_state(uint16_t state)
 {
-	obj_state_msg_.obj_index=ein_->get_active_object_idx();
+	if(state != OBJ_REMOVE_SHADOW)
+		obj_state_msg_.obj_index=ein_->get_active_object_idx();
+
 	obj_state_msg_.obj_state=state;
 
 	switch(state)
@@ -5576,6 +5586,13 @@ void Statemachine::publish_obj_state(uint16_t state)
 		geometry_msgs::Pose empty_pose;
 		obj_state_msg_.obj_pose=empty_pose;
 		ROS_INFO("Statemachine: publishing state OBJ_FINISHED for object %s",cur_obj_.name.c_str());
+		break;
+	}
+	case OBJ_REMOVE_SHADOW:
+	{
+		geometry_msgs::Pose empty_pose;
+		obj_state_msg_.obj_pose=empty_pose;
+		ROS_INFO("Statemachine: publishing state OBJ_REMOVE_SHADOW");
 		break;
 	}
 	default:

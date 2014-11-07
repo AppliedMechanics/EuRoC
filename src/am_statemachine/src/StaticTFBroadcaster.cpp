@@ -63,6 +63,16 @@ void StaticTFBroadcaster::fill_tf_information(EurocInput*data)
 		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.z = data->fixture_pose_.position.z;
 		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation      = data->fixture_pose_.orientation;
 	}
+	else
+	{
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.x = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.y = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.translation.z = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation.x    = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation.y    = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation.z    = 0.0;
+		set_static_tf_data_srv_.request.T_PUZZLE.transform.rotation.w    = 1.0;
+	}
 
 	set_static_tf_data_srv_.request.T_LA_Base.transform.translation.x = data->robot_.pose.position.x;
 	set_static_tf_data_srv_.request.T_LA_Base.transform.translation.y = data->robot_.pose.position.y;

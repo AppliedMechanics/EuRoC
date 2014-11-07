@@ -45,9 +45,9 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 
 Vision::Vision():
-										  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
-										  vision_action_name_("VisionAction"),
-										  obj_aligned_(false)
+												  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
+												  vision_action_name_("VisionAction"),
+												  obj_aligned_(false)
 {
 
 	failed = false;
@@ -83,7 +83,7 @@ Vision::Vision():
 	// Check Zones Service
 	check_zones_service_ = nh_.advertiseService("CheckZonesService", &Vision::on_check_zones_CB,this);
 	// Reset Octomap Service
-	reset_octomap_client_ = nh_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
+	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>("/octomap_server/reset");
 
 	// Show PointCloud in rviz
 	pub = nh_.advertise<sensor_msgs::PointCloud2> ("PointCloud_1", 1);
@@ -123,13 +123,13 @@ Vision::Vision():
 	// Create and set resolution of Octree
 	tree = new octomap::OcTree(0.005);
 
-	// Remove BoundingBox Query for octomap reset
-	reset_octomap_bbx_srv_.request.min.x = -1.0;
-	reset_octomap_bbx_srv_.request.min.y = -1.0;
-	reset_octomap_bbx_srv_.request.min.z =  0.0;
-	reset_octomap_bbx_srv_.request.max.x =  1.0;
-	reset_octomap_bbx_srv_.request.max.y =  1.0;
-	reset_octomap_bbx_srv_.request.max.z =  2.0;
+	//	// Remove BoundingBox Query for octomap reset
+	//	reset_octomap_bbx_srv_.request.min.x = -1.0;
+	//	reset_octomap_bbx_srv_.request.min.y = -1.0;
+	//	reset_octomap_bbx_srv_.request.min.z =  0.0;
+	//	reset_octomap_bbx_srv_.request.max.x =  1.0;
+	//	reset_octomap_bbx_srv_.request.max.y =  1.0;
+	//	reset_octomap_bbx_srv_.request.max.z =  2.0;
 
 	// Create octomap::PointCloud
 	OctoCloud = new octomap::Pointcloud();
@@ -381,22 +381,24 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		// Update the OctoMap
 
 		try{
-			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
-			{
-				msg_error("reset octomap service failed!");
-				return;
+			if (ros::service::waitForService("/octomap_server/reset",ros::Duration(3.0))){
+				if (!(reset_octomap_client_.call(reset_octomap_srv_)))
+				{
+					msg_error("reset octomap service failed!");
+				}
+				else
+					msg_info("octomap successfully resetted.");
 			}
 			else
-				msg_info("octomap successfully resetted.");
+				msg_info("wait for reset octomap service was not successful.");
 		}
 		catch (...)
 		{
 			msg_error("reset octomap service failed! TRYCATCH");
 		}
-
+//		ros::spinOnce();
 #ifdef OCTOMAP_SERVER
 
-		//ros::Duration(2.0).sleep();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
 		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
 

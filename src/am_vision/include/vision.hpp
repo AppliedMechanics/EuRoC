@@ -212,7 +212,7 @@ public:
 	ros::ServiceServer take_img_service_;
 	ros::ServiceServer check_zones_service_;
 	ros::ServiceClient reset_octomap_client_;
-	octomap_msgs::BoundingBoxQuery reset_octomap_bbx_srv_;
+	std_srvs::Empty reset_octomap_srv_;
 
 	bool failed;
 	//alignemt was successfull

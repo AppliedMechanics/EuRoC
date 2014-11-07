@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
 
 
 
-	ros::Rate r(10); // 10 hz
+	ros::Rate r(FREQ); // 10 hz
 	while (ros::ok() && !kill_flag)
 	{
 		ros::spinOnce();
