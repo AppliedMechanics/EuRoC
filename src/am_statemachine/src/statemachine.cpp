@@ -3,7 +3,7 @@
 #include <StaticTFBroadcaster.h>
 #include <explore_poses.h>
 
-#define ONE_TASK //run only one task and then quit
+#undef FORCE_STOP_SIM//run only one task and then quit
 
 Statemachine::Statemachine():
 		scenes_(1),
@@ -871,7 +871,8 @@ void Statemachine::scheduler_skip_object()
 		ROS_INFO("Scheduler: skipping object -> last object reached -> back to vision");
 
 		state_queue.clear();
-		temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+		temp_state.sub.one=fsm::SOLVE_TASK;
+		temp_state.sub.two=fsm::SCHEDULER;				state_queue.push_back(temp_state);
 		scheduler_next();
 	}
 	else
@@ -1569,7 +1570,7 @@ void Statemachine::scheduler_error_check_object_finished()
 
 
 	//publish object state for motion planning
-	publish_obj_state(OBJ_NOT_LOCATED);
+	publish_obj_state(OBJ_LOCATED);
 
 	//==============================================
 	scheduler_next();
@@ -2161,30 +2162,6 @@ int Statemachine::request_task()
 			ROS_INFO("Scene number: %d",active_scene_);
 		}
 
-
-//#ifndef ONE_TASK
-//		//find scene for task_name
-//		std::string task_name_;
-//		ros::param::get("/task_name",task_name_);
-//		ROS_INFO("got task_name: %s",task_name_.c_str());
-//
-//		for(uint16_t ii=0;ii<nr_scenes_;ii++)
-//		{
-//			if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
-//			{
-//				active_scene_=ii;
-//				break;
-//			}
-//		}
-//		ROS_INFO("Scene number: %d",active_scene_);
-//#else
-//
-//		std::cout<<"choose task: ";
-//		int blub=8;
-//		std::cin>>blub;
-//		active_scene_=blub;
-//
-//#endif
 		//check which task has been chosen
 		std::string strTaskName = scenes_[active_scene_].name;
 		strTaskName=strTaskName.substr(0,5);
@@ -5624,7 +5601,7 @@ int Statemachine::check_time()
 			msg_info("%f seconds are over! -> soft reset, next state is STOP_SIM",ein_->get_time_limit());
 			first=false;
 		}
-#ifndef ONE_TASK
+#ifdef FORCE_STOP_SIM
 		//soft shutdown of current task
 		state_queue.clear();
 
@@ -5638,7 +5615,7 @@ int Statemachine::check_time()
 	}
 	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
 	{
-#ifndef ONE_TASK
+#ifdef FORCE_STOP_SIM
 		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
 		//hard shutdown of current task
 		state_queue.clear();
@@ -5746,8 +5723,6 @@ int Statemachine::reset()
 	}
 	else if(reset_state_==FINISHED)
 	{
-
-
 		reset_state_=OPEN;
 
 		//test neu:
