@@ -70,21 +70,21 @@ obj_data_loaded_(false)
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
 	//    group_2DOF->setPlannerId(ompl_planners[7]); // 2
-	group_2DOF->setNumPlanningAttempts(2);
+//	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	group_7DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm group
 	//    group_7DOF->setPlannerId(ompl_planners[3]);
-	group_7DOF->setNumPlanningAttempts(2);
+//	group_7DOF->setNumPlanningAttempts(2);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
 	//    group_9DOF->setPlannerId(ompl_planners[4]); // 4
-	group_9DOF->setNumPlanningAttempts(2);
+//	group_9DOF->setNumPlanningAttempts(2);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
@@ -2464,7 +2464,26 @@ void MotionPlanning::initializePlanningScene()
 	if (active_task_nr_ == 5)
 	{
 		tf::TransformListener tf_listener;
-		tf_listener.waitForTransform(ORIGIN,PUZZLE_FIXTURE,ros::Time(0),ros::Duration(2.0));
+
+		tf::StampedTransform transform_PUZZLE_2_ORIGIN;
+		tf::Transform tf_tmp,tf_tmp2;
+
+		//! TODO remove debug_tf
+		std::string debug_tf;
+
+		//! Transformation from GP TCP frame to LWR TCP frame
+		try{
+			if (tf_listener.waitForTransform(ORIGIN,PUZZLE_FIXTURE,ros::Time(0),ros::Duration(2.0)),&debug_tf)
+				tf_listener.lookupTransform(ORIGIN,PUZZLE_FIXTURE,ros::Time(0),transform_PUZZLE_2_ORIGIN);
+			else{
+				msg_error("Could not get LWRTCP GPTCP tf.");
+				std::cout<<debug_tf<<std::endl;
+				}
+		}
+		catch(...){
+			ROS_ERROR("Listening to transform was not successful");
+		}
+
 
 		shape_msgs::SolidPrimitive puzzle_fixture_c0, puzzle_fixture_c1, puzzle_fixture_c2;
 		geometry_msgs::Pose puzzle_fixture_c0_pose, puzzle_fixture_c1_pose, puzzle_fixture_c2_pose;
@@ -2488,31 +2507,38 @@ void MotionPlanning::initializePlanningScene()
 		puzzle_fixture_c2.dimensions[1] = 0.31;
 		puzzle_fixture_c2.dimensions[2] = 0.06;
 		// Puzzle fixture poses C0
-		puzzle_fixture_c0_pose.position.x = 0.15;
-		puzzle_fixture_c0_pose.position.y = 0.15;
-		puzzle_fixture_c0_pose.position.z = -0.005;
-		puzzle_fixture_c0_pose.orientation.x = 0;
-		puzzle_fixture_c0_pose.orientation.y = 0;
-		puzzle_fixture_c0_pose.orientation.z = 0;
-		puzzle_fixture_c0_pose.orientation.w = 1;
+		tf_tmp.setOrigin(tf::Vector3(0.15,0.15,-0.005));
+		tf_tmp.setRotation(tf::Quaternion(0,0,0,1));
+		tf_tmp2 = transform_PUZZLE_2_ORIGIN * tf_tmp;
+		puzzle_fixture_c0_pose.position.x    = tf_tmp2.getOrigin().x();
+		puzzle_fixture_c0_pose.position.y    = tf_tmp2.getOrigin().y();
+		puzzle_fixture_c0_pose.position.z    = tf_tmp2.getOrigin().z();
+		puzzle_fixture_c0_pose.orientation.x = tf_tmp2.getRotation().x();
+		puzzle_fixture_c0_pose.orientation.y = tf_tmp2.getRotation().y();
+		puzzle_fixture_c0_pose.orientation.z = tf_tmp2.getRotation().z();
+		puzzle_fixture_c0_pose.orientation.w = tf_tmp2.getRotation().w();
 		// Puzzle fixture poses C1
-		puzzle_fixture_c1_pose.position.x = 0.15;
-		puzzle_fixture_c1_pose.position.y = -0.005;
-		puzzle_fixture_c1_pose.position.z = 0.02;
-		puzzle_fixture_c1_pose.orientation.x = 0;
-		puzzle_fixture_c1_pose.orientation.y = 0;
-		puzzle_fixture_c1_pose.orientation.z = 0;
-		puzzle_fixture_c1_pose.orientation.w = 1;
+		tf_tmp.setOrigin(tf::Vector3(0.15,-0.005,0.02));
+		tf_tmp2 = transform_PUZZLE_2_ORIGIN * tf_tmp;
+		puzzle_fixture_c1_pose.position.x    = tf_tmp2.getOrigin().x();
+		puzzle_fixture_c1_pose.position.y    = tf_tmp2.getOrigin().y();
+		puzzle_fixture_c1_pose.position.z    = tf_tmp2.getOrigin().z();
+		puzzle_fixture_c1_pose.orientation.x = tf_tmp2.getRotation().x();
+		puzzle_fixture_c1_pose.orientation.y = tf_tmp2.getRotation().y();
+		puzzle_fixture_c1_pose.orientation.z = tf_tmp2.getRotation().z();
+		puzzle_fixture_c1_pose.orientation.w = tf_tmp2.getRotation().w();
 		// Puzzle fixture poses C2
-		puzzle_fixture_c2_pose.position.x = -0.005;
-		puzzle_fixture_c2_pose.position.y = 0.145;
-		puzzle_fixture_c2_pose.position.z = 0.02;
-		puzzle_fixture_c2_pose.orientation.x = 0;
-		puzzle_fixture_c2_pose.orientation.y = 0;
-		puzzle_fixture_c2_pose.orientation.z = 0;
-		puzzle_fixture_c2_pose.orientation.w = 1;
+		tf_tmp.setOrigin(tf::Vector3(-0.005,0.145,0.02));
+		tf_tmp2 = transform_PUZZLE_2_ORIGIN * tf_tmp;
+		puzzle_fixture_c2_pose.position.x    = tf_tmp2.getOrigin().x();
+		puzzle_fixture_c2_pose.position.y    = tf_tmp2.getOrigin().y();
+		puzzle_fixture_c2_pose.position.z    = tf_tmp2.getOrigin().z();
+		puzzle_fixture_c2_pose.orientation.x = tf_tmp2.getRotation().x();
+		puzzle_fixture_c2_pose.orientation.y = tf_tmp2.getRotation().y();
+		puzzle_fixture_c2_pose.orientation.z = tf_tmp2.getRotation().z();
+		puzzle_fixture_c2_pose.orientation.w = tf_tmp2.getRotation().w();
 
-		puzzle_fixture_object.header.frame_id = PUZZLE_FIXTURE;
+		puzzle_fixture_object.header.frame_id = ORIGIN;
 		puzzle_fixture_object.header.stamp = ros::Time(0);
 		puzzle_fixture_object.id = "puzzle_fixture";
 		puzzle_fixture_object.primitives.push_back(puzzle_fixture_c0);
