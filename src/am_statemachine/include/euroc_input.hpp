@@ -96,6 +96,10 @@ public:
 	//!gripper placement for each puzzle piece to insert it into the puzzle fixture
 	void puzzle_get_push_position(); //geometry_msgs::Pose active_target_pose);
 
+	//utility functions
+	std::vector<bool> get_push_info();
+	void reset_push_info();
+
 	void set_orientation_from_axes(geometry_msgs::Pose &tmp_pose, tf::Vector3 x_axis, tf::Vector3 y_axis, tf::Vector3 z_axis);
 
 	tf::Transform pose_to_transform(geometry_msgs::Pose input_pose);
@@ -139,6 +143,8 @@ private:
 
 	//!number of objects
 	uint8_t nr_objects_;
+	//!active object counter
+	uint8_t active_obj_cnt_;
 
 	typedef struct{
 		uint16_t obj_idx;
@@ -186,6 +192,7 @@ private:
 	  int part_index;
 	  bool push;
 	  bool x_first;
+	  bool wurscht;
 	  am_msgs::PushPose push_pose_A;
 	  am_msgs::PushPose push_pose_B;
 	};
@@ -206,5 +213,37 @@ public:
 	//!counter for objects with the same color (only for task 5)
 	uint16_t same_color_counter_;
 };
+
+inline std::vector<bool> EurocInput::get_push_info()
+{
+	std::vector<bool> ret;
+	ret.resize(2,false);
+
+	if(obj_queue_.size()>0)
+	{
+		if(puzzle_order_[obj_queue_[0].obj_idx].push)
+		{
+
+			if(puzzle_order_[obj_queue_[0].obj_idx].wurscht)
+			{
+				ret[0]=ret[1]=true;
+			}
+			else if(puzzle_order_[obj_queue_[0].obj_idx].x_first)
+				ret[0]=true;
+			else
+				ret[1]=true;
+		}
+	}
+
+	return ret;
+}
+
+inline void EurocInput::reset_push_info()
+{
+	for(uint16_t ii=0;ii<obj_queue_.size();ii++)
+	{
+		puzzle_order_[obj_queue_[ii].obj_idx].push=false;
+	}
+}
 
 #endif //#define __EUROC_INPUT_HPP__

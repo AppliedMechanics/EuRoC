@@ -9,7 +9,7 @@
 
 GraspPose2::GraspPose2()
 {
-	task5_pose_counter_=3;
+	task5_pose_counter_=15;
 	pi=M_PI;
 	gripper_maxwidth_=0.06;	//Linear axis goes from 0 to 0.07, so there is a minimum safety distance of 0.01 between finger and object.
 	gripper_finger_height_=0.06;
@@ -28,7 +28,9 @@ GraspPose2::GraspPose2()
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(pi);
 	gripping_angleT6_deg_=60; // angle with which objects are awaited; default = 45
 	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
-	gripping_finger_overlapT5_=0.8;
+	gripping_finger_overlapT5_=0.6;
+	puzzle_push_in_x_distance_=0.03;
+	puzzle_push_in_y_distance_=0.03;
 }
 
 GraspPose2::~GraspPose2() {
@@ -74,6 +76,8 @@ void GraspPose2::reset_grasping_node()
 	o_object_center_.setValue(0,0,0);
 	puzzle_boxes.clear();
 	puzzle_boxsize=0;
+	puzzle_push_in_x_=false;
+	puzzle_push_in_y_=false;
 
 	GPTCP_object_grip_pose.clear();
 	LWRTCP_object_grip_pose.clear();
@@ -315,6 +319,8 @@ bool GraspPose2::return_grasp_pose(am_msgs::GetGraspPose::Request &req, am_msgs:
 	rel_target_pose_ = req.target_pose;
 	abs_target_pose_ = transform_to_pose(transform_puzzlefixture*pose_to_transform(rel_target_pose_));
 	set_object_data_(req.object);
+	puzzle_push_in_x_=req.puzzle_push_in_x;
+	puzzle_push_in_y_=req.puzzle_push_in_y;
 
 	//compute poses
 	compute_object_CoM_();
@@ -2623,7 +2629,7 @@ void GraspPose2::compute_grasp_posesT5_()
 {
 	ROS_INFO("compute_grasp_posesT5_() called");
 
-	geometry_msgs::Pose tmp_GPTCP_pose, tmp2_GPTCP_pose;
+	geometry_msgs::Pose tmp_GPTCP_pose, tmp2_GPTCP_pose, target_safe_pose;
 	double dot_product;
 	tf::Vector3 x_axis(1,0,0), y_axis(0,1,0), z_axis(0,0,1);
 	tf::Vector3 x_obj, y_obj, z_obj;        //object pose
@@ -3019,6 +3025,8 @@ void GraspPose2::compute_grasp_posesT5_()
 		tmp2_GPTCP_pose=tmp_GPTCP_pose;
 		tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 		GPTCP_target_safe_pose.push_back(tmp2_GPTCP_pose);
+		//remember pose for push pose calculation
+		target_safe_pose=tmp2_GPTCP_pose;
 
 		tmp2_GPTCP_pose=tmp_GPTCP_pose;
 		tmp2_GPTCP_pose.position.z=puzzle_boxsize+vision_distance_object_height_cube_;
@@ -3031,6 +3039,22 @@ void GraspPose2::compute_grasp_posesT5_()
 	{
 		//no gripping strategy implemented yet
 	}
+
+	//calculate push poses
+	tmp_vec.setValue(0,0,0);
+	if(puzzle_push_in_x_==true)
+	{
+		tmp_vec=tmp_vec+x_pufix/x_pufix.length()*puzzle_push_in_x_distance_;
+	}
+	if(puzzle_push_in_y_==true)
+	{
+		tmp_vec=tmp_vec+y_pufix/y_pufix.length()*puzzle_push_in_y_distance_;
+	}
+	tmp_GPTCP_pose=target_safe_pose;
+	tmp_GPTCP_pose.position.x=tmp_GPTCP_pose.position.x+tmp_vec.getX();
+	tmp_GPTCP_pose.position.y=tmp_GPTCP_pose.position.y+tmp_vec.getY();
+	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+tmp_vec.getZ();
+	GPTCP_push_safe_pose.push_back(tmp_GPTCP_pose);
 
 	//copy the poses several times
 	for(uint8_t ii=2; ii<=task5_pose_counter_; ii++)
@@ -3055,6 +3079,9 @@ void GraspPose2::compute_grasp_posesT5_()
 			GPTCP_target_safe_pose.push_back(GPTCP_target_safe_pose[0]);
 		if(GPTCP_target_vision_pose.size()>0)
 			GPTCP_target_vision_pose.push_back(GPTCP_target_vision_pose[0]);
+
+		if(GPTCP_push_safe_pose.size()>0)
+			GPTCP_push_safe_pose.push_back(GPTCP_push_safe_pose[0]);
 
 		if(place_pose_type.size()>0)
 			place_pose_type.push_back(place_pose_type[0]);

@@ -15,11 +15,12 @@ EurocInput::EurocInput():
 	active_zone_(-1),
 	time_limit_(3000),
 	nr_sensors(0),
-	place_x_offset(0.01),
-	place_y_offset(0.01),
-	place_z_offset(0.01),
+	place_x_offset(0.003),
+	place_y_offset(0.003),
+	place_z_offset(0.00),
 	gripper_offset(0.04),
-	gripper_min_offset(0.015)
+	gripper_min_offset(0.015),
+	active_obj_cnt_(1)
 {
 
 }
@@ -1324,6 +1325,7 @@ void EurocInput::select_new_object()
 
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
+		active_obj_cnt_++;
 	}
 	else
 	{
@@ -1335,6 +1337,7 @@ void EurocInput::select_new_object()
 
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
+		active_obj_cnt_++;
 	}
 }
 
@@ -1376,13 +1379,13 @@ geometry_msgs::Pose EurocInput::get_active_target_pose()
 			geometry_msgs::Pose tmp=puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index]; //obj_queue_[0].obj_idx];
 
 		  //add offsets
-		  if(puzzle_order_[obj_queue_[0].obj_idx].push)
-		  {
+//		  if(puzzle_order_[obj_queue_[0].obj_idx].push)
+//		  {
 			  //if(puzzle_order_[obj_queue_[0].obj_idx].x_first)
 			  tmp.position.x+=place_x_offset;
 			  //else
 			  tmp.position.y+=place_y_offset;
-		  }
+//		  }
 		  tmp.position.z+=place_z_offset;
 
 //		  tf::Transform fixture;
@@ -2108,7 +2111,10 @@ void EurocInput::set_active_object_finished()
 			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_PARKING;
 		}
 		else
+		{
 			obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_FINISHED;
+			active_obj_cnt_++;
+		}
 		obj_queue_.erase(obj_queue_.begin());
 	}
 }
@@ -2148,7 +2154,12 @@ void EurocInput::set_object_pose(geometry_msgs::Pose abs_pose, uint16_t idx, ros
 
 bool EurocInput::is_active_object_last_object()
 {
-	if(obj_queue_.size() == 1)
+//	if(obj_queue_.size() == 1)
+//		return true;
+//	else
+//		return false;
+
+	if(active_obj_cnt_==nr_objects_)
 		return true;
 	else
 		return false;
@@ -2186,6 +2197,7 @@ void EurocInput::reset()
 	puzzle_target_poses_.clear();
 	puzzle_order_.clear();
 	same_color_counter_=0;
+	active_obj_cnt_=1;
 }
 
 void EurocInput::puzzle_order_of_pieces()
@@ -2693,6 +2705,7 @@ void EurocInput::puzzle_order_of_pieces()
 		{
 			puzzle_order_[fix_object].x_first = true;
 			puzzle_order_[fix_object].push = true;
+			puzzle_order_[fix_object].wurscht=true;
 		}
 		else // fix_object does not touch either axis
 		{
@@ -2749,6 +2762,7 @@ void EurocInput::puzzle_order_of_pieces()
 			{
 				puzzle_order_[fix_object].push = true;
 				puzzle_order_[fix_object].x_first = true;
+				puzzle_order_[fix_object].wurscht=true;
 			}
 			else  // fix_object DOES NOT touch an organised object to its right and beneath itself
 			{

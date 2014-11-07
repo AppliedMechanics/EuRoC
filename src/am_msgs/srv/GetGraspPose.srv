@@ -4,7 +4,8 @@
 am_msgs/Object object
 am_msgs/TargetZone target_zone
 geometry_msgs/Pose target_pose
-
+bool puzzle_push_in_x
+bool puzzle_push_in_y
 
 ---
 # An error message. An empty string indicates success.

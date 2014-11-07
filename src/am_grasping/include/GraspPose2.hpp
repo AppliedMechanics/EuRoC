@@ -107,6 +107,8 @@ private:
 	tf::Vector3 b_object_com_, o_object_com_;
 	tf::Vector3 b_object_center_, o_object_center_;
 	std::vector<puzzle_box> puzzle_boxes;
+	bool puzzle_push_in_x_, puzzle_push_in_y_;
+	double puzzle_push_in_x_distance_, puzzle_push_in_y_distance_;
 	double puzzle_boxsize;
     geometry_msgs::Pose emptyPose;
 

@@ -868,7 +868,10 @@ void Statemachine::scheduler_skip_object()
 
 	if(ein_->is_active_object_last_object())
 	{
-		ROS_INFO("Scheduler: skipping object -> last object reached -> back to vision");
+		ROS_INFO("Scheduler: skipping object -> last object reached");
+
+		if(active_task_number_==5)
+			ein_->reset_push_info();
 
 		state_queue.clear();
 		temp_state.sub.one=fsm::SOLVE_TASK;
@@ -1187,20 +1190,56 @@ void Statemachine::scheduler_error_move_to_object_safe()
 		break;
 
 	case fsm::NO_IK_SOL:
-		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-
-		if(selected_object_pose_ < object_safe_pose.size()-1)
+		if(active_task_number_==5)
 		{
-			move_to_object_safe_state_=OPEN;
-			selected_object_pose_++;
+			move_to_object_safe_counter_++;
+			if(move_to_object_safe_counter_>4)
+			{
+				move_to_object_safe_counter_=0;
+				move_to_object_safe_state_=OPEN;
+				msg_warn("Statemachine-Errorhandler: no ik sol (x5) -> insert homing");
+
+				//scheduler_next();
+				fsm::fsm_state_t temp_state;
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::HOMING;					state_queue.insert(state_queue.begin(),temp_state);
+				temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
+				scheduler_next();
+			}
+			else
+			{
+				msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+				if(selected_object_pose_ < object_safe_pose.size()-1)
+				{
+					move_to_object_safe_state_=OPEN;
+					selected_object_pose_++;
+				}
+				else
+				{
+					//skip vision pose and try to grasp the object
+					move_to_object_safe_state_=OPEN;
+					scheduler_skip_object();
+				}
+			}
+			break;
 		}
 		else
 		{
-			//skip vision pose and try to grasp the object
-			move_to_object_safe_state_=OPEN;
-			scheduler_skip_object();
+			msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+			if(selected_object_pose_ < object_safe_pose.size()-1)
+			{
+				move_to_object_safe_state_=OPEN;
+				selected_object_pose_++;
+			}
+			else
+			{
+				//skip vision pose and try to grasp the object
+				move_to_object_safe_state_=OPEN;
+				scheduler_skip_object();
+			}
+			break;
 		}
-		break;
 
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_object_safe_state_=OPEN;
@@ -1327,20 +1366,57 @@ void Statemachine::scheduler_error_move_to_target_zone_safe()
 		break;
 
 	case fsm::NO_IK_SOL:
-		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-
-		if(selected_target_pose_ < target_safe_pose.size()-1)
+		if(active_task_number_==5)
 		{
-			move_to_target_zone_safe_state_=OPEN;
-			selected_target_pose_++;
+			move_to_target_zone_safe_counter_++;
+			if(move_to_target_zone_safe_counter_>4)
+			{
+				move_to_target_zone_safe_counter_=0;
+				move_to_target_zone_safe_state_=OPEN;
+				msg_warn("Statemachine-Errorhandler: no ik sol (x5) -> insert homing");
+
+				//scheduler_next();
+				fsm::fsm_state_t temp_state;
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::HOMING;						state_queue.insert(state_queue.begin(),temp_state);
+				temp_state.sub.two=fsm::PLACE_OBJECT;
+				temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
+				scheduler_next();
+			}
+			else
+			{
+				msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+				if(selected_object_pose_ < object_safe_pose.size()-1)
+				{
+					move_to_target_zone_safe_state_=OPEN;
+					selected_object_pose_++;
+				}
+				else
+				{
+					//skip vision pose and try to grasp the object
+					move_to_target_zone_safe_state_=OPEN;
+					scheduler_skip_object();
+				}
+			}
+			break;
 		}
 		else
 		{
-			//skip vision pose and try to grasp the object
-			move_to_target_zone_safe_state_=OPEN;
-			scheduler_skip_object();
+			msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
+
+			if(selected_target_pose_ < target_safe_pose.size()-1)
+			{
+				move_to_target_zone_safe_state_=OPEN;
+				selected_target_pose_++;
+			}
+			else
+			{
+				//skip vision pose and try to grasp the object
+				move_to_target_zone_safe_state_=OPEN;
+				scheduler_skip_object();
+			}
+			break;
 		}
-		break;
 
 	case fsm::MAX_LIMIT_REACHED:
 		move_to_target_zone_safe_state_=OPEN;
@@ -3762,11 +3838,11 @@ bool Statemachine::get_grasp_pose_get_vectors()
           msg_error("Error. target_skip_vision has wrong size");
           checksizes=false;
   }
-//  if (push_safe_pose.size()!=push_target_pose.size())
-//  {
-//          msg_error("Error. push_safe_pose has wrong size");
-//          checksizes=false;
-//  }
+  if ((push_safe_pose.size()!=target_place_pose.size()) && (active_task_number_==5))
+  {
+          msg_error("Error. push_safe_pose has wrong size");
+          checksizes=false;
+  }
   if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
   {
           msg_error("Error. object_grip_r_tcp_com has wrong size");
@@ -3804,13 +3880,16 @@ int Statemachine::get_grasping_poseT5()
 {
         if(get_grasping_poseT5_state_==OPEN)
         {
-                ROS_INFO("get_grasping_poseT5() called: OPEN");
-                get_grasp_pose_srv_.request.object=cur_obj_;
-                get_grasp_pose_srv_.request.target_pose=cur_target_pose_;
+			ROS_INFO("get_grasping_poseT5() called: OPEN");
+			get_grasp_pose_srv_.request.object=cur_obj_;
+			get_grasp_pose_srv_.request.target_pose=cur_target_pose_;
+			std::vector<bool> tmp=ein_->get_push_info();
+			get_grasp_pose_srv_.request.puzzle_push_in_x=tmp[0];
+			get_grasp_pose_srv_.request.puzzle_push_in_y=tmp[1];
 
-                get_grasping_poseT5_state_=RUNNING;
-                lsc_ = boost::thread(&Statemachine::get_grasping_poseT5_cb,this);
-                //get_grasping_poseT5_cb();
+			get_grasping_poseT5_state_=RUNNING;
+			lsc_ = boost::thread(&Statemachine::get_grasping_poseT5_cb,this);
+			//get_grasping_poseT5_cb();
         }
         else if(get_grasping_poseT5_state_==FINISHED)
         {
@@ -4296,9 +4375,9 @@ int Statemachine::gripper_close()
 		//calculate estimated gripper forces over friction (friction-coefficient=0.1, safety-factor=1.5)
 		//gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*0.1);
 		gripper_control_srv_.request.gripping_force = 1.5*(cur_obj_mass_*9.81)/(2*1);
-		if (gripper_control_srv_.request.gripping_force>170)
+		if (gripper_control_srv_.request.gripping_force>100)
 		{
-			gripper_control_srv_.request.gripping_force=170;
+			gripper_control_srv_.request.gripping_force=100;
 		}
 		if(gripper_control_srv_.request.gripping_force<10)
 		{
@@ -4316,7 +4395,8 @@ int Statemachine::gripper_close()
 			gripper_control_srv_.request.object_width = object_grasp_width[selected_object_pose_]; //was 0
 			gripper_control_srv_.request.gripper_position = 0.0; //TODO Delete?
 		}
-		gripper_control_srv_.request.gripping_mode = POSITION; // FF_FORCE;
+		//gripper_control_srv_.request.gripping_mode = POSITION;
+		gripper_control_srv_.request.gripping_mode = FF_FORCE;
 		gripper_close_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::gripper_close_cb,this);
 		//gripper_close_cb();
@@ -4407,6 +4487,7 @@ int Statemachine::move_to_object_safe()
 		//publish object state for motion planning
 		if(cur_obj_gripped_==true)
 			publish_obj_state(OBJ_GRABED);
+
 
 		//send goals to motion-planning
 		active_goal_=0;
@@ -4907,6 +4988,21 @@ int Statemachine::move_to_target_zone_safe()
 			goal_queue[2].inter_steps = 0;
 			goal_queue[2].speed_percentage = std_moving_speed*(1-speed_mod_);
 			goal_queue[2].allowed_time = 60.0;
+		}
+		else if(active_task_number_==5)
+		{
+			//send goals to motion-planning
+			active_goal_=0;
+			nr_goals_=1;
+			reached_active_goal_=false;
+			goal_queue.resize(nr_goals_);
+
+			goal_queue[0].goal_pose = push_safe_pose[selected_target_pose_];
+			goal_queue[0].planning_algorithm = planning_mode_.target;
+			goal_queue[0].planning_frame = GP_TCP;
+			goal_queue[0].inter_steps = 0;
+			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+			goal_queue[0].allowed_time = 60.0;
 		}
 		else
 		{
