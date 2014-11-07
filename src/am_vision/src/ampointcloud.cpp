@@ -400,59 +400,52 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeRobotFromPointCloud(pcl
 	return theresholdedPointCloud;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeSquareFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,pcl::PointXYZ A,pcl::PointXYZ B,pcl::PointXYZ C,pcl::PointXYZ D)
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr filledPC;
-  pcl::PointXYZ p;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr theresholdedPointCloud;
 
-//  int width = 1;
-//  int height = 1;
-  filledPC.reset(new pcl::PointCloud<pcl::PointXYZ> ());
-//  filledPC->resize(width * height);
+	theresholdedPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 
-  int maxZ = 0;
-//  int n = 0;
-  for (int i = 0; i < cloud->points.size(); i++)
-  {
-    if( pcl_isfinite(cloud->points[i].x)
-        ||pcl_isfinite(cloud->points[i].y)
-        ||pcl_isfinite(cloud->points[i].z) )
+	for (int i=0; i < cloud->height; i++)
+	{
+		for (int j=0; j < cloud->width; j++)
+		{
+			if ( ( triangleArea(A,B,cloud->at(j, i)) + triangleArea(B,C,cloud->at(j, i)) + triangleArea(C,D,cloud->at(j, i)) + triangleArea(D,A,cloud->at(j, i)) ) > (triangleArea(A,B,C) + triangleArea(A,C,D) + 0.01))
+			{
+				theresholdedPointCloud->at(j, i) = cloud->at(j, i);
+			}
+			else
+			{
+				theresholdedPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
+				theresholdedPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
+				theresholdedPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
+			}
 
-    {
-      maxZ = (int)(cloud->at(i).z / 0.01);
+		}
+	}
 
-      p.x = cloud->points[i].x;
-      p.y = cloud->points[i].y;
-      p.z = cloud->points[i].z;
-      filledPC->points.push_back(p);
-//      *filledPC += p;
-
-//      filledPC->points[n].x = cloud->points[i].x;
-//      filledPC->points[n].y = cloud->points[i].y;
-//      filledPC->points[n].z = cloud->points[i].z;
-//      n++;
-
-      for (int j = 0; j < maxZ; j++)
-      {
-        p.x = cloud->points[i].x;
-        p.y = cloud->points[i].y;
-        p.z = (float) j * 0.01;
-        filledPC->points.push_back(p);
-//        *filledPC += p;
-//        filledPC->points[n].x = cloud->points[i].x;
-//        filledPC->points[n].y = cloud->points[i].y;
-//        filledPC->points[n].z = j * 0.01;
-//        n++;
-      }
-    }
-  }
-  filledPC->width = filledPC->points.size ();
-  filledPC->height = 1;
-  filledPC->is_dense = true;
-
-  std::cout<<"returning the filledPC"<<std::endl;
-  return filledPC;
+	return theresholdedPointCloud;
 }
+
+float am_pointcloud::triangleArea(pcl::PointXYZ A,pcl::PointXYZ B,pcl::PointXYZ C)
+{
+
+    float side_a = sqrt((B.x-A.x) * (B.x-A.x) + (B.y-A.y) * (B.y-A.y));
+
+    float side_b = sqrt((B.x-C.x) * (B.x-C.x) + (B.y-C.y) * (B.y-C.y));
+
+    float side_c = sqrt((A.x-C.x) * (A.x-C.x) + (A.y-C.y) * (A.y-C.y));
+
+
+    // Heron's formula for area calculation
+    // area = sqrt( s * (s-a) * (s-b) * (s-c))
+
+    float s = (side_a + side_b + side_c) / 2;
+
+	return sqrt( s * (s-side_a) * (s-side_b) * (s-side_c));
+}
+
+
 
 /*
  * This function roughly calculates the center of mass from a set of points in a point cloud.

@@ -59,7 +59,8 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr removeSquareFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ);
+	float triangleArea(pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ);
 	static pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>);
 	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);

@@ -45,9 +45,9 @@ typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 
 Vision::Vision():
-								  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
-								  vision_action_name_("VisionAction"),
-								  obj_aligned_(false)
+										  vision_server_(nh_, "VisionAction", boost::bind(&Vision::handle, this, _1),false),
+										  vision_action_name_("VisionAction"),
+										  obj_aligned_(false)
 {
 
 	failed = false;
@@ -238,95 +238,158 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::Check
 	return true;
 }
 
+
+
 void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 {
+	am_pointcloud *scenePointCloud;
+	pcl::VoxelGrid<pcl::PointXYZ> vg;
+
 	msg_info("starting get_object_state_CB()!");
 
 	if(msg_in->obj_state==OBJ_GRIPPING)
 	{
-		//		// remove the aligned shape from the
-		//		// 1. complete point cloud
-		//		// 2. respective color point cloud
-		//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
-		//		tempPC = am_pointcloud::removeShape(finalVoxelizedPC, lastShapeToRemovePC);
-		//		finalVoxelizedPC->clear();
-		//		finalVoxelizedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//		*finalVoxelizedPC += *tempPC;
-		//
-		//		tempPC->clear();
-		//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//
-		//		if(!_currentGoal->object.color.compare("ff0000"))
-		//		{
-		//			// Goal: Red object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedRedPC, lastShapeToRemovePC);
-		//			finalVoxelizedRedPC->clear();
-		//			finalVoxelizedRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedRedPC += *tempPC;
-		//
-		//		}
-		//		else if (!_currentGoal->object.color.compare("00ff00"))
-		//		{
-		//			// Goal: Green object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedGreenPC, lastShapeToRemovePC);
-		//			finalVoxelizedGreenPC->clear();
-		//			finalVoxelizedGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedGreenPC += *tempPC;
-		//
-		//		}
-		//		else if (!_currentGoal->object.color.compare("0000ff"))
-		//		{
-		//			// Goal: Blue object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedBluePC, lastShapeToRemovePC);
-		//			finalVoxelizedBluePC->clear();
-		//			finalVoxelizedBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedBluePC += *tempPC;
-		//
-		//		}
-		//		else if (!_currentGoal->object.color.compare("00ffff"))
-		//		{
-		//			// Goal: Cyan object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedCyanPC, lastShapeToRemovePC);
-		//			finalVoxelizedCyanPC->clear();
-		//			finalVoxelizedCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedCyanPC += *tempPC;
-		//		}
-		//		else if (!_currentGoal->object.color.compare("ff00ff"))
-		//		{
-		//			// Goal: Magenta object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedMagentaPC, lastShapeToRemovePC);
-		//			finalVoxelizedMagentaPC->clear();
-		//			finalVoxelizedMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedMagentaPC += *tempPC;
-		//		}
-		//		else if (!_currentGoal->object.color.compare("ffff00"))
-		//		{
-		//			// Goal: Yellow object
-		//			tempPC = am_pointcloud::removeShape(finalVoxelizedYellowPC, lastShapeToRemovePC);
-		//			finalVoxelizedYellowPC->clear();
-		//			finalVoxelizedYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		//			*finalVoxelizedYellowPC += *tempPC;
-		//		}
+		// remove the aligned shape from the
+		// 1. complete point cloud
+		// 2. respective color point cloud
+		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
+		tempPC = am_pointcloud::removeShape(finalPC, lastShapeToRemovePC);
+		finalPC->clear();
+		finalPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+		*finalPC += *tempPC;
+
+
+		finalVoxelizedPC->clear();
+		std::cout<<"[VISION]Voxelization: global point cloud..."<<std::endl;
+		vg.setInputCloud(finalPC);
+		vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+		vg.filter (*finalVoxelizedPC);
+
+		ROS_INFO("Object removed from point cloud");
+
+		tempPC->clear();
+		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+
+		if(!_currentGoal->object.color.compare("ff0000"))
+		{
+			// Goal: Red object
+			tempPC = am_pointcloud::removeShape(finalRedPC, lastShapeToRemovePC);
+			finalRedPC->clear();
+			finalRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalRedPC += *tempPC;
+
+			finalVoxelizedRedPC->clear();
+			std::cout<<"[VISION]Voxelization: red point cloud..."<<std::endl;
+			vg.setInputCloud(finalRedPC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedRedPC);
+
+
+		}
+		else if (!_currentGoal->object.color.compare("00ff00"))
+		{
+			// Goal: Green object
+			tempPC = am_pointcloud::removeShape(finalGreenPC, lastShapeToRemovePC);
+			finalGreenPC->clear();
+			finalGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalGreenPC += *tempPC;
+
+			finalVoxelizedGreenPC->clear();
+			std::cout<<"[VISION]Voxelization: green point cloud..."<<std::endl;
+			vg.setInputCloud(finalGreenPC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedGreenPC);
+
+		}
+		else if (!_currentGoal->object.color.compare("0000ff"))
+		{
+			// Goal: Blue object
+			tempPC = am_pointcloud::removeShape(finalBluePC, lastShapeToRemovePC);
+			finalBluePC->clear();
+			finalBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalBluePC += *tempPC;
+
+			finalVoxelizedBluePC->clear();
+			std::cout<<"[VISION]Voxelization: blue point cloud..."<<std::endl;
+			vg.setInputCloud(finalBluePC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedBluePC);
+
+		}
+		else if (!_currentGoal->object.color.compare("00ffff"))
+		{
+			// Goal: Cyan object
+			tempPC = am_pointcloud::removeShape(finalCyanPC, lastShapeToRemovePC);
+			finalCyanPC->clear();
+			finalCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalCyanPC += *tempPC;
+
+			finalVoxelizedCyanPC->clear();
+			std::cout<<"[VISION]Voxelization: cyan point cloud..."<<std::endl;
+			vg.setInputCloud(finalCyanPC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedCyanPC);
+
+		}
+		else if (!_currentGoal->object.color.compare("ff00ff"))
+		{
+			// Goal: Magenta object
+			tempPC = am_pointcloud::removeShape(finalMagentaPC, lastShapeToRemovePC);
+			finalMagentaPC->clear();
+			finalMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalMagentaPC += *tempPC;
+
+			finalVoxelizedMagentaPC->clear();
+			std::cout<<"[VISION]Voxelization: magenta point cloud..."<<std::endl;
+			vg.setInputCloud(finalMagentaPC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedMagentaPC);
+
+		}
+		else if (!_currentGoal->object.color.compare("ffff00"))
+		{
+			// Goal: Yellow object
+			tempPC = am_pointcloud::removeShape(finalYellowPC, lastShapeToRemovePC);
+			finalYellowPC->clear();
+			finalYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+			*finalYellowPC += *tempPC;
+
+			finalVoxelizedYellowPC->clear();
+			std::cout<<"[VISION]Voxelization: yellow point cloud..."<<std::endl;
+			vg.setInputCloud(finalYellowPC);
+			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+			vg.filter (*finalVoxelizedYellowPC);
+
+		}
+
+		std::cout<<"[VISION]Voxelization: finished."<<std::endl;
+
 		// Update the OctoMap
-		//		try{
-		//			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
-		//			{
-		//				msg_error("reset octomap service failed!");
-		//				return;
-		//			}
-		//			else
-		//				msg_info("octomap successfully resetted.");
-		//		}
-		//		catch (...)
-		//		{
-		//			msg_error("reset octomap service failed! TRYCATCH");
-		//		}
+
+		try{
+			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
+			{
+				msg_error("reset octomap service failed!");
+				return;
+			}
+			else
+				msg_info("octomap successfully resetted.");
+		}
+		catch (...)
+		{
+			msg_error("reset octomap service failed! TRYCATCH");
+		}
 
 #ifdef OCTOMAP_SERVER
-		//		pcl::toROSMsg (*finalVoxelizedPC, msg);
-		//		msg.header.frame_id = "/Origin";
-		//		msg.header.stamp = ros::Time::now();
-		//		pub_3.publish(msg);
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
+		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
+
+		pcl::toROSMsg (*filledForOctomapPC, msg);
+		msg.header.frame_id = "/Origin";
+		msg.header.stamp = ros::Time::now();
+		pub_3.publish(msg);
+		ROS_INFO("Octomap updated");
 #endif
 	}
 }
@@ -337,6 +400,72 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
  */
 /////////////////////////////////////////
 pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_puzzle_fixture() {
+
+
+	//RETURN JUST THE FOUR CORNERS OF THE SQUARE//
+
+	Eigen::Quaternion<double> q2;
+	Eigen::Vector3d translation2;
+
+	int indx = 0;
+	float side1_wall = 0.05 / 4;
+	float side2_wall = 0.05 * 7;
+
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr shape_model(
+			new pcl::PointCloud<pcl::PointXYZ>);
+
+	pcl::PointXYZ a;
+	pcl::PointXYZ b;
+	pcl::PointXYZ c;
+	pcl::PointXYZ d;
+
+
+	a.x = -side1_wall;
+	a.y = -side1_wall;
+	a.z = 0;
+	shape_model->points.push_back(a);
+
+	b.x = -side1_wall;
+	b.y = side2_wall-side1_wall;
+	b.z = 0;
+	shape_model->points.push_back(b);
+
+	c.x = side2_wall-side1_wall;
+	c.y = side2_wall-side1_wall;
+	c.z = 0;
+	shape_model->points.push_back(c);
+
+	d.x = side2_wall-side1_wall;
+	d.y = -side1_wall;
+	d.z = 0;
+	shape_model->points.push_back(d);
+
+
+	double xp = puzzle_fixture_position_vector[indx];
+	double xo = puzzle_fixture_orientation_vector[indx];
+	++indx;
+	double yp = puzzle_fixture_position_vector[indx];
+	double yo = puzzle_fixture_orientation_vector[indx];
+	++indx;
+	double zp = puzzle_fixture_position_vector[indx];
+	double zo = puzzle_fixture_orientation_vector[indx];
+	++indx;
+	double wo = puzzle_fixture_orientation_vector[indx];
+
+	translation2[0] = xp; //-(side1 / 2) + xp;
+	translation2[1] = yp; //-(side2 / 2) + yp;
+	translation2[2] = zp; //-(side3 / 2) + zp;
+
+	q2 = Eigen::Quaternion<double>(wo, xo, yo, zo);
+
+	pcl::transformPointCloud(*shape_model, *shape_model, translation2, q2);
+
+	return shape_model;
+
+	/*
+	//CREATE THE COMPLETE PUZZLE FIXTURE//
+
 	Eigen::Quaternion<double> q2;
 	Eigen::Vector3d translation2;
 	double step_size = leaf_size;
@@ -386,9 +515,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_puzzle_fixture() {
 			side3_wall * Eigen::Vector3f::UnitZ(), 0.0f, true, true);
 	std::cout << "Object Size is 1 and is not Compound in fixture" << std::endl;
 
-	*shape_model += *floor_model;
-	*shape_model += *wall1_model;
-	*shape_model += *wall2_model;
+	 *shape_model += *floor_model;
+	 *shape_model += *wall1_model;
+	 *shape_model += *wall2_model;
 
 	//	pcl::toROSMsg(*shape_model, msg);
 	//	msg.header.frame_id = "/Origin";
@@ -427,15 +556,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_puzzle_fixture() {
 
 	pcl::transformPointCloud(*shape_model, *shape_model, translation2, q2);
 
-	/*pcl::VoxelGrid<pcl::PointXYZ> vg;
-    vg.setInputCloud(shape_model);
-    vg.setLeafSize(leaf_size * 4, leaf_size * 4, leaf_size * 4);
-    vg.filter(*shape_model);
-    pcl::toROSMsg(*shape_model, msg);
-
-    msg.header.frame_id = "/Origin";
-    msg.header.stamp = ros::Time::now();
-    pub.publish (msg);*/
+//	pcl::VoxelGrid<pcl::PointXYZ> vg;
+//    vg.setInputCloud(shape_model);
+//    vg.setLeafSize(leaf_size * 4, leaf_size * 4, leaf_size * 4);
+//    vg.filter(*shape_model);
+//    pcl::toROSMsg(*shape_model, msg);
+//
+//    msg.header.frame_id = "/Origin";
+//    msg.header.stamp = ros::Time::now();
+//    pub.publish (msg);
 
 	return shape_model;
 	//	 pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
@@ -443,7 +572,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_puzzle_fixture() {
 	//  	   while (!viewer.wasStopped ())
 	//	   {
 	//	   cout<<"Loopy";
-	// }
+	// }*/
 
 }
 
@@ -766,14 +895,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 		} // END TASK 4 PREPARATION
 
 
-		// START TASK 5 PREPARATION
-		if (task_nr == 5) {
-			is_task5 = true;
-			std::cout << "[VISION]now working on task: " << task_nr
-					<< std::endl;
-			fake_puzzle_fixture_param();
-		} // END TASK 5 PREPARATION
-
 		pcl::console::print_highlight ("Passing target point cloud to pose estimator...\n");
 		ros::Duration(2.0).sleep();
 
@@ -884,22 +1005,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 #endif
 
 		if (is_task5) {
-			pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(
-					new pcl::PointCloud<pcl::PointXYZ>);
-
-			fake_puzzle = fake_puzzle_fixture();
 			pcl::PointCloud<pcl::PointXYZ>::Ptr hollow_object(
 					new pcl::PointCloud<pcl::PointXYZ>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr scene_without_fixture(
-					new pcl::PointCloud<pcl::PointXYZ>);
-
-			scene_without_fixture = am_pointcloud::removeShape(targetPC,
-					fake_puzzle);
-			std::cout << "scene_without_fixture -> removeShape: #points:"
-					<< scene_without_fixture->points.size() << std::endl;
-
-			targetPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-			*targetPC += *scene_without_fixture;
 
 			hollow_object = removeInliers(object_model);
 
@@ -1223,6 +1330,29 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res, bool scan_ful
 		while(panTiltCounter < maxPanTiltCounter)
 			//    while(panTiltCounter < 3)
 		{
+			if(panTiltCounter==0)
+			{
+				// Get the task number
+				std::string key;
+				if(nh_.searchParam("active_task_number_", key))
+				{
+					nh_.getParam(key, task_nr);
+					//std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
+				}
+				else
+				{
+					ROS_WARN("search for parameter failed!");
+				}
+
+				// START TASK 5 PREPARATION
+				if (task_nr == 5) {
+					is_task5 = true;
+					std::cout << "[VISION]now working on task: " << task_nr
+							<< std::endl;
+					fake_puzzle_fixture_param();
+				} // END TASK 5 PREPARATION
+
+			}
 
 			if (!scan_full)
 				panTiltCounter = 8;
@@ -1326,7 +1456,20 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res, bool scan_ful
 			// filter out the robot, table surface and irrelevant points
 			robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
 			threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
-			filledForOctomapPC = scenePointCloud->fillPointCloud(threshPC);
+
+			if(task_nr==5)
+			{
+				std::cout << "about to delete the puzzle fixture"<< std::endl;
+				pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(new pcl::PointCloud<pcl::PointXYZ>);
+				fake_puzzle = fake_puzzle_fixture();
+				pcl::PointCloud<pcl::PointXYZ>::Ptr scene_without_fixture(new pcl::PointCloud<pcl::PointXYZ>);
+				scene_without_fixture = scenePointCloud->removeSquareFromPointCloud(threshPC,fake_puzzle->points[0],fake_puzzle->points[1],fake_puzzle->points[2],fake_puzzle->points[3]);
+				threshPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+				threshPC = scenePointCloud->removeSquareFromPointCloud(scene_without_fixture,fake_puzzle->points[0],fake_puzzle->points[1],fake_puzzle->points[2],fake_puzzle->points[3]);
+
+			}
+
+			filledForOctomapPC = fillPointCloud(threshPC);
 
 #ifdef OCTOMAP_COMPLETE_OLD
 			// Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
@@ -1574,7 +1717,20 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res)
 	// filter out the robot, table surface and irrelevant points
 	robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
 	threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.005); // 0.005: hard-coded z value to remove table surface
-	filledForOctomapPC = scenePointCloud->fillPointCloud(threshPC);
+
+	if(task_nr==5)
+	{
+		std::cout << "about to delete the puzzle fixture"<< std::endl;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(new pcl::PointCloud<pcl::PointXYZ>);
+		fake_puzzle = fake_puzzle_fixture();
+		pcl::PointCloud<pcl::PointXYZ>::Ptr scene_without_fixture(new pcl::PointCloud<pcl::PointXYZ>);
+		scene_without_fixture = scenePointCloud->removeSquareFromPointCloud(threshPC,fake_puzzle->points[0],fake_puzzle->points[1],fake_puzzle->points[2],fake_puzzle->points[3]);
+		threshPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		threshPC = scenePointCloud->removeSquareFromPointCloud(scene_without_fixture,fake_puzzle->points[0],fake_puzzle->points[1],fake_puzzle->points[2],fake_puzzle->points[3]);
+
+	}
+
+	filledForOctomapPC = fillPointCloud(threshPC);
 
 #ifdef OCTOMAP_COMPLETE_OLD
 	// Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
@@ -3199,6 +3355,65 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center, f
  * This function receives a point cloud, a center point and a radius as reference. It then looks for any point inside that
  * point cloud within a rectangular region, centered at "center point", which has a Z value greater than 0.01
  */
+
+
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filledPC;
+	pcl::PointXYZ p;
+
+	//  int width = 1;
+	//  int height = 1;
+	filledPC.reset(new pcl::PointCloud<pcl::PointXYZ> ());
+	//  filledPC->resize(width * height);
+
+	int maxZ = 0;
+	//  int n = 0;
+	for (int i = 0; i < cloud->points.size(); i++)
+	{
+		if( pcl_isfinite(cloud->points[i].x)
+				||pcl_isfinite(cloud->points[i].y)
+				||pcl_isfinite(cloud->points[i].z) )
+
+		{
+			maxZ = (int)(cloud->at(i).z / 0.01);
+
+			p.x = cloud->points[i].x;
+			p.y = cloud->points[i].y;
+			p.z = cloud->points[i].z;
+			filledPC->points.push_back(p);
+			//      *filledPC += p;
+
+			//      filledPC->points[n].x = cloud->points[i].x;
+			//      filledPC->points[n].y = cloud->points[i].y;
+			//      filledPC->points[n].z = cloud->points[i].z;
+			//      n++;
+
+			for (int j = 0; j < maxZ; j++)
+			{
+				p.x = cloud->points[i].x;
+				p.y = cloud->points[i].y;
+				p.z = (float) j * 0.01;
+				filledPC->points.push_back(p);
+				//        *filledPC += p;
+				//        filledPC->points[n].x = cloud->points[i].x;
+				//        filledPC->points[n].y = cloud->points[i].y;
+				//        filledPC->points[n].z = j * 0.01;
+				//        n++;
+			}
+		}
+	}
+	filledPC->width = filledPC->points.size ();
+	filledPC->height = 1;
+	filledPC->is_dense = true;
+
+	std::cout<<"returning the filledPC"<<std::endl;
+	return filledPC;
+}
+
+
+
 bool Vision::search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr inputCloud, pcl::PointXYZ zoneCenter, float radius)
 {
 	// calculate center of mass
