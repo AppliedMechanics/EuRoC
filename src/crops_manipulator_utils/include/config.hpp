@@ -220,6 +220,9 @@ const std::string lwr_6 = "joint6";
 const std::string lwr_7 = "joint7";
 const std::string OBJ_POSE = "obj_pose";
 
+// Vision Empty Point Cloud flag
+static bool emptyCloudCritical;
+
 #define FREQ 100 //rosnode frequency
 
 #endif
