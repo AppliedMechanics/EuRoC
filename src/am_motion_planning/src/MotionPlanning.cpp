@@ -2442,12 +2442,12 @@ void MotionPlanning::initializePlanningScene()
 	primitive.dimensions.resize(3);
 	primitive.dimensions[0] = 2.0;//1.84;
 	primitive.dimensions[1] = 2.0;//1.84;
-	primitive.dimensions[2] = 0.01;
+	primitive.dimensions[2] = 0.05;
 
 	geometry_msgs::Pose primitive_pose;
 	primitive_pose.position.x = 0;
 	primitive_pose.position.y = 0;
-	primitive_pose.position.z = -0.005;//-0.01;
+	primitive_pose.position.z = 0;//-0.01;
 	primitive_pose.orientation.x = 0;
 	primitive_pose.orientation.y = 0;
 	primitive_pose.orientation.z = 0;
@@ -3271,8 +3271,6 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
 
 		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_GRABBED;
-
-		ros::Duration(1.0).sleep();
 
 		ROS_INFO("Attaching object to the gripper finished.");
 	}
