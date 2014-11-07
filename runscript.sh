@@ -1,15 +1,9 @@
-roslaunch am_launchfiles statemachine.launch skip_vision:=true task_nr:=11
+source /opt/ros/hydro/setup_client.bash
+source /opt/euroc_c2s1/code/devel/setup.bash
 
-rosnode kill /am_motion_planning
-rosnode kill /am_move_group
-rosnode kill /am_grasping_srv
-rosnode kill /am_gripper_interface
-rosnode kill /am_gui
-rosnode kill /am_stateobserver
-rosnode kill /am_tf_broadcaster
-rosnode kill /am_vision
-rosnode kill /move_group
-rosnode kill /octomap_server
+export ROS_LOG_DIR=/tmp/euroc_c2
 
-
-roslaunch am_launchfiles statemachine.launch skip_vision:=true task_nr:=211
+roslaunch am_launchfiles statemachine.launch task_name:="task1_v1"
+roslaunch am_launchfiles statemachine.launch task_name:="task2_v1_1"
+roslaunch am_launchfiles statemachine.launch task_name:="task3_v1"
+roslaunch am_launchfiles statemachine.launch task_name:="task4_v1_1"

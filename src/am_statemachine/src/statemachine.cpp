@@ -2134,29 +2134,57 @@ int Statemachine::request_task()
 		//destroy thread
 		//lsc_.detach();
 
-#ifndef ONE_TASK
-		//find scene for task_name
 		std::string task_name_;
 		ros::param::get("/task_name",task_name_);
-		ROS_INFO("got task_name: %s",task_name_.c_str());
-
-		for(uint16_t ii=0;ii<nr_scenes_;ii++)
+		if(strcmp(task_name_.c_str(),"00")==0)
 		{
-			if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
-			{
-				active_scene_=ii;
-				break;
-			}
+			std::cout<<"choose task: ";
+			int blub=8;
+			std::cin>>blub;
+			active_scene_=blub;
 		}
-		ROS_INFO("Scene number: %d",active_scene_);
-#else
+		else
+		{
+			//find scene for task_name
+			std::string task_name_;
+			ros::param::get("/task_name",task_name_);
+			ROS_INFO("got task_name: %s",task_name_.c_str());
 
-		std::cout<<"choose task: ";
-		int blub=8;
-		std::cin>>blub;
-		active_scene_=blub;
+			for(uint16_t ii=0;ii<nr_scenes_;ii++)
+			{
+				if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
+				{
+					active_scene_=ii;
+					break;
+				}
+			}
+			ROS_INFO("Scene number: %d",active_scene_);
+		}
 
-#endif
+
+//#ifndef ONE_TASK
+//		//find scene for task_name
+//		std::string task_name_;
+//		ros::param::get("/task_name",task_name_);
+//		ROS_INFO("got task_name: %s",task_name_.c_str());
+//
+//		for(uint16_t ii=0;ii<nr_scenes_;ii++)
+//		{
+//			if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
+//			{
+//				active_scene_=ii;
+//				break;
+//			}
+//		}
+//		ROS_INFO("Scene number: %d",active_scene_);
+//#else
+//
+//		std::cout<<"choose task: ";
+//		int blub=8;
+//		std::cin>>blub;
+//		active_scene_=blub;
+//
+//#endif
 		//check which task has been chosen
 		std::string strTaskName = scenes_[active_scene_].name;
 		strTaskName=strTaskName.substr(0,5);

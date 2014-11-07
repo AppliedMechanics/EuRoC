@@ -1331,7 +1331,7 @@ void EurocInput::select_new_object()
 		msg_info("current object is not finished -> move it to the end of object queue");
 
 		obj_queue_t temp_obj=obj_queue_[0];
-		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_UNCERTAIN;
+		obj_state_[obj_queue_[0].obj_idx] = EIN_OBJ_LOCATED;
 
 		obj_queue_.erase(obj_queue_.begin());
 		obj_queue_.push_back(temp_obj);
