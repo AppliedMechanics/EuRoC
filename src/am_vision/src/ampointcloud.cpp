@@ -406,21 +406,63 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeSquareFromPointCloud(pc
 
 	theresholdedPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 
+	//FIND MIN AND MAX VALUES
+	float minx, miny, maxx, maxy;
+	minx = A.x;
+	miny = A.y;
+	maxx = A.x;
+	maxy = A.y;
+	if (B.x<minx)
+		minx=B.x;
+	if (B.y<miny)
+		miny=B.y;
+	if (B.x>maxx)
+		maxx=B.x;
+	if (B.y>maxy)
+		maxy=B.y;
+	if (C.x<minx)
+		minx=C.x;
+	if (C.y<miny)
+		miny=C.y;
+	if (C.x>maxx)
+		maxx=C.x;
+	if (C.y>maxy)
+		maxy=C.y;
+	if (D.x<minx)
+		minx=D.x;
+	if (D.y<miny)
+		miny=D.y;
+	if (D.x>maxx)
+		maxx=D.x;
+	if (D.y>maxy)
+		maxy=D.y;
+
+
+
 	for (int i=0; i < cloud->height; i++)
 	{
-		for (int j=0; j < cloud->width; j++)
-		{
-			if ( ( triangleArea(A,B,cloud->at(j, i)) + triangleArea(B,C,cloud->at(j, i)) + triangleArea(C,D,cloud->at(j, i)) + triangleArea(D,A,cloud->at(j, i)) ) > (triangleArea(A,B,C) + triangleArea(A,C,D) + 0.01))
-			{
-				theresholdedPointCloud->at(j, i) = cloud->at(j, i);
+		for (int j = 0; j < cloud->width; j++) {
+			if ((cloud->at(j, i).x < maxx + 0.01)
+					&& (cloud->at(j, i).y < maxy + 0.01)
+					&& (cloud->at(j, i).x > minx + 0.01)
+					&& (cloud->at(j, i).y > miny + 0.01)) {
+				if ((triangleArea(A, B, cloud->at(j, i))
+						+ triangleArea(B, C, cloud->at(j, i))
+						+ triangleArea(C, D, cloud->at(j, i))
+						+ triangleArea(D, A, cloud->at(j, i)))
+						> (triangleArea(A, B, C) + triangleArea(A, C, D) + 0.01)) {
+					theresholdedPointCloud->at(j, i) = cloud->at(j, i);
+				} else {
+					theresholdedPointCloud->at(j, i).x = std::numeric_limits<
+							float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).y = std::numeric_limits<
+							float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).z = std::numeric_limits<
+							float>::quiet_NaN();
+				}
 			}
 			else
-			{
-				theresholdedPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
-				theresholdedPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
-				theresholdedPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
-			}
-
+				theresholdedPointCloud->at(j, i) = cloud->at(j, i);
 		}
 	}
 
