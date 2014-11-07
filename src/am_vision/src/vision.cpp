@@ -54,7 +54,7 @@ Vision::Vision():
 	isSingleCube = false;
 	is_task5 = false;
 	obj_aligned_ = false;
-	isFinalClusterEmpty = true;
+	emptyCloudCritical = false;
 
 	euroc_c2_interface = "/euroc_interface_node";
 	camera_scene_rgb_topic = euroc_c2_interface + "/cameras/scene_rgb_cam";
@@ -262,6 +262,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
 		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 		tempPC = am_pointcloud::removeShape(finalPC, tempFilledPC);
+		if (emptyCloudCritical)
+		{
+			vision_server_.setPreempted(vision_result_,"cloud is empty");
+			vision_result_.error_reason=fsm::SKIP_OBJECT;
+			return;
+		}
 		finalPC->clear();
 		finalPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 		*finalPC += *tempPC;
@@ -282,6 +288,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Red object
 			tempPC = am_pointcloud::removeShape(finalRedPC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalRedPC->clear();
 			finalRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalRedPC += *tempPC;
@@ -299,6 +311,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Green object
 			tempPC = am_pointcloud::removeShape(finalGreenPC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalGreenPC->clear();
 			finalGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalGreenPC += *tempPC;
@@ -315,6 +333,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Blue object
 			tempPC = am_pointcloud::removeShape(finalBluePC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalBluePC->clear();
 			finalBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalBluePC += *tempPC;
@@ -331,6 +355,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Cyan object
 			tempPC = am_pointcloud::removeShape(finalCyanPC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalCyanPC->clear();
 			finalCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalCyanPC += *tempPC;
@@ -347,6 +377,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Magenta object
 			tempPC = am_pointcloud::removeShape(finalMagentaPC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalMagentaPC->clear();
 			finalMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalMagentaPC += *tempPC;
@@ -363,6 +399,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			// Goal: Yellow object
 			tempPC = am_pointcloud::removeShape(finalYellowPC, tempFilledPC);
+			if (emptyCloudCritical)
+			{
+				vision_server_.setPreempted(vision_result_,"cloud is empty");
+				vision_result_.error_reason=fsm::SKIP_OBJECT;
+				return;
+			}
 			finalYellowPC->clear();
 			finalYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
 			*finalYellowPC += *tempPC;
@@ -378,7 +420,11 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 
 		std::cout<<"[VISION]Voxelization: finished."<<std::endl;
 
-		// Update the OctoMap
+		// Publish the new updated Pointcloud
+		pcl::toROSMsg (*finalVoxelizedPC, msg);
+		msg.header.frame_id = "/Origin";
+		msg.header.stamp = ros::Time::now();
+		pub.publish (msg);
 
 		try{
 			if (ros::service::waitForService("/octomap_server/reset",ros::Duration(3.0))){
@@ -396,9 +442,9 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 		{
 			msg_error("reset octomap service failed! TRYCATCH");
 		}
-//		ros::spinOnce();
-#ifdef OCTOMAP_SERVER
 
+#ifdef OCTOMAP_SERVER
+		//ros::Duration(2.0).sleep();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
 		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
 
@@ -752,8 +798,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 		ROS_WARN("search for parameter failed!");
 	}
 
-
-
 	// START TASK 6 PROCEDURE
 	if (task_nr == 6)
 	{
@@ -762,7 +806,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 		if (_currentGoal->object.shape.size() == 1)
 		{
 			ROS_INFO("wait for the cube to be dropped");
-			ros::Duration(2.0).sleep();
 			// --> move the pan tilt
 			// create point cloud
 			tic = ros::Time().now();
@@ -776,6 +819,10 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 			pub.publish (msg);
 			//ros::Duration(2.0).sleep();
 
+			if (_currentGoal->precision == 3)
+			{
+				// calculate center of mass instead of alignment
+			}
 			// --> fast_cube_alignment(scene_input)
 			transformation = fast_cube_alignment(targetPC);
 
@@ -871,6 +918,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 
 		obj_aligned_ = false;
 
+		ROS_INFO("[VISION]Entered Vision::handle()");
 		std::cout<<"[VISION]Looking for: "<<goal->object.name<<", #"<<goal->object.color<<std::endl;
 
 		// check for task number (different tasks --> different approaches)
@@ -907,7 +955,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish (msg);
-			ros::Duration(2.0).sleep();
+			ros::Duration(1.0).sleep();
 
 		} // END TASK 4 PREPARATION
 
@@ -1111,16 +1159,16 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 	}
 	else if(goal->mode == CLOSE_RANGE_POSE_ESTIMATION)
 	{
-		std::cout<<"[VISION]initializing close range pose estimation"<<std::endl;
+		ROS_INFO("[VISION]Close range pose estimation");
 
 		// Close Range Pose Estimation for Cube
 		if(isSingleCube)
 		{
 			double OptRotationRadians; // The new optimum value -> cube rotation
 			// Wait as usual!!
-			std::cout<<"[VISION]Wait for 2 sec..."<<std::endl;
-			ros::Duration(2.0).sleep();
-			std::cout<<"[VISION]Done!"<<std::endl;
+//			std::cout<<"[VISION]Wait for 2 sec..."<<std::endl;
+//			ros::Duration(2.0).sleep();
+//			std::cout<<"[VISION]Done!"<<std::endl;
 
 			OptRotationRadians = close_range_pose(goal->object.color);
 			if(OptRotationRadians == -5)
@@ -1267,11 +1315,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 	}
 	else if (goal->mode == CHECKING_FOR_OBJECT_IN_TARGET_ZONE)
 	{
-		// Wait as usual!!
-		std::cout<<"[VISION]Wait for 3 sec..."<<std::endl;
-		ros::Duration(3.0).sleep();
-		std::cout<<"[VISION]Done!"<<std::endl;
-		std::cout<<"[VISION]check if object is on target zone"<<std::endl;
+		ROS_INFO("[VISION]checking for object on target zone");
+//		// Wait as usual!!
+//		std::cout<<"[VISION]Wait for 3 sec..."<<std::endl;
+//		ros::Duration(3.0).sleep();
+//		std::cout<<"[VISION]Done!"<<std::endl;
+//		std::cout<<"[VISION]check if object is on target zone"<<std::endl;
 
 		pcl::PointXYZ targetZone;
 		targetZone.x = goal->target_zone.position.x;
@@ -3506,6 +3555,7 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 	pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC (new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr intermediateClusterPC (new pcl::PointCloud<pcl::PointXYZ>);
 	bool isIntermediateClusterEmpty = true;
+	bool isFinalClusterEmpty = true;
 
 	//  ros::Duration(1.0).sleep();
 	// remove NaNs from the input point cloud
@@ -3515,7 +3565,17 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 
 	// Create the KdTree object for the search method of the extraction
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud (input_cloud);
+
+	try
+	{
+		tree->setInputCloud (input_cloud);
+	} catch (...)
+	{
+		emptyCloudCritical = true;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr emptyPC (new pcl::PointCloud<pcl::PointXYZ>);
+		return emptyPC;
+	}
+
 
 	std::vector<pcl::PointIndices> initial_cluster_indices;
 	std::vector<pcl::PointIndices> intermediate_cluster_indices;
@@ -3532,6 +3592,8 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 	std::cout<<"[VISION]found "<<initial_cluster_indices.size()<<" initial clusters"<<std::endl;
 
 	//intermediate_cluster_indices.resize( initial_cluster_indices.size() );
+
+	// Setting up intermediate clusters with respect to max distance size of each cluster
 	for (std::vector<pcl::PointIndices>::const_iterator it = initial_cluster_indices.begin (); it != initial_cluster_indices.end (); ++it)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
@@ -3549,6 +3611,7 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 		//std::cout<<"Max Distance: "<<max_dist<<std::endl;
 		float obj_length = get_shape_length(goal);
 		//std::cout<<"current goal->shape length: "<<obj_length<<std::endl;
+
 		// compare the distance between min & max
 		if( max_dist < obj_length * 2.0 ) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
 		{
@@ -3556,9 +3619,8 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 			intermediate_cluster_indices.resize( intermediate_cluster_indices.size() + 1 );
 			intermediate_cluster_indices[intermediateClusterCounter].indices = it->indices; //http://www.pcl-users.org/IndicesPtr-from-PointIndices-td4020356.html
 			intermediateClusterCounter++;
-			std::cout<<"Max Distance: "<<max_dist<<std::endl;
-			std::cout<<"current goal->shape length: "<<obj_length<<std::endl;
-			std::cout<<"[VISION] intermediateClusterCounter = "<<intermediateClusterCounter<<std::endl;
+			std::cout<<"[VISION]Max Distance: "<<max_dist<<std::endl;
+			std::cout<<"[VISION]current goal->shape length: "<<obj_length<<std::endl;
 			*intermediateClusterPC += *cloud_cluster;
 		}
 
@@ -3567,12 +3629,11 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish (msg);
-		ros::Duration(0.5).sleep();
+		//ros::Duration(0.5).sleep();
 	}
 
-	ROS_WARN("SHOW FILTERED CLUSTERS");
 	std::cout<<"[VISION] #intermediateCluster: "<<intermediateClusterCounter<<std::endl;
-	//ros::Duration(4.0).sleep();
+
 	for (std::vector<pcl::PointIndices>::const_iterator it = intermediate_cluster_indices.begin (); it != intermediate_cluster_indices.end (); ++it)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
@@ -3583,14 +3644,22 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 		cloud_cluster->is_dense = true;
 
 		// publish the clusters
-		pcl::toROSMsg (*cloud_cluster, msg);
-		msg.header.frame_id = "/Origin";
-		msg.header.stamp = ros::Time::now();
-		pub.publish (msg);
+//		pcl::toROSMsg (*cloud_cluster, msg);
+//		msg.header.frame_id = "/Origin";
+//		msg.header.stamp = ros::Time::now();
+//		pub.publish (msg);
 
-		ROS_WARN("Go for comparison");
-		int differences = compare_cluster_differences(cloud_cluster, colorReferencePC);
-		// if "OK" -> send back indices of this cloud / or the cloud itself --> this will be our targetPC
+//		// publish the clusters
+//		ROS_INFO("[VISION]show colorReferencePC...");
+//		pcl::toROSMsg (*colorReferencePC, msg);
+//		msg.header.frame_id = "/Origin";
+//		msg.header.stamp = ros::Time::now();
+//		pub.publish (msg);
+//		ros::Duration(2.0).sleep();
+
+		ROS_INFO("[VISION]Trying to extract final clusters");
+		bool differences = compare_cluster_differences(cloud_cluster, colorReferencePC);
+		// if "OK" -> send back this cloud itself --> this will be our targetPC
 		if ( differences )
 		{
 			std::cout<<"THIS IS OUR TARGET! Hit it!"<<std::endl;
@@ -3604,11 +3673,17 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::find_clusters(pcl::PointCloud<pcl::
 
 	//finalClusterCounter = 0;
 
+	std::cout<<"isFinalClusterEmpty: "<<isFinalClusterEmpty<<std::endl;
+	std::cout<<"isIntermediateClusterEmpty: "<<isIntermediateClusterEmpty<<std::endl;
+
 	if (isFinalClusterEmpty) // compare_cluster_differences was not able to find a better clustering
 	{
 		if (isIntermediateClusterEmpty) // worst-case: could not find any intermediate cluster
-			return colorReferencePC;
-
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr tempForColorRefPC (new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::copyPointCloud(*colorReferencePC, *tempForColorRefPC);
+			return tempForColorRefPC;
+		}
 		// pass the intermediate cluster
 		return intermediateClusterPC;
 	}
@@ -3651,6 +3726,9 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal)
 
 bool Vision::compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr clusterPC, pcl::PointCloud<pcl::PointXYZ>::Ptr noisyColorPC)
 {
+	ROS_INFO("[VISION]entered compare_cluster_differences()");
+
+
 	// Octree resolution - side length of octree voxels
 	float resolution = 0.005f;
 
@@ -3658,14 +3736,28 @@ bool Vision::compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr clu
 	pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree (resolution);
 
 	// Add points from targetPC to octree
-	octree.setInputCloud (clusterPC);
+	try
+	{
+		octree.setInputCloud (clusterPC);
+	} catch (...)
+	{
+		return false;
+	}
+
 	octree.addPointsFromInputCloud ();
 
 	// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
 	octree.switchBuffers ();
 
 	// Add points from closeRangePC to octree
-	octree.setInputCloud (noisyColorPC);
+	try
+	{
+		octree.setInputCloud (noisyColorPC);
+	} catch (...)
+	{
+		return false;
+	}
+
 	octree.addPointsFromInputCloud ();
 
 	std::vector<int> newPointIdxVector;
@@ -3674,7 +3766,7 @@ bool Vision::compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr clu
 	octree.getPointIndicesFromNewVoxels (newPointIdxVector);
 
 	// Output points
-	std::cout<<"differences"<<newPointIdxVector.size()<<std::endl;
+	std::cout<<"--> differences: "<<newPointIdxVector.size()<<std::endl;
 
 	/*
 	 * DEBUG
@@ -3689,9 +3781,9 @@ bool Vision::compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr clu
 	 * END DEBUG
 	 */
 
-	std::cout<<"Cluster size: "<<clusterPC->points.size()<<std::endl;
+	std::cout<<"cluster size: "<<clusterPC->points.size()<<std::endl;
 	std::cout<<"noisyColorPC size: "<<noisyColorPC->points.size()<<std::endl;
-	std::cout<<"common points : "<<noisyColorPC->points.size() - newPointIdxVector.size()<<std::endl;
+	std::cout<<"common points: "<<noisyColorPC->points.size() - newPointIdxVector.size()<<std::endl;
 
 	int commonPoints = noisyColorPC->points.size() - newPointIdxVector.size();
 
@@ -3699,7 +3791,6 @@ bool Vision::compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr clu
 		return true;
 
 	return false;
-	//  return newPointIdxVector.size();
 }
 
 pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::get_task6_cloud()
@@ -3773,6 +3864,7 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::get_task6_cloud()
 	float fov_horizontal_scene_depth = 1.047;
 	float fov_horizontal_scene_rgb = 1.047;
 
+	tic = ros::Time().now();
 	scenePointCloud = new am_pointcloud(_cv_depthptr->image, fov_horizontal_scene_depth, _cv_image->image, fov_horizontal_scene_rgb);
 	// create the initial point cloud based on depth image data
 	initialPC = scenePointCloud->createInitialPointCloud();
@@ -3781,9 +3873,12 @@ pcl::PointCloud<pcl::PointXYZ >::Ptr Vision::get_task6_cloud()
 	// Transform the point cloud to world coordinate
 	worldPC = scenePointCloud->transformToWorld(alignedPC, CAM_SCENE, stepTimeStampRGB);
 	// filter out the robot, table surface and irrelevant points
-	robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
-	threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, 0.01); // Hardcoded z-value, TODO: get info from YAML file
+	//robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
+	threshPC = scenePointCloud->xyzTheresholdCloud(worldPC, 0.01); // Hardcoded z-value, TODO: get info from YAML file
 	redFilteredPC = scenePointCloud->filterPointCloudByColor(threshPC, thresholdRed);
+	tac = ros::Time().now();
+
+	std::cout<<"pointcloud creation time: "<<tac - tic<<std::endl;
 	// =================================
 
 	//  ROS_INFO("Waiting for 2 seconds... haha! :|");

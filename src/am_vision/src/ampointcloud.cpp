@@ -9,6 +9,7 @@
  */
 
 #include "ampointcloud.h"
+#include "vision.hpp"
 #include <ros/ros.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <math.h>
@@ -207,53 +208,75 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::filterPointCloudByColor(pcl::
 }
 pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud)
 {
-    // search for nearest neighbors of shapeCloud in baseCloud
-    // Neighbors within radius search
-  baseCloud->is_dense = false;
-  shapeCloud->is_dense = false;
-  std::vector<int> index;
-  pcl::removeNaNFromPointCloud(*baseCloud, *baseCloud, index);
-  pcl::removeNaNFromPointCloud(*shapeCloud, *shapeCloud, index);
+	// search for nearest neighbors of shapeCloud in baseCloud
+	// Neighbors within radius search
+	baseCloud->is_dense = false;
+	shapeCloud->is_dense = false;
+	std::vector<int> index;
+	pcl::removeNaNFromPointCloud(*baseCloud, *baseCloud, index);
+	pcl::removeNaNFromPointCloud(*shapeCloud, *shapeCloud, index);
 
-    std::vector<int> pointIdxRadiusSearch;
-    std::vector<float> pointRadiusSquaredDistance;
+	std::vector<int> pointIdxRadiusSearch;
+	std::vector<float> pointRadiusSquaredDistance;
 
-    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-    kdtree.setInputCloud (baseCloud);
-    float radius = 0.03;
+	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
 
-    //  --> search for the neighbor points in baseCloud based on points in shapeCloud
-    //  --> remove the points found in baseCloud
-    for (int i=0; i<shapeCloud->points.size(); i++)
-    {
-        pcl::PointXYZ searchPoint;
-        searchPoint = shapeCloud->points[i];
+	try
+	{
+		kdtree.setInputCloud (baseCloud);
+	}
+	catch (...)
+	{
+		emptyCloudCritical = true;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
+		return subtractedCloud;
+	}
 
-        //  --> search for the neighbor points in baseCloud based on points in shapeCloud
-        if ( kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0 )
-        {
-            for (size_t j = 0; j < pointIdxRadiusSearch.size (); ++j)
-            {
+
+	float radius = 0.03;
+
+	//  --> search for the neighbor points in baseCloud based on points in shapeCloud
+	//  --> remove the points found in baseCloud
+	for (int i=0; i<shapeCloud->points.size(); i++)
+	{
+		pcl::PointXYZ searchPoint;
+		searchPoint = shapeCloud->points[i];
+
+		//  --> search for the neighbor points in baseCloud based on points in shapeCloud
+		try
+		{
+			if ( kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0 )
+			{
+				for (size_t j = 0; j < pointIdxRadiusSearch.size (); ++j)
+				{
 #ifdef DEBUG
-                std::cout << "    "  <<   baseCloud->points[ pointIdxRadiusSearch[j] ].x
-                        << " " << baseCloud->points[ pointIdxRadiusSearch[j] ].y
-                        << " " << baseCloud->points[ pointIdxRadiusSearch[j] ].z
-                        << " (squared distance: " << pointRadiusSquaredDistance[i] << ")" << std::endl;
+					std::cout << "    "  <<   baseCloud->points[ pointIdxRadiusSearch[j] ].x
+							<< " " << baseCloud->points[ pointIdxRadiusSearch[j] ].y
+							<< " " << baseCloud->points[ pointIdxRadiusSearch[j] ].z
+							<< " (squared distance: " << pointRadiusSquaredDistance[i] << ")" << std::endl;
 #endif // DEBUG
-                //  --> remove the points found in baseCloud
-                baseCloud->points[ pointIdxRadiusSearch[j] ].x = std::numeric_limits<float>::quiet_NaN();
-                baseCloud->points[ pointIdxRadiusSearch[j] ].y = std::numeric_limits<float>::quiet_NaN();
-                baseCloud->points[ pointIdxRadiusSearch[j] ].z = std::numeric_limits<float>::quiet_NaN();
-            }
-        }
-    } // END FOR
+					//  --> remove the points found in baseCloud
+					baseCloud->points[ pointIdxRadiusSearch[j] ].x = std::numeric_limits<float>::quiet_NaN();
+					baseCloud->points[ pointIdxRadiusSearch[j] ].y = std::numeric_limits<float>::quiet_NaN();
+					baseCloud->points[ pointIdxRadiusSearch[j] ].z = std::numeric_limits<float>::quiet_NaN();
+				}
+			}
 
-    std::cout<<"Shape has been removed!"<<std::endl;
+		}
+		catch (...)
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::copyPointCloud(*baseCloud, *subtractedCloud);
+			return subtractedCloud;
+		}
+	} // END FOR
+
+	std::cout<<"Shape has been removed!"<<std::endl;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::copyPointCloud(*baseCloud, *subtractedCloud);
+	pcl::copyPointCloud(*baseCloud, *subtractedCloud);
 
-    return subtractedCloud;
+	return subtractedCloud;
 
 }
 

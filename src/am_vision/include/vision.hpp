@@ -217,7 +217,6 @@ public:
 	bool failed;
 	//alignemt was successfull
 	bool obj_aligned_;
-	bool isFinalClusterEmpty;
 
 	cv_bridge::CvImagePtr _cv_image;
 	cv_bridge::CvImagePtr _cv_depthptr;
