@@ -247,151 +247,151 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 
 	msg_info("starting get_object_state_CB()!");
 
-	if(msg_in->obj_state==OBJ_GRIPPING)
-	{
-		// remove the aligned shape from the
-		// 1. complete point cloud
-		// 2. respective color point cloud
-		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
-		tempPC = am_pointcloud::removeShape(finalPC, lastShapeToRemovePC);
-		finalPC->clear();
-		finalPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-		*finalPC += *tempPC;
-
-
-		finalVoxelizedPC->clear();
-		std::cout<<"[VISION]Voxelization: global point cloud..."<<std::endl;
-		vg.setInputCloud(finalPC);
-		vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-		vg.filter (*finalVoxelizedPC);
-
-		ROS_INFO("Object removed from point cloud");
-
-		tempPC->clear();
-		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-
-		if(!_currentGoal->object.color.compare("ff0000"))
-		{
-			// Goal: Red object
-			tempPC = am_pointcloud::removeShape(finalRedPC, lastShapeToRemovePC);
-			finalRedPC->clear();
-			finalRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalRedPC += *tempPC;
-
-			finalVoxelizedRedPC->clear();
-			std::cout<<"[VISION]Voxelization: red point cloud..."<<std::endl;
-			vg.setInputCloud(finalRedPC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedRedPC);
-
-
-		}
-		else if (!_currentGoal->object.color.compare("00ff00"))
-		{
-			// Goal: Green object
-			tempPC = am_pointcloud::removeShape(finalGreenPC, lastShapeToRemovePC);
-			finalGreenPC->clear();
-			finalGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalGreenPC += *tempPC;
-
-			finalVoxelizedGreenPC->clear();
-			std::cout<<"[VISION]Voxelization: green point cloud..."<<std::endl;
-			vg.setInputCloud(finalGreenPC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedGreenPC);
-
-		}
-		else if (!_currentGoal->object.color.compare("0000ff"))
-		{
-			// Goal: Blue object
-			tempPC = am_pointcloud::removeShape(finalBluePC, lastShapeToRemovePC);
-			finalBluePC->clear();
-			finalBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalBluePC += *tempPC;
-
-			finalVoxelizedBluePC->clear();
-			std::cout<<"[VISION]Voxelization: blue point cloud..."<<std::endl;
-			vg.setInputCloud(finalBluePC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedBluePC);
-
-		}
-		else if (!_currentGoal->object.color.compare("00ffff"))
-		{
-			// Goal: Cyan object
-			tempPC = am_pointcloud::removeShape(finalCyanPC, lastShapeToRemovePC);
-			finalCyanPC->clear();
-			finalCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalCyanPC += *tempPC;
-
-			finalVoxelizedCyanPC->clear();
-			std::cout<<"[VISION]Voxelization: cyan point cloud..."<<std::endl;
-			vg.setInputCloud(finalCyanPC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedCyanPC);
-
-		}
-		else if (!_currentGoal->object.color.compare("ff00ff"))
-		{
-			// Goal: Magenta object
-			tempPC = am_pointcloud::removeShape(finalMagentaPC, lastShapeToRemovePC);
-			finalMagentaPC->clear();
-			finalMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalMagentaPC += *tempPC;
-
-			finalVoxelizedMagentaPC->clear();
-			std::cout<<"[VISION]Voxelization: magenta point cloud..."<<std::endl;
-			vg.setInputCloud(finalMagentaPC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedMagentaPC);
-
-		}
-		else if (!_currentGoal->object.color.compare("ffff00"))
-		{
-			// Goal: Yellow object
-			tempPC = am_pointcloud::removeShape(finalYellowPC, lastShapeToRemovePC);
-			finalYellowPC->clear();
-			finalYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
-			*finalYellowPC += *tempPC;
-
-			finalVoxelizedYellowPC->clear();
-			std::cout<<"[VISION]Voxelization: yellow point cloud..."<<std::endl;
-			vg.setInputCloud(finalYellowPC);
-			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
-			vg.filter (*finalVoxelizedYellowPC);
-
-		}
-
-		std::cout<<"[VISION]Voxelization: finished."<<std::endl;
-
-		// Update the OctoMap
-
-		try{
-			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
-			{
-				msg_error("reset octomap service failed!");
-				return;
-			}
-			else
-				msg_info("octomap successfully resetted.");
-		}
-		catch (...)
-		{
-			msg_error("reset octomap service failed! TRYCATCH");
-		}
-
-#ifdef OCTOMAP_SERVER
-
-		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
-		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
-
-		pcl::toROSMsg (*filledForOctomapPC, msg);
-		msg.header.frame_id = "/Origin";
-		msg.header.stamp = ros::Time::now();
-		pub_3.publish(msg);
-		ROS_INFO("Octomap updated");
-#endif
-	}
+//	if(msg_in->obj_state==OBJ_GRIPPING)
+//	{
+//		// remove the aligned shape from the
+//		// 1. complete point cloud
+//		// 2. respective color point cloud
+//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
+//		tempPC = am_pointcloud::removeShape(finalPC, lastShapeToRemovePC);
+//		finalPC->clear();
+//		finalPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//		*finalPC += *tempPC;
+//
+//
+//		finalVoxelizedPC->clear();
+//		std::cout<<"[VISION]Voxelization: global point cloud..."<<std::endl;
+//		vg.setInputCloud(finalPC);
+//		vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//		vg.filter (*finalVoxelizedPC);
+//
+//		ROS_INFO("Object removed from point cloud");
+//
+//		tempPC->clear();
+//		tempPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//
+//		if(!_currentGoal->object.color.compare("ff0000"))
+//		{
+//			// Goal: Red object
+//			tempPC = am_pointcloud::removeShape(finalRedPC, lastShapeToRemovePC);
+//			finalRedPC->clear();
+//			finalRedPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalRedPC += *tempPC;
+//
+//			finalVoxelizedRedPC->clear();
+//			std::cout<<"[VISION]Voxelization: red point cloud..."<<std::endl;
+//			vg.setInputCloud(finalRedPC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedRedPC);
+//
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("00ff00"))
+//		{
+//			// Goal: Green object
+//			tempPC = am_pointcloud::removeShape(finalGreenPC, lastShapeToRemovePC);
+//			finalGreenPC->clear();
+//			finalGreenPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalGreenPC += *tempPC;
+//
+//			finalVoxelizedGreenPC->clear();
+//			std::cout<<"[VISION]Voxelization: green point cloud..."<<std::endl;
+//			vg.setInputCloud(finalGreenPC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedGreenPC);
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("0000ff"))
+//		{
+//			// Goal: Blue object
+//			tempPC = am_pointcloud::removeShape(finalBluePC, lastShapeToRemovePC);
+//			finalBluePC->clear();
+//			finalBluePC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalBluePC += *tempPC;
+//
+//			finalVoxelizedBluePC->clear();
+//			std::cout<<"[VISION]Voxelization: blue point cloud..."<<std::endl;
+//			vg.setInputCloud(finalBluePC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedBluePC);
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("00ffff"))
+//		{
+//			// Goal: Cyan object
+//			tempPC = am_pointcloud::removeShape(finalCyanPC, lastShapeToRemovePC);
+//			finalCyanPC->clear();
+//			finalCyanPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalCyanPC += *tempPC;
+//
+//			finalVoxelizedCyanPC->clear();
+//			std::cout<<"[VISION]Voxelization: cyan point cloud..."<<std::endl;
+//			vg.setInputCloud(finalCyanPC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedCyanPC);
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("ff00ff"))
+//		{
+//			// Goal: Magenta object
+//			tempPC = am_pointcloud::removeShape(finalMagentaPC, lastShapeToRemovePC);
+//			finalMagentaPC->clear();
+//			finalMagentaPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalMagentaPC += *tempPC;
+//
+//			finalVoxelizedMagentaPC->clear();
+//			std::cout<<"[VISION]Voxelization: magenta point cloud..."<<std::endl;
+//			vg.setInputCloud(finalMagentaPC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedMagentaPC);
+//
+//		}
+//		else if (!_currentGoal->object.color.compare("ffff00"))
+//		{
+//			// Goal: Yellow object
+//			tempPC = am_pointcloud::removeShape(finalYellowPC, lastShapeToRemovePC);
+//			finalYellowPC->clear();
+//			finalYellowPC.reset ( new pcl::PointCloud<pcl::PointXYZ> );
+//			*finalYellowPC += *tempPC;
+//
+//			finalVoxelizedYellowPC->clear();
+//			std::cout<<"[VISION]Voxelization: yellow point cloud..."<<std::endl;
+//			vg.setInputCloud(finalYellowPC);
+//			vg.setLeafSize (leaf_size, leaf_size, leaf_size);
+//			vg.filter (*finalVoxelizedYellowPC);
+//
+//		}
+//
+//		std::cout<<"[VISION]Voxelization: finished."<<std::endl;
+//
+//		// Update the OctoMap
+//
+//		try{
+//			if (!(reset_octomap_client_.call(reset_octomap_bbx_srv_)))
+//			{
+//				msg_error("reset octomap service failed!");
+//				return;
+//			}
+//			else
+//				msg_info("octomap successfully resetted.");
+//		}
+//		catch (...)
+//		{
+//			msg_error("reset octomap service failed! TRYCATCH");
+//		}
+//
+//#ifdef OCTOMAP_SERVER
+//
+//		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
+//		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
+//
+//		pcl::toROSMsg (*filledForOctomapPC, msg);
+//		msg.header.frame_id = "/Origin";
+//		msg.header.stamp = ros::Time::now();
+//		pub_3.publish(msg);
+//		ROS_INFO("Octomap updated");
+//#endif
+//	}
 }
 
 
