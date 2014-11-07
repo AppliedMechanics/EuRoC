@@ -226,8 +226,9 @@ protected:
 	moveit_msgs::PlanningScene planning_scene_;
 	double collision_object_scaler_;
 
-
-
+	moveit_msgs::CollisionObject robot_shadow_collision_object_;
+	shape_msgs::SolidPrimitive robot_shadow_primitive_;
+	geometry_msgs::Pose robot_shadow_pose_;
 
 	bool MoveIt_homing();
 	bool MoveIt_getSolution();

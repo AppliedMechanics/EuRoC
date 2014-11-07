@@ -70,21 +70,21 @@ obj_data_loaded_(false)
 	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
 	//    group_2DOF->setPlannerId(ompl_planners[7]); // 2
-//	group_2DOF->setNumPlanningAttempts(2);
+	group_2DOF->setNumPlanningAttempts(2);
 
 	// arm group
 	group_7DOF = new move_group_interface::MoveGroup("LWR_7DOF");
 	group_7DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm group
 	//    group_7DOF->setPlannerId(ompl_planners[3]);
-//	group_7DOF->setNumPlanningAttempts(2);
+	group_7DOF->setNumPlanningAttempts(2);
 
 	// arm + table axes
 	group_9DOF = new move_group_interface::MoveGroup("LWR_9DOF");
 	group_9DOF->setEndEffectorLink("gripper_tcp");
 	// planning algorithm for arm + table axes
 	//    group_9DOF->setPlannerId(ompl_planners[4]); // 4
-//	group_9DOF->setNumPlanningAttempts(2);
+	group_9DOF->setNumPlanningAttempts(3);
 
 	// robot model loader
 	robot_model_loader_ = robot_model_loader::RobotModelLoader("robot_description");
@@ -139,8 +139,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
 
 
-//	ROS_INFO_STREAM("goal received:");
-//	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
+	//	ROS_INFO_STREAM("goal received:");
+	//	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
 
 	//--------------------------------------------------------------------------------------
 	//! get kinematic limits
@@ -458,7 +458,7 @@ bool MotionPlanning::executeGoalPoseStd()
 	}
 	//------------------------------------------------------------------------------------------------
 	case (MOVE_IT_JT_9DOF):
-    		  ROS_WARN("Given JT based on MoveIt! chosen.");
+    						  ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -1521,17 +1521,17 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	planning_scene_.robot_state.is_diff = true;
 
 	// Robot link padding
-//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-//	{
-//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-//			planning_scene_.link_padding[i].padding = 0.0;
-//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-//			planning_scene_.link_padding[i].padding = 0.02;
-//		else
-//			planning_scene_.link_padding[i].padding = 0.01;
-//	}
+	//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+	//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+	//	{
+	//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+	//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+	//			planning_scene_.link_padding[i].padding = 0.0;
+	//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+	//			planning_scene_.link_padding[i].padding = 0.02;
+	//		else
+	//			planning_scene_.link_padding[i].padding = 0.01;
+	//	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
@@ -1651,7 +1651,7 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			// do self collision checking!
 			ROS_INFO("Checking solution for self collision...-disabled because motion planning chrashes!");
 
-//#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
+			//#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
 			//--------------------------------------------------------------------------------
 			//                    collision_detection::CollisionRequest collision_request;
 			//                    collision_detection::CollisionResult collision_result;
@@ -2315,7 +2315,7 @@ bool MotionPlanning::transformToTCPFrame(std::string frame)
 		goal_pose_LWRTCP_.orientation.w = tf_tmp2.getRotation().getW();
 
 		//          ROS_INFO("LWRTCP Pose in MotionPlanning: [%f %f %f .. %f %f %f %f]" , goal_pose_LWRTCP_.position.x,
-				//                          goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z,goal_pose_LWRTCP_.orientation.x,
+		//                          goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z,goal_pose_LWRTCP_.orientation.x,
 		//                          goal_pose_LWRTCP_.orientation.y,goal_pose_LWRTCP_.orientation.z,goal_pose_LWRTCP_.orientation.w);
 
 	}
@@ -2467,7 +2467,6 @@ void MotionPlanning::initializePlanningScene()
 
 		tf::StampedTransform transform_PUZZLE_2_ORIGIN;
 		tf::Transform tf_tmp,tf_tmp2;
-
 		//! TODO remove debug_tf
 		std::string debug_tf;
 
@@ -2478,7 +2477,7 @@ void MotionPlanning::initializePlanningScene()
 			else{
 				msg_error("Could not get LWRTCP GPTCP tf.");
 				std::cout<<debug_tf<<std::endl;
-				}
+			}
 		}
 		catch(...){
 			ROS_ERROR("Listening to transform was not successful");
@@ -2553,12 +2552,6 @@ void MotionPlanning::initializePlanningScene()
 	}
 
 
-	static_scene_.is_diff = true;
-	planning_scene_diff_publisher_.publish(static_scene_);
-//	static_scene_.world.collision_objects.clear();
-
-	ROS_INFO("Finished adding ground plane and pan tilt station.");
-
 
 	//! Remove Octomap Artefacts at the Ground
 	cleanup_octomap_srv_.request.min.x = -primitive.dimensions[0]*0.5;
@@ -2568,6 +2561,38 @@ void MotionPlanning::initializePlanningScene()
 	cleanup_octomap_srv_.request.max.y = primitive.dimensions[1]*0.5;
 	cleanup_octomap_srv_.request.max.z = 0.01;
 
+	if (active_task_nr_ ==4)
+	{
+		tf::Quaternion q_tmp;
+
+		//! Initialize Robot Shadow Object
+		robot_shadow_primitive_.type = robot_shadow_primitive_.BOX;
+		robot_shadow_primitive_.dimensions.resize(3);
+		robot_shadow_primitive_.dimensions[0] = 0.15;
+		robot_shadow_primitive_.dimensions[1] = 1.2;
+		robot_shadow_primitive_.dimensions[2] = 1.0;
+		robot_shadow_pose_.position.x = -0.55;
+		robot_shadow_pose_.position.y = -0.55;
+		robot_shadow_pose_.position.z = 0.5;
+
+		q_tmp.setRPY(0,0,-0.7854);
+
+		robot_shadow_pose_.orientation.x = q_tmp.getX();
+		robot_shadow_pose_.orientation.y = q_tmp.getY();
+		robot_shadow_pose_.orientation.z = q_tmp.getZ();
+		robot_shadow_pose_.orientation.w = q_tmp.getW();
+
+		robot_shadow_collision_object_.header.frame_id = ORIGIN;
+		robot_shadow_collision_object_.id = "robot_shadow";
+		robot_shadow_collision_object_.primitives.push_back(robot_shadow_primitive_);
+		robot_shadow_collision_object_.primitive_poses.push_back(robot_shadow_pose_);
+		static_scene_.world.collision_objects.push_back(robot_shadow_collision_object_);
+	}
+	static_scene_.is_diff = true;
+	planning_scene_diff_publisher_.publish(static_scene_);
+	//	static_scene_.world.collision_objects.clear();
+
+	ROS_INFO("Finished adding ground plane and pan tilt station.");
 }
 
 void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_pose)
@@ -2800,6 +2825,15 @@ void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState:
 		//planning_scene_.robot_state.joint_state = getCurrentJointState();
 		//planning_scene_.robot_state.is_diff = true;
 
+		break;
+	case OBJ_REMOVE_SHADOW:
+		if (active_task_nr_ == 4)
+		{
+			static_scene_.world.collision_objects.clear();
+			robot_shadow_collision_object_.operation = robot_shadow_collision_object_.REMOVE;
+			static_scene_.world.collision_objects.push_back(robot_shadow_collision_object_);
+			planning_scene_diff_publisher_.publish(static_scene_);
+		}
 		break;
 	default:
 		msg_error("Unknown object state (msg->obj_state=%d)!!!",msg->obj_state);

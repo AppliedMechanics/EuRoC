@@ -19,6 +19,7 @@ typedef enum {
 	OBJ_GRABED,
 	OBJ_PLACED,
 	OBJ_FINISHED,
+	OBJ_REMOVE_SHADOW
 } object_action_t;
 
 typedef enum {
