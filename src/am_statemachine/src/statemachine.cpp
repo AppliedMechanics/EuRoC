@@ -866,6 +866,8 @@ void Statemachine::scheduler_skip_object()
 {
 	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
 
+	cur_obj_gripped_=false;
+
 	if(ein_->is_active_object_last_object())
 	{
 		ROS_INFO("Scheduler: skipping object -> last object reached");
