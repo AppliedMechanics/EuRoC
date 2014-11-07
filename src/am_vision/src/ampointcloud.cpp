@@ -218,11 +218,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
 
-    std::cout << "[VISION] Number of points in SR function before of inliers:  "<<baseCloud->points.size()<<std::endl;
-
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
     kdtree.setInputCloud (baseCloud);
-    float radius = 0.005;
+    float radius = 0.01;
 
     //  --> search for the neighbor points in baseCloud based on points in shapeCloud
     //  --> remove the points found in baseCloud
@@ -251,9 +249,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
     } // END FOR
 
     std::cout<<"Shape has been removed!"<<std::endl;
-    std::cout << "[VISION] Number of points in SR function after removal of inliers:  "<<baseCloud->points.size()<<std::endl;
 
-    return baseCloud;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::copyPointCloud(*baseCloud, *subtractedCloud);
+
+    return subtractedCloud;
 
 }
 
@@ -375,6 +375,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeRobotFromPointCloud(pcl
 	pcl::PointCloud<pcl::PointXYZ>::Ptr theresholdedPointCloud;
 
 	float radius = 0.011;
+	float sqrtradius = 0.15;
+	float mastmin = 0.86;
+	float mastmax = 0.96;
 
 	theresholdedPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 
@@ -382,18 +385,30 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeRobotFromPointCloud(pcl
 	{
 		for (int j=0; j < cloud->width; j++)
 		{
-			if ( ( (cloud->at(j, i).x * cloud->at(j, i).x) + (cloud->at(j, i).y * cloud->at(j, i).y) ) > radius )
+			if ( ( cloud->at(j, i).x > -sqrtradius) && (cloud->at(j, i).y > -sqrtradius)
+					&& (cloud->at(j, i).x < sqrtradius)
+					&& (cloud->at(j, i).y < sqrtradius))
 			{
 
-				theresholdedPointCloud->at(j, i) = cloud->at(j, i);
+				if (((cloud->at(j, i).x * cloud->at(j, i).x) + (cloud->at(j, i).y * cloud->at(j, i).y)) > radius) {
+
+					theresholdedPointCloud->at(j, i) = cloud->at(j, i);
+				} else {
+					theresholdedPointCloud->at(j, i).x = std::numeric_limits<float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).y = std::numeric_limits<float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).z = std::numeric_limits<float>::quiet_NaN();
+				}
+			}else if(( cloud->at(j, i).x > mastmin)
+					&& (cloud->at(j, i).y > mastmin)
+					&& (cloud->at(j, i).x < mastmax)
+					&& (cloud->at(j, i).y < mastmax))
+			{
+				theresholdedPointCloud->at(j, i).x = std::numeric_limits<float>::quiet_NaN();
+				theresholdedPointCloud->at(j, i).y = std::numeric_limits<float>::quiet_NaN();
+				theresholdedPointCloud->at(j, i).z = std::numeric_limits<float>::quiet_NaN();
 			}
 			else
-			{
-				theresholdedPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
-				theresholdedPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
-				theresholdedPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
-			}
-
+				theresholdedPointCloud->at(j, i) = cloud->at(j, i);
 		}
 	}
 
@@ -453,12 +468,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeSquareFromPointCloud(pc
 						> (triangleArea(A, B, C) + triangleArea(A, C, D) + 0.01)) {
 					theresholdedPointCloud->at(j, i) = cloud->at(j, i);
 				} else {
-					theresholdedPointCloud->at(j, i).x = std::numeric_limits<
-							float>::quiet_NaN();
-					theresholdedPointCloud->at(j, i).y = std::numeric_limits<
-							float>::quiet_NaN();
-					theresholdedPointCloud->at(j, i).z = std::numeric_limits<
-							float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).x = std::numeric_limits<float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).y = std::numeric_limits<float>::quiet_NaN();
+					theresholdedPointCloud->at(j, i).z = std::numeric_limits<float>::quiet_NaN();
 				}
 			}
 			else
