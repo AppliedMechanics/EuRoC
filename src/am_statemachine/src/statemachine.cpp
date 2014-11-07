@@ -877,6 +877,11 @@ void Statemachine::scheduler_skip_object()
 	else
 	{
 		ROS_INFO("Scheduler: skipping object -> next object");
+
+		if((ein_->get_active_object_state()==EurocInput::EIN_OBJ_LOCATED)||
+				(ein_->get_active_object_state()==EurocInput::EIN_OBJ_PARKING))
+			publish_obj_state(OBJ_LOCATED);
+
 		ein_->select_new_object();
 		scheduler_next_object();
 
