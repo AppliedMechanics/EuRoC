@@ -101,6 +101,8 @@ obj_data_loaded_(false)
 	// planning scene monitor
 	planning_scene_monitor = new planning_scene_monitor::PlanningSceneMonitor("robot_description");
 
+	get_planning_scene_client_ = nh_.serviceClient<moveit_msgs::GetPlanningScene>(planning_scene_monitor->DEFAULT_PLANNING_SCENE_SERVICE);
+
 	// Octomap service client
 	octomap_ = "/octomap_binary";
 	octomap_client_                       = nh_.serviceClient<octomap_msgs::GetOctomap>(octomap_);
@@ -1342,71 +1344,117 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	//    }
 
 	// store the joint names of the move group in a vector
-	std::vector<std::string> joint_namesMI = group->getActiveJoints();
+//	std::vector<std::string> joint_namesMI = group->getActiveJoints();
+//
+//	// print the joint names of the move group
+//	ROS_INFO("Joint names of the current move group:");
+//	if (!joint_namesMI.empty())
+//	{
+//		//                for(unsigned idx = 0; idx < joint_namesMI.size(); ++idx)
+//		//                {
+//		//                        ROS_INFO_STREAM("MoveitJoint: "<< joint_namesMI[idx]);
+//		//                }
+//	}
+//	else
+//	{
+//		ROS_INFO("MoveGroup: Vector of joint names empty. General Motion Planning Error!");
+//		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+//		return false;
+//	}
 
-	// print the joint names of the move group
-	ROS_INFO("Joint names of the current move group:");
-	if (!joint_namesMI.empty())
+
+
+
+	// Load current robot state into planning scene
+	planning_scene_.robot_state.joint_state = getCurrentJointState();
+	planning_scene_.robot_state.is_diff = true;
+
+
+
+
+//	get_planning_scene_srv_.request.components.components = get_planning_scene_srv_.request.components.ROBOT_STATE_ATTACHED_OBJECTS;
+//	get_planning_scene_srv_.request.components.components = get_planning_scene_srv_.request.components.ROBOT_STATE;
+	get_planning_scene_srv_.request.components.components
+			= get_planning_scene_srv_.request.components.ROBOT_STATE
+			+ get_planning_scene_srv_.request.components.ROBOT_STATE_ATTACHED_OBJECTS;
+
+	if (ros::service::waitForService(planning_scene_monitor->DEFAULT_PLANNING_SCENE_SERVICE,ros::Duration(10.0)))
 	{
-		//                for(unsigned idx = 0; idx < joint_namesMI.size(); ++idx)
-		//                {
-		//                        ROS_INFO_STREAM("MoveitJoint: "<< joint_namesMI[idx]);
-		//                }
-	}
-	else
-	{
-		ROS_INFO("MoveGroup: Vector of joint names empty. General Motion Planning Error!");
-		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-		return false;
-	}
+		get_planning_scene_client_.call(get_planning_scene_srv_);
 
-
-
-	// set start state equal to measured telemetry positions and velocities = 0;
-	ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
-	moveit_msgs::RobotState start_state;
-
-	// declare joint positions and velocities
-	std::vector<double> joint_positionsMI;
-	std::vector<double> joint_velocitiesMI;
-
-
-	unsigned matchCounter = 0;
-
-	for (unsigned idxMI = 0; idxMI < joint_namesMI.size(); ++ idxMI)
-	{
-		unsigned idxTELE = 0;
-		while (joint_namesMI.at(idxMI).compare(_telemetry.joint_names.at(idxTELE)))
+		get_planning_scene_srv_.response.scene.robot_state.joint_state = planning_scene_.robot_state.joint_state;
+		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects.size(); ++i)
 		{
-			idxTELE++;
-			if (idxTELE > _telemetry.joint_names.size()-1)
-			{
-				ROS_WARN("MoveIt! joint not found in telemetry");
-				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
-				return false;
-			}
+			ROS_INFO_STREAM("Attached Object id: " << get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects[i].object.id);
 		}
 
-		//                // print idx of the matching joint in the telemetry
-		//                ROS_INFO_STREAM("telemetry idx of the current joint: " << idxTELE);
-
-		// store the telemetry joint positions in the corresponding order of the move group
-		joint_positionsMI.push_back(_telemetry.measured.position[idxTELE]);
-		joint_velocitiesMI.push_back(0.0);
-		//                // increase counter of matches between telemetry joints and MoveIt joints
-		//                ROS_INFO_STREAM("number of joint matches: " << joint_positionsMI.size());
+		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.joint_state.position.size(); ++i)
+		{
+			ROS_INFO_STREAM("robot state: " << get_planning_scene_srv_.response.scene.robot_state.joint_state.position[i]);
+			ROS_INFO_STREAM("telemetry: " << _telemetry.measured.position[i]);
+		}
+		group->setStartState(get_planning_scene_srv_.response.scene.robot_state);
 	}
 
-	if (joint_positionsMI.size() == joint_namesMI.size())
-	{
-		ROS_INFO("All MoveIt! joints found in the telemetry.");
 
-		start_state.joint_state.name = joint_namesMI;
-		start_state.joint_state.position = joint_positionsMI;
-		start_state.joint_state.velocity = joint_velocitiesMI;
-		group->setStartState(start_state);
 
-	}
+//	// set start state equal to measured telemetry positions and velocities = 0;
+//	ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
+//	moveit_msgs::RobotState start_state;
+//
+//	// declare joint positions and velocities
+//	std::vector<double> joint_positionsMI;
+//	std::vector<double> joint_velocitiesMI;
+//
+//
+//	unsigned matchCounter = 0;
+//
+//	for (unsigned idxMI = 0; idxMI < joint_namesMI.size(); ++ idxMI)
+//	{
+//		unsigned idxTELE = 0;
+//		while (joint_namesMI.at(idxMI).compare(_telemetry.joint_names.at(idxTELE)))
+//		{
+//			idxTELE++;
+//			if (idxTELE > _telemetry.joint_names.size()-1)
+//			{
+//				ROS_WARN("MoveIt! joint not found in telemetry");
+//				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+//				return false;
+//			}
+//		}
+//
+//		//                // print idx of the matching joint in the telemetry
+//		//                ROS_INFO_STREAM("telemetry idx of the current joint: " << idxTELE);
+//
+//		// store the telemetry joint positions in the corresponding order of the move group
+//		joint_positionsMI.push_back(_telemetry.measured.position[idxTELE]);
+//		joint_velocitiesMI.push_back(0.0);
+//		//                // increase counter of matches between telemetry joints and MoveIt joints
+//		//                ROS_INFO_STREAM("number of joint matches: " << joint_positionsMI.size());
+//	}
+//
+//	if (joint_positionsMI.size() == joint_namesMI.size())
+//	{
+//		ROS_INFO("All MoveIt! joints found in the telemetry.");
+//
+////		start_state.joint_state.name = joint_namesMI;
+////		start_state.joint_state.position = joint_positionsMI;
+////		start_state.joint_state.velocity = joint_velocitiesMI;
+////		group->setStartState(start_state);
+//		group->setStartStateToCurrentState();
+//
+//		std::vector<const moveit::core::AttachedBody*> attached_bodies;
+//		group->getCurrentState()->getAttachedBodies(attached_bodies);
+//
+//		if (!attached_bodies.empty())
+//		{
+//			ROS_INFO("Attached bodies: ");
+//			for (unsigned i = 0; i < attached_bodies.size(); ++i)
+//			ROS_INFO_STREAM(attached_bodies[i]->getName());
+//		}
+//		else
+//			ROS_INFO("Attached bodies empty");
+//	}
 	else
 	{
 		ROS_ERROR("Setting start state failed");
@@ -1515,10 +1563,6 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 		planning_scene_.world.octomap.header.frame_id = "/Origin";
 		planning_scene_.world.octomap.header.stamp = ros::Time::now();
 	}
-
-	// Load current robot state into planning scene
-	planning_scene_.robot_state.joint_state = getCurrentJointState();
-	planning_scene_.robot_state.is_diff = true;
 
 	// Robot link padding
 	//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
@@ -3227,6 +3271,9 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
 
 		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_GRABBED;
+
+		ros::Duration(1.0).sleep();
+
 		ROS_INFO("Attaching object to the gripper finished.");
 	}
 	else

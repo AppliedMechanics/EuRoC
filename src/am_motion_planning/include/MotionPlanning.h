@@ -48,7 +48,7 @@
 
 #include <moveit/move_group/move_group_capability.h>
 
-
+#include<moveit_msgs/GetPlanningScene.h>
 
 
 // GEOMETRY
@@ -214,6 +214,8 @@ protected:
 	const robot_state::JointModelGroup* joint_model_group_;
 
 	planning_scene_monitor::PlanningSceneMonitor* planning_scene_monitor;
+	ros::ServiceClient get_planning_scene_client_;
+	moveit_msgs::GetPlanningScene get_planning_scene_srv_;
 
 
 	unsigned max_setTarget_attempts_;
