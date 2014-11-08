@@ -5670,9 +5670,30 @@ void Statemachine::publish_obj_state(uint16_t state)
 		ROS_INFO("Statemachine: publishing state OBJ_GRIPPING for object %s",cur_obj_.name.c_str());
 		break;
 	case OBJ_GRABED:
-		obj_state_msg_.obj_pose=cur_obj_.abs_pose;
+	{
+		//calculate transformation from gp tcp to object origin for grapsing with object_grip_pose[selected_object_pose_]
+		tf::Transform gp;
+		gp.setOrigin(tf::Vector3(goal_queue[0].goal_pose.position.x,
+				goal_queue[0].goal_pose.position.y,goal_queue[0].goal_pose.position.z));
+		gp.setRotation(tf::Quaternion(goal_queue[0].goal_pose.orientation.x,
+				goal_queue[0].goal_pose.orientation.y,goal_queue[0].goal_pose.orientation.z,
+				goal_queue[0].goal_pose.orientation.w));
+
+		tf::Transform obj_orig;
+		obj_orig.mult(gp,gp_obj_orig_);
+		obj_state_msg_.obj_pose.position.x=obj_orig.getOrigin().getX();
+		obj_state_msg_.obj_pose.position.y=obj_orig.getOrigin().getY();
+		obj_state_msg_.obj_pose.position.z=obj_orig.getOrigin().getZ();
+		obj_state_msg_.obj_pose.orientation.x=obj_orig.getRotation().getX();
+		obj_state_msg_.obj_pose.orientation.y=obj_orig.getRotation().getY();
+		obj_state_msg_.obj_pose.orientation.z=obj_orig.getRotation().getZ();
+		obj_state_msg_.obj_pose.orientation.w=obj_orig.getRotation().getW();
+
+		//old:
+		//obj_state_msg_.obj_pose=cur_obj_.abs_pose;
 		ROS_INFO("Statemachine: publishing state OBJ_GRABED for object %s",cur_obj_.name.c_str());
 		break;
+	}
 	case OBJ_PLACED:
 		obj_state_msg_.obj_pose=target_place_pose[selected_target_pose_];
 		ROS_INFO("Statemachine: publishing state OBJ_PLACED for object %s",cur_obj_.name.c_str());
