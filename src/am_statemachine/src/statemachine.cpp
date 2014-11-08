@@ -6,76 +6,76 @@
 #undef FORCE_STOP_SIM//run only one task and then quit
 
 Statemachine::Statemachine():
-		scenes_(1),
-		task_active_(false),
-		sim_running_(false),
-		speed_mod_(0),
-		nr_scenes_(0),
-		active_scene_(-1),
-		active_goal_(0),
-		max_explore_poses_(10),
-		explore_success_count_(0),
-		nr_goals_(0),
-		nr_exp_poses_(0),
-		explore_pose_type_(EXPLORE_STD_1),
-		obj_counter_t6_(1),
-		skip_vision_(false),
-		skip_motion_(false),
-		pause_in_loop_(0),
-		reached_active_goal_(false),
-		request_task_state_(OPEN),
-		start_sim_state_(OPEN),
-		set_object_load_state_(OPEN),
-		pause_state_(OPEN),
-		parse_yaml_file_state_(OPEN),
-		stop_sim_state_(OPEN),
-		watch_scene_state_(OPEN),
-		watch_scene_counter_(0),
-		explore_environment_init_state_(OPEN),
-		explore_environment_motion_state_(OPEN),
-		explore_environment_image_state_(OPEN),
-		explore_environment_check_state_(OPEN),
-		explore_environment_image_counter_(0),
-		locate_object_global_state_(OPEN),
-		locate_object_global_counter_(0),
-		locate_all_objects_global_state_(OPEN),
-		locate_all_objects_global_counter_(0),
-		locate_object_close_range_state_(OPEN),
-		check_object_finished_state_(OPEN),
-		check_object_gripped_state_(OPEN),
-		check_object_gripped_counter_(0),
-		new_object_t6_state_(OPEN),
-		get_grasping_pose_state_(OPEN),
-		get_grasping_poseT5_state_(OPEN),
-		get_grasping_poseT6_state_(OPEN),
-		move_to_object_vision_state_(OPEN),
-		move_to_object_vision_counter_(0),
-		move_to_object_safe_state_(OPEN),
-		move_to_object_safe_counter_(0),
-		move_to_object_state_(OPEN),
-		move_to_object_counter_(0),
-		move_to_object_t6_state_(OPEN),
-		move_to_object_t6_counter_(0),
-		move_to_target_zone_t6_state_(OPEN),
-		move_to_target_zone_t6_counter_(0),
-		gripper_release_state_(OPEN),
-		gripper_release_counter_(0),
-		gripper_close_state_(OPEN),
-		gripper_close_counter_(0),
-		move_to_target_zone_safe_state_(OPEN),
-		move_to_target_zone_safe_counter_(0),
-		move_to_target_zone_vision_state_(OPEN),
-		move_to_target_zone_vision_counter_(0),
-		move_to_target_zone_state_(OPEN),
-		move_to_target_zone_counter_(0),
-		homing_state_(OPEN),
-		homing_counter_(0),
-		tactile_place_t5_state_(OPEN),
-		tactile_place_t5_counter_(0),
-		push_object_t5_state_(OPEN),
-		push_object_t5_counter_(0),
-		reset_state_(OPEN),
-		reset_counter_(0)
+scenes_(1),
+task_active_(false),
+sim_running_(false),
+speed_mod_(0),
+nr_scenes_(0),
+active_scene_(-1),
+active_goal_(0),
+max_explore_poses_(10),
+explore_success_count_(0),
+nr_goals_(0),
+nr_exp_poses_(0),
+explore_pose_type_(EXPLORE_STD_1),
+obj_counter_t6_(1),
+skip_vision_(false),
+skip_motion_(false),
+pause_in_loop_(0),
+reached_active_goal_(false),
+request_task_state_(OPEN),
+start_sim_state_(OPEN),
+set_object_load_state_(OPEN),
+pause_state_(OPEN),
+parse_yaml_file_state_(OPEN),
+stop_sim_state_(OPEN),
+watch_scene_state_(OPEN),
+watch_scene_counter_(0),
+explore_environment_init_state_(OPEN),
+explore_environment_motion_state_(OPEN),
+explore_environment_image_state_(OPEN),
+explore_environment_check_state_(OPEN),
+explore_environment_image_counter_(0),
+locate_object_global_state_(OPEN),
+locate_object_global_counter_(0),
+locate_all_objects_global_state_(OPEN),
+locate_all_objects_global_counter_(0),
+locate_object_close_range_state_(OPEN),
+check_object_finished_state_(OPEN),
+check_object_gripped_state_(OPEN),
+check_object_gripped_counter_(0),
+new_object_t6_state_(OPEN),
+get_grasping_pose_state_(OPEN),
+get_grasping_poseT5_state_(OPEN),
+get_grasping_poseT6_state_(OPEN),
+move_to_object_vision_state_(OPEN),
+move_to_object_vision_counter_(0),
+move_to_object_safe_state_(OPEN),
+move_to_object_safe_counter_(0),
+move_to_object_state_(OPEN),
+move_to_object_counter_(0),
+move_to_object_t6_state_(OPEN),
+move_to_object_t6_counter_(0),
+move_to_target_zone_t6_state_(OPEN),
+move_to_target_zone_t6_counter_(0),
+gripper_release_state_(OPEN),
+gripper_release_counter_(0),
+gripper_close_state_(OPEN),
+gripper_close_counter_(0),
+move_to_target_zone_safe_state_(OPEN),
+move_to_target_zone_safe_counter_(0),
+move_to_target_zone_vision_state_(OPEN),
+move_to_target_zone_vision_counter_(0),
+move_to_target_zone_state_(OPEN),
+move_to_target_zone_counter_(0),
+homing_state_(OPEN),
+homing_counter_(0),
+tactile_place_t5_state_(OPEN),
+tactile_place_t5_counter_(0),
+push_object_t5_state_(OPEN),
+push_object_t5_counter_(0),
+reset_state_(OPEN),
+reset_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -1196,18 +1196,27 @@ void Statemachine::scheduler_error_move_to_object_safe()
 		if(active_task_number_==5)
 		{
 			move_to_object_safe_counter_++;
-			if(move_to_object_safe_counter_>4)
+			goal_queue[0].planning_algorithm = planning_mode_.object;
+			if(move_to_object_safe_counter_==5)
 			{
-				move_to_object_safe_counter_=0;
+				//move_to_object_safe_counter_=0;
 				move_to_object_safe_state_=OPEN;
-				msg_warn("Statemachine-Errorhandler: no ik sol (x5) -> insert homing");
-
+				msg_warn("Statemachine-Errorhandler: no ik sol (5x) -> insert RANDOMPOSE_7DOF");
+				goal_queue[0].planning_algorithm = RANDOMPOSE_7DOF;
 				//scheduler_next();
-				fsm::fsm_state_t temp_state;
-				temp_state.sub.one=fsm::SOLVE_TASK;
-				temp_state.sub.two=fsm::HOMING;					state_queue.insert(state_queue.begin(),temp_state);
-				temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
-				scheduler_next();
+				//				fsm::fsm_state_t temp_state;
+				//				temp_state.sub.one=fsm::SOLVE_TASK;
+				//				temp_state.sub.two=fsm::HOMING;					state_queue.insert(state_queue.begin(),temp_state);
+				//				temp_state.sub.two=fsm::MOVE_TO_OBJECT_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
+				//				scheduler_next();
+
+			}
+			else if(move_to_object_safe_counter_==10)
+			{
+				//move_to_object_safe_counter_=0;
+				move_to_object_safe_state_=OPEN;
+				msg_warn("Statemachine-Errorhandler: no ik sol (10x) -> insert RANDOMPOSE_9DOF");
+				goal_queue[0].planning_algorithm = RANDOMPOSE_9DOF;
 			}
 			else
 			{
@@ -1372,19 +1381,28 @@ void Statemachine::scheduler_error_move_to_target_zone_safe()
 		if(active_task_number_==5)
 		{
 			move_to_target_zone_safe_counter_++;
-			if(move_to_target_zone_safe_counter_>4)
+			goal_queue[0].planning_algorithm = planning_mode_.target;
+			if(move_to_target_zone_safe_counter_==5)
 			{
-				move_to_target_zone_safe_counter_=0;
+				//move_to_target_zone_safe_counter_=0;
 				move_to_target_zone_safe_state_=OPEN;
-				msg_warn("Statemachine-Errorhandler: no ik sol (x5) -> insert homing");
+				msg_warn("Statemachine-Errorhandler: no ik sol (5x) -> insert RANDOMPOSE_7DOF");
+				//goal_queue[0].planning_algorithm = RANDOMPOSE_7DOF;
 
 				//scheduler_next();
-				fsm::fsm_state_t temp_state;
-				temp_state.sub.one=fsm::SOLVE_TASK;
-				temp_state.sub.two=fsm::HOMING;						state_queue.insert(state_queue.begin(),temp_state);
-				temp_state.sub.two=fsm::PLACE_OBJECT;
-				temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
-				scheduler_next();
+				//				fsm::fsm_state_t temp_state;
+				//				temp_state.sub.one=fsm::SOLVE_TASK;
+				//				temp_state.sub.two=fsm::HOMING;						state_queue.insert(state_queue.begin(),temp_state);
+				//				temp_state.sub.two=fsm::PLACE_OBJECT;
+				//				temp_state.sub.three=fsm::MOVE_TO_TARGET_ZONE_SAFE;	state_queue.insert(state_queue.begin()+1,temp_state);
+				//				scheduler_next();
+			}
+			else if(move_to_target_zone_safe_counter_==10)
+			{
+				//move_to_object_safe_counter_=0;
+				move_to_target_zone_safe_state_=OPEN;
+				msg_warn("Statemachine-Errorhandler: no ik sol (10x) -> insert RANDOMPOSE_9DOF");
+				//goal_queue[0].planning_algorithm = RANDOMPOSE_9DOF;
 			}
 			else
 			{
@@ -1548,7 +1566,8 @@ void Statemachine::scheduler_error_move_to_target_zone()
 
 	case fsm::NO_IK_SOL:
 		msg_warn("Statemachine-Errorhandler: no ik sol -> try next pose");
-
+		if (active_task_number_==5)
+			move_to_target_zone_counter_++;
 		if(selected_object_pose_ < object_vision_pose.size()-1)
 		{
 			move_to_target_zone_state_=OPEN;
@@ -1773,9 +1792,9 @@ void Statemachine::scheduler_error_explore_environment_motion()
 		active_goal_++;
 		scheduler_next();
 #warning Homing for explore poses disabled
-//		fsm::fsm_state_t temp_state;
-//		temp_state.sub.one=fsm::SOLVE_TASK;
-//		temp_state.sub.two=fsm::HOMING;			state_queue.insert(state_queue.begin(),temp_state);
+		//		fsm::fsm_state_t temp_state;
+		//		temp_state.sub.one=fsm::SOLVE_TASK;
+		//		temp_state.sub.two=fsm::HOMING;			state_queue.insert(state_queue.begin(),temp_state);
 		scheduler_next();
 		break;
 
@@ -2532,7 +2551,7 @@ int Statemachine::parse_yaml_file()
 		try
 		{
 			ein_->save_fixture_to_parameter_server(node_,false);
-            ein_->save_conveyorbelt_to_parameter_server(node_,false);
+			ein_->save_conveyorbelt_to_parameter_server(node_,false);
 			ein_->save_objects_to_parameter_server(node_,false);
 			ein_->save_target_zone_to_parameter_server(node_,false);
 			ein_->save_robot_to_parameter_server(node_,false);
@@ -2957,12 +2976,12 @@ int Statemachine::explore_environment_init()
 
 		explore_environment_init_state_=RUNNING;
 
-//		if (active_task_number_ == 4){
-//			explore_pose_type_ = EXPLORE_SNAKE;
-//		}
-//		else{
-//			explore_pose_type_ = EXPLORE_STD_1;
-//		}
+		//		if (active_task_number_ == 4){
+		//			explore_pose_type_ = EXPLORE_SNAKE;
+		//		}
+		//		else{
+		//			explore_pose_type_ = EXPLORE_STD_1;
+		//		}
 
 		explore_environment_init_state_=FINISHED;
 	}
@@ -3431,9 +3450,9 @@ int Statemachine::locate_all_objects_global()
 
 		ROS_INFO("searching for: %s",vision_queue[active_goal_].object.name.c_str());
 		vision_action_client_->sendGoal(vision_queue[active_goal_],
-						boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
-						visionClient::SimpleActiveCallback(),
-						visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
+				boost::bind(&Statemachine::locate_all_objects_global_done,this,_1,_2),
+				visionClient::SimpleActiveCallback(),
+				visionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::locate_object_global_feedback,this,_1));
 		);
 	}
 	else if(locate_all_objects_global_state_==FINISHED)
@@ -3550,17 +3569,17 @@ int Statemachine::locate_object_close_range()
 			fsm::fsm_state_t temp_state;
 			temp_state.sub.one=fsm::SOLVE_TASK;
 			if(active_task_number_<=4)
-            {
-              temp_state.sub.two=fsm::GET_GRASPING_POSE;               state_queue.insert(state_queue.begin(),temp_state);
-            }
-            else if(active_task_number_==5)
-            {
-              temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;            state_queue.insert(state_queue.begin(),temp_state);
-            }
-            else
-            {
-              temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;            state_queue.insert(state_queue.begin(),temp_state);
-            }
+			{
+				temp_state.sub.two=fsm::GET_GRASPING_POSE;               state_queue.insert(state_queue.begin(),temp_state);
+			}
+			else if(active_task_number_==5)
+			{
+				temp_state.sub.two=fsm::GET_GRASPING_POSE_T5;            state_queue.insert(state_queue.begin(),temp_state);
+			}
+			else
+			{
+				temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;            state_queue.insert(state_queue.begin(),temp_state);
+			}
 
 		}
 		//==============================================
@@ -3656,8 +3675,8 @@ int Statemachine::get_grasping_pose()
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
 		if(get_grasp_pose_get_vectors()==false)
 		{
-                  get_grasping_pose_state_=FINISHEDWITHERROR;
-                  return 0;
+			get_grasping_pose_state_=FINISHEDWITHERROR;
+			return 0;
 		}
 
 		if(-1==find_pose_set())
@@ -3726,310 +3745,310 @@ int Statemachine::get_grasping_pose()
 
 bool Statemachine::get_grasp_pose_get_vectors()
 {
-  //first clean up all vectors
-  object_grip_pose.clear();
-  object_safe_pose.clear();
-  object_vision_pose.clear();
-  grip_pose_type.clear();
-  object_skip_vision.clear();
-  object_grasp_width.clear();
-  target_place_pose.clear();
-  target_safe_pose.clear();
-  target_vision_pose.clear();
-  place_pose_type.clear();
-  target_skip_vision.clear();
-  push_safe_pose.clear();
-  push_target_pose.clear();
-  object_grip_r_tcp_com.clear();
+	//first clean up all vectors
+	object_grip_pose.clear();
+	object_safe_pose.clear();
+	object_vision_pose.clear();
+	grip_pose_type.clear();
+	object_skip_vision.clear();
+	object_grasp_width.clear();
+	target_place_pose.clear();
+	target_safe_pose.clear();
+	target_vision_pose.clear();
+	place_pose_type.clear();
+	target_skip_vision.clear();
+	push_safe_pose.clear();
+	push_target_pose.clear();
+	object_grip_r_tcp_com.clear();
 
-  //then assign new vectors
-  object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
-  object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
-  object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
-  grip_pose_type=get_grasp_pose_srv_.response.grip_pose_type;
-  object_skip_vision=get_grasp_pose_srv_.response.object_skip_vision;
-  object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
-  target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
-  target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
-  target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
-  place_pose_type=get_grasp_pose_srv_.response.place_pose_type;
-  target_skip_vision=get_grasp_pose_srv_.response.target_skip_vision;
-  push_safe_pose=get_grasp_pose_srv_.response.push_safe_pose;
-  push_target_pose=get_grasp_pose_srv_.response.push_target_pose;
-  object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
+	//then assign new vectors
+	object_grip_pose=get_grasp_pose_srv_.response.object_grip_pose;
+	object_safe_pose=get_grasp_pose_srv_.response.object_safe_pose;
+	object_vision_pose=get_grasp_pose_srv_.response.object_vision_pose;
+	grip_pose_type=get_grasp_pose_srv_.response.grip_pose_type;
+	object_skip_vision=get_grasp_pose_srv_.response.object_skip_vision;
+	object_grasp_width=get_grasp_pose_srv_.response.object_grasp_width;
+	target_place_pose=get_grasp_pose_srv_.response.target_place_pose;
+	target_safe_pose=get_grasp_pose_srv_.response.target_safe_pose;
+	target_vision_pose=get_grasp_pose_srv_.response.target_vision_pose;
+	place_pose_type=get_grasp_pose_srv_.response.place_pose_type;
+	target_skip_vision=get_grasp_pose_srv_.response.target_skip_vision;
+	push_safe_pose=get_grasp_pose_srv_.response.push_safe_pose;
+	push_target_pose=get_grasp_pose_srv_.response.push_target_pose;
+	object_grip_r_tcp_com=get_grasp_pose_srv_.response.object_grip_r_tcp_com;
 
-  //print vector sizes
-  ROS_INFO("Received pose vectors:");
-  ROS_INFO("object_grip_pose.size()=%d",object_grip_pose.size());
-  ROS_INFO("object_safe_pose.size()=%d",object_safe_pose.size());
-  ROS_INFO("object_vision_pose.size()=%d",object_vision_pose.size());
-  ROS_INFO("grip_pose_type.size()=%d",grip_pose_type.size());
-  ROS_INFO("object_skip_vision.size()=%d",object_skip_vision.size());
-  ROS_INFO("object_grasp_width.size()=%d",object_grasp_width.size());
-  ROS_INFO("target_place_pose.size()=%d",target_place_pose.size());
-  ROS_INFO("target_safe_pose.size()=%d",target_safe_pose.size());
-  ROS_INFO("target_vision_pose.size()=%d",target_vision_pose.size());
-  ROS_INFO("target_skip_vision.size()=%d",target_skip_vision.size());
-  ROS_INFO("place_pose_type.size()=%d",place_pose_type.size());
-  ROS_INFO("push_safe_pose.size()=%d",push_safe_pose.size());
-  ROS_INFO("push_target_pose.size()=%d",push_target_pose.size());
-  ROS_INFO("object_grip_r_tcp_com.size()=%d",object_grip_r_tcp_com.size());
+	//print vector sizes
+	ROS_INFO("Received pose vectors:");
+	ROS_INFO("object_grip_pose.size()=%d",object_grip_pose.size());
+	ROS_INFO("object_safe_pose.size()=%d",object_safe_pose.size());
+	ROS_INFO("object_vision_pose.size()=%d",object_vision_pose.size());
+	ROS_INFO("grip_pose_type.size()=%d",grip_pose_type.size());
+	ROS_INFO("object_skip_vision.size()=%d",object_skip_vision.size());
+	ROS_INFO("object_grasp_width.size()=%d",object_grasp_width.size());
+	ROS_INFO("target_place_pose.size()=%d",target_place_pose.size());
+	ROS_INFO("target_safe_pose.size()=%d",target_safe_pose.size());
+	ROS_INFO("target_vision_pose.size()=%d",target_vision_pose.size());
+	ROS_INFO("target_skip_vision.size()=%d",target_skip_vision.size());
+	ROS_INFO("place_pose_type.size()=%d",place_pose_type.size());
+	ROS_INFO("push_safe_pose.size()=%d",push_safe_pose.size());
+	ROS_INFO("push_target_pose.size()=%d",push_target_pose.size());
+	ROS_INFO("object_grip_r_tcp_com.size()=%d",object_grip_r_tcp_com.size());
 
-  //check the vector sizes
-  bool checksizes;
-  checksizes=true;
+	//check the vector sizes
+	bool checksizes;
+	checksizes=true;
 
-  if (object_grip_pose.size()<1)
-  {
-          msg_error("Error. no object_grip_poses received");
-          checksizes=false;
-  }
-  if (target_place_pose.size()<1)
-  {
-          msg_error("Error. no target_place_poses received");
-          checksizes=false;
-  }
-//  if (push_target_pose.size()<1 && active_task_number_==5)
-//  {
-//          msg_error("Error. no push_target_poses received (but necessary for task 5)");
-//          checksizes=false;
-//  }
+	if (object_grip_pose.size()<1)
+	{
+		msg_error("Error. no object_grip_poses received");
+		checksizes=false;
+	}
+	if (target_place_pose.size()<1)
+	{
+		msg_error("Error. no target_place_poses received");
+		checksizes=false;
+	}
+	//  if (push_target_pose.size()<1 && active_task_number_==5)
+	//  {
+	//          msg_error("Error. no push_target_poses received (but necessary for task 5)");
+	//          checksizes=false;
+	//  }
 
-  if (object_safe_pose.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. object_safe_pose has wrong size");
-          checksizes=false;
-  }
-  if (object_vision_pose.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. object_vision_pose has wrong size");
-          checksizes=false;
-  }
-  if (object_skip_vision.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. object_skip_vision has wrong size");
-          checksizes=false;
-  }
-  if (grip_pose_type.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. grip_pose_type has wrong size");
-          checksizes=false;
-  }
-  if (object_grasp_width.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. object_grasp_width has wrong size");
-          checksizes=false;
-  }
-  if (target_safe_pose.size()!=target_place_pose.size())
-  {
-          msg_error("Error. target_safe_pose has wrong size");
-          checksizes=false;
-  }
-  if (target_vision_pose.size()!=target_place_pose.size())
-  {
-          msg_error("Error. target_vision_pose has wrong size");
-          checksizes=false;
-  }
-  if (place_pose_type.size()!=target_place_pose.size())
-  {
-          msg_error("Error. place_pose_type has wrong size");
-          checksizes=false;
-  }
-  if (target_skip_vision.size()!=target_place_pose.size())
-  {
-          msg_error("Error. target_skip_vision has wrong size");
-          checksizes=false;
-  }
-  if ((push_safe_pose.size()!=target_place_pose.size()) && (active_task_number_==5))
-  {
-          msg_error("Error. push_safe_pose has wrong size");
-          checksizes=false;
-  }
-  if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
-  {
-          msg_error("Error. object_grip_r_tcp_com has wrong size");
-          checksizes=false;
-  }
+	if (object_safe_pose.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. object_safe_pose has wrong size");
+		checksizes=false;
+	}
+	if (object_vision_pose.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. object_vision_pose has wrong size");
+		checksizes=false;
+	}
+	if (object_skip_vision.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. object_skip_vision has wrong size");
+		checksizes=false;
+	}
+	if (grip_pose_type.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. grip_pose_type has wrong size");
+		checksizes=false;
+	}
+	if (object_grasp_width.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. object_grasp_width has wrong size");
+		checksizes=false;
+	}
+	if (target_safe_pose.size()!=target_place_pose.size())
+	{
+		msg_error("Error. target_safe_pose has wrong size");
+		checksizes=false;
+	}
+	if (target_vision_pose.size()!=target_place_pose.size())
+	{
+		msg_error("Error. target_vision_pose has wrong size");
+		checksizes=false;
+	}
+	if (place_pose_type.size()!=target_place_pose.size())
+	{
+		msg_error("Error. place_pose_type has wrong size");
+		checksizes=false;
+	}
+	if (target_skip_vision.size()!=target_place_pose.size())
+	{
+		msg_error("Error. target_skip_vision has wrong size");
+		checksizes=false;
+	}
+	if ((push_safe_pose.size()!=target_place_pose.size()) && (active_task_number_==5))
+	{
+		msg_error("Error. push_safe_pose has wrong size");
+		checksizes=false;
+	}
+	if (object_grip_r_tcp_com.size()!=object_grip_pose.size())
+	{
+		msg_error("Error. object_grip_r_tcp_com has wrong size");
+		checksizes=false;
+	}
 
-  return checksizes;
+	return checksizes;
 }
 
 void Statemachine::get_grasping_poseT5_cb()
 {
-        ROS_INFO("get_grasping_poseT5_cb() running");
+	ROS_INFO("get_grasping_poseT5_cb() running");
 
-        if(get_grasp_pose_client_.exists())
-        {
-                if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
-                {
-                        get_grasping_poseT5_state_=FINISHED;
-                }
-                else
-                {
-                        msg_error("Error. call of get_grasp_pose_client_ failed");
-                        get_grasping_poseT5_state_=FINISHEDWITHERROR;
-                }
-        }
-        else
-        {
-                msg_error("Error. get_grasp_pose_client_ is not available");
-                get_grasping_poseT5_state_=FINISHEDWITHERROR;
-        }
-        ROS_INFO("get_grasping_poseT5_cb() finished");
+	if(get_grasp_pose_client_.exists())
+	{
+		if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
+		{
+			get_grasping_poseT5_state_=FINISHED;
+		}
+		else
+		{
+			msg_error("Error. call of get_grasp_pose_client_ failed");
+			get_grasping_poseT5_state_=FINISHEDWITHERROR;
+		}
+	}
+	else
+	{
+		msg_error("Error. get_grasp_pose_client_ is not available");
+		get_grasping_poseT5_state_=FINISHEDWITHERROR;
+	}
+	ROS_INFO("get_grasping_poseT5_cb() finished");
 }
 
 int Statemachine::get_grasping_poseT5()
 {
-        if(get_grasping_poseT5_state_==OPEN)
-        {
-			ROS_INFO("get_grasping_poseT5() called: OPEN");
-			get_grasp_pose_srv_.request.object=cur_obj_;
-			get_grasp_pose_srv_.request.target_pose=cur_target_pose_;
-			std::vector<bool> tmp=ein_->get_push_info();
-			get_grasp_pose_srv_.request.puzzle_push_in_x=tmp[0];
-			get_grasp_pose_srv_.request.puzzle_push_in_y=tmp[1];
+	if(get_grasping_poseT5_state_==OPEN)
+	{
+		ROS_INFO("get_grasping_poseT5() called: OPEN");
+		get_grasp_pose_srv_.request.object=cur_obj_;
+		get_grasp_pose_srv_.request.target_pose=cur_target_pose_;
+		std::vector<bool> tmp=ein_->get_push_info();
+		get_grasp_pose_srv_.request.puzzle_push_in_x=tmp[0];
+		get_grasp_pose_srv_.request.puzzle_push_in_y=tmp[1];
 
-			get_grasping_poseT5_state_=RUNNING;
-			lsc_ = boost::thread(&Statemachine::get_grasping_poseT5_cb,this);
-			//get_grasping_poseT5_cb();
-        }
-        else if(get_grasping_poseT5_state_==FINISHED)
-        {
-                ROS_INFO("get_grasping_poseT5() called: FINISHED");
+		get_grasping_poseT5_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::get_grasping_poseT5_cb,this);
+		//get_grasping_poseT5_cb();
+	}
+	else if(get_grasping_poseT5_state_==FINISHED)
+	{
+		ROS_INFO("get_grasping_poseT5() called: FINISHED");
 
-                //destroy thread
-                lsc_.detach();
+		//destroy thread
+		lsc_.detach();
 
-                cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
-                if(get_grasp_pose_get_vectors()==false)
-                {
-                  get_grasping_poseT5_state_=FINISHEDWITHERROR;
-                  return 0;
-                }
+		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+		if(get_grasp_pose_get_vectors()==false)
+		{
+			get_grasping_poseT5_state_=FINISHEDWITHERROR;
+			return 0;
+		}
 
-                selected_object_pose_=0;
-                selected_target_pose_=0;
+		selected_object_pose_=0;
+		selected_target_pose_=0;
 
-				if(object_skip_vision[selected_object_pose_]==1)
+		if(object_skip_vision[selected_object_pose_]==1)
+		{
+			ROS_INFO("Skip vision=1 for this pose -> skip move to object vision!");
+
+			uint16_t iter=state_queue.size()-2;
+			for(uint16_t ii=0;ii<iter;ii++)
+			{
+				if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+						(state_queue[ii].sub.two == fsm::MOVE_TO_OBJECT_VISION))
 				{
-					ROS_INFO("Skip vision=1 for this pose -> skip move to object vision!");
-
-					uint16_t iter=state_queue.size()-2;
-					for(uint16_t ii=0;ii<iter;ii++)
-					{
-						if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
-								(state_queue[ii].sub.two == fsm::MOVE_TO_OBJECT_VISION))
-						{
-							state_queue.erase(state_queue.begin()+ii);
-							state_queue.erase(state_queue.begin()+ii);
-							//state_queue.erase(state_queue.begin()+ii);
-							break;
-						}
-					}
+					state_queue.erase(state_queue.begin()+ii);
+					state_queue.erase(state_queue.begin()+ii);
+					//state_queue.erase(state_queue.begin()+ii);
+					break;
 				}
-				if(target_skip_vision[selected_target_pose_]==1)
+			}
+		}
+		if(target_skip_vision[selected_target_pose_]==1)
+		{
+			ROS_INFO("Skip vision=1 for this pose -> skip move to target zone vision!");
+
+			uint16_t iter=state_queue.size()-2;
+			for(uint16_t ii=0;ii<iter;ii++)
+			{
+				if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
+						(state_queue[ii].sub.two == fsm::MOVE_TO_TARGET_ZONE_VISION))
 				{
-					ROS_INFO("Skip vision=1 for this pose -> skip move to target zone vision!");
-
-					uint16_t iter=state_queue.size()-2;
-					for(uint16_t ii=0;ii<iter;ii++)
-					{
-						if((state_queue[ii].sub.one == fsm::SOLVE_TASK) &&
-								(state_queue[ii].sub.two == fsm::MOVE_TO_TARGET_ZONE_VISION))
-						{
-							state_queue.erase(state_queue.begin()+ii);
-							//state_queue.erase(state_queue.begin()+ii);
-							break;
-						}
-					}
+					state_queue.erase(state_queue.begin()+ii);
+					//state_queue.erase(state_queue.begin()+ii);
+					break;
 				}
+			}
+		}
 
-                //==============================================
-                scheduler_next();
-                //==============================================
-                //reset state
-                get_grasping_poseT5_state_=OPEN;
-        }
-        else if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
-        {
-                //destroy thread
-                lsc_.detach();
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		get_grasping_poseT5_state_=OPEN;
+	}
+	else if(get_grasping_poseT5_state_==FINISHEDWITHERROR)
+	{
+		//destroy thread
+		lsc_.detach();
 
-                ROS_INFO("get_grasping_poseT5() called: FINISHEDWITHERROR");
-                scheduler_schedule(); //Call for Error-Handling
-        }
+		ROS_INFO("get_grasping_poseT5() called: FINISHEDWITHERROR");
+		scheduler_schedule(); //Call for Error-Handling
+	}
 
-        return 0;
+	return 0;
 }
 
 void Statemachine::get_grasping_poseT6_cb()
 {
-        ROS_INFO("get_grasping_poseT6_cb() running");
+	ROS_INFO("get_grasping_poseT6_cb() running");
 
-        if(get_grasp_pose_client_.exists())
-        {
-                if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
-                {
-                        get_grasping_poseT6_state_=FINISHED;
-                }
-                else
-                {
-                        msg_error("Error. call of get_grasp_pose_client_ failed");
-                        get_grasping_poseT6_state_=FINISHEDWITHERROR;
-                }
-        }
-        else
-        {
-                msg_error("Error. get_grasp_pose_client_ is not available");
-                get_grasping_poseT6_state_=FINISHEDWITHERROR;
-        }
-        ROS_INFO("get_grasping_poseT6_cb() finished");
+	if(get_grasp_pose_client_.exists())
+	{
+		if(get_grasp_pose_client_.call(get_grasp_pose_srv_))
+		{
+			get_grasping_poseT6_state_=FINISHED;
+		}
+		else
+		{
+			msg_error("Error. call of get_grasp_pose_client_ failed");
+			get_grasping_poseT6_state_=FINISHEDWITHERROR;
+		}
+	}
+	else
+	{
+		msg_error("Error. get_grasp_pose_client_ is not available");
+		get_grasping_poseT6_state_=FINISHEDWITHERROR;
+	}
+	ROS_INFO("get_grasping_poseT6_cb() finished");
 }
 
 int Statemachine::get_grasping_poseT6()
 {
-        if(get_grasping_poseT6_state_==OPEN)
-        {
-                ROS_INFO("get_grasping_poseT6() called: OPEN");
-                get_grasp_pose_srv_.request.object=cur_obj_;
-                get_grasp_pose_srv_.request.target_zone=cur_zone_;
-                get_grasping_poseT6_state_=RUNNING;
-                lsc_ = boost::thread(&Statemachine::get_grasping_poseT6_cb,this);
-                //get_grasping_poseT6_cb();
-        }
-        else if(get_grasping_poseT6_state_==FINISHED)
-        {
-                ROS_INFO("get_grasping_poseT6() called: FINISHED");
+	if(get_grasping_poseT6_state_==OPEN)
+	{
+		ROS_INFO("get_grasping_poseT6() called: OPEN");
+		get_grasp_pose_srv_.request.object=cur_obj_;
+		get_grasp_pose_srv_.request.target_zone=cur_zone_;
+		get_grasping_poseT6_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::get_grasping_poseT6_cb,this);
+		//get_grasping_poseT6_cb();
+	}
+	else if(get_grasping_poseT6_state_==FINISHED)
+	{
+		ROS_INFO("get_grasping_poseT6() called: FINISHED");
 
-                //destroy thread
-                lsc_.detach();
+		//destroy thread
+		lsc_.detach();
 
-                cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
-                if(get_grasp_pose_get_vectors()==false)
-                {
-                  get_grasping_poseT6_state_=FINISHEDWITHERROR;
-                  return 0;
-                }
+		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+		if(get_grasp_pose_get_vectors()==false)
+		{
+			get_grasping_poseT6_state_=FINISHEDWITHERROR;
+			return 0;
+		}
 
-                selected_object_pose_=0;
-                selected_target_pose_=0;
+		selected_object_pose_=0;
+		selected_target_pose_=0;
 
-                //==============================================
-                scheduler_next();
-                //==============================================
-                //reset state
-                get_grasping_poseT6_state_=OPEN;
-        }
-        else if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
-        {
-                //destroy thread
-                lsc_.detach();
+		//==============================================
+		scheduler_next();
+		//==============================================
+		//reset state
+		get_grasping_poseT6_state_=OPEN;
+	}
+	else if(get_grasping_poseT6_state_==FINISHEDWITHERROR)
+	{
+		//destroy thread
+		lsc_.detach();
 
-                ROS_INFO("get_grasping_poseT6() called: FINISHEDWITHERROR");
-                scheduler_schedule(); //Call for Error-Handling
-        }
+		ROS_INFO("get_grasping_poseT6() called: FINISHEDWITHERROR");
+		scheduler_schedule(); //Call for Error-Handling
+	}
 
-        return 0;
+	return 0;
 }
 
 int Statemachine::find_pose_set()
@@ -4488,25 +4507,59 @@ int Statemachine::move_to_object_safe()
 
 		//send goals to motion-planning
 		active_goal_=0;
-		nr_goals_=1;
-		reached_active_goal_=false;
-		goal_queue.resize(nr_goals_);
 
-		goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
-		goal_queue[0].planning_algorithm = planning_mode_.object;
-		goal_queue[0].planning_frame = GP_TCP;
-		goal_queue[0].inter_steps = 0;
-		goal_queue[0].allowed_time = 60.0;
+		if (active_task_number_==5 && (move_to_object_safe_counter_==5 || move_to_object_safe_counter_==10))
+		{
+			nr_goals_=2;
+			reached_active_goal_=false;
+			goal_queue.resize(nr_goals_);
 
-		if(cur_obj_gripped_==true)
-			goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+			if (!(move_to_object_safe_counter_ % 5) && (move_to_object_safe_counter_ % 10))
+			{
+				goal_queue[0].planning_algorithm = RANDOMPOSE_7DOF;
+				goal_queue[0].planning_frame = GP_TCP;
+				goal_queue[0].speed_percentage = fast_moving_speed;
+				goal_queue[0].allowed_time = 15.0;
+			}
+			else if (!(move_to_object_safe_counter_ % 10))
+			{
+				goal_queue[0].planning_algorithm = RANDOMPOSE_9DOF;
+				goal_queue[0].planning_frame = GP_TCP;
+				goal_queue[0].speed_percentage = fast_moving_speed;
+				goal_queue[0].allowed_time = 30.0;
+			}
+			goal_queue[1].goal_pose = object_safe_pose[selected_object_pose_];
+			goal_queue[1].planning_algorithm = planning_mode_.object;
+			goal_queue[1].planning_frame = GP_TCP;
+			goal_queue[1].inter_steps = 0;
+			goal_queue[1].allowed_time = 60.0;
+
+			if(cur_obj_gripped_==true)
+				goal_queue[1].speed_percentage = slow_moving_speed*(1-speed_mod_);
+			else
+				goal_queue[1].speed_percentage = std_moving_speed*(1-speed_mod_);
+		}
 		else
-			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		{
+			nr_goals_=1;
+			reached_active_goal_=false;
+			goal_queue.resize(nr_goals_);
 
+			goal_queue[0].goal_pose = object_safe_pose[selected_object_pose_];
+			goal_queue[0].planning_algorithm = planning_mode_.object;
+			goal_queue[0].planning_frame = GP_TCP;
+			goal_queue[0].inter_steps = 0;
+			goal_queue[0].allowed_time = 60.0;
+
+			if(cur_obj_gripped_==true)
+				goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+			else
+				goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		}
 
 		//send first goal
 		move_to_object_safe_state_=RUNNING;
-		motion_planning_action_client_->sendGoal(goal_queue[0],
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
 				boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
 				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
@@ -4751,19 +4804,19 @@ int Statemachine::move_to_object()
 	{
 		ROS_INFO("move_to_object() called: OPEN");
 
-//#warning remove area from octomap
-//		if (!skip_vision_){
-//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
-//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
-//			rm_grasping_area_collision_srv_.request.max.z = 1.0;
-//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
-//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
-//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
-//			try{
-//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-//					msg_warn("Grasping area clearing failed.");
-//			}catch (...){msg_error("Grasping area clearing failed.");}
-//		}
+		//#warning remove area from octomap
+		//		if (!skip_vision_){
+		//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
+		//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
+		//			rm_grasping_area_collision_srv_.request.max.z = 1.0;
+		//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
+		//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
+		//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+		//			try{
+		//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+		//					msg_warn("Grasping area clearing failed.");
+		//			}catch (...){msg_error("Grasping area clearing failed.");}
+		//		}
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -4772,8 +4825,10 @@ int Statemachine::move_to_object()
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 
 #warning TO_DISCUSS
-		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
+		if (active_task_number_==5 && move_to_object_counter_==3)
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		else
+			goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -5231,7 +5286,11 @@ int Statemachine::move_to_target_zone()
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
 #warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
-		goal_queue[0].planning_algorithm = planning_mode_.move_to_target_zone;
+		if (active_task_number_==5 && move_to_target_zone_counter_==10)
+			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
+		else
+			goal_queue[0].planning_algorithm = planning_mode_.move_to_target_zone;
+
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
@@ -5505,19 +5564,19 @@ void Statemachine::tactile_place_t5_cb()
 {
 	ROS_INFO("tactile_place_t5_cb() running");
 
-//	if(save_log_client_.exists())
-//	{
-//		if(!save_log_client_.call(save_log_srv_))
-//		{
-//			msg_error("Error. call of save_log_client_ failed");
-//			tactile_place_t5_state_=FINISHEDWITHERROR;
-//		}
-//	}
-//	else
-//	{
-//		msg_error("Error. tactile_place_t5_client is not available");
-//		tactile_place_t5_state_=FINISHEDWITHERROR;
-//	}
+	//	if(save_log_client_.exists())
+	//	{
+	//		if(!save_log_client_.call(save_log_srv_))
+	//		{
+	//			msg_error("Error. call of save_log_client_ failed");
+	//			tactile_place_t5_state_=FINISHEDWITHERROR;
+	//		}
+	//	}
+	//	else
+	//	{
+	//		msg_error("Error. tactile_place_t5_client is not available");
+	//		tactile_place_t5_state_=FINISHEDWITHERROR;
+	//	}
 
 	tactile_place_t5_state_=FINISHED;
 	ROS_INFO("tactile_place_t5_cb() finished");
@@ -5559,21 +5618,21 @@ int Statemachine::push_object_t5()
 		reached_active_goal_=false;
 		goal_queue.resize(nr_goals_);
 
-//		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
-//		goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
-//		goal_queue[0].planning_frame = GP_TCP;
-//		goal_queue[0].inter_steps = 0;
-//		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
-//		goal_queue[0].allowed_time = 60.0;
-//		goal_queue[1].goal_pose.position.x = ...
+		//		goal_queue[0].goal_pose = object_vision_pose[selected_object_pose_];
+		//		goal_queue[0].planning_algorithm = HOMING_MOVE_IT_7DOF;
+		//		goal_queue[0].planning_frame = GP_TCP;
+		//		goal_queue[0].inter_steps = 0;
+		//		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		//		goal_queue[0].allowed_time = 60.0;
+		//		goal_queue[1].goal_pose.position.x = ...
 
-//		//send first goal
-//		push_object_t5_state_=RUNNING;
-//		motion_planning_action_client_->sendGoal(goal_queue[0],
-//				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
-//				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
-//				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
-//		);
+		//		//send first goal
+		//		push_object_t5_state_=RUNNING;
+		//		motion_planning_action_client_->sendGoal(goal_queue[0],
+		//				boost::bind(&Statemachine::push_object_t5_done,this,_1,_2),
+		//				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+		//				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+		//		);
 
 		push_object_t5_state_=FINISHED;
 	}
@@ -5671,7 +5730,6 @@ void Statemachine::publish_obj_state(uint16_t state)
 		break;
 	case OBJ_GRABED:
 	{
-
 		//calculate transformation from gp tcp to object origin for grapsing with object_grip_pose[selected_object_pose_]
 		tf::Transform gp;
 		gp.setOrigin(tf::Vector3(object_safe_pose[selected_object_pose_].position.x,
@@ -5801,8 +5859,8 @@ int Statemachine::reset()
 		check_object_gripped_counter_=0;
 		new_object_t6_state_=OPEN;
 		get_grasping_pose_state_=OPEN;
-        get_grasping_poseT5_state_=OPEN;
-        get_grasping_poseT6_state_=OPEN;
+		get_grasping_poseT5_state_=OPEN;
+		get_grasping_poseT6_state_=OPEN;
 		move_to_object_vision_state_=OPEN;
 		move_to_object_vision_counter_=0;
 		move_to_object_safe_state_=OPEN;
