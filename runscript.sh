@@ -1,9 +1,48 @@
 source /opt/ros/hydro/setup_client.bash
 source /opt/euroc_c2s1/code/devel/setup.bash
 
-export ROS_LOG_DIR=/tmp/euroc_c2
-
-roslaunch am_launchfiles statemachine.launch task_name:="task1_v1"
-roslaunch am_launchfiles statemachine.launch task_name:="task2_v1_1"
-roslaunch am_launchfiles statemachine.launch task_name:="task3_v1"
-roslaunch am_launchfiles statemachine.launch task_name:="task4_v1_1"
+name="task1_v1"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task1_v2"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task1_v3"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v1_1"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v1_2"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v1_3"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v2_1"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v2_2"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v2_3"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v3_1"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v3_2"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task2_v3_3"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task3_v1"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task3_v2"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name
+name="task3_v3"
+export ROS_LOG_DIR=~/roslog/$name
+roslaunch am_launchfiles statemachine.launch task_name:=$name

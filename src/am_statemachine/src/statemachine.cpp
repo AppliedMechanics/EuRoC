@@ -2315,7 +2315,6 @@ int Statemachine::request_task()
 			max_explore_poses_ = nr_exp_poses_;
 			break;
 		case 6:
-#warning STATES UEBERARBEITEN - NORMALES HOMING?????
 			planning_mode_.object	= T6_MOVE_IT_9DOF_BELTHOMING;
 			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= T6_MOVE_IT_9DOF_TARGET;
