@@ -234,10 +234,6 @@ protected:
 
 	bool MoveIt_homing();
 	bool MoveIt_getSolution();
-	//! get straight line in taskspace
-	bool MoveIt_getSolutionInTaskSpace();
-	//bool MoveIt_getSolution2();
-	bool MoveIt_getSolutionNoInitialize();
 	bool MoveIt_initializeMoveGroup();
 	bool MoveIt_valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
 
@@ -249,8 +245,6 @@ protected:
 	bool octomap_manager_getOctomap();
 	bool octomap_manager_cleanupOctomap();
 
-	//! compute Waypoints for tcp to follow an straight line
-	bool computeWayPoints(std::vector< geometry_msgs::Pose > &waypoints_);
 	bool setPlanningTarget(unsigned algorithm);
 	bool getTelemetry();
 	bool getLimits();
