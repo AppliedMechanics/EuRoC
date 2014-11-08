@@ -290,14 +290,15 @@ bool StateObserver::ReturnObjectPickedUp(am_msgs::ObjectPickedUp::Request &req, 
 	}
 	else
 	{
-		ROS_INFO("Measured gripper jaw position: %f", _telemetry.measured.position[_telemetry.measured.position.size() - 3]);
-		ROS_INFO("Commanded gripper jaw position: %f", _telemetry.commanded.position[_telemetry.commanded.position.size() - 3]);
+		double q_grip_meas=_telemetry.measured.position[_telemetry.measured.position.size() - 3];
+		double q_grip_d   =_telemetry.commanded.position[_telemetry.commanded.position.size() - 3];
+
+		ROS_INFO("Measured gripper jaw position: %f", q_grip_meas);
+		ROS_INFO("Commanded gripper jaw position: %f", q_grip_d);
 		// if gripper jaws are open (one can suppose there is an object between the jaws)
 		// position verctor size - 3 because gripper position value is given by the third last entry
 		// set gripper to close fully: Statemachine::gripper_close() -> main_gripper_interface::gripper_interface(...)
-		if (_telemetry.measured.position[_telemetry.measured.position.size() - 3] >
-		abs(_telemetry.commanded.position[_telemetry.commanded.position.size() - 3]+0.004) &&
-		_telemetry.measured.position[_telemetry.measured.position.size() - 3] > 0.003)
+		if ((q_grip_meas > q_grip_d+0.003) && (q_grip_meas > 0.003))
 		{
 
 			//old version:

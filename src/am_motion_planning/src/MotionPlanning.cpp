@@ -2442,7 +2442,7 @@ void MotionPlanning::initializePlanningScene()
 	primitive.dimensions.resize(3);
 	primitive.dimensions[0] = 5.0;//1.84;
 	primitive.dimensions[1] = 5.0;//1.84;
-	primitive.dimensions[2] = 0.02;
+	primitive.dimensions[2] = 0.01;
 
 	geometry_msgs::Pose primitive_pose;
 	primitive_pose.position.x = 0;
