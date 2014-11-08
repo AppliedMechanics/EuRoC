@@ -5671,13 +5671,14 @@ void Statemachine::publish_obj_state(uint16_t state)
 		break;
 	case OBJ_GRABED:
 	{
+
 		//calculate transformation from gp tcp to object origin for grapsing with object_grip_pose[selected_object_pose_]
 		tf::Transform gp;
-		gp.setOrigin(tf::Vector3(goal_queue[0].goal_pose.position.x,
-				goal_queue[0].goal_pose.position.y,goal_queue[0].goal_pose.position.z));
-		gp.setRotation(tf::Quaternion(goal_queue[0].goal_pose.orientation.x,
-				goal_queue[0].goal_pose.orientation.y,goal_queue[0].goal_pose.orientation.z,
-				goal_queue[0].goal_pose.orientation.w));
+		gp.setOrigin(tf::Vector3(object_safe_pose[selected_object_pose_].position.x,
+				object_safe_pose[selected_object_pose_].position.y,object_safe_pose[selected_object_pose_].position.z));
+		gp.setRotation(tf::Quaternion(object_safe_pose[selected_object_pose_].orientation.x,
+				object_safe_pose[selected_object_pose_].orientation.y,object_safe_pose[selected_object_pose_].orientation.z,
+				object_safe_pose[selected_object_pose_].orientation.w));
 
 		tf::Transform obj_orig;
 		obj_orig.mult(gp,gp_obj_orig_);

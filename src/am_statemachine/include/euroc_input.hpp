@@ -42,7 +42,13 @@ public:
 	//!get active object state
 	uint16_t get_active_object_state(){return obj_state_[obj_queue_[0].obj_idx];};
 	uint16_t get_active_object_action(){return obj_queue_[0].action;};
-	uint16_t get_active_object_idx(){return obj_queue_[0].obj_idx;};
+	uint16_t get_active_object_idx()
+	{
+		if(task_nr_==5)
+			return puzzle_order_[obj_queue_[0].obj_idx].part_index;
+		else
+			return obj_queue_[0].obj_idx;
+	};
 	ros::Time get_active_object_stamp(){return obj_queue_[0].data->stamp;};
 
 	//!print object properties
