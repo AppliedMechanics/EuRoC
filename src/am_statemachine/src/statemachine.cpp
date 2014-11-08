@@ -4512,6 +4512,28 @@ int Statemachine::move_to_object_safe()
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
 		);
 	}
+	else if (move_to_object_safe_state_==RUNNING && reached_active_goal_==true)
+	{
+		reached_active_goal_=false;
+		active_goal_++;
+
+
+		if(active_goal_==nr_goals_)
+		{
+			move_to_object_safe_state_=FINISHED;
+			return 0;
+		}
+		else
+		{
+			ROS_INFO("move_to_object_safe() called: RUNNING (remaining goals)");
+		}
+
+		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
+				boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
+				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_vision_active(),
+				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_vision_feedback,this,_1));
+		);
+	}
 	else if(move_to_object_safe_state_==FINISHED)
 	{
 		ROS_INFO("move_to_object_safe() called: FINISHED");
