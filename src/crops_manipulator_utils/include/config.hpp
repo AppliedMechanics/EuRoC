@@ -187,7 +187,8 @@ typedef enum {
 typedef enum {
 	EXPLORE_STD_1=0,
 	EXPLORE_STD_2,
-	EXPLORE_SNAKE
+	EXPLORE_SNAKE,
+	EXPLORE_OUTER_SNAKE
 } explore_pose_type_t;
 
 static const uint32_t slow_moving_speed = 10; // in percent
