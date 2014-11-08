@@ -1513,6 +1513,8 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 			object_centre_x = (object_x_max + object_x_min)/2.0;
 			object_centre_y = (object_y_max + object_y_min)/2.0;
 
+
+			ROS_INFO("push poses for %s", objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].name.c_str());
 			ROS_INFO("x min = %f, x max = %f", object_x_min, object_x_max);
 			ROS_INFO("y min = %f, y max = %f", object_y_min, object_y_max);
 			ROS_INFO("x size max = %f", shape_size_x_max);
@@ -1537,10 +1539,12 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 
 			//-----------------------------------------------------------------------------------------------
 
+
+			ROS_INFO("object_centre y modulo 50 = %d", int(1000*object_centre_y)%50);
 			double centre_y_max_x = 0.0;
-			if(int(1000*object_centre_y)%50 == 0)
+			if(int(1000*object_centre_y)%50 != 0)
 			{
-				int counter = 0;
+				int counter1 = 0;
 				double where_y_in_x_max = 0.0;
 
 				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
@@ -1560,10 +1564,10 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 							< 0.03)
 					{
 						where_y_in_x_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
-						counter++;
+						counter1++;
 					}
 				}
-				if(counter == 2)
+				if(counter1 == 2)
 				{
 					rel_push_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_offset;
 					rel_push_pose_in_x.position.y = object_centre_y;
@@ -1573,7 +1577,7 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 					rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
 					rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
 				}
-				else if (counter == 1)
+				else if (counter1 == 1)
 				{
 					rel_push_pose_in_x.position.x = centre_y_max_x + shape_size_x_max/2.0 + gripper_offset;
 					rel_push_pose_in_x.position.y = where_y_in_x_max;
@@ -1583,7 +1587,7 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 					rel_push_target_pose_in_x.position.y = rel_push_pose_in_x.position.y;
 					rel_push_target_pose_in_x.position.z = rel_push_pose_in_x.position.z;
 				}
-				else if (counter == 0)
+				else if (counter1 == 0)
 				{
 					//ERROR
 				}
@@ -1609,10 +1613,11 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 				ROS_INFO("centre y max x = %f", centre_y_max_x);
 			}
 			//-----------------------------------------------------------------------------------------------
+			ROS_INFO("object_centre x modulo 50 = %d", int(1000*object_centre_x)%50);
 			double centre_x_max_y = 0.0;
-			if(int(1000*object_centre_x)%50 == 0)
+			if(int(1000*object_centre_x)%50 != 0)
 			{
-				int counter = 0;
+				int counter2 = 0;
 				double where_x_in_y_max = 0.0;
 				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
 				{
@@ -1631,10 +1636,10 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 							< 0.03)
 					{
 						where_x_in_y_max = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x;
-						counter++;
+						counter2++;
 					}
 				}
-				if(counter == 2)
+				if(counter2 == 2)
 				{
 					rel_push_pose_in_y.position.x = object_centre_x;
 					rel_push_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_offset;
@@ -1644,7 +1649,7 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 					rel_push_target_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_min_offset;
 					rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
 				}
-				else if (counter == 1)
+				else if (counter2 == 1)
 				{
 					rel_push_pose_in_y.position.x = where_x_in_y_max;
 					rel_push_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_offset;
@@ -1654,7 +1659,7 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 					rel_push_target_pose_in_y.position.y = centre_x_max_y + shape_size_y_max/2.0 + gripper_min_offset;
 					rel_push_target_pose_in_y.position.z = rel_push_pose_in_y.position.z;
 				}
-				else if (counter == 0)
+				else if (counter2 == 0)
 				{
 					//ERROR
 				}
@@ -1663,9 +1668,12 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 			{
 				for (int shape = 0; shape < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].nr_shapes; shape++)
 				{
+					ROS_INFO("int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)+0.000005) = %d", int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)+0.000005));
+					ROS_INFO("int(1000*(object_centre_x+0.000005)) = %d", int(1000*(object_centre_x+0.000005)));
 					if (centre_x_max_y < objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y
 							&& int(1000*(objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.x)+0.000005) == int(1000*(object_centre_x+0.000005)))
 					{
+						ROS_INFO("centre x max y updated");
 						centre_x_max_y = objects_[puzzle_order_[obj_queue_[0].obj_idx].part_index].shape[shape].pose.position.y;
 					}
 				}
