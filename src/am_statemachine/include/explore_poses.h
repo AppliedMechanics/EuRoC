@@ -34,12 +34,14 @@ private:
 	std::vector<std::vector<am_msgs::goalPoseGoal> > explore_poses_snake_;
 	std::vector<am_msgs::goalPoseGoal> 				explore_poses_std_v1_;
 	std::vector<am_msgs::goalPoseGoal> 				explore_poses_std_v2_;
+	std::vector<am_msgs::goalPoseGoal> 				explore_poses_outer_snake_;
 
 	am_msgs::goalPoseGoal tmp_goal_;
 
 	void init_std_v1();
 	void init_std_v2();
 	void init_snake();
+	void init_outer_snake();
 
 	void setOrientationAndInsert(uint8_t);
 	void setOrientationAndInsert(uint8_t,uint8_t);

@@ -114,7 +114,7 @@ Vision::Vision():
 	lastShapeToRemovePC.reset (new pcl::PointCloud<pcl::PointXYZ>);
 
 	// leaf size voxels
-	leaf_size = 0.0025;
+	leaf_size = 0.0015;
 	// memory efficiency!
 	small_leaf_size = 0.0005;
 
@@ -714,7 +714,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 	std::vector<int> pointIDs;
 	std::vector<float> pointRadiusSquaredDistance;
 
-	double radius = leaf_size * 0.5;
+	double radius = leaf_size * 0.8;
 	double minz;
 	minz = object_input->points[0].z;
 	for (size_t f = 0; f < (object_input->points.size()); f++) {
@@ -1047,7 +1047,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal)
 				if ((task_nr == 5) && (goal->object.nr_shapes != 1)) {
 					pcl::VoxelGrid<pcl::PointXYZ> vg;
 					vg.setInputCloud(shape_model);
-					vg.setLeafSize(leaf_size * 4, leaf_size * 4, leaf_size * 4);
+					vg.setLeafSize(leaf_size * 3, leaf_size * 3, leaf_size * 3);
 					vg.filter(*shape_model);
 				}
 
