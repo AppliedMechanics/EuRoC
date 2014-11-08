@@ -84,6 +84,7 @@ int ExplorePoses::size(uint8_t pose_type)
 		return explore_poses_std_v2_.size();
 		break;
 	case EXPLORE_SNAKE:
+	case EXPLORE_OUTER_SNAKE:
 		snake_size = 0;
 		for (int ii=0;ii<N_POSE_BLOCKS;ii++)
 			snake_size += explore_poses_snake_[ii].size();
@@ -107,6 +108,10 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 		insideblock_success_counter_ = 0;
 		insideblock_counter_ = 0;
 		success_counter_ = 0;
+
+		//! Explore outer snake
+		if (pose_type == EXPLORE_OUTER_SNAKE)
+			randomSortOuterSnake();
 	}
 
 	try{
@@ -128,6 +133,7 @@ am_msgs::goalPoseGoal ExplorePoses::getExploreGoalPose(uint8_t pose_nr,uint8_t p
 				return explore_poses_std_v2_[0];
 			}
 			break;
+		case EXPLORE_OUTER_SNAKE:
 		case EXPLORE_SNAKE:
 			if (pose_nr < size(EXPLORE_SNAKE)) {
 				// if at end of block, move to next block
@@ -229,6 +235,31 @@ void ExplorePoses::randomSort()
 	}
 
 	for (int i=begin_random;i<N_POSE_BLOCKS;i++)
+	{
+		do{block_nr_[i] = rand() % 7;}
+		while(checkDoublettes(i));
+	}
+
+}
+
+void ExplorePoses::randomSortOuterSnake()
+{
+	//block_nr_[0] = rand() % 6;
+
+	if (rand() % 2)
+	{
+		block_nr_[0] = 0;
+		block_nr_[1] = 6;
+		block_nr_[2] = 1;
+	}
+	else
+	{
+		block_nr_[0] = 1;
+		block_nr_[1] = 6;
+		block_nr_[2] = 0;
+	}
+
+	for (int i=3;i<N_POSE_BLOCKS;i++)
 	{
 		do{block_nr_[i] = rand() % 7;}
 		while(checkDoublettes(i));

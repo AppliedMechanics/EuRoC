@@ -44,6 +44,7 @@ private:
 	void setOrientationAndInsert(uint8_t);
 	void setOrientationAndInsert(uint8_t,uint8_t);
 	void randomSort();
+	void randomSortOuterSnake();
 	bool checkDoublettes(uint8_t idx);
 
 	uint8_t block_nr_[N_POSE_BLOCKS];
