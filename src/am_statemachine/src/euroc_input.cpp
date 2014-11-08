@@ -961,7 +961,7 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		{
 			temp_obj.action=EIN_PLACE;
 			temp_obj.data=&objects_[puzzle_order_[ii].part_index];
-			temp_obj.obj_idx=puzzle_order_[ii].part_index;
+			temp_obj.obj_idx=ii;//puzzle_order_[ii].part_index;
 			temp_obj.target_zone_idx=0;
 			temp_obj.target_zone_occupied=0;
 

@@ -866,6 +866,7 @@ void Statemachine::scheduler_skip_object()
 {
 	fsm::fsm_state_t temp_state;	//temporary state variable for scheduler
 
+	//reset obj_gripped flag
 	cur_obj_gripped_=false;
 
 	if(ein_->is_active_object_last_object())
@@ -4485,11 +4486,6 @@ int Statemachine::move_to_object_safe()
 	{
 		ROS_INFO("move_to_object_safe() called: OPEN");
 
-		//publish object state for motion planning
-		if(cur_obj_gripped_==true)
-			publish_obj_state(OBJ_GRABED);
-
-
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -4516,28 +4512,6 @@ int Statemachine::move_to_object_safe()
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
 		);
 	}
-	else if (move_to_object_safe_state_==RUNNING && reached_active_goal_==true)
-	{
-		reached_active_goal_=false;
-		active_goal_++;
-
-
-		if(active_goal_==nr_goals_)
-		{
-			move_to_object_safe_state_=FINISHED;
-			return 0;
-		}
-		else
-		{
-			ROS_INFO("move_to_object_safe() called: RUNNING (remaining goals)");
-		}
-
-		motion_planning_action_client_->sendGoal(goal_queue[active_goal_],
-				boost::bind(&Statemachine::move_to_object_safe_done,this,_1,_2),
-				motionClient::SimpleActiveCallback(), //Statemachine::move_to_object_safe_active(),
-				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_safe_feedback,this,_1));
-		);
-	}
 	else if(move_to_object_safe_state_==FINISHED)
 	{
 		ROS_INFO("move_to_object_safe() called: FINISHED");
@@ -4545,6 +4519,11 @@ int Statemachine::move_to_object_safe()
 		//publish object state for motion planning
 		if(cur_obj_gripped_==false)
 			publish_obj_state(OBJ_GRIPPING);
+
+		//publish object state for motion planning
+		if(cur_obj_gripped_==true)
+			publish_obj_state(OBJ_GRABED);
+
 
 		//==============================================
 		scheduler_next();
@@ -4749,8 +4728,6 @@ int Statemachine::move_to_object()
 	if(move_to_object_state_==OPEN)
 	{
 		ROS_INFO("move_to_object() called: OPEN");
-
-
 
 //#warning remove area from octomap
 //		if (!skip_vision_){

@@ -440,6 +440,19 @@ void GraspPose2::correct_object_alignment()
 	set_orientation_from_axes(tmp_Pose,x_obj,y_obj,z_obj);
 
 	object_.abs_pose=tmp_Pose;
+
+	//correct z-height:
+	if(object_.abs_pose.position.z<object_.shape[0].size[0])
+	{
+		object_.abs_pose.position.z=0.5*object_.shape[0].size[0];
+		msg_info("-- corrected object_.abs_pose.position.z to 0.5*size");
+	}
+	else if(object_.abs_pose.position.z<2*object_.shape[0].size[0])
+	{
+		object_.abs_pose.position.z=1.5*object_.shape[0].size[0];
+		msg_info("-- corrected object_.abs_pose.position.z to 1.5*size");
+	}
+
 }
 void GraspPose2::compute_abs_shape_poses_()
 {
@@ -3019,7 +3032,7 @@ void GraspPose2::compute_grasp_posesT5_()
 	{
 		tmptransform.mult(pose_to_transform(abs_target_pose_),grp_obj_transform_.inverse());
 		tmp_GPTCP_pose=transform_to_pose(tmptransform);
-		tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+0.8*puzzle_boxsize;
+		tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+0.7*puzzle_boxsize;
 		GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 		tmp2_GPTCP_pose=tmp_GPTCP_pose;
