@@ -443,6 +443,8 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
 			msg_error("reset octomap service failed! TRYCATCH");
 		}
 
+		ros::spinOnce();
+
 #ifdef OCTOMAP_SERVER
 		//ros::Duration(2.0).sleep();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;

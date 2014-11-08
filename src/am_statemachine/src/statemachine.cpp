@@ -4542,6 +4542,9 @@ int Statemachine::move_to_object_safe()
 	{
 		ROS_INFO("move_to_object_safe() called: FINISHED");
 
+		//publish object state for motion planning
+		if(cur_obj_gripped_==false)
+			publish_obj_state(OBJ_GRIPPING);
 
 		//==============================================
 		scheduler_next();
@@ -4748,9 +4751,6 @@ int Statemachine::move_to_object()
 		ROS_INFO("move_to_object() called: OPEN");
 
 
-		//publish object state for motion planning
-		if(cur_obj_gripped_==false)
-			publish_obj_state(OBJ_GRIPPING);
 
 //#warning remove area from octomap
 //		if (!skip_vision_){

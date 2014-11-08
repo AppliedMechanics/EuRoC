@@ -44,7 +44,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 <!-- Dynamic TF Broadcaster  -->
 	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" respawn="true" />
 <!-- GUI  -->
-	<node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" />
+	<--node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" /-->
 
 <!-- Octomap Server -->
 <node pkg="octomap_server" type="octomap_server_node" name="octomap_server" >

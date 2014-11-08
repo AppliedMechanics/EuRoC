@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 	//mpt->move_pan_tilt_rel(0.5, 0);
 	// end of Example
 
-	ros::Rate r(10); // 10 hz
+	ros::Rate r(FREQ); // 10 hz
 	while (ros::ok() && !kill_flag)
 	{
 		ros::spinOnce();

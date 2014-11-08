@@ -38,11 +38,17 @@ int main(int argc, char **argv)
 	ros::ServiceServer service = grasp_pose.n.advertiseService("GraspPose_srv", &GraspPose2::return_grasp_pose, &grasp_pose);
 	ROS_INFO("Ready to calculate Grasp-Pose.");
 
+	ros::Rate r(FREQ); // 10 hz
 	while (ros::ok() && !kill_flag)
 	{
-		ros::Duration(0.5).sleep();
 		ros::spinOnce();
+		r.sleep();
 	}
+//	while (ros::ok() && !kill_flag)
+//	{
+//		ros::Duration(0.5).sleep();
+//		ros::spinOnce();
+//	}
 	msg_warn("exiting Grasping node!");
 
 	//ros::spin();
