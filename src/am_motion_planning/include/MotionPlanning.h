@@ -236,7 +236,7 @@ protected:
 	bool MoveIt_getSolution();
 	bool MoveIt_initializeMoveGroup();
 	bool MoveIt_valid_kdl_ik(geometry_msgs::Pose& pose, short unsigned int& priority);
-
+	bool MoveIt_randomPose();
 
 	bool euroc_getIKSolution7DOF();
 	bool euroc_setReset7DOF();

@@ -269,6 +269,32 @@ bool MotionPlanning::executeGoalPoseStd()
 		}
 		break;
 
+	case RANDOMPOSE_7DOF:
+		ROS_INFO("RANDOMPOSE 7DOF chosen.");
+		group = group_7DOF;
+		joint_model_group_ = joint_model_group_7DOF_;
+		max_setTarget_attempts_ = 10;
+		if (!MoveIt_randomPose())
+		{
+			msg_error("No Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+			return false;
+		}
+		break;
+	case RANDOMPOSE_9DOF:
+		ROS_INFO("RANDOMPOSE 9DOF chosen.");
+		group = group_9DOF;
+		joint_model_group_ = joint_model_group_9DOF_;
+		max_setTarget_attempts_ = 10;
+		if (!MoveIt_randomPose())
+		{
+			msg_error("No Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+			return false;
+		}
+		break;
 	case STANDARD_IK_7DOF:
 
 		ROS_INFO("STANDARD IK 7DOF planning mode chosen.");
@@ -803,6 +829,96 @@ bool MotionPlanning::MoveIt_homing()
 
 }
 
+bool MotionPlanning::MoveIt_randomPose()
+{
+
+	try
+	{
+		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+
+			if(!MoveIt_initializeMoveGroup()){return false;}
+
+			unsigned current_setTarget_attempt = 1;
+			bool setTarget_successful = false;
+			bool planning_successful = false;
+
+			while (!planning_successful)
+			{
+				setTarget_successful = false;
+				setTarget_successful = setPlanningTarget(RANDOM_TARGET);
+				if (setTarget_successful)
+				{
+
+					planning_successful = group->plan(motion_plan_);
+
+					if (planning_successful)
+					{
+						ROS_INFO("Planning successful!");
+						planned_path_.clear();
+
+						// for each configuration of the trajectory except from the start configuration
+						for (unsigned configIdx = 0; configIdx < motion_plan_.trajectory_.joint_trajectory.points.size(); ++configIdx)
+						{
+							// current configuration
+							euroc_c2_msgs::Configuration current_config;
+
+							// for each joint at the current configuration
+							for (unsigned jointIdx = 0; jointIdx < group->getActiveJoints().size(); ++ jointIdx)
+							{
+								current_config.q.push_back(motion_plan_.trajectory_.joint_trajectory.points[configIdx].positions[jointIdx]);
+							}
+							planned_path_.push_back(current_config);
+						}
+
+						current_configuration_ = planned_path_[0];
+
+						move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+						move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+						for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+						{
+							move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
+						}
+
+						// set the joint limits (velocities/accelerations) of the move along joint path service request
+						setMoveRequestJointLimits();
+						// set the TCP limits of the move along joint path service
+						setMoveRequestTCPLimits();
+
+						return true;
+					}
+				}
+
+				current_setTarget_attempt++;
+				if (current_setTarget_attempt > max_setTarget_attempts_)
+				{
+					msg_error("MoveIt: No Motion Plan found!");
+					goalPose_result_.error_reason = fsm::NO_IK_SOL;
+					return false;
+				}
+			}
+
+
+		}
+		else      // if (!ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+			return false;
+		}
+
+	} // end try
+
+	catch(...)
+	{
+		msg_error("MotionPlanning::Error in MoveIt! Planning.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+	return true;
+
+}
+
 
 bool MotionPlanning::MoveIt_getSolution()
 {
@@ -952,20 +1068,18 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 		get_planning_scene_client_.call(get_planning_scene_srv_);
 
 		get_planning_scene_srv_.response.scene.robot_state.joint_state = planning_scene_.robot_state.joint_state;
-		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects.size(); ++i)
-		{
-			ROS_INFO_STREAM("Attached Object id: " << get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects[i].object.id);
-		}
+//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects.size(); ++i)
+//		{
+//			ROS_INFO_STREAM("Attached Object id: " << get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects[i].object.id);
+//		}
 
-		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.joint_state.position.size(); ++i)
-		{
-			ROS_INFO_STREAM("robot state: " << get_planning_scene_srv_.response.scene.robot_state.joint_state.position[i]);
-			ROS_INFO_STREAM("telemetry: " << _telemetry.measured.position[i]);
-		}
+//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.joint_state.position.size(); ++i)
+//		{
+//			ROS_INFO_STREAM("robot state: " << get_planning_scene_srv_.response.scene.robot_state.joint_state.position[i]);
+//			ROS_INFO_STREAM("telemetry: " << _telemetry.measured.position[i]);
+//		}
 		group->setStartState(get_planning_scene_srv_.response.scene.robot_state);
 	}
-
-
 
 	//	// set start state equal to measured telemetry positions and velocities = 0;
 	//	ROS_WARN("Set start state of the move group equal to the currently measured telemetry values");
@@ -1397,6 +1511,12 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			ROS_ERROR("Setting joint value target 9DOF failed.");
 			return false;
 		}
+		break;
+	}
+	case RANDOM_TARGET:
+	{
+		ROS_INFO("Setting a random target.");
+		try{group->setRandomTarget();}catch(...){msg_error("Error setting random pose."); return false;}
 		break;
 	}
 
