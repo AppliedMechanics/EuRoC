@@ -2939,6 +2939,11 @@ int Statemachine::watch_scene()
 		ROS_INFO("watch_scene() called: OPEN");
 
 		take_image_srv_.request.camera = SCENE_CAM;
+		take_image_srv_.request.sensors.resize(ein_->get_nr_sensors());
+		for(uint16_t ii=0;ii<ein_->get_nr_sensors();ii++)
+		{
+			take_image_srv_.request.sensors[ii]=ein_->get_sensors(ii);
+		}
 		watch_scene_state_=RUNNING;
 		lsc_ = boost::thread(&Statemachine::watch_scene_cb,this);
 		//watch_scene_cb();

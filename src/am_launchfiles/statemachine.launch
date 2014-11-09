@@ -29,7 +29,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 
 
 <!-- Vision  -->
-	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="true" />
+	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="true" output="screen" launch-prefix="xterm -geometry 130x30 -e"/>
 
 <!-- Motion Planning  -->
 	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" output="screen" />

@@ -91,19 +91,32 @@ private:
 	static const int CUBE = 6;
 	static const float cube_size=0.05;
 
-	//Added By İrem -Parameter Names
+	std::string SCENE_DEPTH;
+	std::string SCENE_RGB;
+	std::string TCP_DEPTH;
+	std::string TCP_RGB;
+
+	// ====== Added By İrem -Parameter Names =======
 	int total_nr_of_objects;
 	int problem_object_index;
-	std::vector<std::string> Colour_String;
+	std::vector<std::string> Color_String_List;
 	std::vector<int> Number_of_Shapes_List;
 	bool same_color_problem; //two objects which are in same color
 	double cylinder_radius;
 	double cylinder_length;
-	std::vector<double>trouble_object_cube_size_vector;
-	std::vector<double>trouble_object_orientation_vector;
-	std::vector<double>trouble_object_position_vector;
-	std::vector<double>puzzle_fixture_position_vector;
-	std::vector<double>puzzle_fixture_orientation_vector;
+	std::vector<double> trouble_object_cube_size_vector;
+	std::vector<double> trouble_object_orientation_vector;
+	std::vector<double> trouble_object_position_vector;
+	std::vector<double> puzzle_fixture_position_vector;
+	std::vector<double> puzzle_fixture_orientation_vector;
+	std::vector<int> cluster_index_list_T5;
+	std::vector<int> cluster_size_list_T5;
+	std::vector<int> cluster_size_full_list_T5;
+	int goal_size;
+	int nr_same_size;
+	int nr_bigger_size;
+	int nr_smaller_size;
+	// ====== Added By İrem -Parameter Names =======
 
 	// topic and service names
 	std::string euroc_c2_interface;
@@ -114,6 +127,12 @@ private:
 	std::string save_log;
 
 	am_msgs::VisionGoal::ConstPtr _currentGoal;
+
+	// Camera-related information
+	float _fov_horizontal_scene_depth;
+	float _fov_horizontal_scene_rgb;
+	float _fov_horizontal_tcp_depth;
+	float _fov_horizontal_tcp_rgb;
 
 	Mat HSV;
 	Mat cameraFeed;
@@ -151,15 +170,22 @@ private:
 	float leaf_size;
 	float small_leaf_size;
 
+	double zThreshold;
+
 	tf::Quaternion tfqt;
 	tf::Quaternion tfqtNew;
 	Eigen::Matrix4f transformation;
 
 	bool isSingleCube; // verifies whether the current object is a single cube
 	bool is_task5;
+	bool isFovSet;
+	bool isZThresholdSet;
+	bool isZThresholdSetT6;
 
 protected:
 	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
+	void set_fov(am_msgs::TakeImage::Request &);
+	void set_z_threshold();
 	void scan_with_pan_tilt(am_msgs::TakeImage::Response &res,bool scan_full);
 	void scan_with_tcp(am_msgs::TakeImage::Response &res);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input, pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input, bool box, bool cylinder);
@@ -171,9 +197,9 @@ protected:
 	std::vector<pcl::PointXYZ> find_points_world(pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<cv::Point2f>);
 	int verify_close_range_pose(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	int verify_object_inside_zone(std::string, pcl::PointXYZ, float);
-	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointXYZ, float);
-	pcl::PointCloud<pcl::PointXYZ >::Ptr find_clusters(pcl::PointCloud<pcl::PointXYZ >::Ptr, pcl::PointCloud<pcl::PointXYZ >::Ptr, const am_msgs::VisionGoal::ConstPtr &);
-	float get_shape_length(const am_msgs::VisionGoal::ConstPtr &);
+	bool search_for_object_on_zone(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointXYZ, float);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr find_clusters(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, const am_msgs::VisionGoal::ConstPtr &);
+	float get_shape_length(const am_msgs::VisionGoal::ConstPtr &, bool);
 	bool compare_cluster_differences(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	pcl::PointCloud<pcl::PointXYZ >::Ptr get_task6_cloud();
 	bool master_reset();
@@ -202,6 +228,10 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr removeInliers(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input);
     pcl::PointCloud<pcl::PointXYZ>::Ptr fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	bool are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr find_clusters_task5(
+			pcl::PointCloud<pcl::PointXYZ>::Ptr,
+			const am_msgs::VisionGoal::ConstPtr &goal);
 
 	//void Vision::Octomap_Update(OcTree* tree);
 
