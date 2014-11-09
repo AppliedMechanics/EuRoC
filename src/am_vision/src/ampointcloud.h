@@ -42,6 +42,8 @@ private:
 	ros::NodeHandle _nh;
 	tf::TransformListener _tfListener;
 	tf::StampedTransform _transform;
+	tf::TransformListener _tfListenerSC;
+	tf::StampedTransform _transformSC;
 	tf::Transform _tf_object;
 	geometry_msgs::PointStamped _camera_point;
 	geometry_msgs::PointStamped _world_point;
@@ -58,6 +60,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filterPointCloudByColor(pcl::PointCloud<pcl::PointXYZ>::Ptr, Mat &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr transformToWorld(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr xyzTheresholdCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,double);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr snapCloudT6(pcl::PointCloud<pcl::PointXYZ>::Ptr, int, ros::Time, double, Mat &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeRobotFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeSquareFromPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr,pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ);
 	float triangleArea(pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ);
