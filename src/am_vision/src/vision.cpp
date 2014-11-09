@@ -848,11 +848,11 @@ bool Vision::are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 		if (nh_.searchParam(full_string_color_param, object_color_param)) {
 
-			std::cout << "Color of an object is found" << std::endl;
+			msg_info("Color of an object is found");
 			std::string colortemphold = "";
 			nh_.getParam(object_color_param, colortemphold);
 			Color_String_List.push_back(colortemphold);
-			std::cout << "[VISION] COLOR OF AN OBJECT IS SAVED: ";
+			msg_info("[VISION] COLOR OF AN OBJECT IS SAVED: ");
 			{
 				if (nh_.searchParam(full_string_nrofshapes_param,
 						object_nrshapes_param)) {
@@ -1659,7 +1659,7 @@ void Vision::set_z_threshold() {
 void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 		bool scan_full) {
 
-	std::cout << "[VISION]Entered Vision::scan_with_pan_tilt()..." << std::endl;
+	msg_info("[VISION]Entered Vision::scan_with_pan_tilt()...");
 
 	//pcl::PointCloud<pcl::PointXYZ>::Ptr finalScenePC (new pcl::PointCloud<pcl::PointXYZ> ());
 	//msg_info("Waiting for image msgs.");
@@ -1834,9 +1834,9 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 			// Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
 			OctoCloud->reserve(worldPC->points.size());
 			octomap::pointcloudPCLToOctomap(*worldPC,*OctoCloud);
-			std::cout<<"[VISION]Starting to add actuall PointCloud to Octomap..."<<std::endl;
+			msg_info("[VISION]Starting to add actuall PointCloud to Octomap...");
 			tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene(SCENE_CAM));
-			std::cout<<"[VISION]Added actual PointCloud to Octomap"<<std::endl;
+			msg_info("[VISION]Added actual PointCloud to Octomap");
 #endif
 
 #ifdef OCTOMAP_SERVER
@@ -1850,9 +1850,9 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 			// Create Octomap without robot and things outside the table
 			OctoCloud->reserve(threshPC->points.size());
 			octomap::pointcloudPCLToOctomap(*threshPC,*OctoCloud);
-			std::cout<<"[VISION]Starting to add actuall PointCloud to Octomap..."<<std::endl;
+			msg_info("[VISION]Starting to add actuall PointCloud to Octomap...");
 			tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene(SCENE_CAM));
-			std::cout<<"[VISION]Added actual PointCloud to Octomap"<<std::endl;
+			msg_info("[VISION]Added actual PointCloud to Octomap");
 #endif
 
 			// Add result to global point cloud
@@ -1922,43 +1922,42 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 
 		// copy the final result to finalGlobalPC
 		*finalPC += *finalScenePC;
-		std::cout << "[VISION]Voxelization: global point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: global point cloud...");
 		vg.setInputCloud(finalPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedPC);
 
-		std::cout << "[VISION]Voxelization: blue point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: blue point cloud...");
 		vg.setInputCloud(finalBluePC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedBluePC);
 
-		std::cout << "[VISION]Voxelization: green point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: green point cloud...");
 		vg.setInputCloud(finalGreenPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedGreenPC);
 
-		std::cout << "[VISION]Voxelization: red point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: red point cloud...");
 		vg.setInputCloud(finalRedPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedRedPC);
 
-		std::cout << "[VISION]Voxelization: yellow point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: yellow point cloud...");
 		vg.setInputCloud(finalYellowPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedYellowPC);
 
-		std::cout << "[VISION]Voxelization: cyan point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: cyan point cloud...");
 		vg.setInputCloud(finalCyanPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedCyanPC);
 
-		std::cout << "[VISION]Voxelization: magenta point cloud..."
-				<< std::endl;
+		msg_info("[VISION]Voxelization: magenta point cloud...");
 		vg.setInputCloud(finalMagentaPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedMagentaPC);
 
-		std::cout << "[VISION]Voxelization: Finished." << std::endl;
+		msg_info("[VISION]Voxelization: Finished.");
 
 	} // END if
 
@@ -2105,9 +2104,9 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res) {
 	// Create Octomap (whole scene with robot and Pantilt); also the man outside the table can be seen
 	OctoCloud->reserve(worldPC->points.size());
 	octomap::pointcloudPCLToOctomap(*worldPC,*OctoCloud);
-	std::cout<<"[VISION]Starting to add actual PointCloud to Octomap..."<<std::endl;
+	msg_info("[VISION]Starting to add actual PointCloud to Octomap...");
 	tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene(TCP_CAM));
-	std::cout<<"[VISION]Added actual PointCloud to Octomap"<<std::endl;
+	msg_info("[VISION]Added actual PointCloud to Octomap");
 #endif
 
 #ifdef OCTOMAP_SERVER
@@ -2121,9 +2120,9 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res) {
 	// Create Octomap without robot and things outside the table
 	OctoCloud->reserve(threshPC->points.size());
 	octomap::pointcloudPCLToOctomap(*threshPC,*OctoCloud);
-	std::cout<<"[VISION]Starting to add actuall PointCloud to Octomap..."<<std::endl;
+	msg_info("[VISION]Starting to add actuall PointCloud to Octomap...");
 	tree->insertScan(*OctoCloud, scenePointCloud->getSensorOriginScene(TCP_CAM));
-	std::cout<<"[VISION]Added actual PointCloud to Octomap"<<std::endl;
+	msg_info("[VISION]Added actual PointCloud to Octomap");
 #endif
 
 	*finalTcpPC += *threshPC;
@@ -2164,42 +2163,42 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res) {
 
 	// copy the result to finalPC
 	*finalPC += *finalTcpPC;
-	std::cout << "[VISION]Voxelization: global point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: global point cloud...");
 	vg.setInputCloud(finalPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedPC);
 
-	std::cout << "[VISION]Voxelization: blue point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: blue point cloud...");
 	vg.setInputCloud(finalBluePC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedBluePC);
 
-	std::cout << "[VISION]Voxelization: green point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: green point cloud...");
 	vg.setInputCloud(finalGreenPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedGreenPC);
 
-	std::cout << "[VISION]Voxelization: red point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: red point cloud...");
 	vg.setInputCloud(finalRedPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedRedPC);
 
-	std::cout << "[VISION]Voxelization: yellow point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: yellow point cloud...");
 	vg.setInputCloud(finalYellowPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedYellowPC);
 
-	std::cout << "[VISION]Voxelization: cyan point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: cyan point cloud...");
 	vg.setInputCloud(finalCyanPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedCyanPC);
 
-	std::cout << "[VISION]Voxelization: magenta point cloud..." << std::endl;
+	msg_info("[VISION]Voxelization: magenta point cloud...");
 	vg.setInputCloud(finalMagentaPC);
 	vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 	vg.filter(*finalVoxelizedMagentaPC);
 
-	std::cout << "[VISION]Voxelization: finished." << std::endl;
+	msg_info("[VISION]Voxelization: finished.");
 
 	// Set the time stamp of current image
 	finalTimeStamp = stepTimeStampRGB;
@@ -4044,16 +4043,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		// create the initial point cloud based on depth image data
 		initialPC = scenePointCloud->createInitialPointCloud();
 		// align the initial point cloud with the RGB camera
-		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_SCENE,
-				stepTimeStampRGB);
-		// Transform the point cloud to world coordinate
-		worldPC = scenePointCloud->transformToWorld(alignedPC, CAM_SCENE,
-				stepTimeStampRGB);
-		// filter out the robot, table surface and irrelevant points
-		//robotLessPC = scenePointCloud->removeRobotFromPointCloud(worldPC);
-		threshPC = scenePointCloud->xyzTheresholdCloud(worldPC, zThreshold);
-		redFilteredPC = scenePointCloud->filterPointCloudByColor(threshPC,
-				thresholdRed);
+		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_SCENE, stepTimeStampRGB);
+		// Return the transformed, thresholded and filtered PC
+		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_SCENE, stepTimeStampRGB, zThreshold, thresholdRed);
 		tac = ros::Time().now();
 
 		std::cout << "pointcloud creation time: " << tac - tic << std::endl;
@@ -4113,8 +4105,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		scenePointCloud = new am_pointcloud(_cv_depthptr->image, _fov_horizontal_tcp_depth, _cv_image->image, _fov_horizontal_tcp_rgb);
 		// create the initial point cloud based on depth image data
 		initialPC = scenePointCloud->createInitialPointCloud();
+		// align the initial point cloud with the RGB camera
+		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_TCP, stepTimeStampRGB);
 		// Return the transformed, thresholded and filtered PC
-		redFilteredPC = scenePointCloud->snapCloudT6(initialPC, CAM_TCP, stepTimeStampRGB, zThreshold, thresholdRed);
+		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_TCP, stepTimeStampRGB, zThreshold, thresholdRed);
 		tac = ros::Time().now();
 
 		std::cout << "pointcloud creation time: " << tac - tic << std::endl;

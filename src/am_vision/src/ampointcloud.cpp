@@ -227,6 +227,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 	}
 	catch (...)
 	{
+		msg_error("Error setting kdTree input cloud (global PC).");
 		emptyCloudCritical = true;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
 		return subtractedCloud;
@@ -250,7 +251,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 				for (size_t j = 0; j < pointIdxRadiusSearch.size (); ++j)
 				{
 #ifdef DEBUG
-					std::cout << "    "  <<   baseCloud->points[ pointIdxRadiusSearch[j] ].x
+					std::cout<< "    "  <<   baseCloud->points[ pointIdxRadiusSearch[j] ].x
 							<< " " << baseCloud->points[ pointIdxRadiusSearch[j] ].y
 							<< " " << baseCloud->points[ pointIdxRadiusSearch[j] ].z
 							<< " (squared distance: " << pointRadiusSquaredDistance[i] << ")" << std::endl;
@@ -265,6 +266,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 		}
 		catch (...)
 		{
+			msg_error("Error accessing the shape PC");
 			pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
 			pcl::copyPointCloud(*baseCloud, *subtractedCloud);
 			return subtractedCloud;
@@ -606,7 +608,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeCluster(pcl::PointCloud
             }
           } // END FOR
 
-          std::cout<<"Done removing the cluster!"<<std::endl;
+          msg_info("Done removing the cluster!");
   }
   return targetPC;
 }
@@ -650,11 +652,10 @@ octomath::Vector3 am_pointcloud::getSensorOriginScene (int cameraType)
 	return SensorOrigin;
 }
 
-
 /*
- * This function is an efficient combination of alignWithRGB, transformToWorld, xyzTheresholdCloud, filterPointCloudByColor for use with T6.
+ * This function is an efficient combination of transformToWorld, xyzTheresholdCloud, filterPointCloudByColor for use with T6.
  */
-pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType, ros::Time timeStamp, double theresholdValue, Mat &threshold)
+pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int cameraType, ros::Time timeStamp, double theresholdValue, Mat &threshold)
 {
 
 	std::string sourceFrame, targetFrame;
@@ -663,30 +664,19 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(pcl::PointCloud<p
 	case CAM_TCP:
 		// CAM_TCP
 		sourceFrame = T_DEPTH;
-		targetFrame = T_RGB;
 		break;
 	case CAM_SCENE:
 		// CAM_SCENE
 		sourceFrame = S_DEPTH;
-		targetFrame = S_RGB;
 		break;
 	}
 
-	pcl::PointXYZ p;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr resultCloud;
-	resultCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(_rgb.cols, _rgb.rows));
-
-	double iValue, jValue, temp;
-
-	tf::Vector3 dcs_vec; // Depth coordinate system vector
-	tf::Vector3 rgbcs_vec; // RGB coordinate system vector
 
 	ros::Time now = ros::Time().now();
-
 	try
 	{
-		_tfListener.waitForTransform(targetFrame, sourceFrame, now, ros::Duration(2.0));
-		_tfListener.lookupTransform(targetFrame, sourceFrame, ros::Time(0), _transform);
+		_tfListener.waitForTransform(ORIGIN, sourceFrame, now, ros::Duration(2.0));
+		_tfListener.lookupTransform(ORIGIN, sourceFrame, ros::Time(0), _transform);
 	}
 	catch (...)
 	{
@@ -694,105 +684,65 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(pcl::PointCloud<p
 		ros::Duration(1.0).sleep();
 	}
 
-	int X = _img_height_rgb;
-	int Y = _img_width_rgb;
-
-	double h, v;
-	h = tan(_fov_horizontal_rgb * 0.5);
-	v = tan(_fov_vertical_rgb * 0.5);
-
-
-	try {
-		_tfListenerSC.waitForTransform(ORIGIN, sourceFrame, now, ros::Duration(2.0));
-		_tfListenerSC.lookupTransform(ORIGIN, sourceFrame, ros::Time(0), _transformSC);
-	}
-	catch (...)
-	{
-		ROS_ERROR("Exception: listening to transformation failed");
-		ros::Duration(1.0).sleep();
-	}
-
+	pcl::PointXYZ p;
 	tf::Vector3 camera_vec;
 	tf::Vector3 world_vec;
-
-
+	pcl::PointCloud<pcl::PointXYZ>::Ptr worldPointCloud;
+	worldPointCloud.reset(new pcl::PointCloud<pcl::PointXYZ>(cloud->width, cloud->height));
 	// Hard-coded values, based on table measures (in meters)
 	float xthreshold = 1.1;
 	float ythreshold = 1.1;
 
-
-
-	for(int i=0; i<cloud->height; i++)
+	for (int i=0; i < cloud->height; i++)
 	{
-		for(int j=0; j<cloud->width; j++)
+		for (int j=0; j < cloud->width; j++)
 		{
-			p = cloud->at(j,i);
-			if (p.x != 0)
+
+			if(	cloud->at(j,i).x == 0 && cloud->at(j,i).y == 0 && cloud->at(j,i).z == 0)
 			{
-
-				dcs_vec.setX(p.x);
-				dcs_vec.setY(p.y);
-				dcs_vec.setZ(p.z);
-
-				rgbcs_vec = _transform(dcs_vec);
-
-				jValue = (h - (rgbcs_vec.getY()/rgbcs_vec.getX())) * (_img_width_rgb/(2*h));
-				iValue = (v - (rgbcs_vec.getZ()/rgbcs_vec.getX())) * (_img_height_rgb/(2*v));
-
-				if (0<=iValue && iValue<_img_height_rgb && 0<=jValue && jValue<_img_width_rgb)
+				worldPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
+			}
+			else
+			{
+				int value = threshold.data[threshold.channels()*(cloud->width * i + j) + 0];
+				if (value != 255)
 				{
-					// averaging for points with same X,Y value (but different Z values) does not work well, we choose the closer
-					// one by comparing it to the last value on this particular position (pixel)
-					if( (p.x <(resultCloud->at( (int)jValue, (int)iValue ).x)) || (resultCloud->at( (int)jValue, (int)iValue).x == 0) )
+					worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+				}
+				else
+				{
+					camera_vec.setX(cloud->at(j, i).x);
+					camera_vec.setY(cloud->at(j, i).y);
+					camera_vec.setZ(cloud->at(j, i).z);
+
+					world_vec = _transform(camera_vec);
+
+					p.x = world_vec.getX();
+					p.y = world_vec.getY();
+					p.z = world_vec.getZ();
+
+					if ((p.z > theresholdValue)	&& (p.x <= xthreshold) && (p.y <= ythreshold) && (p.x >= -xthreshold) && (p.y >= -ythreshold))
 					{
-
-						if(p.x == 0	&& p.y == 0	&& p.z == 0)
-						{
-							resultCloud->at( (int)jValue, (int)iValue ).x = std::numeric_limits<float>::quiet_NaN();
-							resultCloud->at( (int)jValue, (int)iValue ).y = std::numeric_limits<float>::quiet_NaN();
-							resultCloud->at( (int)jValue, (int)iValue ).z = std::numeric_limits<float>::quiet_NaN();
-						}
-						else
-						{
-							camera_vec.setX(p.x);
-							camera_vec.setY(p.y);
-							camera_vec.setZ(p.z);
-
-							world_vec = _transform(camera_vec);
-
-
-							if ( (world_vec.getZ() > theresholdValue) && (world_vec.getX() <= xthreshold) && (world_vec.getY() <= ythreshold) && (world_vec.getX() >= -xthreshold) && (world_vec.getY() >= -ythreshold))
-							{
-								int value = threshold.data[threshold.channels()*((cloud->width)*(int)iValue+(int)jValue)+0];
-								if(value!=255)
-								{
-									resultCloud->at( (int)jValue, (int)iValue ).x = std::numeric_limits<float>::quiet_NaN();
-									resultCloud->at( (int)jValue, (int)iValue ).y = std::numeric_limits<float>::quiet_NaN();
-									resultCloud->at( (int)jValue, (int)iValue ).z = std::numeric_limits<float>::quiet_NaN();
-								}
-								else
-								{
-									resultCloud->at( (int)jValue, (int)iValue ).x = world_vec.getX();
-									resultCloud->at( (int)jValue, (int)iValue ).y = world_vec.getY();
-									resultCloud->at( (int)jValue, (int)iValue ).z = world_vec.getZ();
-								}
-							}
-							else
-							{
-								resultCloud->at( (int)jValue, (int)iValue ).x = std::numeric_limits<float>::quiet_NaN();
-								resultCloud->at( (int)jValue, (int)iValue ).y = std::numeric_limits<float>::quiet_NaN();
-								resultCloud->at( (int)jValue, (int)iValue ).z = std::numeric_limits<float>::quiet_NaN();
-							}
-
-						}
-
-
+						worldPointCloud->at(j, i).x = p.x;
+						worldPointCloud->at(j, i).y = p.y;
+						worldPointCloud->at(j, i).z = p.z;
 					}
+					else
+					{
+						worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+					}
+
 				}
 			}
-
-
 		}
 	}
-	return resultCloud;
+
+	return worldPointCloud;
+
 }

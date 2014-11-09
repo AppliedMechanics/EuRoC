@@ -42,8 +42,6 @@ private:
 	ros::NodeHandle _nh;
 	tf::TransformListener _tfListener;
 	tf::StampedTransform _transform;
-	tf::TransformListener _tfListenerSC;
-	tf::StampedTransform _transformSC;
 	tf::Transform _tf_object;
 	geometry_msgs::PointStamped _camera_point;
 	geometry_msgs::PointStamped _world_point;
