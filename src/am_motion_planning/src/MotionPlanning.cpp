@@ -492,6 +492,8 @@ bool MotionPlanning::euroc_getIKSolution7DOF()
 			// TODO: Read from telemetry data
 			move_along_joint_path_srv_.request.joint_names = lwr_joints; // Select all lwr joints
 			move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
+			move_along_joint_path_srv_.request.path[0].q.resize(nr_lwr_joints);           // Our path has only one waypoint
+
 			// Initialize the velocity and acceleration limits of the joints
 			move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
 
