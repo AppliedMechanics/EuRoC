@@ -943,9 +943,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			pub.publish(msg);
 			//ros::Duration(2.0).sleep();
 
-			if (_currentGoal->precision == 3) {
-				// calculate center of mass instead of alignment
-			}
+
 			// --> fast_cube_alignment(scene_input)
 			transformation = fast_cube_alignment(targetPC);
 
