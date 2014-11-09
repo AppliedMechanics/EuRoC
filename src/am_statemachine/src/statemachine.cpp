@@ -602,9 +602,10 @@ void Statemachine::scheduler_schedule()
 					temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_T6;  	state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::PLACE_OBJECT;
+					temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::HOMING;						state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::NEW_OBJECT_T6;				state_queue.push_back(temp_state);
-					temp_state.sub.two=fsm::CHECK_OBJECT_FINISHED;		state_queue.push_back(temp_state);
 				}
 				temp_state.sub.two=fsm::SCHEDULER;						state_queue.push_back(temp_state);
 			}
@@ -711,7 +712,23 @@ void Statemachine::scheduler_schedule()
 			if(move_to_object_t6_state_==FINISHEDWITHERROR)
 			{
 				msg_warn("move_to_object_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
-				move_to_object_t6_state_=FINISHED;
+				move_to_object_t6_state_=OPEN;
+
+				fsm::fsm_state_t tmp;
+				state_queue.clear();
+				tmp.sub.two=fsm::PLACE_OBJECT;
+				tmp.sub.three=fsm::GRIPPER_RELEASE;
+				state_queue.push_back(tmp);
+				tmp.sub.one=fsm::SOLVE_TASK;
+				tmp.sub.two=fsm::HOMING;
+				state_queue.push_back(tmp);
+				tmp.sub.two=fsm::NEW_OBJECT_T6;
+				state_queue.push_back(tmp);
+				tmp.sub.one=fsm::SOLVE_TASK;
+				tmp.sub.two=fsm::SCHEDULER;
+				state_queue.push_back(tmp);
+
+				scheduler_next();
 			}
 			break;
 
@@ -719,7 +736,23 @@ void Statemachine::scheduler_schedule()
 			if(move_to_target_zone_t6_state_==FINISHEDWITHERROR)
 			{
 				msg_warn("move_to_target_zone_t6_state_==FINISHEDWITHERROR, IMPLEMENT ME");
-				move_to_target_zone_t6_state_=FINISHED;
+				move_to_target_zone_t6_state_=OPEN;
+
+				fsm::fsm_state_t tmp;
+				state_queue.clear();
+				tmp.sub.two=fsm::PLACE_OBJECT;
+				tmp.sub.three=fsm::GRIPPER_RELEASE;
+				state_queue.push_back(tmp);
+				tmp.sub.one=fsm::SOLVE_TASK;
+				tmp.sub.two=fsm::HOMING;
+				state_queue.push_back(tmp);
+				tmp.sub.two=fsm::NEW_OBJECT_T6;
+				state_queue.push_back(tmp);
+				tmp.sub.one=fsm::SOLVE_TASK;
+				tmp.sub.two=fsm::SCHEDULER;
+				state_queue.push_back(tmp);
+
+				scheduler_next();
 			}
 			break;
 
@@ -2336,9 +2369,9 @@ int Statemachine::request_task()
 			break;
 		case 6:
 			planning_mode_.object	= T6_MOVE_IT_9DOF_BELTHOMING;
-			planning_mode_.move_to_object	= MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
-			planning_mode_.target	= T6_MOVE_IT_9DOF_TARGET;
-			planning_mode_.move_to_target_zone	= T6_MOVE_IT_9DOF_TARGET;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
+			planning_mode_.move_to_object	= T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT;//T6_MOVE_IT_9DOF_BELTHOMING;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
+			planning_mode_.target	= T6_MOVE_IT_9DOF_BELTHOMING;
+			planning_mode_.move_to_target_zone	= T6_MOVE_IT_9DOF_TARGET;//MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= T6_MOVE_IT_9DOF_BELTHOMING;
 			explore_pose_type_ = EXPLORE_STD_1;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
@@ -4933,7 +4966,7 @@ int Statemachine::move_to_object_t6()
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = slow_moving_speed;
+		goal_queue[0].speed_percentage = fast_moving_speed;
 		goal_queue[0].allowed_time = 60.0;
 		goal_queue[0].stamp = ein_->get_active_object_stamp();
 
@@ -4945,15 +4978,42 @@ int Statemachine::move_to_object_t6()
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
 		);
 	}
-	else if(move_to_object_t6_state_==FINISHED)
+	else if((move_to_object_t6_state_==FINISHED) && (set_object_load_state_==OPEN))
 	{
-		ROS_INFO("move_to_object_t6() called: FINISHED");
+		ROS_INFO("move_to_object_t6() called: FINISHED OPEN (set object load)");
 
+		ROS_INFO("waiting for 0.5 second to ensure a static robot...");
+		ros::Duration waittime = ros::Duration(0.5, 0);
+		waittime.sleep();
+
+		if (object_grip_r_tcp_com.size()>0)
+		{
+			set_object_load_srv_.request.center_of_gravity = object_grip_r_tcp_com[selected_object_pose_];
+			ROS_INFO("r_tcp_com=[%3.2f %3.2f %3.2f]^T",object_grip_r_tcp_com[selected_object_pose_].x,
+					object_grip_r_tcp_com[selected_object_pose_].y,object_grip_r_tcp_com[selected_object_pose_].z);
+		}
+		else
+		{
+			msg_warn("object_grip_r_tcp_com.size()=0, setting object load with zero-vec");
+			geometry_msgs::Vector3 emptyvector;
+			emptyvector.x=0;
+			emptyvector.y=0;
+			emptyvector.z=0;
+			set_object_load_srv_.request.center_of_gravity = emptyvector;
+		}
+		set_object_load_srv_.request.mass = cur_obj_mass_;
+		set_object_load_state_=RUNNING;
+		lsc_ = boost::thread(&Statemachine::set_object_load_cb,this);
+		//set_object_load_cb();
+	}
+	else if(move_to_object_t6_state_==FINISHED && set_object_load_state_==FINISHED)
+	{
 		//==============================================
 		scheduler_next();
 		//==============================================
 		//reset state
 		move_to_object_t6_state_=OPEN;
+		set_object_load_state_=OPEN;
 		move_to_object_t6_counter_=0;
 	}
 	else if(move_to_object_t6_state_==FINISHEDWITHERROR)

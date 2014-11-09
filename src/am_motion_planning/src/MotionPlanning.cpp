@@ -140,7 +140,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	planning_frame_ = goal_pose_goal_->planning_frame;
 	ROS_WARN("Chosen Planning Frame :%s",planning_frame_.c_str());
 
-
+	// ROS_INFO_STREAM("Vision pose 1 "<<goal_pose_goal_->goal_pose.position);
 	//	ROS_INFO_STREAM("goal received:");
 	//	ROS_INFO_STREAM(goal_pose_goal_->goal_pose.position);
 
@@ -181,6 +181,7 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 		return;
 	}
 
+	// ROS_INFO_STREAM("Vision pose 2 "<<goal_pose_GPTCP_.position);
 	//! Decision about T6 or T5
 
 	switch (active_task_nr_)
@@ -492,7 +493,9 @@ bool MotionPlanning::euroc_getIKSolution7DOF()
 			// TODO: Read from telemetry data
 			move_along_joint_path_srv_.request.joint_names = lwr_joints; // Select all lwr joints
 			move_along_joint_path_srv_.request.path.resize(1);           // Our path has only one waypoint
-			move_along_joint_path_srv_.request.path[0].q.resize(nr_lwr_joints);           // Our path has only one waypoint
+
+			for (unsigned int ii = 0; ii<move_along_joint_path_srv_.request.path.size();ii++)
+				move_along_joint_path_srv_.request.path[ii].q.resize(nr_lwr_joints);
 
 			// Initialize the velocity and acceleration limits of the joints
 			move_along_joint_path_srv_.request.joint_limits.resize(nr_lwr_joints);
@@ -2037,6 +2040,8 @@ void MotionPlanning::setMoveRequestJointLimits()
 			jointIdx++;
 		}
 	}
+
+
 
 }
 
