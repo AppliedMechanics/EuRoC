@@ -44,9 +44,9 @@ typedef pcl::PointCloud<FeatureT> FeatureCloudT;
 typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 Vision::Vision() :
-		vision_server_(nh_, "VisionAction",
-				boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
-				"VisionAction"), obj_aligned_(false) {
+						vision_server_(nh_, "VisionAction",
+								boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
+										"VisionAction"), obj_aligned_(false) {
 
 	failed = false;
 	isSingleCube = false;
@@ -248,7 +248,7 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req,
 
 	pcl::PointXYZ zoneCenter;
 	for (uint16_t ii = 0; ii < req.target_zones.size(); ii++) // iterate over target zones
-			{
+	{
 		// initialze the occupancy to zero
 		res.zones_occupied[ii] = 0;
 		// set up target zone position and radius
@@ -323,12 +323,12 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 
 		finalVoxelizedPC->clear();
 		finalVoxelizedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-		std::cout << "[VISION]Voxelization: global point cloud..." << std::endl;
+		msg_info("[VISION]Voxelization: global point cloud...");
 		vg.setInputCloud(finalPC);
 		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
 		vg.filter(*finalVoxelizedPC);
 
-		ROS_INFO("Object removed from complete point cloud");
+		msg_info("Object removed from complete point cloud");
 
 		tempPC->clear();
 		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -461,36 +461,39 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
-
-		try {
-			if (ros::service::waitForService("/octomap_server/reset",
-					ros::Duration(3.0))) {
-				if (!(reset_octomap_client_.call(reset_octomap_srv_))) {
-					msg_error("reset octomap service failed!");
+		if (!emptyCloudCritical)
+		{
+			try {
+				if (ros::service::waitForService("/octomap_server/reset",
+						ros::Duration(3.0))) {
+					if (!(reset_octomap_client_.call(reset_octomap_srv_))) {
+						msg_error("reset octomap service failed!");
+					} else
+						msg_info("octomap successfully resetted.");
 				} else
-					msg_info("octomap successfully resetted.");
-			} else
-				msg_info("wait for reset octomap service was not successful.");
-		} catch (...) {
-			msg_error("reset octomap service failed! TRYCATCH");
-		}
+					msg_info("wait for reset octomap service was not successful.");
+			} catch (...) {
+				msg_error("reset octomap service failed! TRYCATCH");
+			}
 
-		ros::spinOnce();
+			ros::spinOnce();
 
 #ifdef OCTOMAP_SERVER
-		//ros::Duration(2.0).sleep();
-		pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
-		filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
+			//ros::Duration(2.0).sleep();
+			pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
+			filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
 
-		pcl::toROSMsg(*filledForOctomapPC, msg);
-		msg.header.frame_id = "/Origin";
-		msg.header.stamp = ros::Time::now();
-		pub_3.publish(msg);
-		ROS_INFO("Octomap updated");
+			pcl::toROSMsg(*filledForOctomapPC, msg);
+			msg.header.frame_id = "/Origin";
+			msg.header.stamp = ros::Time::now();
+			pub_3.publish(msg);
+			ROS_INFO("Octomap updated");
 #endif
-	}
+		}
 
-	ROS_INFO("Octomap updated");
+		ROS_INFO("Octomap updated");
+	}
+	else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
 }
 
 /*
@@ -729,8 +732,8 @@ void Vision::fake_puzzle_fixture_param() {
 pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr object_input) {
 	std::cout
-			<< "[VISION] removeInliers::Number of Points in object input before removing"
-			<< (object_input->points.size()) << std::endl;
+	<< "[VISION] removeInliers::Number of Points in object input before removing"
+	<< (object_input->points.size()) << std::endl;
 
 	// Remove NANs from PointCloud scene
 	object_input->is_dense = false;
@@ -767,7 +770,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 		searchPoint.z = object_input->points[i].z;
 
 		if (object_input->points[i].z < minz + 0.01) //(object_input->points[mini_index].z) + 0.01)
-				{
+		{
 			pointIDs.push_back(i);
 			continue;
 		}
@@ -801,8 +804,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 	//ros::Duration(20).sleep(); // sleep for half a second
 
 	std::cout
-			<< "[VISION] removeInliers::Number of Points in object input after all removal"
-			<< object_input->points.size() << std::endl;
+	<< "[VISION] removeInliers::Number of Points in object input after all removal"
+	<< object_input->points.size() << std::endl;
 	return object_input;
 
 }
@@ -872,11 +875,11 @@ bool Vision::are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 					} else if ((!(goal->object.color.compare(colortemphold)))
 							&& (goal->object.nr_shapes != nr_of_shapes_hold))
-							//We have an object in same color but in different size, push back its index
-							{
+						//We have an object in same color but in different size, push back its index
+					{
 						cout
-								<< "[VISION] [TASK 5] Same Color & Different size!!"
-								<< std::endl;
+						<< "[VISION] [TASK 5] Same Color & Different size!!"
+						<< std::endl;
 						cluster_index_list_T5.push_back(cnt);
 						cluster_size_list_T5.push_back(nr_of_shapes_hold);
 						same_color_problem = true;
@@ -1146,8 +1149,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 					shape_generator.generateCirclePlane(step_size,
 							Eigen::Vector3f(0.0f, 0.0f,
 									goal->object.shape[i].length),
-							Eigen::Vector3f::UnitZ(),
-							goal->object.shape[i].radius);
+									Eigen::Vector3f::UnitZ(),
+									goal->object.shape[i].radius);
 				}
 
 				//transform Cylinder PC to valid position --> Ideal model for CYLINDER
@@ -1159,7 +1162,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				translation[0] = goal->object.shape[i].pose.position.x;
 				translation[1] = goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].length / 2)
-						+ goal->object.shape[i].pose.position.z;
+										+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1176,23 +1179,23 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 					shape_generator.generateBox(step_size,
 							Eigen::Vector3f(0.0f, 0.0f, 0.0f),
 							goal->object.shape[i].size[0]
-									* Eigen::Vector3f::UnitX(),
-							goal->object.shape[i].size[1]
-									* Eigen::Vector3f::UnitY(),
-							goal->object.shape[i].size[2]
-									* Eigen::Vector3f::UnitZ(), 0.0f, false,
-							is_task5);
+							                           * Eigen::Vector3f::UnitX(),
+							                           goal->object.shape[i].size[1]
+							                                                      * Eigen::Vector3f::UnitY(),
+							                                                      goal->object.shape[i].size[2]
+							                                                                                 * Eigen::Vector3f::UnitZ(), 0.0f, false,
+							                                                                                 is_task5);
 				else
 					// --> Ideal model for HANDLE
 					shape_generator.generateBox(step_size,
 							Eigen::Vector3f(0.0f, 0.0f, 0.0f),
 							goal->object.shape[i].size[0]
-									* Eigen::Vector3f::UnitX(),
-							goal->object.shape[i].size[1]
-									* Eigen::Vector3f::UnitY(),
-							goal->object.shape[i].size[2]
-									* Eigen::Vector3f::UnitZ(), 0.0f, true,
-							is_task5);
+							                           * Eigen::Vector3f::UnitX(),
+							                           goal->object.shape[i].size[1]
+							                                                      * Eigen::Vector3f::UnitY(),
+							                                                      goal->object.shape[i].size[2]
+							                                                                                 * Eigen::Vector3f::UnitZ(), 0.0f, true,
+							                                                                                 is_task5);
 
 				//transform the ideal model to valid position (internal pose, object's coordinate frame)
 				q = Eigen::Quaternion<double>(
@@ -1201,11 +1204,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						goal->object.shape[i].pose.orientation.y,
 						goal->object.shape[i].pose.orientation.z);
 				translation[0] = -(goal->object.shape[i].size[0] / 2)
-						+ goal->object.shape[i].pose.position.x;
+										+ goal->object.shape[i].pose.position.x;
 				translation[1] = -(goal->object.shape[i].size[1] / 2)
-						+ goal->object.shape[i].pose.position.y;
+										+ goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].size[2] / 2)
-						+ goal->object.shape[i].pose.position.z;
+										+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1329,8 +1332,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				//     - could not find enough corners/lines to compute angle difference
 				//     - vision node failed/threw an exception
 				std::cout
-						<< "[VISION]Could not find a better pose, returning the initial value again"
-						<< std::endl;
+				<< "[VISION]Could not find a better pose, returning the initial value again"
+				<< std::endl;
 
 				vision_result_.object_detected = false;
 
@@ -1402,7 +1405,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						Eigen::Matrix4f::Identity();
 				transform_close_range(0, 0) = std::cos(OptRotationRadians);
 				transform_close_range(0, 1) = (-1)
-						* std::sin(OptRotationRadians);
+										* std::sin(OptRotationRadians);
 				transform_close_range(1, 0) = std::sin(OptRotationRadians);
 				transform_close_range(1, 1) = std::cos(OptRotationRadians);
 				transform_close_range(0, 3) = transformation(0, 3);
@@ -1430,7 +1433,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				int diffNewPose = verify_close_range_pose(targetPC,
 						closeRangePC);
 				std::cout << "Diff = " << std::abs(diffOldPose - diffNewPose)
-						<< std::endl;
+				<< std::endl;
 
 				if ((diffNewPose - diffOldPose) < 15) {
 					ROS_INFO("[VISION]new pose is better!");
@@ -1485,8 +1488,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			vision_result_.object_detected = false;
 
 			std::cout
-					<< "[VISION]Object is not a CUBE. No additional pose estimation necessary."
-					<< std::endl;
+			<< "[VISION]Object is not a CUBE. No additional pose estimation necessary."
+			<< std::endl;
 			vision_result_.abs_object_pose.position.x = transformation(0, 3);
 			vision_result_.abs_object_pose.position.y = transformation(1, 3);
 			vision_result_.abs_object_pose.position.z = transformation(2, 3);
@@ -2472,8 +2475,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
 			nh_.getParam(keystring, temp);
 			trouble_object_orientation_vector.push_back(temp);
 			std::cout
-					<< "[VISION]****Trouble Object orientation position x is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
+			<< "[VISION]****Trouble Object orientation position x is found: "
+			<< trouble_object_orientation_vector.back() << std::endl;
 			keystring = "";
 		}
 		part_orientation_vector_.push_back(
@@ -2483,8 +2486,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
 			nh_.getParam(keystring, temp);
 			trouble_object_orientation_vector.push_back(temp);
 			std::cout
-					<< "[VISION]****Trouble Object orientation position y is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
+			<< "[VISION]****Trouble Object orientation position y is found: "
+			<< trouble_object_orientation_vector.back() << std::endl;
 			keystring = "";
 		}
 		part_orientation_vector_.push_back(
@@ -2494,8 +2497,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
 			nh_.getParam(keystring, temp);
 			trouble_object_orientation_vector.push_back(temp);
 			std::cout
-					<< "[VISION]****Trouble Object orientation position z is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
+			<< "[VISION]****Trouble Object orientation position z is found: "
+			<< trouble_object_orientation_vector.back() << std::endl;
 			keystring = "";
 		}
 		part_orientation_vector_.push_back(
@@ -2505,8 +2508,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
 			nh_.getParam(keystring, temp);
 			trouble_object_orientation_vector.push_back(temp);
 			std::cout
-					<< "[VISION]****Trouble Object orientation position w is found: "
-					<< trouble_object_orientation_vector.back() << std::endl;
+			<< "[VISION]****Trouble Object orientation position w is found: "
+			<< trouble_object_orientation_vector.back() << std::endl;
 			keystring = "";
 		}
 
@@ -2624,7 +2627,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fake_object_creater(bool is_task5) {
 		}
 
 	} //END OF FOR
-	  //*******************************************End of parameter search!****************************
+	//*******************************************End of parameter search!****************************
 	return T_object_model;
 } //END OF FAKE SHAPE GENERATOR, SAME COLOR PROBLEM
 
@@ -2889,11 +2892,11 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 			_currentGoal->object.shape[0].pose.orientation.y,
 			_currentGoal->object.shape[0].pose.orientation.z);
 	translation[0] = -(_currentGoal->object.shape[0].size[0] / 2)
-			+ _currentGoal->object.shape[0].pose.position.x;
+							+ _currentGoal->object.shape[0].pose.position.x;
 	translation[1] = -(_currentGoal->object.shape[0].size[1] / 2)
-			+ _currentGoal->object.shape[0].pose.position.y;
+							+ _currentGoal->object.shape[0].pose.position.y;
 	translation[2] = -(_currentGoal->object.shape[0].size[2] / 2)
-			+ _currentGoal->object.shape[0].pose.position.z;
+							+ _currentGoal->object.shape[0].pose.position.z;
 
 	pcl::transformPointCloud(*shape_model, *shape_model, translation, q);
 
@@ -3125,7 +3128,7 @@ double Vision::close_range_pose(string color) {
 	cv::HoughLinesP(bw, lines, 1, CV_PI / 180, houghThreshold, minLineLength,
 			10);
 	std::cout << "[VISION]found the following number of lines: " << lines.size()
-			<< std::endl;
+							<< std::endl;
 	// Error Handling
 	// If we were not able to find enough lines to compute intersections, we have to
 	// change the paramters of houghLineP to a more relaxed combination
@@ -3171,7 +3174,7 @@ double Vision::close_range_pose(string color) {
 	}
 
 	std::cout << "[VISION]perpendicular lines are: " << idx[0] << "& " << idx[1]
-			<< std::endl;
+	                                                                          << std::endl;
 
 	//    // DEBUG: Draw the lines
 	//    cv::Vec4i v = lines[idx[0]];
@@ -3285,8 +3288,8 @@ std::vector<int> Vision::find_perpendicular_lines(
 
 			if (1.54 <= std::abs(angle) && std::abs(angle) <= 1.61) {
 				std::cout
-						<< "[VISION]found two perpendicular lines with apprx. angle: "
-						<< angle << std::endl;
+				<< "[VISION]found two perpendicular lines with apprx. angle: "
+				<< angle << std::endl;
 				// found two perpendicular lines
 				indices[0] = i;
 				indices[1] = j;
@@ -3294,8 +3297,8 @@ std::vector<int> Vision::find_perpendicular_lines(
 			}
 			if (4.69 <= std::abs(angle) && std::abs(angle) <= 4.75) {
 				std::cout
-						<< "[VISION]found two perpendicular lines with apprx. angle: "
-						<< angle << std::endl;
+				<< "[VISION]found two perpendicular lines with apprx. angle: "
+				<< angle << std::endl;
 				// found two perpendicular lines
 				indices[0] = i;
 				indices[1] = j;
@@ -3686,7 +3689,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 	ec.extract(initial_cluster_indices);
 
 	std::cout << "[VISION]found " << initial_cluster_indices.size()
-			<< " initial clusters" << std::endl;
+							<< " initial clusters" << std::endl;
 
 	//intermediate_cluster_indices.resize( initial_cluster_indices.size() );
 
@@ -3742,7 +3745,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 		}
 
 		if (((limit_val) < max_dist) && (max_dist < (comparison_value))) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
-				{
+		{
 			isIntermediateClusterEmpty = false;
 			intermediate_cluster_indices.resize(
 					intermediate_cluster_indices.size() + 1);
@@ -3759,10 +3762,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 	}
 
 	// publish the clusters
-//		pcl::toROSMsg (*cloud_cluster, msg);
-//		msg.header.frame_id = "/Origin";
-//		msg.header.stamp = ros::Time::now();
-//		pub.publish (msg);
+	//		pcl::toROSMsg (*cloud_cluster, msg);
+	//		msg.header.frame_id = "/Origin";
+	//		msg.header.stamp = ros::Time::now();
+	//		pub.publish (msg);
 	//ros::Duration(0.5).sleep();
 
 	ROS_INFO("[VISION] #intermediateCluster: %d", intermediateClusterCounter);
@@ -3780,18 +3783,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 		cloud_cluster->is_dense = true;
 
 		// publish the clusters
-//		pcl::toROSMsg (*cloud_cluster, msg);
-//		msg.header.frame_id = "/Origin";
-//		msg.header.stamp = ros::Time::now();
-//		pub.publish (msg);
+		//		pcl::toROSMsg (*cloud_cluster, msg);
+		//		msg.header.frame_id = "/Origin";
+		//		msg.header.stamp = ros::Time::now();
+		//		pub.publish (msg);
 
-//		// publish the clusters
-//		ROS_INFO("[VISION]show colorReferencePC...");
-//		pcl::toROSMsg (*colorReferencePC, msg);
-//		msg.header.frame_id = "/Origin";
-//		msg.header.stamp = ros::Time::now();
-//		pub.publish (msg);
-//		ros::Duration(2.0).sleep();
+		//		// publish the clusters
+		//		ROS_INFO("[VISION]show colorReferencePC...");
+		//		pcl::toROSMsg (*colorReferencePC, msg);
+		//		msg.header.frame_id = "/Origin";
+		//		msg.header.stamp = ros::Time::now();
+		//		pub.publish (msg);
+		//		ros::Duration(2.0).sleep();
 
 		ROS_INFO("[VISION]Trying to extract final clusters");
 		bool differences = compare_cluster_differences(cloud_cluster,
@@ -3838,7 +3841,7 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 
 	if (task_nr != 5) {
 		if (goal->object.nr_shapes == 1) // should be either a cube or a cylinder
-				{
+		{
 			if (!goal->object.shape[0].type.compare("box")) {
 				return (float) goal->object.shape[0].size[0];
 			} else if (!goal->object.shape[0].type.compare("cylinder")) {
@@ -3851,7 +3854,7 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 		{
 			return (float) goal->object.shape[0].length
 					+ (float) goal->object.shape[1].size[0]
-					+ (float) goal->object.shape[2].size[0];
+					                                     + (float) goal->object.shape[2].size[0];
 		}
 	}
 
@@ -3864,7 +3867,7 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 		if ((goal->object.nr_shapes == 1))
 			return sqrt(
 					((one_side * one_side) + (one_side * one_side))
-							+ (one_side * one_side));
+					+ (one_side * one_side));
 
 		else {
 			int x = 1;
@@ -3874,27 +3877,27 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 			if ((goal->object.nr_shapes) + x == 1) {
 				return sqrt(
 						((one_side * one_side) + (one_side * one_side))
-								+ (one_side * one_side));
+						+ (one_side * one_side));
 			}
 			if ((goal->object.nr_shapes) + x == 2)
 				return sqrt(
 						(one_side * one_side)
-								+ ((2 * one_side * 2 * one_side)
-										+ (one_side * one_side)));
+						+ ((2 * one_side * 2 * one_side)
+								+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x == 3)
 				return sqrt(
 						(one_side * one_side)
-								+ ((9 * one_side * one_side)
-										+ (one_side * one_side)));
+						+ ((9 * one_side * one_side)
+								+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x == 4)
 				return sqrt(
 						(one_side * one_side)
-								+ ((16 * one_side * one_side)
-										+ (one_side * one_side)));
+						+ ((16 * one_side * one_side)
+								+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x >= 5)
 				return sqrt(
 						(9 * one_side * one_side + 9 * one_side * one_side)
-								+ (one_side * one_side));
+						+ (one_side * one_side));
 		}
 	} ////////////////////////////////////////////////////////////////////////////////
 	ROS_WARN("Unknown shape type");
@@ -3957,7 +3960,7 @@ bool Vision::compare_cluster_differences(
 
 	std::cout << "cluster size: " << clusterPC->points.size() << std::endl;
 	std::cout << "noisyColorPC size: " << noisyColorPC->points.size()
-			<< std::endl;
+							<< std::endl;
 	std::cout << "common points: "
 			<< noisyColorPC->points.size() - newPointIdxVector.size()
 			<< std::endl;

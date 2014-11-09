@@ -271,7 +271,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 		}
 	} // END FOR
 
-	std::cout<<"Shape has been removed!"<<std::endl;
+	msg_info("Shape has been removed!");
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr subtractedCloud (new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::copyPointCloud(*baseCloud, *subtractedCloud);
