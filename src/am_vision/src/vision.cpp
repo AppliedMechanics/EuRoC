@@ -461,7 +461,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
-		if (!emptyCloudCritical)
+		/*if (!emptyCloudCritical)
 		{
 			try {
 				if (ros::service::waitForService("/octomap_server/reset",
@@ -491,7 +491,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 #endif
 		}
 
-		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
+		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}*/
 	}
 
 }

@@ -224,6 +224,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 	try
 	{
 		kdtree.setInputCloud (baseCloud);
+		msg_info("scene not empty: continuing with removal");
 	}
 	catch (...)
 	{
