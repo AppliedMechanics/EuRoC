@@ -66,6 +66,9 @@ typedef enum {
 	SINGLE_POSE_TARGET=-1,
 	POSE_TARGET=0,
 	JOINT_VALUE_TARGET_KDL_IK,
+	SINGLE_POSE_RELEASE_CONSTRAINT,
+	POSE_TARGET_RELEASE_CONSTRAINT,
+	JOINT_VALUE_TARGET_KDL_IK_RELEASE_CONSTRAINT,
 	JOINT_VALUE_TARGET_EUROC_IK,
 	HOMING,
 	JOINT_VALUE_TARGET_9DOF,
@@ -197,6 +200,13 @@ static const uint32_t std_moving_speed = 30; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 10;//5
 static const double   wait_duration = 2; //wait duration in wait state
+
+static const double std_goal_joint_tolerance 		= 0.0001;
+static const double std_goal_position_tolerance 	= 0.0001;
+static const double std_goal_orientation_tolerance 	= 0.001;
+static const double release_goal_joint_tolerance    	= 0.001;
+static const double release_goal_orientation_tolerance  = 0.05;
+static const double release_goal_position_tolerance    	= 0.005;
 
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";

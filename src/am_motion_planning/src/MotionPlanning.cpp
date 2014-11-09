@@ -323,7 +323,7 @@ bool MotionPlanning::executeGoalPoseStd()
 		group = group_9DOF;
 		joint_model_group_ = joint_model_group_9DOF_;
 		// setting joint state target via the searchIKSolution srv is not considered
-		max_setTarget_attempts_ = 3;
+		max_setTarget_attempts_ = 6;
 
 	}
 	else if(goal_pose_goal_->planning_algorithm == MOVE_IT_7DOF)
@@ -333,7 +333,7 @@ bool MotionPlanning::executeGoalPoseStd()
 		joint_model_group_ = joint_model_group_7DOF_;
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 4;
+		max_setTarget_attempts_ = 7;
 
 	}
 	else if(goal_pose_goal_->planning_algorithm == MOVE_IT_2DOF)
@@ -344,7 +344,7 @@ bool MotionPlanning::executeGoalPoseStd()
 
 		// in case of unsuccessful planning,
 		// the planning target is set as a joint state goal via the searchIKSolution srv
-		max_setTarget_attempts_ = 3;
+		max_setTarget_attempts_ = 6;
 
 	}
 	else
@@ -1315,8 +1315,19 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 {
 	switch (algorithm) {
 
+	case JOINT_VALUE_TARGET_KDL_IK_RELEASE_CONSTRAINT:
+		group->setGoalJointTolerance(release_goal_joint_tolerance);
+		group->setGoalOrientationTolerance(release_goal_orientation_tolerance);
+		group->setGoalPositionTolerance(release_goal_position_tolerance);
 	case JOINT_VALUE_TARGET_KDL_IK: {
 		ROS_INFO("Setting a Joint value target obtained via the KDL IK.");
+
+		if (algorithm!=JOINT_VALUE_TARGET_KDL_IK_RELEASE_CONSTRAINT)
+		{
+			group->setGoalJointTolerance(std_goal_joint_tolerance);
+			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
+			group->setGoalPositionTolerance(std_goal_position_tolerance);
+		}
 
 		// declare seed state
 		std::vector<double> ik_seed_state;
@@ -1469,8 +1480,19 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		}
 		break;
 	}
+	case POSE_TARGET_RELEASE_CONSTRAINT:
+		group->setGoalJointTolerance(release_goal_joint_tolerance);
+		group->setGoalOrientationTolerance(release_goal_orientation_tolerance);
+		group->setGoalPositionTolerance(release_goal_position_tolerance);
 	case POSE_TARGET_EXP:
 	case POSE_TARGET: {
+		if (algorithm!=POSE_TARGET_RELEASE_CONSTRAINT)
+		{
+			group->setGoalJointTolerance(std_goal_joint_tolerance);
+			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
+			group->setGoalPositionTolerance(std_goal_position_tolerance);
+		}
+
 		ROS_INFO("Setting a pose target.");
 
 		if (!group->setPoseTarget(goal_pose_GPTCP_)) {
@@ -1479,10 +1501,18 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		}
 		break;
 	}
-
+	case SINGLE_POSE_RELEASE_CONSTRAINT:
+		group->setGoalJointTolerance(release_goal_joint_tolerance);
+		group->setGoalOrientationTolerance(release_goal_orientation_tolerance);
+		group->setGoalPositionTolerance(release_goal_position_tolerance);
 	case SINGLE_POSE_TARGET: {
 		ROS_INFO("Setting a single pose target.");
-
+		if (algorithm!=SINGLE_POSE_RELEASE_CONSTRAINT)
+		{
+			group->setGoalJointTolerance(std_goal_joint_tolerance);
+			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
+			group->setGoalPositionTolerance(std_goal_position_tolerance);
+		}
 		if (!group->setJointValueTarget(goal_pose_GPTCP_)) {
 			ROS_ERROR("Setting pose target failed.");
 			return false;
@@ -1491,6 +1521,8 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	}
 	case HOMING: {
 		ROS_INFO("Setting a joint value target (HOMING).");
+
+		group->setGoalJointTolerance(release_goal_joint_tolerance);
 
 		std::vector<double> goal_config_homing;
 		goal_config_homing.resize(group->getActiveJoints().size());
@@ -1519,7 +1551,7 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	case JOINT_VALUE_TARGET_9DOF:
 	{
 		ROS_INFO("Setting a joint value target.");
-
+		group->setGoalJointTolerance(release_goal_joint_tolerance);
 		std::vector<double> joint_values_in(9);
 		for (int i=0;i<9;i++)
 			joint_values_in[i] = goal_pose_goal_->goal_config.q[i];
@@ -1542,6 +1574,9 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 	}
 	}
 
+	msg_warn("goal Joint Tolerance %f",group->getGoalJointTolerance());
+	msg_warn("goalOrientation Tolerance %f",group->getGoalOrientationTolerance());
+	msg_warn("goalPosition Tolerance %f",group->getGoalPositionTolerance());
 
 	ROS_INFO("Setting target successful.");
 	return true;

@@ -25,10 +25,10 @@
         <joint name="gripper_base_joint" />
         <joint name="gp_tcp_joint" />
     </group>
-        <group name="LWR_2DOF">
+    <group name="LWR_2DOF">
         <joint name="axis_x" />
         <joint name="axis_y" />
-        <joint name="la_tcp" />	
+        <joint name="la_tcp" />
     </group>
     <group name="gripper">
         <link name="gripper_base" />
@@ -60,7 +60,7 @@
         <joint name="lwr_joint_6" value="0" />
         <joint name="lwr_joint_7" value="0" />
     </group_state>
-	<group_state name="homing" group="LWR_9DOF">
+    <group_state name="homing" group="LWR_9DOF">
         <joint name="axis_x" value="0" />
         <joint name="axis_y" value="0" />
         <joint name="lwr_joint_1" value="0" />
@@ -71,12 +71,14 @@
         <joint name="lwr_joint_6" value="0" />
         <joint name="lwr_joint_7" value="0" />
     </group_state>
-    	<group_state name="homing_2DOF" group="LWR_2DOF">
+    <group_state name="homing_2DOF" group="LWR_2DOF">
         <joint name="axis_x" value="0" />
         <joint name="axis_y" value="0" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="gripper_ee" parent_link="lwr_tcp" group="gripper" />
+    <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
+    <virtual_joint name="root_joint" type="fixed" parent_frame="Origin_Origin" child_link="Origin" />
     <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
     <passive_joint name="joint_before_finger1" />
     <passive_joint name="joint_before_finger2" />
