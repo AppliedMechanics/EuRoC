@@ -44,9 +44,9 @@ typedef pcl::PointCloud<FeatureT> FeatureCloudT;
 typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 Vision::Vision() :
-						vision_server_(nh_, "VisionAction",
-								boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
-										"VisionAction"), obj_aligned_(false) {
+								vision_server_(nh_, "VisionAction",
+										boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
+												"VisionAction"), obj_aligned_(false) {
 
 	failed = false;
 	isSingleCube = false;
@@ -491,9 +491,9 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 #endif
 		}
 
-		ROS_INFO("Octomap updated");
+		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
 	}
-	else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
+
 }
 
 /*
@@ -1162,7 +1162,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				translation[0] = goal->object.shape[i].pose.position.x;
 				translation[1] = goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].length / 2)
-										+ goal->object.shape[i].pose.position.z;
+												+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1204,11 +1204,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						goal->object.shape[i].pose.orientation.y,
 						goal->object.shape[i].pose.orientation.z);
 				translation[0] = -(goal->object.shape[i].size[0] / 2)
-										+ goal->object.shape[i].pose.position.x;
+												+ goal->object.shape[i].pose.position.x;
 				translation[1] = -(goal->object.shape[i].size[1] / 2)
-										+ goal->object.shape[i].pose.position.y;
+												+ goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].size[2] / 2)
-										+ goal->object.shape[i].pose.position.z;
+												+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1405,7 +1405,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						Eigen::Matrix4f::Identity();
 				transform_close_range(0, 0) = std::cos(OptRotationRadians);
 				transform_close_range(0, 1) = (-1)
-										* std::sin(OptRotationRadians);
+												* std::sin(OptRotationRadians);
 				transform_close_range(1, 0) = std::sin(OptRotationRadians);
 				transform_close_range(1, 1) = std::cos(OptRotationRadians);
 				transform_close_range(0, 3) = transformation(0, 3);
@@ -2892,11 +2892,11 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 			_currentGoal->object.shape[0].pose.orientation.y,
 			_currentGoal->object.shape[0].pose.orientation.z);
 	translation[0] = -(_currentGoal->object.shape[0].size[0] / 2)
-							+ _currentGoal->object.shape[0].pose.position.x;
+									+ _currentGoal->object.shape[0].pose.position.x;
 	translation[1] = -(_currentGoal->object.shape[0].size[1] / 2)
-							+ _currentGoal->object.shape[0].pose.position.y;
+									+ _currentGoal->object.shape[0].pose.position.y;
 	translation[2] = -(_currentGoal->object.shape[0].size[2] / 2)
-							+ _currentGoal->object.shape[0].pose.position.z;
+									+ _currentGoal->object.shape[0].pose.position.z;
 
 	pcl::transformPointCloud(*shape_model, *shape_model, translation, q);
 
@@ -3128,7 +3128,7 @@ double Vision::close_range_pose(string color) {
 	cv::HoughLinesP(bw, lines, 1, CV_PI / 180, houghThreshold, minLineLength,
 			10);
 	std::cout << "[VISION]found the following number of lines: " << lines.size()
-							<< std::endl;
+									<< std::endl;
 	// Error Handling
 	// If we were not able to find enough lines to compute intersections, we have to
 	// change the paramters of houghLineP to a more relaxed combination
@@ -3689,7 +3689,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 	ec.extract(initial_cluster_indices);
 
 	std::cout << "[VISION]found " << initial_cluster_indices.size()
-							<< " initial clusters" << std::endl;
+									<< " initial clusters" << std::endl;
 
 	//intermediate_cluster_indices.resize( initial_cluster_indices.size() );
 
@@ -3960,7 +3960,7 @@ bool Vision::compare_cluster_differences(
 
 	std::cout << "cluster size: " << clusterPC->points.size() << std::endl;
 	std::cout << "noisyColorPC size: " << noisyColorPC->points.size()
-							<< std::endl;
+									<< std::endl;
 	std::cout << "common points: "
 			<< noisyColorPC->points.size() - newPointIdxVector.size()
 			<< std::endl;
