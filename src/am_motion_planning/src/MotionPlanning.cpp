@@ -715,22 +715,38 @@ bool MotionPlanning::octomap_manager_getOctomap()
 	}
 	else if (!skip_vision_)
 	{
-
-		// call service
-		ros::service::waitForService(octomap_,ros::Duration(4.0));
-		octomap_client_.call(octomap_srv_);
-		// calling octomap from octomap_service
-		if (octomap_srv_.response.map.data.empty())
+		try
 		{
-			ROS_WARN("No Octomap received!");
+			if (ros::service::waitForService(octomap_,ros::Duration(3.0)))
+			{
+				// call service
+				octomap_client_.call(octomap_srv_);
+				// calling octomap from octomap_service
+				if (octomap_srv_.response.map.data.empty())
+				{
+					msg_warn("No Octomap received!");
+					return false;
+				}
+				else
+				{
+					msg_info("Octomap received!");
+					_octree = octomap_srv_.response.map;
+					return true;
+				}
+			}
+			else
+			{
+				msg_error("WaitForService Octomap failed.");
+				return false;
+			}
+
+		}
+		catch(...)
+		{
+			msg_error("Octomap service client failed.");
 			return false;
 		}
-		else
-		{
-			ROS_WARN("Octomap received!");
-			_octree = octomap_srv_.response.map;
-			return true;
-		}
+
 	}
 	else
 		return false;
