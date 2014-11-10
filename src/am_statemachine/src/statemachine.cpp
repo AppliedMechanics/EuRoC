@@ -1713,16 +1713,14 @@ void Statemachine::scheduler_error_check_object_gripped()
 }
 void Statemachine::scheduler_error_check_object_finished()
 {
-	//skip current object and try next one
+	//publish object state for motion planning
+	publish_obj_state(OBJ_LOCATED);
 
+	//skip current object and try next one
 	msg_warn("Statemachine-Errorhandler: object not in target zone -> try next object");
 	//and get next one
 	ein_->select_new_object();
 	scheduler_next_object();
-
-
-	//publish object state for motion planning
-	publish_obj_state(OBJ_LOCATED);
 
 	//==============================================
 	scheduler_next();
@@ -4929,7 +4927,6 @@ int Statemachine::move_to_object()
 		goal_queue[0].inter_steps = std_inter_steps;
 		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;
-
 
 		move_to_object_state_=RUNNING;
 		motion_planning_action_client_->sendGoal(goal_queue[0],

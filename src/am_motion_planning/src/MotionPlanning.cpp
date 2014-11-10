@@ -131,6 +131,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	if (first){
 		// initialize Planning Scene -> add ground + pan tilt to environment
 		initializePlanningScene();
+		if (!octomap_manager_cleanupOctomap())
+			msg_error("Error at cleaning up octomap.");
 		first = false;
 	}
 
@@ -370,7 +372,7 @@ bool MotionPlanning::executeGoalPoseStd()
 
 	case (MOVE_IT_JT_9DOF):
 
-    ROS_WARN("Given JT based on MoveIt! chosen.");
+    						ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -1089,16 +1091,16 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 		get_planning_scene_client_.call(get_planning_scene_srv_);
 
 		get_planning_scene_srv_.response.scene.robot_state.joint_state = planning_scene_.robot_state.joint_state;
-//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects.size(); ++i)
-//		{
-//			ROS_INFO_STREAM("Attached Object id: " << get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects[i].object.id);
-//		}
+		//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects.size(); ++i)
+		//		{
+		//			ROS_INFO_STREAM("Attached Object id: " << get_planning_scene_srv_.response.scene.robot_state.attached_collision_objects[i].object.id);
+		//		}
 
-//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.joint_state.position.size(); ++i)
-//		{
-//			ROS_INFO_STREAM("robot state: " << get_planning_scene_srv_.response.scene.robot_state.joint_state.position[i]);
-//			ROS_INFO_STREAM("telemetry: " << _telemetry.measured.position[i]);
-//		}
+		//		for (unsigned i = 0; i < get_planning_scene_srv_.response.scene.robot_state.joint_state.position.size(); ++i)
+		//		{
+		//			ROS_INFO_STREAM("robot state: " << get_planning_scene_srv_.response.scene.robot_state.joint_state.position[i]);
+		//			ROS_INFO_STREAM("telemetry: " << _telemetry.measured.position[i]);
+		//		}
 		group->setStartState(get_planning_scene_srv_.response.scene.robot_state);
 	}
 
@@ -1250,11 +1252,11 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 
 	// if Octomap received, then stored in _octree
 
-	if(!skip_vision_)
-	{
-		if (octomap_manager_cleanupOctomap())
-			msg_info("Octomap cleaned up");
-	}
+	//	if(!skip_vision_)
+	//	{
+	//		if (octomap_manager_cleanupOctomap())
+	//			msg_info("Octomap cleaned up");
+	//	}
 
 	if(octomap_manager_getOctomap())
 	{
@@ -2433,7 +2435,7 @@ void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_po
 			geometry_msgs::Pose current_primitive_pose;
 			current_primitive_pose.position.x = tf_shape_global.getOrigin().getX();
 			current_primitive_pose.position.y = tf_shape_global.getOrigin().getY();
-			current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ()+0.173;
+			current_primitive_pose.position.z = tf_shape_global.getOrigin().getZ();//+0.173;
 			current_primitive_pose.orientation.x = tf_shape_global.getRotation().getX();
 			current_primitive_pose.orientation.y = tf_shape_global.getRotation().getY();
 			current_primitive_pose.orientation.z = tf_shape_global.getRotation().getZ();
@@ -2933,27 +2935,40 @@ void MotionPlanning::object_manager_addObjectToWorld(int obj_index)
 	if (object_manager_objectExists(obj_index))
 	{
 		ROS_INFO("Adding object to the environment...");
+		bool any_nan = false;
 
 		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
 			msg_error("Obj_index does not coincide with position in vector????");
 			return;
 		}
+		for (unsigned ii=0;ii<am_collision_objects_[obj_index].collision_object_.primitive_poses.size();ii++)
+		{
+			if (pose_check_isnan(&am_collision_objects_[obj_index].collision_object_.primitive_poses[ii]))
+			{
+				msg_warn("Pose information with NaN detected.");
+				any_nan = true;
+				break;
+			}
+		}
 
-		// get the appropriate object
-		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
+		if (!any_nan)
+		{
+			// get the appropriate object
+			moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
-		// add object to the environment
-		planning_scene_.world.collision_objects.clear();
-		current_object.header.frame_id = "/Origin";
-		current_object.header.stamp = ros::Time::now();
-		current_object.operation = current_object.ADD;
-		planning_scene_.world.collision_objects.push_back(current_object);
+			// add object to the environment
+			planning_scene_.world.collision_objects.clear();
+			current_object.header.frame_id = "/Origin";
+			current_object.header.stamp = ros::Time::now();
+			current_object.operation = current_object.ADD;
+			planning_scene_.world.collision_objects.push_back(current_object);
 
-		ROS_INFO("Adding object to the environment finished.");
+			ROS_INFO("Adding object to the environment finished.");
 
 
-		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_IN_WORLD;
+			am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_IN_WORLD;
+		}
 	}
 	else
 		ROS_WARN("Object cannot be added to the environment. It must be created first.");
@@ -2965,13 +2980,25 @@ void MotionPlanning::object_manager_removeObjectFromWorld(int obj_index)
 	if (object_manager_objectExists(obj_index))
 	{
 		ROS_INFO("Removing object from the environment...");
+		bool any_nan=false;
 
 		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
 			msg_error("Obj_index does not coincide with position in vector????");
 			return;
 		}
+		for (unsigned ii=0;ii<am_collision_objects_[obj_index].collision_object_.primitive_poses.size();ii++)
+		{
+			if (pose_check_isnan(&am_collision_objects_[obj_index].collision_object_.primitive_poses[ii]))
+			{
+				msg_warn("Pose information with NaN detected.");
+				any_nan = true;
+				break;
+			}
+		}
 
+		if (!any_nan)
+		{
 		// get the appropriate object
 		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
@@ -2987,6 +3014,7 @@ void MotionPlanning::object_manager_removeObjectFromWorld(int obj_index)
 		ROS_INFO("Removing object from the environment finished.");
 
 		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
+		}
 	}
 	else
 		ROS_WARN("Object cannot be removed from the world. It must be created first.");
@@ -2999,6 +3027,7 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 	if (object_manager_objectExists(obj_index))
 	{
 		ROS_INFO("Attaching object to the gripper...");
+		bool any_nan=false;
 
 		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
@@ -3009,17 +3038,73 @@ void MotionPlanning::object_manager_attachObject(int obj_index)
 		// get the appropriate object
 		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
-		// attach object to the gripper
-		planning_scene_.robot_state.attached_collision_objects.clear();
-		moveit_msgs::AttachedCollisionObject attached_object;
-		attached_object.link_name = "link7";//"gripper_tcp";
-		attached_object.object = current_object;
-		attached_object.object.operation = attached_object.object.ADD;
-		planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
+		//! This function transforms the goal pose given for the gripper TCP frme in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
+		tf::TransformListener tf_listener;
+		tf::StampedTransform transform_GPTCP_2_LWRTCP;
+		tf::Transform tf_tmp,tf_tmp2;
 
-		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_GRABBED;
+		ros::Time now = ros::Time(0);
+		//! TODO remove debug_tf
+		std::string debug_tf;
 
-		ROS_INFO("Attaching object to the gripper finished.");
+		//! Transformation from GP TCP frame to LWR TCP frame
+		try{
+			if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(1.0),ros::Duration(3.0),&debug_tf))
+				tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,transform_GPTCP_2_LWRTCP);
+			else{
+				msg_error("Could not get LWRTCP GPTCP tf.");
+			}
+		}
+		catch(...){
+			ROS_ERROR("Listening to transform was not successful");
+		}
+		for (unsigned ii=0;ii<current_object.primitive_poses.size();ii++)
+		{
+
+			if (pose_check_isnan(&am_collision_objects_[obj_index].collision_object_.primitive_poses[ii]))
+			{
+				msg_warn("Pose information with NaN detected.");
+				any_nan = true;
+				break;
+			}
+
+			tf_tmp.setOrigin(tf::Vector3(current_object.primitive_poses[ii].position.x,
+					current_object.primitive_poses[ii].position.y,
+					current_object.primitive_poses[ii].position.z));
+			tf_tmp.setRotation(tf::Quaternion(current_object.primitive_poses[ii].orientation.x,
+					current_object.primitive_poses[ii].orientation.y,
+					current_object.primitive_poses[ii].orientation.z,
+					current_object.primitive_poses[ii].orientation.w));
+
+			tf_tmp2.mult(tf_tmp,transform_GPTCP_2_LWRTCP);
+
+			current_object.primitive_poses[ii].position.x = tf_tmp2.getOrigin().getX();
+			current_object.primitive_poses[ii].position.y = tf_tmp2.getOrigin().getY();
+			current_object.primitive_poses[ii].position.z = tf_tmp2.getOrigin().getZ();
+
+			current_object.primitive_poses[ii].orientation.x = tf_tmp2.getRotation().getX();
+			current_object.primitive_poses[ii].orientation.y = tf_tmp2.getRotation().getY();
+			current_object.primitive_poses[ii].orientation.z = tf_tmp2.getRotation().getZ();
+			current_object.primitive_poses[ii].orientation.w = tf_tmp2.getRotation().getW();
+
+		}
+
+		if (!any_nan)
+		{
+			// attach object to the gripper
+			planning_scene_.robot_state.attached_collision_objects.clear();
+			moveit_msgs::AttachedCollisionObject attached_object;
+			attached_object.link_name = "link7";//"gripper_tcp";
+			attached_object.object = current_object;
+			attached_object.object.operation = attached_object.object.ADD;
+			planning_scene_.robot_state.attached_collision_objects.push_back(attached_object);
+
+			am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_GRABBED;
+
+			ROS_INFO("Attaching object to the gripper finished.");
+			// Debugging
+			planning_scene_diff_publisher_.publish(planning_scene_);
+		}
 	}
 	else
 		ROS_WARN("Object cannot be attached to the gripper. It must be created first.");
@@ -3032,7 +3117,7 @@ void MotionPlanning::object_manager_detachObject(int obj_index)
 	if (object_manager_objectExists(obj_index))
 	{
 		ROS_INFO("Detaching object from the gripper...");
-
+		bool any_nan=false;
 
 		if(!am_collision_objects_[obj_index].obj_state_.obj_index == obj_index)
 		{
@@ -3040,6 +3125,18 @@ void MotionPlanning::object_manager_detachObject(int obj_index)
 			return;
 		}
 
+		for (unsigned ii=0;ii<am_collision_objects_[obj_index].collision_object_.primitive_poses.size();ii++)
+		{
+			if (pose_check_isnan(&am_collision_objects_[obj_index].collision_object_.primitive_poses[ii]))
+			{
+				msg_warn("Pose information with NaN detected.");
+				any_nan = true;
+				break;
+			}
+		}
+
+		if (!any_nan)
+		{
 		// get the appropriate object
 		moveit_msgs::CollisionObject current_object = am_collision_objects_[obj_index].collision_object_;
 
@@ -3052,6 +3149,7 @@ void MotionPlanning::object_manager_detachObject(int obj_index)
 
 		am_collision_objects_[obj_index].obj_state_.obj_state = OBJ_STATE_NOT_IN_WORLD;
 		ROS_INFO("Detaching object from the gripper finished.");
+		}
 	}
 	else
 		ROS_WARN("Object cannot be detached from the gripper. It must be created first.");
@@ -3244,5 +3342,23 @@ sensor_msgs::JointState MotionPlanning::getCurrentJointState()
 	return currentState;
 }
 
-
+bool MotionPlanning::pose_check_isnan(geometry_msgs::Pose* msg_ptr)
+{
+	if (isnan(msg_ptr->position.x))
+		return true;
+	else if (isnan(msg_ptr->position.y))
+		return true;
+	else if (isnan(msg_ptr->position.z))
+		return true;
+	else if (isnan(msg_ptr->orientation.x))
+		return true;
+	else if (isnan(msg_ptr->orientation.y))
+		return true;
+	else if (isnan(msg_ptr->orientation.z))
+		return true;
+	else if (isnan(msg_ptr->orientation.w))
+		return true;
+	else
+		return false;
+}
 

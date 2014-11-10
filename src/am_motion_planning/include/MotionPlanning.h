@@ -323,7 +323,7 @@ protected:
 	boost::thread moveToTarget;
 	uint8_t mtt_;
 
-
+	bool pose_check_isnan(geometry_msgs::Pose* msg_ptr);
 
 };
 
