@@ -15,7 +15,9 @@ T5MotionPlanning::T5MotionPlanning()
 {
 	target_zone_radius_ = 0.0;
 	tolerance_ = 0.0;
-	tolerance_7DoF_ = 0.01;
+	tolerance_7DoF_position_ = 0.1;
+	factor_tolerance_7DoF_position_=0.7;//changes tolerance_7DoF_position_based on radius of target_zone
+	tolerance_7DoF_orientation_ = 0.01;
 	tolerance_height_ = 0.2;
 	height_over_belt_ = 0.2;
 	height_over_belt_tuning_ = 0.0;//only for gripping position
@@ -524,7 +526,9 @@ bool T6MotionPlanning::T6_moveToTarget()
 	goal_pose_GPTCP_.position.y = target_distance_ * tmp_vec_target_schlitten_norm[1] + target_pos.y;
 
 
-
+#warning SPEED PERCENTAGE IN MOTIONPLANNING VERAENDERT
+	double std_speed_percentage = speed_percentage_;
+	speed_percentage_ = std_moving_speed;
 	if(!T6_moveSchlitten())
 	{
 		msg_error("Didn't move to schlitten target position!");
@@ -538,8 +542,8 @@ bool T6MotionPlanning::T6_moveToTarget()
 	group = group_7DOF;
 	joint_model_group_ = joint_model_group_7DOF_;
 	ROS_INFO_STREAM(group->getPoseReferenceFrame());
-	group->setGoalPositionTolerance(tolerance_7DoF_);
-	group->setGoalOrientationTolerance(tolerance_7DoF_);
+	group->setGoalPositionTolerance(tolerance_7DoF_position_);
+	group->setGoalOrientationTolerance(tolerance_7DoF_orientation_);
 	// in case of unsuccessful planning,
 	// the planning target is set as a joint state goal via the searchIKSolution srv
 	max_setTarget_attempts_ = 7;
@@ -549,6 +553,8 @@ bool T6MotionPlanning::T6_moveToTarget()
 	goal_pose_GPTCP_ = save_goal_pose_GPTCP_;
 	// hier transform to lwr base, da moveit "nicht weiss" wie basis verschoben wurde
 	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
+#warning SPEED PERCENTAGE IN MOTIONPLANNING VERAENDERT
+	speed_percentage_ = std_speed_percentage*0.5;
 	if (!T6_MoveIt_getSolution())
 	{
 		msg_error("No MoveIT Solution found.");
@@ -1520,6 +1526,8 @@ void T6MotionPlanning::T6_getParam()
 	ros::param::get("/target_zone_0_x_", target_pos.x);
 	ros::param::get("/target_zone_0_y_", target_pos.y);
 	ros::param::get("/target_zone_0_radius_", target_zone_radius_);
+
+	tolerance_7DoF_position_ = factor_tolerance_7DoF_position_*target_zone_radius_;
 	//manual
 	target_pos.z = 0;
 

@@ -124,7 +124,10 @@ private:
 	//! target zone tolerance
 	double tolerance_;
 	//! tolerance for GP_TCP for TargetZone
-	double tolerance_7DoF_;
+	double tolerance_7DoF_position_;
+	//! changes tolerance_7DoF_position_based on radius of target_zone
+	double factor_tolerance_7DoF_position_;
+	double tolerance_7DoF_orientation_;
 	//! height over target zone
 	double tolerance_height_;
 	//! security margin for target area
