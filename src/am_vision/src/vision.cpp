@@ -1677,10 +1677,8 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 		double tilt_zero = mpt->get_tilt();
 
 		// Initialize pan + tilt values
-		double pan[9] = { 0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380,
-				0.380, 0.000 };
-		double tilt[9] = { 1.250, 0.800, 0.700, 0.800, 0.800, 0.300, 0.300,
-				0.300, 0.340 };
+		double pan[9] = { 0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380, 0.380, 0.000 };
+		double tilt[9] = { 1.250, 0.800, 0.700, 0.800, 0.800, 0.300, 0.300,	0.300, 0.340 };
 
 		ROS_INFO("Scanning the scene with pan tilt cam...");
 		while (panTiltCounter < maxPanTiltCounter) {
@@ -3983,10 +3981,64 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
 
 	if (!isZThresholdSetT6) {
+
+		double droppoint_x = 0;
+		double droppoint_y = 0;
+		double droppoint_z = 0;
+
+		// Get the dropping point
+		std::string key;
+		if (nh_.searchParam("conveyorbelt_drop_center_point_x_", key)) {
+			nh_.getParam(key, droppoint_x);
+		} else {
+			ROS_WARN("search for parameter failed!");
+		}
+
+		if (nh_.searchParam("conveyorbelt_drop_center_point_y_", key)) {
+			nh_.getParam(key, droppoint_y);
+		} else {
+			ROS_WARN("search for parameter failed!");
+		}
+
+		if (nh_.searchParam("conveyorbelt_drop_center_point_z_", key)) {
+			nh_.getParam(key, droppoint_z);
+		} else {
+			ROS_WARN("search for parameter failed!");
+		}
+
+		//drop point respect to camera
+		droppoint_x = droppoint_x - 0.92;
+		droppoint_y = droppoint_y - 0.92;
+		droppoint_z = droppoint_z - 1.2;
+
+		std::cout << "direction of droppoint x " << droppoint_x << std::endl;
+		std::cout << "direction of droppoint y " << droppoint_y << std::endl;
+		std::cout << "direction of droppoint z " << droppoint_z << std::endl;
+
+		//angles
+		double pan_droppoint;
+		double tilt_droppoint;
+
+		tilt_droppoint = atan2((-droppoint_z),(sqrt((droppoint_x*droppoint_x)+(droppoint_y*droppoint_y))));
+		if(tilt_droppoint<0.3)
+			tilt_droppoint=0.3;
+		if(tilt_droppoint>1.25)
+			tilt_droppoint=1.25;
+
+		std::cout << "tilt droppoint " << tilt_droppoint << std::endl;
+
+		pan_droppoint = atan2((-droppoint_y),(-droppoint_x)) - M_PI_4;
+		if(pan_droppoint<-0.38)
+			pan_droppoint=-0.38;
+		if(pan_droppoint>0.38)
+			pan_droppoint=0.38;
+
+		std::cout << "pan droppoint " << pan_droppoint << std::endl;
+
 		ROS_INFO("Moving the pan-tilt unit");
 		MovePantilt* mpt;
 		mpt = mpt->get_instance();
-		mpt->move_pan_tilt_abs(-0.300, 0.800);
+		mpt->move_pan_tilt_abs(pan_droppoint, tilt_droppoint);
 
 		ros::Duration(0.5).sleep();
 		ROS_INFO("pan-tilt unit ready");
