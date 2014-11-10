@@ -82,6 +82,9 @@ public:
 	//!all objects finished
 	bool all_finished();
 
+	//!should statemachine restart
+	bool should_restart();
+
 	//!reset all variables
 	void reset();
 

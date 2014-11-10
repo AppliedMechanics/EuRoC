@@ -175,6 +175,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 	}
 	ROS_WARN("Move to object finished");
 
+	ros::Duration(1).sleep();
 
 	return true;
 

@@ -76,6 +76,8 @@ public:
 	//!true if simulation client is running
 	bool sim_running_;
 
+	bool finished();
+
 private:
 	//!Static TF Broadcaster
 	StaticTFBroadcaster* broadcaster_;

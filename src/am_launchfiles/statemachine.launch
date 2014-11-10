@@ -47,7 +47,7 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 	<node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" />
 
 <!-- Octomap Server -->
-<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" respawn="true" >
+<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" respawn="false" >
     <param name="resolution" value="0.01" />
 
     <!-- fixed map frame (set to 'map' if SLAM or localization running!) -->

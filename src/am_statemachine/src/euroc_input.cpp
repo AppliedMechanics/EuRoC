@@ -937,18 +937,25 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 	if(task_nr_==6)
 	{
 		//build a queue with always the same object and target zone
+		am_msgs::Object obj=objects_[0];
+		objects_.clear();
+
 		obj_queue_t temp_obj;
 		obj_queue_.clear();
-		for(uint16_t ii=0;ii<nr_objects_;ii++)
+		for(uint16_t ii=0;ii<conv_belt_.n_objects;ii++)
 		{
+			objects_.push_back(obj);
+
 			temp_obj.action=EIN_PLACE;
-			temp_obj.data=&objects_[0];
-			temp_obj.obj_idx=0;
+			temp_obj.data=&objects_[ii];
+			temp_obj.obj_idx=ii;
 			temp_obj.target_zone_idx=0;
 			temp_obj.target_zone_occupied=0;
 
 			obj_queue_.push_back(temp_obj);
 		}
+
+		obj_state_.resize(conv_belt_.n_objects,EIN_OBJ_INIT);
 	}
 	else if(task_nr_==5)
 	{
@@ -2183,6 +2190,21 @@ bool EurocInput::all_finished()
 	}
 
 	if(cnt==nr_objects_)
+		return true;
+	else
+		return false;
+}
+
+bool EurocInput::should_restart()
+{
+	uint16_t cnt=0;
+	for(uint16_t ii=0; ii<nr_objects_; ii++)
+	{
+		if(obj_state_[ii]==EIN_OBJ_FINISHED)
+			cnt++;
+	}
+
+	if(cnt>=2 || all_finished())
 		return true;
 	else
 		return false;

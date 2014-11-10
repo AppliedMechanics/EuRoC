@@ -484,6 +484,8 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 			msg.header.stamp = ros::Time::now();
 			pub_3.publish(msg);
 			ROS_INFO("Octomap updated");
+			ros::spinOnce();
+			ros::Duration(2).sleep();
 #endif
 		}
 

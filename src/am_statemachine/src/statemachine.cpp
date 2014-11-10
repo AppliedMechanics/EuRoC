@@ -219,6 +219,16 @@ int Statemachine::init_sm()
 	return 0;
 }
 
+bool Statemachine::finished()
+{
+	double t_act=(double)ros::Time::now().toSec();
+
+	if(ein_->should_restart() || (t_act>ein_->get_time_limit()-300))
+		return true;
+	else
+		return false;
+}
+
 std::string Statemachine::get_state_name(fsm::fsm_state_t parstate)
 {
 	switch(parstate.sub.one)
@@ -603,6 +613,7 @@ void Statemachine::scheduler_schedule()
 					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
+					temp_state.sub.two=fsm::CHECK_OBJECT_GRIPPED;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::MOVE_TO_TARGET_ZONE_T6;  	state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::PLACE_OBJECT;
 					temp_state.sub.three=fsm::GRIPPER_RELEASE;			state_queue.push_back(temp_state);
@@ -1670,14 +1681,22 @@ void Statemachine::scheduler_error_check_object_gripped()
 		break;
 
 	case fsm::OBJECT_LOST:
-		scheduler_next();
-		scheduler_grasp_object(EXECUTE_NOW);
+		if(active_task_number_==6)
+		{
+			state_queue.erase(state_queue.begin());
+			scheduler_next();
+		}
+		else
+		{
+			scheduler_next();
+			scheduler_grasp_object(EXECUTE_NOW);
 
-		check_object_gripped_state_ = OPEN;
-		msg_warn("Statemachine-Errorhandler: Object lost detected... retrying gripping routine");
+			check_object_gripped_state_ = OPEN;
+			msg_warn("Statemachine-Errorhandler: Object lost detected... retrying gripping routine");
 
-		scheduler_printqueue(); //print queue to console for debugging purposes
-		scheduler_next();
+			scheduler_printqueue(); //print queue to console for debugging purposes
+			scheduler_next();
+		}
 		break;
 
 	case fsm::SKIP_OBJECT:
@@ -2843,6 +2862,8 @@ int Statemachine::new_object_t6()
 	else if(new_object_t6_state_==FINISHED)
 	{
 		ROS_INFO("new_object_t6() called: FINISHED");
+
+		ein_->set_active_object_finished();
 
 		//==============================================
 		scheduler_next();
@@ -5599,7 +5620,10 @@ int Statemachine::homing()
 
 		goal_queue[0].planning_algorithm = planning_mode_.homing;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
+		if(active_task_number_==6)
+			goal_queue[0].speed_percentage = fast_moving_speed*(1-speed_mod_);
+		else
+			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;
 
 
@@ -5877,6 +5901,11 @@ void Statemachine::publish_obj_state(uint16_t state)
 		msg_error("Unknown object state !!!");
 		break;
 	}
+
+	ROS_INFO("Statemachine: object position=[ %3.2f %3.2f %3.2f]", obj_state_msg_.obj_pose.position.x,
+			 obj_state_msg_.obj_pose.position.y, obj_state_msg_.obj_pose.position.z);
+	ROS_INFO("Statemachine: object orientation=[ %3.2f %3.2f %3.2f %3.2f]",obj_state_msg_.obj_pose.orientation.x,
+			obj_state_msg_.obj_pose.orientation.y,obj_state_msg_.obj_pose.orientation.z,obj_state_msg_.obj_pose.orientation.w);
 
 	obj_state_.publish(obj_state_msg_);
 }

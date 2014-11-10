@@ -1,11 +1,14 @@
 #include "statemachine.hpp"
 #include <signal.h>
+#include <stdlib.h>
 
 //Variables
 Statemachine* sm; 	//global pointer to statemachine object
 
 int main(int argc, char **argv)
 {
+	//setenv("RELAUNCH","TRUE",true);
+
 	//init this node in the ros-system
 	ROS_INFO("Main: initializing the node statemachine...");
 	try
@@ -93,8 +96,15 @@ int main(int argc, char **argv)
 	}
 	ROS_INFO("Main: while-loop finished.");
 
+	if(sm->finished())
+	{
+		ROS_INFO("clearing RELAUNCH environment variable");
+		unsetenv("RELAUNCH");
+	}
+
 	//quit properly
 	exitstatemachine();
+
 
 //	ROS_INFO("Press Enter to exit Statemachine");
 //	int something=0;
