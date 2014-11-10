@@ -13,7 +13,7 @@
 #include <pcl/visualization/cloud_viewer.h>
 
 //To send point clouds to ros
-//#define SEND_POINT_CLOUDS
+#define SEND_POINT_CLOUDS
 
 
 //# define LOG_DEBUG
