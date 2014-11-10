@@ -3,7 +3,7 @@
 #include <StaticTFBroadcaster.h>
 #include <explore_poses.h>
 
-#undef FORCE_STOP_SIM//run only one task and then quit
+#define FORCE_STOP_SIM//run only one task and then quit
 
 Statemachine::Statemachine():
 scenes_(1),
@@ -4945,7 +4945,7 @@ int Statemachine::move_to_object()
 		move_to_object_state_=OPEN;
 		move_to_object_counter_=0;
 	}
-	else if(move_to_object_state_==FINISHEDWITHERROR)
+	else if((move_to_object_state_==FINISHEDWITHERROR))// || (remove_object_state_==FINISHEDWITHERROR))
 	{
 		ROS_INFO("move_to_object() called: FINISHEDWITHERROR");
 		state_.sub.event_three = motion_planning_result_.error_reason;

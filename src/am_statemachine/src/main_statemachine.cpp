@@ -93,14 +93,12 @@ int main(int argc, char **argv)
 	}
 	ROS_INFO("Main: while-loop finished.");
 
-#warning "INCLUDE A FINAL SCAN AT THE END TO CHECK WHETHER ALL OBJECTS ARE PLACED CORRECTLY"
-
 	//quit properly
 	exitstatemachine();
 
-	ROS_INFO("Press Enter to exit Statemachine");
-	int something=0;
-	std::cin>>something;
+//	ROS_INFO("Press Enter to exit Statemachine");
+//	int something=0;
+//	std::cin>>something;
 
 	return 0;
 }
