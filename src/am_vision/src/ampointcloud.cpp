@@ -191,9 +191,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::filterPointCloudByColor(pcl::
 			int value = threshold.data[threshold.channels()*(threshold.cols*rows+cols)+0];
 			if(value!=255)
 			{
-				resultCloud->at(cols,rows).x = std::numeric_limits<float>::quiet_NaN();
-				resultCloud->at(cols,rows).y = std::numeric_limits<float>::quiet_NaN();
-				resultCloud->at(cols,rows).z = std::numeric_limits<float>::quiet_NaN();
+				resultCloud->at(cols,rows).x = 0;
+				resultCloud->at(cols,rows).y = 0;
+				resultCloud->at(cols,rows).z = 0;
 			}
 			else
 			{
@@ -701,18 +701,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(	pcl::PointCloud<
 
 			if(	cloud->at(j,i).x == 0 && cloud->at(j,i).y == 0 && cloud->at(j,i).z == 0)
 			{
-				worldPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
-				worldPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
-				worldPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).x = 0;
+				worldPointCloud->at(j,i).y = 0;
+				worldPointCloud->at(j,i).z = 0;
 			}
 			else
 			{
 				int value = threshold.data[threshold.channels()*(cloud->width * i + j) + 0];
 				if (value != 255)
 				{
-					worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
-					worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
-					worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).x =	0;
+					worldPointCloud->at(j, i).y =	0;
+					worldPointCloud->at(j, i).z =	0;
 				}
 				else
 				{
@@ -734,9 +734,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(	pcl::PointCloud<
 					}
 					else
 					{
-						worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
-						worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
-						worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).x =	0;
+						worldPointCloud->at(j, i).y =	0;
+						worldPointCloud->at(j, i).z =	0;
 					}
 
 				}

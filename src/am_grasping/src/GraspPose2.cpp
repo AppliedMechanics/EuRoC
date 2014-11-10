@@ -3036,7 +3036,7 @@ void GraspPose2::compute_grasp_posesT5_()
 		GPTCP_target_place_pose.push_back(tmp_GPTCP_pose);
 
 		tmp2_GPTCP_pose=tmp_GPTCP_pose;
-		tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
+		//tmp2_GPTCP_pose.position.z+=gripper_finger_height_;
 		GPTCP_target_safe_pose.push_back(tmp2_GPTCP_pose);
 		//remember pose for push pose calculation
 		target_safe_pose=tmp2_GPTCP_pose;

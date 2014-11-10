@@ -36,6 +36,7 @@
 #include <am_msgs/CheckPoses.h>
 #include <am_msgs/ObjState.h>
 #include <am_msgs/CheckZones.h>
+#include <am_msgs/RemoveObject.h>
 
 //am includes
 #include <utils.hpp>
@@ -170,6 +171,12 @@ private:
 	//!client to check poses service from motion planning
 	ros::ServiceClient check_poses_client_;
 	am_msgs::CheckPoses check_poses_srv_;
+	uint8_t remove_object_state_;
+
+	//!client to remove object from octomap (in vision node)
+	ros::ServiceClient remove_object_client_;
+	am_msgs::RemoveObject remove_object_srv_;
+	void remove_object_cb();
 
 	//!client to remove area in octomap
 	ros::ServiceClient rm_grasping_area_collision_client_;

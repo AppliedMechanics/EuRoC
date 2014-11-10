@@ -77,6 +77,7 @@ add_service_files(
   DetachObject.srv
   CheckZones.srv
   TactilePlace.srv
+  RemoveObject.srv
 )
 
 ## Generate actions in the 'action' folder

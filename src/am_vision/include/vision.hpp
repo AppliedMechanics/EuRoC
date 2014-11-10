@@ -12,6 +12,7 @@
 #include <am_msgs/TakeImage.h>
 #include <am_msgs/CheckZones.h>
 #include <am_msgs/ObjState.h>
+#include <am_msgs/RemoveObject.h>
 #include <std_srvs/Empty.h>
 #include <shape_generator.cpp>
 
@@ -217,7 +218,6 @@ public:
 	void on_camera_tcp_depth_CB(const sensor_msgs::Image &image);
 	bool on_take_image_CB(am_msgs::TakeImage::Request &, am_msgs::TakeImage::Response &);
 	bool on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res);
-	void get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg);
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creater(bool);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input,bool box, bool cylinder);
@@ -243,6 +243,10 @@ public:
 	ros::ServiceServer check_zones_service_;
 	ros::ServiceClient reset_octomap_client_;
 	std_srvs::Empty reset_octomap_srv_;
+
+	//remove object from octomap service
+	ros::ServiceServer remove_object_service_;
+	bool remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::RemoveObject::Response &res);
 
 	bool failed;
 	//alignemt was successfull

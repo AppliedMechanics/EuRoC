@@ -75,7 +75,8 @@ tactile_place_t5_counter_(0),
 push_object_t5_state_(OPEN),
 push_object_t5_counter_(0),
 reset_state_(OPEN),
-reset_counter_(0)
+reset_counter_(0),
+remove_object_state_(OPEN)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -180,6 +181,7 @@ int Statemachine::init_sm()
 	state_observer_client_ = node_.serviceClient<am_msgs::ObjectPickedUp>("ObjectPickedUp_srv");
 	set_object_load_client_ = node_.serviceClient<euroc_c2_msgs::SetObjectLoad>(set_object_load_);
 	next_object_client_ = node_.serviceClient<euroc_c2_msgs::RequestNextObject>(next_object_);
+	remove_object_client_ = node_.serviceClient<am_msgs::RemoveObject>("RemoveObjectService");
 
 	//check_poses_client_ = node_.serviceClient<am_msgs::CheckPoses>("CheckPoses_srv");
 	rm_grasping_area_collision_client_ = node_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
@@ -4633,7 +4635,6 @@ int Statemachine::move_to_object_safe()
 		if(cur_obj_gripped_==false)
 			publish_obj_state(OBJ_GRIPPING);
 
-		//publish object state for motion planning
 		if(cur_obj_gripped_==true)
 			publish_obj_state(OBJ_GRABED);
 
@@ -4836,25 +4837,60 @@ void Statemachine::move_to_object_vision_done(const actionlib::SimpleClientGoalS
 	}
 }
 
+void Statemachine::remove_object_cb()
+{
+	ROS_INFO("remove_object_cb() running");
+
+	if(remove_object_client_.exists())
+	{
+		if(remove_object_client_.call(remove_object_srv_))
+		{
+			remove_object_state_=FINISHED;
+		}
+		else
+		{
+			msg_error("Error. call of remove_object_client_ failed");
+			remove_object_state_=FINISHEDWITHERROR;
+			state_.sub.event_two=gripper_control_srv_.response.error_reason;
+		}
+	}
+	else
+	{
+		msg_error("Error. remove_object_client_ is not available");
+		remove_object_state_=FINISHEDWITHERROR;
+		state_.sub.event_two=fsm::SIM_SRV_NA;
+	}
+
+	ROS_INFO("remove_object_cb() finished");
+}
 int Statemachine::move_to_object()
 {
-	if(move_to_object_state_==OPEN)
+	if((move_to_object_state_==OPEN) && (remove_object_state_==OPEN))
+	{
+		remove_object_srv_.request.obj_index=ein_->get_active_object_idx();
+		remove_object_srv_.request.obj_state=OBJ_GRIPPING;
+
+		remove_object_state_=RUNNING;
+		lsc_=boost::thread(&Statemachine::remove_object_cb,this);
+	}
+	else if((move_to_object_state_==OPEN) && (remove_object_state_==FINISHED))
 	{
 		ROS_INFO("move_to_object() called: OPEN");
 
-#warning remove area from octomap
-		if (!skip_vision_){
-			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
-			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
-			rm_grasping_area_collision_srv_.request.max.z = 1.0;
-			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
-			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
-			rm_grasping_area_collision_srv_.request.min.z = 0.0;
-			try{
-				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-					msg_warn("Grasping area clearing failed.");
-			}catch (...){msg_error("Grasping area clearing failed.");}
-		}
+		lsc_.detach();
+//#warning remove area from octomap
+//		if (!skip_vision_){
+//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.06;
+//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.06;
+//			rm_grasping_area_collision_srv_.request.max.z = 1.0;
+//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.06;
+//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.06;
+//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+//			try{
+//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+//					msg_warn("Grasping area clearing failed.");
+//			}catch (...){msg_error("Grasping area clearing failed.");}
+//		}
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;
@@ -4880,7 +4916,7 @@ int Statemachine::move_to_object()
 				motionClient::SimpleFeedbackCallback()//boost::bind(&Statemachine::move_to_object_feedback,this,_1));
 		);
 	}
-	else if(move_to_object_state_==FINISHED)
+	else if((move_to_object_state_==FINISHED) && (remove_object_state_==FINISHED))
 	{
 		ROS_INFO("move_to_object() called: FINISHED");
 
@@ -4905,6 +4941,7 @@ int Statemachine::move_to_object()
 		scheduler_next();
 		//==============================================
 		//reset state
+		remove_object_state_=OPEN;
 		move_to_object_state_=OPEN;
 		move_to_object_counter_=0;
 	}
@@ -5953,6 +5990,7 @@ int Statemachine::reset()
 		tactile_place_t5_counter_=0;
 		push_object_t5_state_=OPEN;
 		push_object_t5_counter_=0;
+		remove_object_state_=OPEN;
 
 		ein_->reset();
 		lsc_.detach();
@@ -5961,7 +5999,7 @@ int Statemachine::reset()
 		//send reset message:
 		std_msgs::Bool rst;
 		rst.data=true;
-		reset_pub_.publish(rst);
+		//reset_pub_.publish(rst);
 
 		delete vision_action_client_;
 		vision_action_client_=0x0;

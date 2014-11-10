@@ -86,8 +86,8 @@ Vision::Vision() :
 			&Vision::on_camera_tcp_depth_CB, this);
 
 	// Object State
-	obj_state_sub_ = nh_.subscribe("obj_state", 1000,
-			&Vision::get_object_state_CB, this);
+//	obj_state_sub_ = nh_.subscribe("obj_state", 1000,
+//			&Vision::get_object_state_CB, this);
 
 	// Take Image Service
 	take_img_service_ = nh_.advertiseService("TakeImageService",
@@ -98,6 +98,8 @@ Vision::Vision() :
 	// Reset Octomap Service
 	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>(
 			"/octomap_server/reset");
+
+	remove_object_service_ = nh_.advertiseService("RemoveObjectService", &Vision::remove_object_cb, this);
 
 	// Show PointCloud in rviz
 	pub = nh_.advertise<sensor_msgs::PointCloud2>("PointCloud_1", 1);
@@ -289,7 +291,9 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req,
  * to update the point cloud with to adapt to the new environment (that object is going to be placed somewhere else)
  * after updating the point cloud, the Octomap also updates itself with the new condition.
  */
-void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
+//void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
+bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::RemoveObject::Response &res)
+{
 	am_pointcloud *scenePointCloud;
 	pcl::VoxelGrid<pcl::PointXYZ> vg;
 
@@ -297,7 +301,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 
 	// Message coming from the state machine, when the robots tries to grab the object.
 	// At this point, we are safe to remove that object from the point cloud.
-	if (msg_in->obj_state == OBJ_GRIPPING) {
+	if (req.obj_state == OBJ_GRIPPING) {
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr tempFilledPC;
 		tempFilledPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -313,9 +317,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 		tempPC = am_pointcloud::removeShape(finalPC, tempFilledPC);
 		if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 		{
-			vision_server_.setPreempted(vision_result_, "cloud is empty");
-			vision_result_.error_reason = fsm::SKIP_OBJECT;
-			return;
+			return false;
 		}
 		finalPC->clear();
 		finalPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -339,9 +341,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalRedPC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalRedPC->clear();
 			finalRedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -358,9 +358,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalGreenPC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalGreenPC->clear();
 			finalGreenPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -378,9 +376,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalBluePC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalBluePC->clear();
 			finalBluePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -397,9 +393,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalCyanPC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalCyanPC->clear();
 			finalCyanPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -417,9 +411,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalMagentaPC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalMagentaPC->clear();
 			finalMagentaPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -437,9 +429,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 			tempPC = am_pointcloud::removeShape(finalYellowPC, tempFilledPC);
 			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
 			{
-				vision_server_.setPreempted(vision_result_, "cloud is empty");
-				vision_result_.error_reason = fsm::SKIP_OBJECT;
-				return;
+				return false;
 			}
 			finalYellowPC->clear();
 			finalYellowPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -461,7 +451,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
-		/*if (!emptyCloudCritical)
+		if (!emptyCloudCritical)
 		{
 			try {
 				if (ros::service::waitForService("/octomap_server/reset",
@@ -491,7 +481,7 @@ void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in) {
 #endif
 		}
 
-		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}*/
+		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
 	}
 
 }
