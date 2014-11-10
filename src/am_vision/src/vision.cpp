@@ -742,7 +742,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 	std::vector<int> pointIDs;
 	std::vector<float> pointRadiusSquaredDistance;
 
-	double radius = leaf_size * 0.5;
+	double radius = leaf_size * 0.8;
 	double minz;
 	minz = object_input->points[0].z;
 	for (size_t f = 0; f < (object_input->points.size()); f++) {
@@ -1708,8 +1708,10 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 
 				// START TASK 5 PREPARATION
 				if (task_nr == 5) {
+					leaf_size = 0.0015;
 					is_task5 = true;
 					ROS_INFO("now working on task: %d", task_nr);
+					std::cout << "Task 5 -> leaf size is now " << leaf_size << std::endl;
 					fake_puzzle_fixture_param();
 				} // END TASK 5 PREPARATION
 
@@ -2782,9 +2784,20 @@ Eigen::Matrix4f Vision::align_PointClouds(
 	align.setInputTarget(scene_input);
 	align.setTargetFeatures(scene_features);
 	align.setMaximumIterations(iters); // Number of RANSAC iterations
+
+
+	if (is_task5) {
+		align.setNumberOfSamples(4); // Number of points to sample for generating/prerejecting a pose (5)
+		align.setCorrespondenceRandomness(4); // Number of nearest features to use (3)
+		align.setSimilarityThreshold(0.7f); // Polygonal edge length similarity threshold (0.50f)
+		} //if it task 5
+
+	else {
+
 	align.setNumberOfSamples(4); // Number of points to sample for generating/prerejecting a pose (5)
 	align.setCorrespondenceRandomness(2); // Number of nearest features to use (3)
 	align.setSimilarityThreshold(0.65f); // Polygonal edge length similarity threshold (0.50f)
+	}
 
 	if (box) // Cube
 	{
@@ -2807,6 +2820,26 @@ Eigen::Matrix4f Vision::align_PointClouds(
 
 	else // Cylinder & Handle
 	{
+		if (is_task5) {
+			align.setMaxCorrespondenceDistance(0.004); // Inlier threshold other shapes
+			if (_currentGoal->precision == 0) {
+				std::cout << "set High precision for InlierFraction..."
+						<< std::endl;
+				align.setInlierFraction(0.30f); // Required inlier fraction for accepting a pose hypothesis
+			}
+			if (_currentGoal->precision == 1) {
+				std::cout << "set Medium precision for InlierFraction..."
+						<< std::endl;
+				align.setInlierFraction(0.20f); // Required inlier fraction for accepting a pose hypothesis
+			}
+			if (_currentGoal->precision == 2) {
+				std::cout << "set low precision for InlierFraction..." << std::endl;
+				align.setInlierFraction(0.15f); // Required inlier fraction for accepting a pose hypothesis
+			}
+			} //if it task 5
+
+			else
+			{
 		align.setMaxCorrespondenceDistance(0.004); // Inlier threshold other shapes
 		if (_currentGoal->precision == 0) {
 			std::cout << "set High precision for InlierFraction..."
@@ -2822,6 +2855,7 @@ Eigen::Matrix4f Vision::align_PointClouds(
 			std::cout << "set low precision for InlierFraction..." << std::endl;
 			align.setInlierFraction(0.15f); // Required inlier fraction for accepting a pose hypothesis
 		}
+			}
 	}
 
 	Eigen::Matrix4f transform;
