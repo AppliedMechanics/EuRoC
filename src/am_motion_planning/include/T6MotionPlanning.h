@@ -35,6 +35,7 @@ private:
 	bool T6_MoveIt_getSolution_2DOF();
 	bool T6_moveSchlitten();
 	bool T6_moveToTarget();
+	bool T6_MoveIt_homing();
 
 	void T6_initializeConveyorBelt();
 	bool T6_open_gripper();
@@ -121,8 +122,6 @@ private:
 	double winkel_yaw;
 	//!	radius of targetzone
 	double target_zone_radius_;
-	//! target zone tolerance
-	double tolerance_;
 	//! tolerance for GP_TCP for TargetZone
 	double tolerance_7DoF_position_;
 	//! changes tolerance_7DoF_position_based on radius of target_zone

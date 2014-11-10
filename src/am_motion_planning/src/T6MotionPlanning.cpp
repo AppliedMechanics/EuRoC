@@ -14,14 +14,13 @@ T6MotionPlanning::T6MotionPlanning():
 T5MotionPlanning::T5MotionPlanning()
 {
 	target_zone_radius_ = 0.0;
-	tolerance_ = 0.0;
 	tolerance_7DoF_position_ = 0.1;
 	factor_tolerance_7DoF_position_=0.7;//changes tolerance_7DoF_position_based on radius of target_zone
 	tolerance_7DoF_orientation_ = 0.01;
 	tolerance_height_ = 0.2;
 	height_over_belt_ = 0.2;
 	height_over_belt_tuning_ = 0.0;//only for gripping position
-	target_zone_radius_security_ = 0.8;
+	target_zone_radius_security_ = 0.6;//multipliert mit radius
 	target_distance_ = 0.7;
 	standard_distance_dcp_ = 0.2;
 	standard_distance_dcp_schlitten_ = 0.5;
@@ -86,15 +85,24 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		ROS_WARN("MOVE_T6: 2 DOF + EUROC");
 		ROS_WARN("Object number %d",n_objects_);
 
-		// STANDARD IK HOMING
-		ROS_INFO("HOMING 7DOF");
-		if (!euroc_setReset7DOF())
+
+		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
+		group = group_7DOF;
+		joint_model_group_ = joint_model_group_7DOF_;
+		if(!T6_MoveIt_homing())
 		{
-			msg_error("No IK Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-			return false;
+			msg_error("No Solution found for homing moveit.");
+			// STANDARD IK HOMING
+			ROS_INFO("HOMING 7DOF");
+			if (!euroc_setReset7DOF())
+			{
+				msg_error("No IK Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+				return false;
+			}
 		}
+
 
 		// calculate factor for homing
 		home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
@@ -496,6 +504,88 @@ bool T6MotionPlanning::T6_MoveIt_move_object_safe()
 	return true;
 }
 
+bool T6MotionPlanning::T6_MoveIt_homing()
+{
+
+
+	try
+	{
+		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+
+			//    Initiliazing MoveGroup
+			if(!T6_MoveIt_initializeMoveGroup())
+			{
+				return false;
+			}
+
+			bool setTarget_successful = false;
+			setTarget_successful = setPlanningTarget(HOMING);
+
+
+			if (setTarget_successful)
+			{
+				bool planning_successful = group->plan(motion_plan_);
+				if (planning_successful)
+				{
+					ROS_INFO("Planning successful!");
+					planned_path_.clear();
+
+					// for each configuration of the trajectory except from the start configuration
+					for (unsigned configIdx = 0; configIdx < motion_plan_.trajectory_.joint_trajectory.points.size(); ++configIdx)
+					{
+						// current configuration
+						euroc_c2_msgs::Configuration current_config;
+
+						// for each joint at the current configuration
+						for (unsigned jointIdx = 0; jointIdx < group->getActiveJoints().size(); ++ jointIdx)
+						{
+							current_config.q.push_back(motion_plan_.trajectory_.joint_trajectory.points[configIdx].positions[jointIdx]);
+						}
+						planned_path_.push_back(current_config);
+					}
+
+					current_configuration_ = planned_path_[0];
+
+					move_along_joint_path_srv_.request.joint_names = group->getActiveJoints();
+
+					move_along_joint_path_srv_.request.path.resize(planned_path_.size()-1);
+					for (unsigned idx = 0; idx < move_along_joint_path_srv_.request.path.size(); ++idx)
+					{
+						move_along_joint_path_srv_.request.path[idx] = planned_path_[idx+1];
+					}
+
+					// set the joint limits (velocities/accelerations) of the move along joint path service request
+					setMoveRequestJointLimits();
+					// set the TCP limits of the move along joint path service
+					setMoveRequestTCPLimits();
+
+					return true;
+				}
+			}
+
+		}
+		else      // if (!ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)))
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+			return false;
+		}
+
+	} // end try
+
+	catch(...)
+	{
+		msg_error("MotionPlanning::Error in MoveIt! Planning.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+	return true;
+
+
+
+}
+
+
 bool T6MotionPlanning::T6_moveToTarget()
 {
 	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
@@ -515,29 +605,33 @@ bool T6MotionPlanning::T6_moveToTarget()
 	tmp_vec_target_schlitten_norm.resize(2);
 
 
+
 	tmp_vec_target_schlitten[0] = tmp_schlitten[0] - target_pos.x;
 	tmp_vec_target_schlitten[1] = tmp_schlitten[1] - target_pos.y;
 
 	// normieren
 	double norm_vec_target_schlitten = sqrt(tmp_vec_target_schlitten[0] * tmp_vec_target_schlitten[0] + tmp_vec_target_schlitten[1] * tmp_vec_target_schlitten[1]);
-	tmp_vec_target_schlitten_norm[0] = tmp_vec_target_schlitten[0]/norm_vec_target_schlitten;
-	tmp_vec_target_schlitten_norm[1] = tmp_vec_target_schlitten[1]/norm_vec_target_schlitten;
-
-	goal_pose_GPTCP_.position.x = target_distance_ * tmp_vec_target_schlitten_norm[0] + target_pos.x;
-	goal_pose_GPTCP_.position.y = target_distance_ * tmp_vec_target_schlitten_norm[1] + target_pos.y;
-
-
-#warning SPEED PERCENTAGE IN MOTIONPLANNING VERAENDERT
-	double std_speed_percentage = speed_percentage_;
-	speed_percentage_ = std_moving_speed;
-	if(!T6_moveSchlitten())
+	if( !(norm_vec_target_schlitten < (target_zone_radius_ * factor_tolerance_7DoF_position_) + 0.5) || (norm_vec_target_schlitten < 0.1) )
 	{
-		msg_error("Didn't move to schlitten target position!");
-		return false;
+		tmp_vec_target_schlitten_norm[0] = tmp_vec_target_schlitten[0]/norm_vec_target_schlitten;
+		tmp_vec_target_schlitten_norm[1] = tmp_vec_target_schlitten[1]/norm_vec_target_schlitten;
+
+		goal_pose_GPTCP_.position.x = target_distance_ * tmp_vec_target_schlitten_norm[0] + target_pos.x;
+		goal_pose_GPTCP_.position.y = target_distance_ * tmp_vec_target_schlitten_norm[1] + target_pos.y;
+
+
+		if(!T6_moveSchlitten())
+		{
+			msg_error("Didn't move to schlitten target position!");
+			return false;
+		}
+
+		ROS_WARN("Move to Schlitten Target finished!");
 	}
-
-	ROS_WARN("Move to Schlitten Target finished!");
-
+	else
+	{
+		ROS_INFO_STREAM("Skip schlitten movement (norm = "<<norm_vec_target_schlitten<<" )");
+	}
 
 	ROS_WARN("MoveIT 7DOF Solution!");
 	group = group_7DOF;
@@ -554,8 +648,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 	goal_pose_GPTCP_ = save_goal_pose_GPTCP_;
 	// hier transform to lwr base, da moveit "nicht weiss" wie basis verschoben wurde
 	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
-#warning SPEED PERCENTAGE IN MOTIONPLANNING VERAENDERT
-	speed_percentage_ = std_speed_percentage*0.5;
+
 	if (!T6_MoveIt_getSolution())
 	{
 		msg_error("No MoveIT Solution found.");
@@ -1000,8 +1093,6 @@ bool T6MotionPlanning::T6_calcTarget()// --> statemachine
 	goal_target_pos.orientation.x = 1;
 	goal_target_pos.orientation.y = 0;
 	goal_target_pos.orientation.z = 0;
-
-	tolerance_ = target_zone_radius_ * target_zone_radius_security_;
 
 	return true;
 
