@@ -3380,7 +3380,8 @@ int Statemachine::locate_object_global()
 		ROS_INFO("locate_object_global() called: FINISHED");
 
 		//publish object state for motion planning
-		publish_obj_state(OBJ_LOCATED);
+		if(active_task_number_!=6)
+			publish_obj_state(OBJ_LOCATED);
 
 		//==============================================
 		scheduler_next();
@@ -5519,7 +5520,7 @@ int Statemachine::move_to_target_zone_t6()
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_target_zone;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = std_inter_steps;
-		goal_queue[0].speed_percentage = slow_moving_speed*(1-speed_mod_);
+		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;
 
 		move_to_target_zone_t6_state_=RUNNING;

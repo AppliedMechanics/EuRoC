@@ -200,7 +200,7 @@ static const uint32_t slow_moving_speed = 10; // in percent
 static const uint32_t std_moving_speed = 30; // in percent
 static const uint32_t fast_moving_speed = 60; // in percent
 static const uint32_t std_inter_steps = 10;//5
-static const double   wait_duration = 2; //wait duration in wait state
+static const double   wait_duration = 1; //wait duration in wait state
 
 static const double std_goal_joint_tolerance 		= 0.0001;
 static const double std_goal_position_tolerance 	= 0.0001;
