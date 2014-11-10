@@ -937,6 +937,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			// --> fast_cube_alignment(scene_input)
 			transformation = fast_cube_alignment(targetPC);
 
+			if (!isZThresholdSetT6) {
+				isZThresholdSetT6 = true;
+				zThreshold = transformation(2, 3) - 0.015;
+				std::cout << "New Z Threshold " << zThreshold << std::endl;
+			}
+
 			tac = ros::Time().now();
 			std::cout << "Total time: " << tac - tic << "seconds" << std::endl;
 
@@ -1621,7 +1627,7 @@ void Vision::set_z_threshold() {
 			double zValue = 0;
 			if (nh_.searchParam(objectShapeSize, key)) {
 				nh_.getParam(key, zValue);
-				zThreshold = zValue * 0.3;
+				zThreshold = (zValue * 0.2) + 0.0025;
 				isZThresholdSet = true;
 				//std::cout<<"[VISION]zValue (shape size): "<<zValue<<std::endl;
 			} else {
@@ -3011,11 +3017,6 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 	lastShapeToRemovePC->clear();
 	lastShapeToRemovePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	*lastShapeToRemovePC += *test;
-
-	if (!isZThresholdSetT6) {
-		isZThresholdSetT6 = true;
-		zThreshold = transform(2, 3) - 0.015;
-	}
 
 	return transform;
 }
