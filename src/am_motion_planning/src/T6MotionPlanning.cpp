@@ -1373,8 +1373,7 @@ bool T6MotionPlanning::T6_MoveIt_initializeMoveGroup()
 {
 
 	// store the joint names of the move group in a vector
-	std::vector<std::string> joint_namesMI = group->getActiveJoints();//group->getJoints();//
-
+	std::vector<std::string> joint_namesMI = group_9DOF->getActiveJoints();
 
 	// print the joint names of the move group
 	ROS_INFO("Joint names of the current move group:");
@@ -1410,7 +1409,7 @@ bool T6MotionPlanning::T6_MoveIt_initializeMoveGroup()
 			idxTELE++;
 			if (idxTELE > _telemetry.joint_names.size()-1)
 			{
-				ROS_WARN("MoveIt! joint not found in telemetry");
+				ROS_WARN_STREAM("MoveIt! joint not found in telemetry"<<joint_namesMI.at(idxMI));
 				goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
 				return false;
 			}
