@@ -8,14 +8,17 @@
 
 #include <T6MotionPlanning.h>
 
+#include <config.hpp>
+
 T6MotionPlanning::T6MotionPlanning():
 T5MotionPlanning::T5MotionPlanning()
 {
 	target_zone_radius_ = 0.0;
 	tolerance_ = 0.0;
+	tolerance_7DoF_ = 0.01;
 	tolerance_height_ = 0.2;
 	height_over_belt_ = 0.2;
-	height_over_belt_tuning_ = 0.2;
+	height_over_belt_tuning_ = 0.0;//only for gripping position
 	target_zone_radius_security_ = 0.8;
 	target_distance_ = 0.7;
 	standard_distance_dcp_ = 0.2;
@@ -28,7 +31,7 @@ T5MotionPlanning::T5MotionPlanning()
 	t_rdv = 0;
 	t_security_ = 8;
 	conveyor_belt_move_direction_and_length.setValue(0,0,0);
-	gripping_angle_deg_ = 60;
+	gripping_angle_deg_ = gripping_angleT6_deg_config;
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(M_PI);
 
 	// gripper client
@@ -142,8 +145,8 @@ bool T6MotionPlanning::executeGoalPoseT6()
 
 	//wait time until rdv
 	t_security_ = t_security_ - 0.01;
-	ROS_WARN_STREAM(t_rdv);
-	ROS_WARN_STREAM(ros::Time::now().sec);
+	//ROS_WARN_STREAM(t_rdv);
+	//ROS_WARN_STREAM(ros::Time::now().sec);
 	boost::this_thread::sleep( boost::posix_time::seconds(t_security_));
 
 	ROS_WARN("Grab object");
@@ -176,69 +179,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 	break;
 	//--------------------------------------------------------------------------------------
 
-	//	case T6_MOVE_IT_9DOF_TARGET:
-	//		ROS_INFO("MOVE_IT_9DOF_TARGET");
-	//		group = group_9DOF;
-	//		joint_model_group_ = joint_model_group_9DOF_;
-	//		// setting joint state target via the searchIKSolution srv is not considered
-	//		max_setTarget_attempts_ = 4;
-	//
-	//		group->setGoalPositionTolerance(tolerance_);
-	//
-	//		//set target algorithm
-	//		current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-	//		// get moveit solution
-	//		if (!T6_MoveIt_getSolution())
-	//		{
-	//			msg_error("No MoveIT Solution found.");
-	//			goalPose_result_.reached_goal = false;
-	//			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-	//			return false;
-	//		}
-	//
-	//
-	//		if(goal_pose_goal_->planning_algorithm == MOVE_IT_9DOF)
-	//		{
-	//			ROS_INFO("Choosed 9DOF");
-	//			group = group_9DOF;
-	//			joint_model_group_ = joint_model_group_9DOF_;
-	//			// setting joint state target via the searchIKSolution srv is not considered
-	//			max_setTarget_attempts_ = 3;
-	//
-	//		}
-	//		else
-	//		{
-	//			msg_error("Unknown move group name.");
-	//			goalPose_result_.reached_goal = false;
-	//			goalPose_server_.setPreempted(goalPose_result_,"Unknown move group name.");
-	//			break;
-	//		}
-	//
-	//		//set target algorithm
-	//		current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-	//		// get moveit solution
-	//		if (!T6_MoveIt_getSolution())
-	//		{
-	//			msg_error("No MoveIT Solution found.");
-	//			goalPose_result_.reached_goal = false;
-	//			goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-	//			return false;
-	//		}
-	//
-	//		if(!executeStd())
-	//		{
-	//			msg_error("Execute goal std failed!");
-	//			return false;
-	//		}
-	//
-	//
-	//		return true;
-	//
-	//		break;
-	//
-	//		//--------------------------------------------------------------------------------------
-
-	case T6_MOVE_IT_9DOF_TARGET:
+	case T6_MOVE_TARGET:
 
 #if 0
 		ROS_INFO("Choosed 9DOF");
@@ -381,6 +322,8 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 	geometry_msgs::Pose current_pose_lwr;
 	T6_getCurrentLWRTCP_LWR_0(current_pose_lwr);
 
+
+	ROS_INFO_STREAM(save_goal_pose_GPTCP_.position);
 	// is gripper in right position over belt?
 	double delta_z = current_pose.position.z - save_goal_pose_GPTCP_.position.z;
 	if(delta_z > 0.001)
@@ -404,9 +347,9 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 			msg_error("Execute motion STANDARD IK HOMING failed!");
 			return false;
 		}
-
-
 	}
+
+
 
 
 	//consider time in goal pose --> set rendez vous point
@@ -453,7 +396,7 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 	}
 
 	ROS_WARN("2 DOF Schlitten parallel");
-	ROS_INFO_STREAM(goal_pose_GPTCP_.position);
+	//ROS_INFO_STREAM(goal_pose_GPTCP_.position);
 	// Save pose
 	senkrecht_belt_pose_ = goal_pose_GPTCP_;
 
@@ -552,6 +495,7 @@ bool T6MotionPlanning::T6_MoveIt_move_object_safe()
 
 bool T6MotionPlanning::T6_moveToTarget()
 {
+	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
 	ROS_WARN("Move to Schlitten Target!");
 	std::vector<double> tmp_schlitten;
 	tmp_schlitten.resize(2);
@@ -579,6 +523,8 @@ bool T6MotionPlanning::T6_moveToTarget()
 	goal_pose_GPTCP_.position.x = target_distance_ * tmp_vec_target_schlitten_norm[0] + target_pos.x;
 	goal_pose_GPTCP_.position.y = target_distance_ * tmp_vec_target_schlitten_norm[1] + target_pos.y;
 
+
+
 	if(!T6_moveSchlitten())
 	{
 		msg_error("Didn't move to schlitten target position!");
@@ -588,31 +534,150 @@ bool T6MotionPlanning::T6_moveToTarget()
 	ROS_WARN("Move to Schlitten Target finished!");
 
 
+	ROS_WARN("MoveIT 7DOF Solution!");
+	group = group_7DOF;
+	joint_model_group_ = joint_model_group_7DOF_;
+	ROS_INFO_STREAM(group->getPoseReferenceFrame());
+	group->setGoalPositionTolerance(tolerance_7DoF_);
+	group->setGoalOrientationTolerance(tolerance_7DoF_);
+	// in case of unsuccessful planning,
+	// the planning target is set as a joint state goal via the searchIKSolution srv
+	max_setTarget_attempts_ = 7;
+	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+	// get moveit solution
+
+	goal_pose_GPTCP_ = save_goal_pose_GPTCP_;
+	// hier transform to lwr base, da moveit "nicht weiss" wie basis verschoben wurde
+	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
+	if (!T6_MoveIt_getSolution())
+	{
+		msg_error("No MoveIT Solution found.");
+		ROS_WARN("Try euroc");
+
+		//2 Schritte: 1) gleiche höhe des gp tcp 2) ablegen
+		goal_pose_LWRTCP_ = save_goal_pose_LWRTCP_;
+
+		//! Transform lwr goal pose to LWR0 Base frame
+		if (!transformToLWRBase())
+		{
+			msg_warn("Transformation to LWR0 Base failed.");
+
+			//                        goalPose_result_.reached_goal = false;
+			//                        goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+			//                        goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+			//                        return;
+		}
+
+		geometry_msgs::Pose tmp_pose_goal_pose_LWRTCP_LWR_0 = goal_pose_LWRTCP_;
+		// 1) gleiche hoehe
+		geometry_msgs::Pose current_pose;
+		T6_getCurrentLWRTCP_LWR_0(current_pose);
+		//! Standard IK Solution
+		//goal_pose_LWRTCP_ = current_pose;
+	//	goal_pose_LWRTCP_.position.x = tmp_pose_goal_pose_LWRTCP_LWR_0.position.x;
+	//	goal_pose_LWRTCP_.position.y = tmp_pose_goal_pose_LWRTCP_LWR_0.position.y;
+
+		goal_pose_LWRTCP_.position.z = current_pose.position.z;
+		//! Find IK solution
+		ROS_WARN("Save Solution");
+		ROS_INFO_STREAM(goal_pose_LWRTCP_.position);
+		ROS_INFO_STREAM(goal_pose_LWRTCP_.orientation);
+		inter_steps_ = 0;
+		if (!euroc_getIKSolution7DOF())
+		{
+			msg_error("No IK Solution found.");
+			//return false;
+		}
+		else
+		{
+			if(!T6_executeStd())
+				{
+					msg_error("Execute motion 7 DOF failed!");
+					return false;
+				}
+		}
+
+		//execute motion 2DOF
+
+
+		// 2) ablegen
+		ROS_WARN("ABLEGEN");
+		//! Standard IK Solution
+		goal_pose_LWRTCP_ = save_goal_pose_LWRTCP_;
+
+		//! Transform lwr goal pose to LWR0 Base frame
+		if (!transformToLWRBase())
+		{
+			msg_warn("Transformation to LWR0 Base failed.");
+
+			//                        goalPose_result_.reached_goal = false;
+			//                        goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+			//                        goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+			//                        return;
+		}
+		//! Find IK solution
+		inter_steps_ = 0;
+		if (!euroc_getIKSolution7DOF())
+		{
+			msg_error("No IK Solution found.");
+			return false;
+		}
+
+	}
+
+#if 0 //EUROC SOLUTION
 	//2 Schritte: 1) gleiche höhe des gp tcp 2) ablegen
+
+	goal_pose_LWRTCP_ = save_goal_pose_LWRTCP_;
+
+	//! Transform lwr goal pose to LWR0 Base frame
+	if (!transformToLWRBase())
+	{
+		msg_warn("Transformation to LWR0 Base failed.");
+
+		//                        goalPose_result_.reached_goal = false;
+		//                        goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		//                        goalPose_server_.setPreempted(goalPose_result_,"Transformation to LWR0 Base failed.");
+		//                        return;
+	}
+
+	geometry_msgs::Pose tmp_pose_goal_pose_LWRTCP_LWR_0 = goal_pose_LWRTCP_;
 	// 1) gleiche hoehe
 	geometry_msgs::Pose current_pose;
 	T6_getCurrentLWRTCP_LWR_0(current_pose);
 	//! Standard IK Solution
-	goal_pose_LWRTCP_ = current_pose;
-	goal_pose_LWRTCP_.position.x = save_goal_pose_LWRTCP_.position.x;
-	goal_pose_LWRTCP_.position.y = save_goal_pose_LWRTCP_.position.y;
+	//goal_pose_LWRTCP_ = current_pose;
+//	goal_pose_LWRTCP_.position.x = tmp_pose_goal_pose_LWRTCP_LWR_0.position.x;
+//	goal_pose_LWRTCP_.position.y = tmp_pose_goal_pose_LWRTCP_LWR_0.position.y;
+
+	goal_pose_LWRTCP_.position.z = current_pose.position.z;
+	goal_pose_LWRTCP_.orientation = current_pose.orientation;
+
 
 	//! Find IK solution
+	ROS_WARN("Save Solution");
+	ROS_INFO_STREAM(goal_pose_LWRTCP_.position);
+	ROS_INFO_STREAM(goal_pose_LWRTCP_.orientation);
 	inter_steps_ = 0;
 	if (!euroc_getIKSolution7DOF())
 	{
 		msg_error("No IK Solution found.");
-		return false;
+		//return false;
+	}
+	else
+	{
+		if(!T6_executeStd())
+			{
+				msg_error("Execute motion 7 DOF failed!");
+				return false;
+			}
 	}
 
 	//execute motion 2DOF
-	if(!T6_executeStd())
-	{
-		msg_error("Execute motion 2 DOF Schlitten failed!");
-		return false;
-	}
+
 
 	// 2) ablegen
+	ROS_WARN("ABLEGEN");
 	//! Standard IK Solution
 	goal_pose_LWRTCP_ = save_goal_pose_LWRTCP_;
 
@@ -633,7 +698,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 		msg_error("No IK Solution found.");
 		return false;
 	}
-
+#endif
 
 	return true;
 
@@ -644,8 +709,8 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 {
 	//! Try 2 DOF + EUROC solution
 	ROS_INFO("2 DOF SChlitten");
-	group_2DOF->setGoalTolerance(0.0);
 	group = group_2DOF;
+	group->setGoalTolerance(0.0);
 	joint_model_group_ = joint_model_group_2DOF_;
 
 	//! set target algorithm
@@ -909,9 +974,9 @@ bool T6MotionPlanning::T6_calc_goalHoming_schlitten(geometry_msgs::Pose& goal_co
 	goal_config_homing_T6_schlitten.orientation.y=0;
 	goal_config_homing_T6_schlitten.orientation.z=0;
 
-	ROS_WARN("Schlitten pose");
-	ROS_INFO_STREAM(goal_config_homing_T6_schlitten.position.x);
-	ROS_INFO_STREAM(goal_config_homing_T6_schlitten.position.y);
+//	ROS_WARN("Schlitten pose");
+//	ROS_INFO_STREAM(goal_config_homing_T6_schlitten.position.x);
+//	ROS_INFO_STREAM(goal_config_homing_T6_schlitten.position.y);
 
 
 
@@ -946,12 +1011,6 @@ bool T6MotionPlanning::T6_getBeltSpeed()
 
 	// belt speed
 	belt_speed_ = start_speed_ + (n_objects_-1)*((end_speed_-start_speed_)/(n_obj_ges_-1));
-
-
-
-
-
-
 
 
 	if (belt_speed_>0)
@@ -1314,7 +1373,8 @@ bool T6MotionPlanning::T6_MoveIt_initializeMoveGroup()
 {
 
 	// store the joint names of the move group in a vector
-	std::vector<std::string> joint_namesMI = group->getActiveJoints();
+	std::vector<std::string> joint_namesMI = group->getActiveJoints();//group->getJoints();//
+
 
 	// print the joint names of the move group
 	ROS_INFO("Joint names of the current move group:");

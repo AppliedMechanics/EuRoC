@@ -43,7 +43,7 @@ typedef enum {
 	RANDOMPOSE_7DOF,
 	RANDOMPOSE_9DOF,
 	T6_MOVE_IT_9DOF_BELTHOMING,
-	T6_MOVE_IT_9DOF_TARGET,
+	T6_MOVE_TARGET,
 	T6_MOVE_IT_2DOF,
 	T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT,
 	T6_STANDARD_IK_7DOF,
@@ -208,6 +208,9 @@ static const double std_goal_orientation_tolerance 	= 0.001;
 static const double release_goal_joint_tolerance    	= 0.001;
 static const double release_goal_orientation_tolerance  = 0.05;
 static const double release_goal_position_tolerance    	= 0.005;
+
+// T6
+static const double gripping_angleT6_deg_config    	= 70;
 
 const std::string ORIGIN = "Origin";
 const std::string LA_0 = "LA_0";

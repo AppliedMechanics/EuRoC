@@ -2373,7 +2373,7 @@ int Statemachine::request_task()
 			planning_mode_.object	= T6_MOVE_IT_9DOF_BELTHOMING;
 			planning_mode_.move_to_object	= T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT;//T6_MOVE_IT_9DOF_BELTHOMING;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.target	= T6_MOVE_IT_9DOF_BELTHOMING;
-			planning_mode_.move_to_target_zone	= T6_MOVE_IT_9DOF_TARGET;//MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
+			planning_mode_.move_to_target_zone	= T6_MOVE_TARGET;//MOVE_IT_9DOF;//MOVE_IT_9DOF_MOVE_TO_OBJECT;//
 			planning_mode_.homing	= T6_MOVE_IT_9DOF_BELTHOMING;
 			explore_pose_type_ = EXPLORE_STD_1;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);

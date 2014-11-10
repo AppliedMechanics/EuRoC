@@ -123,6 +123,8 @@ private:
 	double target_zone_radius_;
 	//! target zone tolerance
 	double tolerance_;
+	//! tolerance for GP_TCP for TargetZone
+	double tolerance_7DoF_;
 	//! height over target zone
 	double tolerance_height_;
 	//! security margin for target area
