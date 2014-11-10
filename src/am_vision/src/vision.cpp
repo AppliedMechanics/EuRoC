@@ -12,6 +12,10 @@
 #include <tf/transform_listener.h>
 #include <pcl/visualization/cloud_viewer.h>
 
+//To send point clouds to ros
+//#define SEND_POINT_CLOUDS
+
+
 //# define LOG_DEBUG
 //# define LOG_INFO
 //# define LOG_ERROR
@@ -446,11 +450,13 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 
 		ROS_INFO("All point clouds have been updated");
 
+#ifdef SEND_POINT_CLOUDS
 		// Publish the new updated Pointcloud
 		pcl::toROSMsg(*finalVoxelizedPC, msg);
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
+#endif
 		if (!emptyCloudCritical)
 		{
 			try {
@@ -925,6 +931,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			tic = ros::Time().now();
 			targetPC = get_task6_cloud();
 
+#ifdef SEND_POINT_CLOUDS
 			ROS_INFO("show targetPC in handle()");
 			// publish final voxelized point cloud
 			pcl::toROSMsg(*targetPC, msg);
@@ -932,7 +939,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
 			//ros::Duration(2.0).sleep();
-
+#endif
 
 			// --> fast_cube_alignment(scene_input)
 			transformation = fast_cube_alignment(targetPC);
@@ -994,10 +1001,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 	// Tasks other than #6 will have the same starting procedure: fetch the color filtered point cloud
 
+#ifdef SEND_POINT_CLOUDS
 	pcl::toROSMsg(*finalVoxelizedPC, msg);
 	msg.header.frame_id = "/Origin";
 	msg.header.stamp = ros::Time::now();
 	pub.publish(msg);
+#endif
 
 	if (!goal->object.color.compare("ff0000")) {
 		// Goal: Red object
@@ -1057,12 +1066,14 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			targetPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
 			*targetPC += *filteredClusterPC;
 
+#ifdef SEND_POINT_CLOUDS
 			// publish final thresholded point cloud
 			pcl::toROSMsg(*targetPC, msg);
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
 			//ros::Duration(1.0).sleep();
+#endif
 
 		} // END TASK 4 PREPARATION
 
@@ -1110,11 +1121,13 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				"Passing target point cloud to pose estimator...\n");
 		ros::Duration(2.0).sleep();
 
+#ifdef SEND_POINT_CLOUDS
 		// publish final thresholded point cloud
 		pcl::toROSMsg(*targetPC, msg);
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
+#endif
 
 		// ==========================================================================================
 		// ===================================== Code from Fabian ===================================
@@ -1268,10 +1281,13 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::copyPointCloud(*object_model, *test);
 		pcl::transformPointCloud(*test, *test, transformation);
+
+#ifdef SEND_POINT_CLOUDS
 		pcl::toROSMsg(*test, msg);
 		msg.header.frame_id = "/Origin";
 		msg.header.stamp = ros::Time::now();
 		pub_2.publish(msg);
+#endif
 
 		// Prepare the lastShapeToRemovePC for pointcloud update/removal --> get_object_state_CB
 		lastShapeToRemovePC->clear();
@@ -1413,10 +1429,13 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				pcl::copyPointCloud(*object_model, *closeRangePC);
 				pcl::transformPointCloud(*closeRangePC, *closeRangePC,
 						transform_close_range);
+
+#ifdef SEND_POINT_CLOUDS
 				pcl::toROSMsg(*closeRangePC, msg);
 				msg.header.frame_id = "/Origin";
 				msg.header.stamp = ros::Time::now();
 				pub_2.publish(msg);
+#endif
 
 				// check which transformed model fits better to the observed point cloud
 				pcl::transformPointCloud(*object_model, *object_model,
@@ -1880,11 +1899,13 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 			// set counter for next pan-tilt scan
 			panTiltCounter++;
 
+#ifdef SEND_POINT_CLOUDS
 			// publish final thresholded point cloud
 			pcl::toROSMsg(*finalScenePC, msg);
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
+#endif
 
 			delete scenePointCloud;
 
@@ -2195,11 +2216,13 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res) {
 	// Set the time stamp of current image
 	finalTimeStamp = stepTimeStampRGB;
 
+#ifdef SEND_POINT_CLOUDS
 	// publish final voxelized point cloud
 	pcl::toROSMsg(*finalVoxelizedPC, msg);
 	msg.header.frame_id = "/Origin";
 	msg.header.stamp = ros::Time::now();
 	pub.publish(msg);
+#endif
 
 	delete scenePointCloud;
 
@@ -3008,10 +3031,13 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 			new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::copyPointCloud(*cube_model, *test);
 	pcl::transformPointCloud(*test, *test, transform);
+
+#ifdef SEND_POINT_CLOUDS
 	pcl::toROSMsg(*test, msg);
 	msg.header.frame_id = "/Origin";
 	msg.header.stamp = ros::Time::now();
 	pub_2.publish(msg);
+#endif
 
 	// Prepare the lastShapeToRemovePC for pointcloud update/removal
 	lastShapeToRemovePC->clear();
