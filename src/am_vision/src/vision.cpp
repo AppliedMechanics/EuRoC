@@ -1279,9 +1279,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 		}
 
 		//Publish aligned PointCloud
-		pcl::PointCloud<pcl::PointXYZ>::Ptr test(
-				new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::copyPointCloud(*object_model, *test);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr test(new pcl::PointCloud<pcl::PointXYZ>);
+		test = fillPointCloud(object_model);
 		pcl::transformPointCloud(*test, *test, transformation);
 
 #ifdef SEND_POINT_CLOUDS
@@ -1426,11 +1425,12 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 				ROS_INFO(
 						"[VISION]publish the aligned point cloud based on close range image");
-				pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC(
-						new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr toRemove(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::copyPointCloud(*object_model, *closeRangePC);
-				pcl::transformPointCloud(*closeRangePC, *closeRangePC,
-						transform_close_range);
+				toRemove = fillPointCloud(object_model);
+				pcl::transformPointCloud(*closeRangePC, *closeRangePC, transform_close_range);
+				pcl::transformPointCloud(*toRemove, *toRemove, transform_close_range);
 
 #ifdef SEND_POINT_CLOUDS
 				pcl::toROSMsg(*closeRangePC, msg);
@@ -1458,7 +1458,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 					lastShapeToRemovePC->clear();
 					lastShapeToRemovePC.reset(
 							new pcl::PointCloud<pcl::PointXYZ>);
-					*lastShapeToRemovePC += *closeRangePC;
+					*lastShapeToRemovePC += *toRemove;
 
 					vision_result_.object_detected = true;
 
@@ -3065,7 +3065,7 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 	//Publish aligned PointCloud
 	pcl::PointCloud<pcl::PointXYZ>::Ptr test(
 			new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::copyPointCloud(*cube_model, *test);
+	test = fillPointCloud(cube_model);
 	pcl::transformPointCloud(*test, *test, transform);
 
 #ifdef SEND_POINT_CLOUDS
