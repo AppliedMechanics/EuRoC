@@ -29,8 +29,8 @@ GraspPose2::GraspPose2()
 	gripping_angleT6_deg_=20;//60; // angle with which objects are awaited; default = 45
 	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
 	gripping_finger_overlapT5_=0.6;
-	puzzle_push_in_x_distance_=0.03;
-	puzzle_push_in_y_distance_=0.03;
+	puzzle_push_in_x_distance_=0.04;//0.03;
+	puzzle_push_in_y_distance_=0.04;//0.03;
 }
 
 GraspPose2::~GraspPose2() {
@@ -2997,6 +2997,12 @@ void GraspPose2::compute_grasp_posesT5_()
 		tmp_GPTCP_pose.position.x = tmp_vec.getX();
 		tmp_GPTCP_pose.position.y = tmp_vec.getY();
 		tmp_GPTCP_pose.position.z = tmp_vec.getZ();
+
+		if(grip_pose_type_==GRIP_POSE_PUZZLE_FROM_SIDE && tmp_GPTCP_pose.position.z<0.08)
+		{
+			tmp_GPTCP_pose.position.z = 0.08;
+		}
+
 		GPTCP_object_grip_pose.push_back(tmp_GPTCP_pose);
 
 		//storing relative transform from gripper pose to object pose
@@ -3066,7 +3072,7 @@ void GraspPose2::compute_grasp_posesT5_()
 	tmp_GPTCP_pose=target_safe_pose;
 	tmp_GPTCP_pose.position.x=tmp_GPTCP_pose.position.x+tmp_vec.getX();
 	tmp_GPTCP_pose.position.y=tmp_GPTCP_pose.position.y+tmp_vec.getY();
-	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+tmp_vec.getZ();
+	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+tmp_vec.getZ();//+0.01;
 	GPTCP_push_safe_pose.push_back(tmp_GPTCP_pose);
 
 	//copy the poses several times
