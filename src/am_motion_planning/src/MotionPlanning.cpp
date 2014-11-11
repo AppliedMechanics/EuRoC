@@ -249,12 +249,22 @@ bool MotionPlanning::executeGoalPoseStd()
 		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
 		group = group_7DOF;
 		joint_model_group_ = joint_model_group_7DOF_;
-		if (!MoveIt_homing())
+		int homing_counter;
+		homing_counter = 0;
+
+		while (!MoveIt_homing() && homing_counter<5)
+		{homing_counter++;}
+		if (homing_counter==5)
 		{
-			msg_error("No Solution found.");
-			goalPose_result_.reached_goal = false;
-			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
-			return false;
+			group = group_9DOF;
+			joint_model_group_ = joint_model_group_9DOF_;
+			if (!MoveIt_homing())
+			{
+				msg_error("No Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+				return false;
+			}
 		}
 		break;
 
@@ -371,7 +381,7 @@ bool MotionPlanning::executeGoalPoseStd()
 
 	case (MOVE_IT_JT_9DOF):
 
-    				ROS_WARN("Given JT based on MoveIt! chosen.");
+    						ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -1270,17 +1280,17 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	}
 
 	//	 Robot link padding
-//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-//	{
-//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-//			planning_scene_.link_padding[i].padding = 0.0;
-//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-//			planning_scene_.link_padding[i].padding = 0.01;
-//		else
-//			planning_scene_.link_padding[i].padding = 0.00;
-//	}
+	//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+	//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+	//	{
+	//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+	//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+	//			planning_scene_.link_padding[i].padding = 0.0;
+	//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+	//			planning_scene_.link_padding[i].padding = 0.01;
+	//		else
+	//			planning_scene_.link_padding[i].padding = 0.00;
+	//	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
@@ -1384,11 +1394,6 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			ik_seed_state = getCurrentConfiguration().q;
 		}
 
-		//          // print seed state
-		//          ROS_INFO("Seed state:");
-		//          for (unsigned idx = 0; idx < ik_seed_state.size(); ++idx)
-		//                  ROS_INFO_STREAM(ik_seed_state[idx]);
-
 
 		//          ROS_INFO("computing KDL IK...");
 		std::vector<double> solution;
@@ -1404,34 +1409,11 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 		else
 		{
 			ROS_INFO("KDL->getPositionIK() successful.");
-			//                      ROS_INFO("Solution state:");
-			//                      for (unsigned idx = 0; idx < solution.size(); ++idx)
-			//                              ROS_INFO_STREAM(solution[idx]);
-
 
 			// do self collision checking!
 			ROS_INFO("Checking solution for self collision...-disabled because motion planning chrashes!");
 
-			//#warning "Hier gab es einen nicht zurückverfolgbaren Fehler - Programm stuerzt hab -> auskommentieren falls er noch einmal auftaucht!"
-			//--------------------------------------------------------------------------------
-			//                    collision_detection::CollisionRequest collision_request;
-			//                    collision_detection::CollisionResult collision_result;
-			//
-			//                    kinematic_state_->setJointGroupPositions(joint_model_group_, solution);
-			//
-			//                    planning_scene_monitor->getPlanningScene()->checkSelfCollision(collision_request,
-			//                                                                                    collision_result,
-			//                                                                                    *kinematic_state_);
-			//--------------------------------------------------------------------------------
 
-			//                    if(collision_result.collision)
-			//                    {
-			//                          ROS_WARN("Collision occurred!");
-			//                          return false;
-			//                    }
-			//                    else
-			//                    {
-			//    ROS_INFO("No collision occurred. Setting solution as joint value target of the move group.");
 			if (!group->setJointValueTarget(solution))
 			{
 				ROS_ERROR("Setting joint value target failed.");

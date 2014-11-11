@@ -2403,7 +2403,7 @@ int Statemachine::request_task()
 			planning_mode_.homing	= HOMING_MOVE_IT_7DOF;
 			explore_pose_type_ = EXPLORE_SNAKE;
 			nr_exp_poses_ = explore_poses_->size(explore_pose_type_);
-			max_explore_poses_ = 7;
+			max_explore_poses_ = 5;
 			break;
 		case 5:
 			planning_mode_.object	= MOVE_IT_9DOF;
@@ -5646,6 +5646,8 @@ int Statemachine::homing()
 		goal_queue[0].inter_steps = 0;
 		if(active_task_number_==6)
 			goal_queue[0].speed_percentage = super_fast_moving_speed*(1-speed_mod_);
+		else if (active_task_number_==4)
+			goal_queue[0].speed_percentage = fast_moving_speed*(1-speed_mod_);
 		else
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;
