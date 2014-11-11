@@ -1710,7 +1710,7 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 
 				// START TASK 5 PREPARATION
 				if (task_nr == 5) {
-					leaf_size = 0.0015;
+					leaf_size = 0.0025;
 					is_task5 = true;
 					ROS_INFO("now working on task: %d", task_nr);
 					std::cout << "Task 5 -> leaf size is now " << leaf_size << std::endl;
@@ -1825,15 +1825,13 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 					zThreshold); // z value to remove table surface: 30% of cube size
 
 			if (task_nr == 5) {
-				pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(
-						new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(new pcl::PointCloud<pcl::PointXYZ>);
 				fake_puzzle = fake_puzzle_fixture();
 				pcl::PointCloud<pcl::PointXYZ>::Ptr scene_without_fixture(
 						new pcl::PointCloud<pcl::PointXYZ>);
-				scene_without_fixture =
-						scenePointCloud->removeSquareFromPointCloud(threshPC,
-								fake_puzzle->points[0], fake_puzzle->points[1],
-								fake_puzzle->points[2], fake_puzzle->points[3]);
+				scene_without_fixture =	scenePointCloud->removeSquareFromPointCloud(threshPC,
+																					fake_puzzle->points[0], fake_puzzle->points[1],
+																					fake_puzzle->points[2], fake_puzzle->points[3]);
 				threshPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
 				threshPC = scenePointCloud->removeSquareFromPointCloud(
 						scene_without_fixture, fake_puzzle->points[0],
@@ -4081,10 +4079,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		std::cout << "tilt droppoint " << tilt_droppoint << std::endl;
 
 		pan_droppoint = atan2((-droppoint_y),(-droppoint_x)) - M_PI_4;
-		if(pan_droppoint<-0.38)
-			pan_droppoint=-0.38;
-		if(pan_droppoint>0.38)
-			pan_droppoint=0.38;
+		if(pan_droppoint<-0.45)
+			pan_droppoint=-0.45;
+		if(pan_droppoint>0.45)
+			pan_droppoint=0.45;
 
 		std::cout << "pan droppoint " << pan_droppoint << std::endl;
 
