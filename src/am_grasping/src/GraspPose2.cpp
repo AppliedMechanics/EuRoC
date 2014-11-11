@@ -3069,7 +3069,7 @@ void GraspPose2::compute_grasp_posesT5_()
 	{
 		tmp_vec=tmp_vec+y_pufix/y_pufix.length()*puzzle_push_in_y_distance_;
 	}
-	tmp_GPTCP_pose=target_safe_pose;
+	//tmp_GPTCP_pose=target_safe_pose;
 	tmp_GPTCP_pose.position.x=tmp_GPTCP_pose.position.x+tmp_vec.getX();
 	tmp_GPTCP_pose.position.y=tmp_GPTCP_pose.position.y+tmp_vec.getY();
 	tmp_GPTCP_pose.position.z=tmp_GPTCP_pose.position.z+tmp_vec.getZ();//+0.01;
