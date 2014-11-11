@@ -2450,6 +2450,11 @@ void MotionPlanning::setShapePositions(int obj_index, geometry_msgs::Pose obj_po
 void MotionPlanning::object_manager_get_object_state_cb(const am_msgs::ObjState::ConstPtr& msg)
 {
 
+	if(active_task_nr_ == 6)
+	{
+		ROS_WARN("Object manager doesn't work - Task 6");
+		return;
+	}
 
 	if(!obj_data_loaded_)
 	{

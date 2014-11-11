@@ -84,36 +84,9 @@ bool T6MotionPlanning::executeGoalPoseT6()
 
 		ROS_WARN("MOVE_T6: 2 DOF + EUROC");
 		ROS_WARN("Object number %d",n_objects_);
-
-
-		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
-		group = group_7DOF;
-		joint_model_group_ = joint_model_group_7DOF_;
-		if(!T6_MoveIt_homing())
-		{
-			msg_error("No Solution found for homing moveit.");
-			// STANDARD IK HOMING
-			ROS_INFO("HOMING 7DOF");
-			if (!euroc_setReset7DOF())
-			{
-				msg_error("No IK Solution found.");
-				goalPose_result_.reached_goal = false;
-				goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-				return false;
-			}
-		}
-
-
 		// calculate factor for homing
 		home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
 
-
-		//execute STANDARD IK HOMING
-		if(!T6_executeStd())
-		{
-			msg_error("Execute motion STANDARD IK HOMING failed!");
-			return false;
-		}
 
 		// get solution
 		if(!T6_move_2DoF_Euroc())
@@ -141,7 +114,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 
 	ROS_WARN("T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT");
 
-
+	getLimits();
 	goal_pose_GPTCP_.position.z = goal_pose_GPTCP_.position.z - height_over_belt_tuning_;
 
 	// move to new pose
@@ -221,6 +194,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		}
 #endif
 
+		getLimits();
 		// get moveit solution
 		if (!T6_moveToTarget())
 		{
@@ -493,7 +467,8 @@ bool T6MotionPlanning::T6_MoveIt_move_object_safe()
 	over_belt_pose_transformed_.position.z 		= over_belt_pose_transformed_.position.z + 0.1;
 
 	goal_pose_LWRTCP_ = over_belt_pose_transformed_;
-	T6_send_poses_to_tf_broadcaster(goal_pose_LWRTCP_,true);
+
+	//T6_send_poses_to_tf_broadcaster(goal_pose_LWRTCP_,true);
 	//! Find IK solution
 	if (!euroc_getIKSolution7DOF())
 	{
@@ -588,7 +563,7 @@ bool T6MotionPlanning::T6_MoveIt_homing()
 
 bool T6MotionPlanning::T6_moveToTarget()
 {
-	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
+	//ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
 	ROS_WARN("Move to Schlitten Target!");
 	std::vector<double> tmp_schlitten;
 	tmp_schlitten.resize(2);
@@ -603,8 +578,6 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 	std::vector<double> tmp_vec_target_schlitten_norm;
 	tmp_vec_target_schlitten_norm.resize(2);
-
-
 
 	tmp_vec_target_schlitten[0] = tmp_schlitten[0] - target_pos.x;
 	tmp_vec_target_schlitten[1] = tmp_schlitten[1] - target_pos.y;
@@ -636,7 +609,6 @@ bool T6MotionPlanning::T6_moveToTarget()
 	ROS_WARN("MoveIT 7DOF Solution!");
 	group = group_7DOF;
 	joint_model_group_ = joint_model_group_7DOF_;
-	ROS_INFO_STREAM(group->getPoseReferenceFrame());
 	group->setGoalPositionTolerance(tolerance_7DoF_position_);
 	group->setGoalOrientationTolerance(tolerance_7DoF_orientation_);
 	// in case of unsuccessful planning,
@@ -647,7 +619,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 	goal_pose_GPTCP_ = save_goal_pose_GPTCP_;
 	// hier transform to lwr base, da moveit "nicht weiss" wie basis verschoben wurde
-	ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
+	// ROS_INFO_STREAM("goal_pose "<<goal_pose_GPTCP_.position);
 
 	if (!T6_MoveIt_getSolution())
 	{
@@ -679,9 +651,9 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 		goal_pose_LWRTCP_.position.z = current_pose.position.z;
 		//! Find IK solution
-		ROS_WARN("Save Solution");
-		ROS_INFO_STREAM(goal_pose_LWRTCP_.position);
-		ROS_INFO_STREAM(goal_pose_LWRTCP_.orientation);
+//		ROS_WARN("Save Solution");
+//		ROS_INFO_STREAM(goal_pose_LWRTCP_.position);
+//		ROS_INFO_STREAM(goal_pose_LWRTCP_.orientation);
 		inter_steps_ = 0;
 		if (!euroc_getIKSolution7DOF())
 		{
@@ -698,8 +670,6 @@ bool T6MotionPlanning::T6_moveToTarget()
 		}
 
 		//execute motion 2DOF
-
-
 		// 2) ablegen
 		ROS_WARN("ABLEGEN");
 		//! Standard IK Solution
@@ -807,6 +777,158 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 bool T6MotionPlanning::T6_move_2DoF_Euroc()
 {
+
+	//! Berechne Euroc Pose
+	geometry_msgs::Pose goal_config_homing_T6;
+	goal_config_homing_T6 = goal_pose_GPTCP_;
+	T6_calc_goalHoming_TCP(goal_config_homing_T6);
+	ROS_INFO_STREAM("goal_config_homing_T6 "<<goal_config_homing_T6.position);
+
+	// Save Euroc pose
+	homing_belt_euroc_pose_origin_ = goal_config_homing_T6;
+
+	//! Berechne 2 DOF Pose
+	T6_calc_goalHoming_schlitten(homing_belt_schlitten_pose_ );
+	ROS_INFO_STREAM("homing_belt_schlitten_pose_ "<<homing_belt_schlitten_pose_.position);
+
+	//! Save tranformed pose
+	homing_belt_euroc_pose_transformed_ = T6_transformLWRBase(homing_belt_euroc_pose_origin_,homing_belt_schlitten_pose_);
+	ROS_INFO_STREAM("homing_belt_euroc_pose_transformed_ "<<homing_belt_euroc_pose_transformed_.position);
+
+	std::vector<double> tmp_pos_schlitten;
+	tmp_pos_schlitten.resize(2);
+
+	//-------------------------------------------------------------------------------------------------
+	// get moveit solution
+	group = group_7DOF;
+	joint_model_group_ = joint_model_group_7DOF_;
+	// in case of unsuccessful planning
+	// the planning target is set as a joint state goal via the searchIKSolution srv
+	max_setTarget_attempts_ = 7;
+	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
+
+#if 1
+	T6_getSchlittenPosition(tmp_pos_schlitten);
+
+	goal_pose_GPTCP_ = homing_belt_euroc_pose_transformed_;
+	goal_pose_GPTCP_.position.x = homing_belt_euroc_pose_transformed_.position.x + tmp_pos_schlitten[0];
+	goal_pose_GPTCP_.position.y = homing_belt_euroc_pose_transformed_.position.y + tmp_pos_schlitten[1];
+
+	ROS_INFO_STREAM("7DOF "<<goal_pose_GPTCP_.position);
+
+	if(!T6_MoveIt_getSolution())
+	{
+		ROS_WARN("MOVEIT SOLUTION FAILED");
+
+		ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
+		group = group_7DOF;
+		joint_model_group_ = joint_model_group_7DOF_;
+		if(!T6_MoveIt_homing())
+		{
+			msg_error("No Solution found for homing moveit.");
+			// STANDARD IK HOMING
+			ROS_INFO("HOMING 7DOF");
+			if (!euroc_setReset7DOF())
+			{
+				msg_error("No IK Solution found.");
+				goalPose_result_.reached_goal = false;
+				goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+				return false;
+			}
+		}
+		//execute STANDARD IK HOMING
+		if(!T6_executeStd())
+		{
+			msg_error("Execute motion STANDARD IK HOMING failed!");
+			return false;
+		}
+
+		// 7DoF Solution
+		ROS_INFO("T6 STANDARD IK 7DOF planning mode chosen.");
+
+		T6_getSchlittenPosition(tmp_pos_schlitten);
+
+		// Set goal pose
+		goal_pose_GPTCP_ = goal_config_homing_T6;
+		goal_pose_GPTCP_.position.x  = homing_belt_euroc_pose_transformed_.position.x + tmp_pos_schlitten[0];
+		goal_pose_GPTCP_.position.y  = homing_belt_euroc_pose_transformed_.position.y + tmp_pos_schlitten[1];
+
+		//hier eigentlich Fehler
+		goal_pose_LWRTCP_ = goal_pose_GPTCP_;
+		if (!transformToLWRBase())	{msg_warn("Transformation to LWR0 Base failed.");}
+
+		ROS_INFO_STREAM("homing schlitten "<<homing_belt_schlitten_pose_.position);
+
+		//! Find IK solution
+		if (!euroc_getIKSolution7DOF())
+		{
+			msg_error("No T6 IK Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+			return false;
+		}
+	}
+#else
+
+	ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
+	if(!T6_MoveIt_homing())
+	{
+		msg_error("No Solution found for homing moveit.");
+		// STANDARD IK HOMING
+		ROS_INFO("HOMING 7DOF");
+		if (!euroc_setReset7DOF())
+		{
+			msg_error("No IK Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+			return false;
+		}
+	}
+	//execute STANDARD IK HOMING
+	if(!T6_executeStd())
+	{
+		msg_error("Execute motion STANDARD IK HOMING failed!");
+		return false;
+	}
+
+
+	// 7DoF Solution
+
+	ROS_INFO("T6 STANDARD IK 7DOF planning mode chosen.");
+	T6_getSchlittenPosition(tmp_pos_schlitten);
+
+	// Set goal pose
+	goal_pose_GPTCP_ = goal_config_homing_T6;
+	goal_pose_GPTCP_.position.x  = homing_belt_euroc_pose_transformed_.position.x + tmp_pos_schlitten[0];
+	goal_pose_GPTCP_.position.y  = homing_belt_euroc_pose_transformed_.position.y + tmp_pos_schlitten[0];
+
+
+	//hier eigentlich Fehler
+	goal_pose_LWRTCP_ = goal_pose_GPTCP_;
+	if (!transformToLWRBase())	{msg_warn("Transformation to LWR0 Base failed.");}
+
+	ROS_INFO_STREAM("homing schlitten "<<homing_belt_schlitten_pose_.position);
+
+	//! Find IK solution
+	if (!euroc_getIKSolution7DOF())
+	{
+		msg_error("No T6 IK Solution found.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+		return false;
+	}
+#endif
+	//execute motion EUROC
+	if(!T6_executeStd())
+	{
+		msg_error("Execute motion EUROC failed!");
+		return false;
+	}
+	//---------------------------------------------------------------------------------
+
+	//! get moveit solution for 2DoF
+
 	//! Try 2 DOF + EUROC solution
 	ROS_INFO("2 DOF SChlitten");
 	group = group_2DOF;
@@ -817,22 +939,10 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
 
-	//! Berechne Euroc Pose
-	geometry_msgs::Pose goal_config_homing_T6;
-	goal_config_homing_T6 = goal_pose_GPTCP_;
-	T6_calc_goalHoming_TCP(goal_config_homing_T6);
-
-	// Save Euroc pose
-	homing_belt_euroc_pose_origin_ = goal_config_homing_T6;
-
-	//! Berechne 2 DOF Pose
-	T6_calc_goalHoming_schlitten(homing_belt_schlitten_pose_ );
-
 	//! Set goal pose for 2DoF movement
-	// Schlitten pose Target
+	// Schlitten pose Target homing_belt_schlitten_pose_
 	goal_pose_GPTCP_= homing_belt_schlitten_pose_;
 
-	//! get moveit solution for 2DoF
 	//if (!T6_MoveIt_getSolution())
 	if(!T6_MoveIt_getSolution_2DOF())
 	{
@@ -842,41 +952,10 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 		return false;
 	}
 
-
-
 	//execute motion 2DOF
 	if(!T6_executeStd())
 	{
 		msg_error("Execute motion 2 DOF Schlitten failed!");
-		return false;
-	}
-	//--------------------------------------------------
-
-	// Now the rest of the motion can be solved with euroc
-	ROS_INFO("T6 STANDARD IK 7DOF planning mode chosen.");
-
-	// Save tranformed pose
-	homing_belt_euroc_pose_transformed_ = T6_transformLWRBase(homing_belt_euroc_pose_origin_,homing_belt_schlitten_pose_);
-
-
-	// Set goal pose
-	goal_pose_GPTCP_  = homing_belt_euroc_pose_transformed_;
-	goal_pose_LWRTCP_ = homing_belt_euroc_pose_transformed_;
-
-
-	//! Find IK solution
-	if (!euroc_getIKSolution7DOF())
-	{
-		msg_error("No T6 IK Solution found.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
-		return false;
-	}
-
-	//execute motion EUROC
-	if(!T6_executeStd())
-	{
-		msg_error("Execute motion EUROC failed!");
 		return false;
 	}
 
@@ -1762,15 +1841,15 @@ geometry_msgs::Pose T6MotionPlanning::T6_transformLWRBase(const geometry_msgs::P
 	tmp.position.y = goal_config_homing_T6.position.y - goal_config_homing_T6_schlitten.position.y;
 
 
-	// Print goal
-	ROS_WARN("Tranformierte POSE + Quarternionen");
-	ROS_INFO_STREAM(tmp.position.x);
-	ROS_INFO_STREAM(tmp.position.y);
-	ROS_INFO_STREAM(tmp.position.z);
-	ROS_INFO_STREAM(tmp.orientation.x);
-	ROS_INFO_STREAM(tmp.orientation.y);
-	ROS_INFO_STREAM(tmp.orientation.z);
-	ROS_INFO_STREAM(tmp.orientation.w);
+//	// Print goal
+//	ROS_WARN("Tranformierte POSE + Quarternionen");
+//	ROS_INFO_STREAM(tmp.position.x);
+//	ROS_INFO_STREAM(tmp.position.y);
+//	ROS_INFO_STREAM(tmp.position.z);
+//	ROS_INFO_STREAM(tmp.orientation.x);
+//	ROS_INFO_STREAM(tmp.orientation.y);
+//	ROS_INFO_STREAM(tmp.orientation.z);
+//	ROS_INFO_STREAM(tmp.orientation.w);
 
 
 	return tmp;
