@@ -13,13 +13,6 @@ do
     echo "starting " $name
     export ROS_LOG_DIR=~/roslog/$name
     roslaunch am_launchfiles final_eval.launch task_name:="$name"
-    # if [ "$RELAUNCH" == "TRUE" ]
-    # then
-    # 	echo "relaunching " $name
-    # 	roslaunch am_launchfiles final_eval.launch task_name:=$name
-    # else
-    # 	echo "finished " $name
-    # fi
 
     while [ -f "/tmp/euroc_c2s1/relaunch.txt" ]
     do

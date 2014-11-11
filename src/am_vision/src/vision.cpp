@@ -491,7 +491,7 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 
 		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
 	}
-
+	return true;
 }
 
 /*
