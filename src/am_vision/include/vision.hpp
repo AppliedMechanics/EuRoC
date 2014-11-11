@@ -114,6 +114,8 @@ private:
 	std::vector<int> cluster_size_list_T5;
 	std::vector<int> cluster_size_full_list_T5;
 	int removal_object_index;
+	int removal_object_index_temp;
+	int goal_number_of_shapes;
 
 
 	int goal_size;

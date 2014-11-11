@@ -15,7 +15,6 @@
 //To send point clouds to ros
 #define SEND_POINT_CLOUDS
 
-
 //# define LOG_DEBUG
 //# define LOG_INFO
 //# define LOG_ERROR
@@ -48,9 +47,9 @@ typedef pcl::PointCloud<FeatureT> FeatureCloudT;
 typedef pcl::visualization::PointCloudColorHandlerCustom<PointNT> ColorHandlerT;
 
 Vision::Vision() :
-								vision_server_(nh_, "VisionAction",
-										boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
-												"VisionAction"), obj_aligned_(false) {
+		vision_server_(nh_, "VisionAction",
+				boost::bind(&Vision::handle, this, _1), false), vision_action_name_(
+				"VisionAction"), obj_aligned_(false) {
 
 	failed = false;
 	isSingleCube = false;
@@ -93,7 +92,7 @@ Vision::Vision() :
 //	obj_state_sub_ = nh_.subscribe("obj_state", 1000,
 //			&Vision::get_object_state_CB, this);
 
-	// Take Image Service
+// Take Image Service
 	take_img_service_ = nh_.advertiseService("TakeImageService",
 			&Vision::on_take_image_CB, this);
 	// Check Zones Service
@@ -103,7 +102,8 @@ Vision::Vision() :
 	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>(
 			"/octomap_server/reset");
 
-	remove_object_service_ = nh_.advertiseService("RemoveObjectService", &Vision::remove_object_cb, this);
+	remove_object_service_ = nh_.advertiseService("RemoveObjectService",
+			&Vision::remove_object_cb, this);
 
 	// Show PointCloud in rviz
 	pub = nh_.advertise<sensor_msgs::PointCloud2>("PointCloud_1", 1);
@@ -144,10 +144,13 @@ Vision::Vision() :
 	zThreshold = 0.005;
 	// memory efficiency!
 	small_leaf_size = 0.0005;
+	goal_number_of_shapes = 0;
 
 	same_color_problem = false;
 	cluster_index_list_T5.clear();
 	cluster_size_list_T5.clear();
+	removal_object_index = -1;
+	removal_object_index_temp = -1;
 
 	// Create and set resolution of Octree
 	tree = new octomap::OcTree(0.005);
@@ -254,7 +257,7 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req,
 
 	pcl::PointXYZ zoneCenter;
 	for (uint16_t ii = 0; ii < req.target_zones.size(); ii++) // iterate over target zones
-	{
+			{
 		// initialze the occupancy to zero
 		res.zones_occupied[ii] = 0;
 		// set up target zone position and radius
@@ -296,8 +299,8 @@ bool Vision::on_check_zones_CB(am_msgs::CheckZones::Request &req,
  * after updating the point cloud, the Octomap also updates itself with the new condition.
  */
 //void Vision::get_object_state_CB(const am_msgs::ObjState::ConstPtr& msg_in)
-bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::RemoveObject::Response &res)
-{
+bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req,
+		am_msgs::RemoveObject::Response &res) {
 	am_pointcloud *scenePointCloud;
 	pcl::VoxelGrid<pcl::PointXYZ> vg;
 
@@ -457,8 +460,7 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 		msg.header.stamp = ros::Time::now();
 		pub.publish(msg);
 #endif
-		if (!emptyCloudCritical)
-		{
+		if (!emptyCloudCritical) {
 			try {
 				if (ros::service::waitForService("/octomap_server/reset",
 						ros::Duration(3.0))) {
@@ -467,7 +469,8 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 					} else
 						msg_info("octomap successfully resetted.");
 				} else
-					msg_info("wait for reset octomap service was not successful.");
+					msg_info(
+							"wait for reset octomap service was not successful.");
 			} catch (...) {
 				msg_error("reset octomap service failed! TRYCATCH");
 			}
@@ -489,9 +492,16 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req, am_msgs::Remo
 #endif
 		}
 
-		else{msg_error("Octomap server not resetted, emptypointcloudcritical == true.");}
+		else {
+			msg_error(
+					"Octomap server not resetted, emptypointcloudcritical == true.");
+		}
 	}
+
+	removal_object_index = removal_object_index_temp;
+
 	return true;
+
 }
 
 /*
@@ -730,8 +740,8 @@ void Vision::fake_puzzle_fixture_param() {
 pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr object_input) {
 	std::cout
-	<< "[VISION] removeInliers::Number of Points in object input before removing"
-	<< (object_input->points.size()) << std::endl;
+			<< "[VISION] removeInliers::Number of Points in object input before removing"
+			<< (object_input->points.size()) << std::endl;
 
 	// Remove NANs from PointCloud scene
 	object_input->is_dense = false;
@@ -744,7 +754,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 	std::vector<int> pointIDs;
 	std::vector<float> pointRadiusSquaredDistance;
 
-	double radius = leaf_size * 0.8;
+	double radius = leaf_size * 0.5;
 	double minz;
 	minz = object_input->points[0].z;
 	for (size_t f = 0; f < (object_input->points.size()); f++) {
@@ -768,7 +778,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 		searchPoint.z = object_input->points[i].z;
 
 		if (object_input->points[i].z < minz + 0.01) //(object_input->points[mini_index].z) + 0.01)
-		{
+				{
 			pointIDs.push_back(i);
 			continue;
 		}
@@ -802,9 +812,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeInliers(
 	//ros::Duration(20).sleep(); // sleep for half a second
 
 	std::cout
-	<< "[VISION] removeInliers::Number of Points in object input after all removal"
-	<< object_input->points.size() << std::endl;
-	return object_input;
+			<< "[VISION] removeInliers::Number of Points in object input after all removal"
+			<< object_input->points.size() << std::endl;
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC(
+			new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*object_input, *tempPC);
+
+	return tempPC;
 
 }
 
@@ -883,6 +898,7 @@ bool Vision::are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal) {
  */
 void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
+	goal_number_of_shapes = goal->object.nr_shapes;
 	ROS_INFO("Entered Vision::handle()");
 	_currentGoal = goal;
 
@@ -898,14 +914,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 	} else {
 		ROS_WARN("search for parameter failed!");
 	}
-
-	std::string nrof_objects;
-	if (nh_.searchParam("nr_objects_", nrof_objects)) {
-		nh_.getParam(nrof_objects, total_nr_of_objects);
-		std::cout << "[VISION]Total Number of Objects: " << total_nr_of_objects
-				<< std::endl;
-	} else
-		ROS_WARN("NUMBER OF OBJECTS COULD NOT BE FETCHED");
 
 // START TASK 6 PROCEDURE
 	if (task_nr == 6) {
@@ -1068,7 +1076,6 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 		if (task_nr == 5) {
 
 			same_color_problem = false;
-			removal_object_index = -1;
 			same_color_problem = are_objects_same_color(goal);
 
 		} // END TASK 5 PREPARATION
@@ -1112,8 +1119,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 					shape_generator.generateCirclePlane(step_size,
 							Eigen::Vector3f(0.0f, 0.0f,
 									goal->object.shape[i].length),
-									Eigen::Vector3f::UnitZ(),
-									goal->object.shape[i].radius);
+							Eigen::Vector3f::UnitZ(),
+							goal->object.shape[i].radius);
 				}
 
 				//transform Cylinder PC to valid position --> Ideal model for CYLINDER
@@ -1125,7 +1132,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				translation[0] = goal->object.shape[i].pose.position.x;
 				translation[1] = goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].length / 2)
-												+ goal->object.shape[i].pose.position.z;
+						+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1167,11 +1174,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						goal->object.shape[i].pose.orientation.y,
 						goal->object.shape[i].pose.orientation.z);
 				translation[0] = -(goal->object.shape[i].size[0] / 2)
-												+ goal->object.shape[i].pose.position.x;
+						+ goal->object.shape[i].pose.position.x;
 				translation[1] = -(goal->object.shape[i].size[1] / 2)
-												+ goal->object.shape[i].pose.position.y;
+						+ goal->object.shape[i].pose.position.y;
 				translation[2] = -(goal->object.shape[i].size[2] / 2)
-												+ goal->object.shape[i].pose.position.z;
+						+ goal->object.shape[i].pose.position.z;
 
 				pcl::transformPointCloud(*shape_model, *shape_model,
 						translation, q);
@@ -1206,28 +1213,46 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			pcl::PointCloud<pcl::PointXYZ>::Ptr hollow_object(
 					new pcl::PointCloud<pcl::PointXYZ>);
 
+			std::cout << "object_model" << object_model->points.size()
+					<< std::endl;
 			hollow_object = removeInliers(object_model);
-
+			object_model->clear();
 			object_model.reset(new pcl::PointCloud<pcl::PointXYZ>);
 			*object_model += *hollow_object;
+
+			std::cout << "object_model" << object_model->points.size()
+					<< std::endl;
 
 		}
 
 		if (same_color_problem) {
 
-			pcl::PointCloud<pcl::PointXYZ>::Ptr filteredClusterPC_5;
-
-			if (removal_object_index != -1)
+			pcl::PointCloud<pcl::PointXYZ>::Ptr filteredClusterPC_5(
+					new pcl::PointCloud<pcl::PointXYZ>);
+			std::cout << "There are objects with the same color -> BEWARE!!!!"
+					<< std::endl;
+			std::cout << "Removal object index = " << removal_object_index
+					<< std::endl;
+			if (removal_object_index != -1) {
 				Color_String_List[removal_object_index] = "#000000";
-			cout << "VISION: Color String List: "
-					<< Color_String_List[removal_object_index] << std::endl;
+				std::cout << "VISION: Color String List: "
+						<< Color_String_List[removal_object_index] << std::endl;
+				removal_object_index = -1;
+				removal_object_index_temp = -1;
+			}
 			filteredClusterPC_5 = find_clusters_task5(targetPC, goal,
 					object_model);
+
+			std::cout << "filteredClusterPC_5:"
+					<< filteredClusterPC_5->points.size() << std::endl;
 
 			// pass filteredClusterPC to targetPC
 			targetPC->clear();
 			targetPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
 			*targetPC += *filteredClusterPC_5;
+
+			std::cout << "targetPC:" << targetPC->points.size() << std::endl;
+
 			vector<int> indexx;
 			pcl::removeNaNFromPointCloud(*targetPC, *targetPC, indexx);
 
@@ -1237,7 +1262,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
-			ros::Duration(10.0).sleep();
+
 		}
 
 		// Align observed point cloud with modeled object
@@ -1260,7 +1285,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 		}
 
 		//Publish aligned PointCloud
-		pcl::PointCloud<pcl::PointXYZ>::Ptr test(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr test(
+				new pcl::PointCloud<pcl::PointXYZ>);
 		test = fillPointCloud(object_model);
 		pcl::transformPointCloud(*test, *test, transformation);
 
@@ -1324,8 +1350,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				//     - could not find enough corners/lines to compute angle difference
 				//     - vision node failed/threw an exception
 				std::cout
-				<< "[VISION]Could not find a better pose, returning the initial value again"
-				<< std::endl;
+						<< "[VISION]Could not find a better pose, returning the initial value again"
+						<< std::endl;
 
 				vision_result_.object_detected = false;
 
@@ -1397,7 +1423,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						Eigen::Matrix4f::Identity();
 				transform_close_range(0, 0) = std::cos(OptRotationRadians);
 				transform_close_range(0, 1) = (-1)
-												* std::sin(OptRotationRadians);
+						* std::sin(OptRotationRadians);
 				transform_close_range(1, 0) = std::sin(OptRotationRadians);
 				transform_close_range(1, 1) = std::cos(OptRotationRadians);
 				transform_close_range(0, 3) = transformation(0, 3);
@@ -1406,12 +1432,16 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 				ROS_INFO(
 						"[VISION]publish the aligned point cloud based on close range image");
-				pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC(new pcl::PointCloud<pcl::PointXYZ>);
-				pcl::PointCloud<pcl::PointXYZ>::Ptr toRemove(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr closeRangePC(
+						new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr toRemove(
+						new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::copyPointCloud(*object_model, *closeRangePC);
 				toRemove = fillPointCloud(object_model);
-				pcl::transformPointCloud(*closeRangePC, *closeRangePC, transform_close_range);
-				pcl::transformPointCloud(*toRemove, *toRemove, transform_close_range);
+				pcl::transformPointCloud(*closeRangePC, *closeRangePC,
+						transform_close_range);
+				pcl::transformPointCloud(*toRemove, *toRemove,
+						transform_close_range);
 
 #ifdef SEND_POINT_CLOUDS
 				pcl::toROSMsg(*closeRangePC, msg);
@@ -1429,7 +1459,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				int diffNewPose = verify_close_range_pose(targetPC,
 						closeRangePC);
 				std::cout << "Diff = " << std::abs(diffOldPose - diffNewPose)
-				<< std::endl;
+						<< std::endl;
 
 				if ((diffNewPose - diffOldPose) < 15) {
 					ROS_INFO("[VISION]new pose is better!");
@@ -1484,8 +1514,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 			vision_result_.object_detected = false;
 
 			std::cout
-			<< "[VISION]Object is not a CUBE. No additional pose estimation necessary."
-			<< std::endl;
+					<< "[VISION]Object is not a CUBE. No additional pose estimation necessary."
+					<< std::endl;
 			vision_result_.abs_object_pose.position.x = transformation(0, 3);
 			vision_result_.abs_object_pose.position.y = transformation(1, 3);
 			vision_result_.abs_object_pose.position.z = transformation(2, 3);
@@ -1675,8 +1705,10 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 		double tilt_zero = mpt->get_tilt();
 
 		// Initialize pan + tilt values
-		double pan[9] = { 0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380, 0.380, 0.000 };
-		double tilt[9] = { 1.250, 0.800, 0.700, 0.800, 0.800, 0.300, 0.300,	0.300, 0.340 };
+		double pan[9] = { 0.000, -0.300, 0.000, 0.300, 0.000, 0.000, -0.380,
+				0.380, 0.000 };
+		double tilt[9] = { 1.250, 0.800, 0.700, 0.800, 0.800, 0.300, 0.300,
+				0.300, 0.340 };
 
 		ROS_INFO("Scanning the scene with pan tilt cam...");
 		while (panTiltCounter < maxPanTiltCounter) {
@@ -1694,10 +1726,11 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 					leaf_size = 0.0025;
 					is_task5 = true;
 					ROS_INFO("now working on task: %d", task_nr);
-					std::cout << "Task 5 -> leaf size is now " << leaf_size << std::endl;
+					std::cout << "Task 5 -> leaf size is now " << leaf_size
+							<< std::endl;
 					fake_puzzle_fixture_param();
-					Fill_Parameter_Vectors();
-
+					if (Color_String_List.size() == 0)
+						Fill_Parameter_Vectors();
 				} // END TASK 5 PREPARATION
 
 			}
@@ -1808,13 +1841,15 @@ void Vision::scan_with_pan_tilt(am_msgs::TakeImage::Response &res,
 					zThreshold); // z value to remove table surface: 20% of cube size + 25mm
 
 			if (task_nr == 5) {
-				pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(
+						new pcl::PointCloud<pcl::PointXYZ>);
 				fake_puzzle = fake_puzzle_fixture();
 				pcl::PointCloud<pcl::PointXYZ>::Ptr scene_without_fixture(
 						new pcl::PointCloud<pcl::PointXYZ>);
-				scene_without_fixture =	scenePointCloud->removeSquareFromPointCloud(threshPC,
-																					fake_puzzle->points[0], fake_puzzle->points[1],
-																					fake_puzzle->points[2], fake_puzzle->points[3]);
+				scene_without_fixture =
+						scenePointCloud->removeSquareFromPointCloud(threshPC,
+								fake_puzzle->points[0], fake_puzzle->points[1],
+								fake_puzzle->points[2], fake_puzzle->points[3]);
 				threshPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
 				threshPC = scenePointCloud->removeSquareFromPointCloud(
 						scene_without_fixture, fake_puzzle->points[0],
@@ -2080,6 +2115,7 @@ void Vision::scan_with_tcp(am_msgs::TakeImage::Response &res) {
 	threshPC = scenePointCloud->xyzTheresholdCloud(robotLessPC, zThreshold); // z value to remove table surface
 
 	if (task_nr == 5) {
+
 		pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle(
 				new pcl::PointCloud<pcl::PointXYZ>);
 		fake_puzzle = fake_puzzle_fixture();
@@ -2724,18 +2760,20 @@ Eigen::Matrix4f Vision::align_PointClouds(
 	align.setTargetFeatures(scene_features);
 	align.setMaximumIterations(iters); // Number of RANSAC iterations
 
-
 	if (is_task5) {
 		align.setNumberOfSamples(4); // Number of points to sample for generating/prerejecting a pose (5)
 		align.setCorrespondenceRandomness(4); // Number of nearest features to use (3)
+		if (goal_number_of_shapes >= 6)
+			align.setSimilarityThreshold(0.6f); // Polygonal edge length similarity threshold (0.50f)
+		else
 		align.setSimilarityThreshold(0.7f); // Polygonal edge length similarity threshold (0.50f)
-		} //if it task 5
+	} //if it task 5
 
 	else {
 
-	align.setNumberOfSamples(4); // Number of points to sample for generating/prerejecting a pose (5)
-	align.setCorrespondenceRandomness(2); // Number of nearest features to use (3)
-	align.setSimilarityThreshold(0.65f); // Polygonal edge length similarity threshold (0.50f)
+		align.setNumberOfSamples(4); // Number of points to sample for generating/prerejecting a pose (5)
+		align.setCorrespondenceRandomness(2); // Number of nearest features to use (3)
+		align.setSimilarityThreshold(0.65f); // Polygonal edge length similarity threshold (0.50f)
 	}
 
 	if (box) // Cube
@@ -2764,7 +2802,10 @@ Eigen::Matrix4f Vision::align_PointClouds(
 			if (_currentGoal->precision == 0) {
 				std::cout << "set High precision for InlierFraction..."
 						<< std::endl;
-				align.setInlierFraction(0.30f); // Required inlier fraction for accepting a pose hypothesis
+				if (goal_number_of_shapes >= 6)
+					align.setInlierFraction(0.25f); // Required inlier fraction for accepting a pose hypothesis
+				else
+					align.setInlierFraction(0.30f); // Required inlier fraction for accepting a pose hypothesis
 			}
 			if (_currentGoal->precision == 1) {
 				std::cout << "set Medium precision for InlierFraction..."
@@ -2772,29 +2813,30 @@ Eigen::Matrix4f Vision::align_PointClouds(
 				align.setInlierFraction(0.20f); // Required inlier fraction for accepting a pose hypothesis
 			}
 			if (_currentGoal->precision == 2) {
-				std::cout << "set low precision for InlierFraction..." << std::endl;
+				std::cout << "set low precision for InlierFraction..."
+						<< std::endl;
 				align.setInlierFraction(0.15f); // Required inlier fraction for accepting a pose hypothesis
 			}
-			} //if it task 5
+		} //if it task 5
 
-			else
-			{
-		align.setMaxCorrespondenceDistance(0.004); // Inlier threshold other shapes
-		if (_currentGoal->precision == 0) {
-			std::cout << "set High precision for InlierFraction..."
-					<< std::endl;
-			align.setInlierFraction(0.25f); // Required inlier fraction for accepting a pose hypothesis
-		}
-		if (_currentGoal->precision == 1) {
-			std::cout << "set Medium precision for InlierFraction..."
-					<< std::endl;
-			align.setInlierFraction(0.20f); // Required inlier fraction for accepting a pose hypothesis
-		}
-		if (_currentGoal->precision == 2) {
-			std::cout << "set low precision for InlierFraction..." << std::endl;
-			align.setInlierFraction(0.15f); // Required inlier fraction for accepting a pose hypothesis
-		}
+		else {
+			align.setMaxCorrespondenceDistance(0.004); // Inlier threshold other shapes
+			if (_currentGoal->precision == 0) {
+				std::cout << "set High precision for InlierFraction..."
+						<< std::endl;
+				align.setInlierFraction(0.25f); // Required inlier fraction for accepting a pose hypothesis
 			}
+			if (_currentGoal->precision == 1) {
+				std::cout << "set Medium precision for InlierFraction..."
+						<< std::endl;
+				align.setInlierFraction(0.20f); // Required inlier fraction for accepting a pose hypothesis
+			}
+			if (_currentGoal->precision == 2) {
+				std::cout << "set low precision for InlierFraction..."
+						<< std::endl;
+				align.setInlierFraction(0.15f); // Required inlier fraction for accepting a pose hypothesis
+			}
+		}
 	}
 
 	Eigen::Matrix4f transform;
@@ -2879,11 +2921,11 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 			_currentGoal->object.shape[0].pose.orientation.y,
 			_currentGoal->object.shape[0].pose.orientation.z);
 	translation[0] = -(_currentGoal->object.shape[0].size[0] / 2)
-									+ _currentGoal->object.shape[0].pose.position.x;
+			+ _currentGoal->object.shape[0].pose.position.x;
 	translation[1] = -(_currentGoal->object.shape[0].size[1] / 2)
-									+ _currentGoal->object.shape[0].pose.position.y;
+			+ _currentGoal->object.shape[0].pose.position.y;
 	translation[2] = -(_currentGoal->object.shape[0].size[2] / 2)
-									+ _currentGoal->object.shape[0].pose.position.z;
+			+ _currentGoal->object.shape[0].pose.position.z;
 
 	pcl::transformPointCloud(*shape_model, *shape_model, translation, q);
 
@@ -3113,7 +3155,7 @@ double Vision::close_range_pose(string color) {
 	cv::HoughLinesP(bw, lines, 1, CV_PI / 180, houghThreshold, minLineLength,
 			10);
 	std::cout << "[VISION]found the following number of lines: " << lines.size()
-									<< std::endl;
+			<< std::endl;
 	// Error Handling
 	// If we were not able to find enough lines to compute intersections, we have to
 	// change the paramters of houghLineP to a more relaxed combination
@@ -3159,7 +3201,7 @@ double Vision::close_range_pose(string color) {
 	}
 
 	std::cout << "[VISION]perpendicular lines are: " << idx[0] << "& " << idx[1]
-	                                                                          << std::endl;
+			<< std::endl;
 
 	//    // DEBUG: Draw the lines
 	//    cv::Vec4i v = lines[idx[0]];
@@ -3273,8 +3315,8 @@ std::vector<int> Vision::find_perpendicular_lines(
 
 			if (1.54 <= std::abs(angle) && std::abs(angle) <= 1.61) {
 				std::cout
-				<< "[VISION]found two perpendicular lines with apprx. angle: "
-				<< angle << std::endl;
+						<< "[VISION]found two perpendicular lines with apprx. angle: "
+						<< angle << std::endl;
 				// found two perpendicular lines
 				indices[0] = i;
 				indices[1] = j;
@@ -3282,8 +3324,8 @@ std::vector<int> Vision::find_perpendicular_lines(
 			}
 			if (4.69 <= std::abs(angle) && std::abs(angle) <= 4.75) {
 				std::cout
-				<< "[VISION]found two perpendicular lines with apprx. angle: "
-				<< angle << std::endl;
+						<< "[VISION]found two perpendicular lines with apprx. angle: "
+						<< angle << std::endl;
 				// found two perpendicular lines
 				indices[0] = i;
 				indices[1] = j;
@@ -3674,7 +3716,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 	ec.extract(initial_cluster_indices);
 
 	std::cout << "[VISION]found " << initial_cluster_indices.size()
-									<< " initial clusters" << std::endl;
+			<< " initial clusters" << std::endl;
 
 	//intermediate_cluster_indices.resize( initial_cluster_indices.size() );
 
@@ -3730,7 +3772,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters(
 		}
 
 		if (((limit_val) < max_dist) && (max_dist < (comparison_value))) // distance close to object length definition in YAML file --> OBJECT RECOGNIZED
-		{
+				{
 			isIntermediateClusterEmpty = false;
 			intermediate_cluster_indices.resize(
 					intermediate_cluster_indices.size() + 1);
@@ -3856,6 +3898,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 
 	int counter = 0;
 	int number_of_cubes = goal->object.nr_shapes;
+	std::cout << "Number of cubes of this shape: " << number_of_cubes
+			<< std::endl;
 	bool same_size_problem = false;
 
 	vector<int> index_list; //List of objects to be created
@@ -3886,7 +3930,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub_2.publish(msg);
-			ros::Duration(5.0).sleep();
 
 			pcl::PointXYZ pMin2, pMax2;
 			pcl::getMinMax3D(*shape_model, pMin2, pMax2);
@@ -3921,7 +3964,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 
 	for (int m = 0; m < number_of_created_obj - 1; m++) {
 		for (int n = 0; n < number_of_created_obj - m - 1; n++) {
-			if (max_distance_list[n + 1] < max_distance_list[n]) {
+			if (max_distance_list[n + 1] > max_distance_list[n]) {
 				double temp = max_distance_list[n + 1];
 				max_distance_list[n + 1] = max_distance_list[n];
 				max_distance_list[n] = temp;
@@ -3937,13 +3980,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 				<< std::endl;
 	}
 
-	int removal=-1;
 	for (int j = 0; j < max_distance_list.size(); j++) {
 		if (abs(max_distance_list[j] - max_dist_of_goal)
 				< min_distance_to_goal) {
 			min_distance_to_goal = abs(max_distance_list[j] - max_dist_of_goal);
-			min_dist_obj_index = max_distance_list.size() - j - 1;
-			removal=j;
+			min_dist_obj_index = j;
+
 		}
 	}
 
@@ -4028,7 +4070,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 	for (int m = 0; m < list_size - 1; m++) {
 		for (int n = 0; n < list_size - m - 1; n++) {
 			if (max_distance_list_cloud_cluster[n]
-					> max_distance_list_cloud_cluster[n + 1]) {
+					< max_distance_list_cloud_cluster[n + 1]) {
 				double temp = max_distance_list_cloud_cluster[n + 1];
 				max_distance_list_cloud_cluster[n + 1] =
 						max_distance_list_cloud_cluster[n];
@@ -4052,27 +4094,35 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 	for (std::vector<pcl::PointIndices>::const_iterator it =
 			initial_cluster_indices.begin();
 			it != initial_cluster_indices.end(); ++it) {
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster3(
-				new pcl::PointCloud<pcl::PointXYZ>);
+		if (cluster_index == cluster_counter[min_dist_obj_index]) {
 
-		for (std::vector<int>::const_iterator pit = it->indices.begin();
-				pit != it->indices.end(); pit++)
-			cloud_cluster3->points.push_back(input_cloud->points[*pit]);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster3(
+					new pcl::PointCloud<pcl::PointXYZ>);
 
-		cloud_cluster3->width = cloud_cluster3->points.size();
-		cloud_cluster3->height = 1;
-		cloud_cluster3->is_dense = true;
+			for (std::vector<int>::const_iterator pit = it->indices.begin();
+					pit != it->indices.end(); pit++)
+				cloud_cluster3->points.push_back(input_cloud->points[*pit]);
 
-		if (cluster_index
-				== cluster_counter[cluster_counter.size() - min_dist_obj_index
-						- 1]) {
+			cloud_cluster3->width = cloud_cluster3->points.size();
+			cloud_cluster3->height = 1;
+			cloud_cluster3->is_dense = true;
+
 			*targetPC += *cloud_cluster3;
-			removal_object_index = index_list[removal];
-			cout<< "removed object index:"<<index_list[removal]<<std::endl;
+
+			cout << "Size of cluster:" << targetPC->points.size() << std::endl;
+			pcl::toROSMsg(*targetPC, msg);
+			msg.header.frame_id = "/Origin";
+			msg.header.stamp = ros::Time::now();
+			pub.publish(msg);
+
+			removal_object_index_temp = index_list[min_dist_obj_index];
+			cout << "object number of shapes" << goal->object.nr_shapes
+					<< std::endl;
+			cout << "removed object index:" << index_list[min_dist_obj_index]
+					<< std::endl;
 			break;
 		}
 
-		cloud_cluster3->clear();
 		++cluster_index;
 	}
 
@@ -4088,7 +4138,7 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 
 	if (task_nr != 5) {
 		if (goal->object.nr_shapes == 1) // should be either a cube or a cylinder
-		{
+				{
 			if (!goal->object.shape[0].type.compare("box")) {
 				return (float) goal->object.shape[0].size[0];
 			} else if (!goal->object.shape[0].type.compare("cylinder")) {
@@ -4114,7 +4164,7 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 		if ((goal->object.nr_shapes == 1))
 			return sqrt(
 					((one_side * one_side) + (one_side * one_side))
-					+ (one_side * one_side));
+							+ (one_side * one_side));
 
 		else {
 			int x = 1;
@@ -4124,27 +4174,27 @@ float Vision::get_shape_length(const am_msgs::VisionGoal::ConstPtr &goal,
 			if ((goal->object.nr_shapes) + x == 1) {
 				return sqrt(
 						((one_side * one_side) + (one_side * one_side))
-						+ (one_side * one_side));
+								+ (one_side * one_side));
 			}
 			if ((goal->object.nr_shapes) + x == 2)
 				return sqrt(
 						(one_side * one_side)
-						+ ((2 * one_side * 2 * one_side)
-								+ (one_side * one_side)));
+								+ ((2 * one_side * 2 * one_side)
+										+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x == 3)
 				return sqrt(
 						(one_side * one_side)
-						+ ((9 * one_side * one_side)
-								+ (one_side * one_side)));
+								+ ((9 * one_side * one_side)
+										+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x == 4)
 				return sqrt(
 						(one_side * one_side)
-						+ ((16 * one_side * one_side)
-								+ (one_side * one_side)));
+								+ ((16 * one_side * one_side)
+										+ (one_side * one_side)));
 			if ((goal->object.nr_shapes) + x >= 5)
 				return sqrt(
 						(9 * one_side * one_side + 9 * one_side * one_side)
-						+ (one_side * one_side));
+								+ (one_side * one_side));
 		}
 	} ////////////////////////////////////////////////////////////////////////////////
 	ROS_WARN("Unknown shape type");
@@ -4207,7 +4257,7 @@ bool Vision::compare_cluster_differences(
 
 	std::cout << "cluster size: " << clusterPC->points.size() << std::endl;
 	std::cout << "noisyColorPC size: " << noisyColorPC->points.size()
-									<< std::endl;
+			<< std::endl;
 	std::cout << "common points: "
 			<< noisyColorPC->points.size() - newPointIdxVector.size()
 			<< std::endl;
@@ -4271,19 +4321,23 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		double pan_droppoint;
 		double tilt_droppoint;
 
-		tilt_droppoint = atan2((-droppoint_z),(sqrt((droppoint_x*droppoint_x)+(droppoint_y*droppoint_y))));
-		if(tilt_droppoint<0.3)
-			tilt_droppoint=0.3;
-		if(tilt_droppoint>1.25)
-			tilt_droppoint=1.25;
+		tilt_droppoint =
+				atan2((-droppoint_z),
+						(sqrt(
+								(droppoint_x * droppoint_x)
+										+ (droppoint_y * droppoint_y))));
+		if (tilt_droppoint < 0.3)
+			tilt_droppoint = 0.3;
+		if (tilt_droppoint > 1.25)
+			tilt_droppoint = 1.25;
 
 		std::cout << "tilt droppoint " << tilt_droppoint << std::endl;
 
-		pan_droppoint = atan2((-droppoint_y),(-droppoint_x)) - M_PI_4;
-		if(pan_droppoint<-0.45)
-			pan_droppoint=-0.45;
-		if(pan_droppoint>0.45)
-			pan_droppoint=0.45;
+		pan_droppoint = atan2((-droppoint_y), (-droppoint_x)) - M_PI_4;
+		if (pan_droppoint < -0.45)
+			pan_droppoint = -0.45;
+		if (pan_droppoint > 0.45)
+			pan_droppoint = 0.45;
 
 		std::cout << "pan droppoint " << pan_droppoint << std::endl;
 
@@ -4345,9 +4399,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		// create the initial point cloud based on depth image data
 		initialPC = scenePointCloud->createInitialPointCloud();
 		// align the initial point cloud with the RGB camera
-		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_SCENE, stepTimeStampRGB);
+		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_SCENE,
+				stepTimeStampRGB);
 		// Return the transformed, thresholded and filtered PC
-		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_SCENE, stepTimeStampRGB, zThreshold, thresholdRed);
+		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_SCENE,
+				stepTimeStampRGB, zThreshold, thresholdRed);
 		tac = ros::Time().now();
 
 		std::cout << "pointcloud creation time: " << tac - tic << std::endl;
@@ -4404,13 +4460,17 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 		hsvFilter.morphOps(thresholdRed);
 
 		tic = ros::Time().now();
-		scenePointCloud = new am_pointcloud(_cv_depthptr->image, _fov_horizontal_tcp_depth, _cv_image->image, _fov_horizontal_tcp_rgb);
+		scenePointCloud = new am_pointcloud(_cv_depthptr->image,
+				_fov_horizontal_tcp_depth, _cv_image->image,
+				_fov_horizontal_tcp_rgb);
 		// create the initial point cloud based on depth image data
 		initialPC = scenePointCloud->createInitialPointCloud();
 		// align the initial point cloud with the RGB camera
-		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_TCP, stepTimeStampRGB);
+		alignedPC = scenePointCloud->alignWithRGB(initialPC, CAM_TCP,
+				stepTimeStampRGB);
 		// Return the transformed, thresholded and filtered PC
-		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_TCP, stepTimeStampRGB, zThreshold, thresholdRed);
+		redFilteredPC = scenePointCloud->snapCloudT6(alignedPC, CAM_TCP,
+				stepTimeStampRGB, zThreshold, thresholdRed);
 		tac = ros::Time().now();
 
 		std::cout << "pointcloud creation time: " << tac - tic << std::endl;
