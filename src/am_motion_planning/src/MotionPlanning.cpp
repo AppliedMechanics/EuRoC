@@ -3264,8 +3264,8 @@ void MotionPlanning::swing_in_motion()
 	std::vector<double> idx;
 
 	double num_idx, freq_swing, a_swing;
-	num_idx=50;
-	freq_swing = 100;
+	num_idx=100;
+	freq_swing = 200;
 	a_swing = 0.02;
 	euroc_c2_msgs::Configuration tmp_cfg;
 	tmp_cfg.q.resize(2);
