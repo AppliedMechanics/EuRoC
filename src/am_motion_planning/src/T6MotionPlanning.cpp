@@ -87,10 +87,14 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		// calculate factor for homing
 		//home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
 
-		if(n_objects_ < 4)
+		if(n_objects_ < 3)
 			home_faktor_ = 0.6 + 0.9*(l_belt-0.65/0.9)*n_objects_/n_obj_ges_;
+		else if(n_objects_ == 3)
+		{
+			home_faktor_ = 0.6 * l_belt;
+		}
 		else
-			home_faktor_ = 0.9;
+			home_faktor_ = 0.9 * l_belt;
 
 		// get solution
 		if(!T6_move_2DoF_Euroc())
@@ -510,6 +514,7 @@ if(0)
 
 
 	///////////////////////////////////////////////////
+	//test
 //	gripping_pose_.position.x = tmp_pos[0] + senk[0] + par[0];
 //	gripping_pose_.position.y = tmp_pos[1] + senk[1] + par[1];
 

@@ -2913,7 +2913,7 @@ int Statemachine::new_object_t6()
 		ROS_INFO_STREAM("now "<<now);
 		ROS_INFO_STREAM("T6_t_next_obj_ "<<T6_t_next_obj_);
 
-		if(obj_counter_t6_>3)
+		if(obj_counter_t6_>2)
 		{
 			new_object_t6_state_=FINISHED;
 			//increase global object counter
