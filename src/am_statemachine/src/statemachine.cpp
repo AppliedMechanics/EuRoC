@@ -2907,8 +2907,11 @@ int Statemachine::new_object_t6()
 
 		new_object_t6_state_=RUNNING;
 		double now = ros::Time().now().sec;
+
+		ROS_INFO_STREAM("now "<<now);
+		ROS_INFO_STREAM("T6_t_next_obj_ "<<T6_t_next_obj_);
 		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
-		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + (l0+l * 0.5)/v_speed_cur) )
+		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + (l0+l * 0.6)/v_speed_cur) )
 		{
 			new_object_t6_state_=FINISHED;
 			//increase global object counter
@@ -2916,7 +2919,7 @@ int Statemachine::new_object_t6()
 
 			T6_t_next_obj_ = l/v_speed_cur + T6_t_next_obj_;
 		}
-		else if((now > T6_t_next_obj_ + (l0+l * 0.5)/v_speed_cur))
+		else if( (now > T6_t_next_obj_ + (l0+l * 0.6)/v_speed_cur) )
 		{
 			obj_counter_t6_++;
 

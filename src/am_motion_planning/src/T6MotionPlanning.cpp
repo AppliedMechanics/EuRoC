@@ -1550,7 +1550,7 @@ bool T6MotionPlanning::T6_getNewPose(geometry_msgs::Pose& pose)
 		//		ros::param::get("/object_counter_", n_objects_);
 
 		// TODO adaptiv T6_puffer_pose
-		T6_puffer_pose_ = 0 + (n_objects_-1) * 0.1;
+		T6_puffer_pose_ = 0 + (n_objects_-1) * 0.05;
 
 		geometry_msgs::Pose old_pose; // ziel position
 		old_pose = pose;
