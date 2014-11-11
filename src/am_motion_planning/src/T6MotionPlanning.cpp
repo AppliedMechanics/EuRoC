@@ -87,7 +87,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		// calculate factor for homing
 		//home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
 
-		home_faktor_ = 0.6 + 0.8*(l_belt-0.6/0.8)*n_objects_/n_obj_ges_;
+		home_faktor_ = 0.6 + 0.9*(l_belt-0.6/0.9)*n_objects_/n_obj_ges_;
 
 
 		// get solution
@@ -139,7 +139,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 			warte_zeit = 15;
 		else
 		{
-			warte_zeit = 1.5;
+			warte_zeit = 1;
 		}
 		//boost::this_thread::sleep( boost::posix_time::seconds(warte_zeit));
 		ROS_WARN_STREAM("warte zeit "<<warte_zeit);
