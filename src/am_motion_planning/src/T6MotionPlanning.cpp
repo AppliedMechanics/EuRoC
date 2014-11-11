@@ -87,8 +87,10 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		// calculate factor for homing
 		//home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
 
-		home_faktor_ = 0.6 + 0.9*(l_belt-0.6/0.9)*n_objects_/n_obj_ges_;
-
+		if(n_objects_ < 4)
+			home_faktor_ = 0.6 + 0.9*(l_belt-0.65/0.9)*n_objects_/n_obj_ges_;
+		else
+			home_faktor_ = 0.9;
 
 		// get solution
 		if(!T6_move_2DoF_Euroc())
@@ -713,7 +715,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 	// normieren
 	double norm_vec_target_schlitten = sqrt(tmp_vec_target_schlitten[0] * tmp_vec_target_schlitten[0] + tmp_vec_target_schlitten[1] * tmp_vec_target_schlitten[1]);
-	if( !(norm_vec_target_schlitten < (target_zone_radius_ * factor_tolerance_7DoF_position_) + 0.5) || (norm_vec_target_schlitten < 0.1) )
+	if( !(norm_vec_target_schlitten < (target_zone_radius_ * factor_tolerance_7DoF_position_) + 0.6) || (norm_vec_target_schlitten < 0.1) )
 	{
 		tmp_vec_target_schlitten_norm[0] = tmp_vec_target_schlitten[0]/norm_vec_target_schlitten;
 		tmp_vec_target_schlitten_norm[1] = tmp_vec_target_schlitten[1]/norm_vec_target_schlitten;
@@ -1597,7 +1599,7 @@ void T6MotionPlanning::T6_initializeConveyorBelt()
 	con_belt.dimensions.resize(3);
 
 
-	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.1;
+	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.12;
 	con_belt.dimensions[1] = 2 * sqrt(pow(mdl_norm.x,2) + pow(mdl_norm.y,2)) + 0.1;
 	con_belt.dimensions[2] = drop_center_point.z * 0.8 ; // TODO TEST then take out scalar and make it to variable
 

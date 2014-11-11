@@ -2912,6 +2912,23 @@ int Statemachine::new_object_t6()
 
 		ROS_INFO_STREAM("now "<<now);
 		ROS_INFO_STREAM("T6_t_next_obj_ "<<T6_t_next_obj_);
+
+		if(obj_counter_t6_>3)
+		{
+			new_object_t6_state_=FINISHED;
+			//increase global object counter
+			obj_counter_t6_++;
+
+			//and publish it to the parameter server
+			node_.setParam("object_counter_",obj_counter_t6_);
+
+			std_msgs::Int16 msg;
+			msg.data=obj_counter_t6_;
+			nr_obj_pub_.publish(msg);
+
+			return 0;
+		}
+
 		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
 		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + (l0+l * 0.6)/v_speed_cur) )
 		{
@@ -2947,7 +2964,7 @@ int Statemachine::new_object_t6()
 
 				v_speed_cur = m_speed*(obj_counter_t6_+1);
 				T6_t_next_obj_ = l/v_speed_cur + now;
-				ros::Duration(1).sleep();
+				ros::Duration(0.5).sleep();
 			}
 
 
@@ -2961,7 +2978,7 @@ int Statemachine::new_object_t6()
 				new_object_t6_state_=FINISHEDWITHERROR;
 
 				T6_t_next_obj_ = l/v_speed_cur + now;
-				ros::Duration(1).sleep();
+				ros::Duration(0.5).sleep();
 			}
 			else
 			{
