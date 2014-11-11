@@ -4919,8 +4919,9 @@ int Statemachine::move_to_object()
 		remove_object_srv_.request.obj_index=ein_->get_active_object_idx();
 		remove_object_srv_.request.obj_state=OBJ_GRIPPING;
 
-		remove_object_state_=RUNNING;
-		lsc_=boost::thread(&Statemachine::remove_object_cb,this);
+		//remove_object_state_=RUNNING;
+		//lsc_=boost::thread(&Statemachine::remove_object_cb,this);
+		remove_object_state_=FINISHED;
 	}
 	else if((move_to_object_state_==OPEN) && (remove_object_state_==FINISHED))
 	{
