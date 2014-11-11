@@ -2801,8 +2801,8 @@ int Statemachine::check_object_gripped()
 		check_object_gripped_state_=RUNNING;
 
 		//Wait to let the robot finish its movement (vibrations)
-		ROS_INFO("waiting for 0.5 second to ensure a static robot...");
-		ros::Duration waittime = ros::Duration(0.5, 0);
+		ROS_INFO("waiting for 0.8 second to ensure a static robot...");
+		ros::Duration waittime = ros::Duration(0.8, 0);
 		waittime.sleep();
 		lsc_ = boost::thread(&Statemachine::check_object_gripped_cb,this);
 		//check_object_gripped_cb();
@@ -2908,7 +2908,7 @@ int Statemachine::new_object_t6()
 		new_object_t6_state_=RUNNING;
 		double now = ros::Time().now().sec;
 		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
-		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + (l0+0.1)/v_speed_cur) )
+		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + (l0+l * 0.5)/v_speed_cur) )
 		{
 			new_object_t6_state_=FINISHED;
 			//increase global object counter
@@ -2916,7 +2916,7 @@ int Statemachine::new_object_t6()
 
 			T6_t_next_obj_ = l/v_speed_cur + T6_t_next_obj_;
 		}
-		else if((now > T6_t_next_obj_ + (l0+0.1)/v_speed_cur))
+		else if((now > T6_t_next_obj_ + (l0+l * 0.5)/v_speed_cur))
 		{
 			obj_counter_t6_++;
 
