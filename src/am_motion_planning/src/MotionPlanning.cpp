@@ -3256,7 +3256,7 @@ void MotionPlanning::swing_in_motion()
 	double num_idx, freq_swing, a_swing;
 	num_idx=50;
 	freq_swing = 20;
-	a_swing = 0.01;
+	a_swing = 0.02;
 	euroc_c2_msgs::Configuration tmp_cfg;
 	tmp_cfg.q.resize(2);
 
