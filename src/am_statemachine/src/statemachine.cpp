@@ -3100,6 +3100,7 @@ void Statemachine::explore_environment_image_cb()
 		if(take_image_client_.call(take_image_srv_))
 		{
 			explore_environment_image_state_=FINISHED;
+			explore_success_count_++;
 		}
 		else
 		{
@@ -3115,7 +3116,7 @@ void Statemachine::explore_environment_image_cb()
 		state_.sub.event_one=fsm::SIM_SRV_NA;
 	}
 
-	explore_success_count_++;
+//	explore_success_count_++;
 	ROS_INFO("explore_environment_image_cb() finished");
 }
 

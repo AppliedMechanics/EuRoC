@@ -210,6 +210,7 @@ static const double release_goal_joint_tolerance    	= 0.001;
 static const double release_goal_orientation_tolerance  = 0.05;
 static const double release_goal_position_tolerance    	= 0.005;
 
+static const double twodof_goal_tolerance = 0.5;
 // T6
 static const double gripping_angleT6_deg_config    	= 70;
 

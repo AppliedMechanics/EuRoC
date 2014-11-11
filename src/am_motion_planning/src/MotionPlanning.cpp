@@ -67,7 +67,6 @@ obj_data_loaded_(false)
 	group_2DOF = new move_group_interface::MoveGroup("LWR_2DOF");
 	group_2DOF->setEndEffectorLink("base_link");
 #warning Also Goal Tolerance for homing 2DOF (isn't used till now')
-	group_2DOF->setGoalTolerance(0.5);
 	// planning algorithm for arm + table axes
 	//    group_2DOF->setPlannerId(ompl_planners[7]); // 2
 	group_2DOF->setNumPlanningAttempts(2);
@@ -1271,17 +1270,17 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	}
 
 	//	 Robot link padding
-	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-	{
-		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-			planning_scene_.link_padding[i].padding = 0.0;
-		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-			planning_scene_.link_padding[i].padding = 0.01;
-		else
-			planning_scene_.link_padding[i].padding = 0.00;
-	}
+//	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+//	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+//	{
+//		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+//		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+//			planning_scene_.link_padding[i].padding = 0.0;
+//		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+//			planning_scene_.link_padding[i].padding = 0.01;
+//		else
+//			planning_scene_.link_padding[i].padding = 0.00;
+//	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
@@ -1335,7 +1334,8 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
 			group->setGoalPositionTolerance(std_goal_position_tolerance);
 		}
-
+		if (goal_pose_goal_->planning_algorithm == MOVE_IT_2DOF)
+			group->setGoalTolerance(twodof_goal_tolerance);
 		// declare seed state
 		std::vector<double> ik_seed_state;
 
@@ -1499,7 +1499,8 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
 			group->setGoalPositionTolerance(std_goal_position_tolerance);
 		}
-
+		if (goal_pose_goal_->planning_algorithm == MOVE_IT_2DOF)
+			group->setGoalTolerance(twodof_goal_tolerance);
 		ROS_INFO("Setting a pose target.");
 
 		if (!group->setPoseTarget(goal_pose_GPTCP_)) {
@@ -1520,6 +1521,8 @@ bool MotionPlanning::setPlanningTarget(unsigned algorithm)
 			group->setGoalOrientationTolerance(std_goal_orientation_tolerance);
 			group->setGoalPositionTolerance(std_goal_position_tolerance);
 		}
+		if (goal_pose_goal_->planning_algorithm == MOVE_IT_2DOF)
+			group->setGoalTolerance(twodof_goal_tolerance);
 		if (!group->setJointValueTarget(goal_pose_GPTCP_)) {
 			ROS_ERROR("Setting pose target failed.");
 			return false;
