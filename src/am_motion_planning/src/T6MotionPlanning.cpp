@@ -138,10 +138,15 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		double warte_zeit = 1 - n_objects_ * 0.1;
 		ROS_WARN_STREAM("object "<<n_objects_);
 		if(n_objects_ == 1)
-			warte_zeit = 15;
+			warte_zeit = 17;
 		else
 		{
-			warte_zeit = 1;
+			warte_zeit = t_rdv - ros::Time::now().sec + 0.5;
+			if(warte_zeit<0)
+			{
+				ROS_WARN("Wartezeit < 0 ");
+				warte_zeit = 1;
+			}
 		}
 		//boost::this_thread::sleep( boost::posix_time::seconds(warte_zeit));
 		ROS_WARN_STREAM("warte zeit "<<warte_zeit);
@@ -252,7 +257,7 @@ bool T6MotionPlanning::T6_grap_object()
 			msg_error("gripper closed succeed");
 
 			//TODO
-			ros::Duration(2.0).sleep();
+			ros::Duration(1.5).sleep();
 
 			return true;
 		}
@@ -715,7 +720,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 
 	// normieren
 	double norm_vec_target_schlitten = sqrt(tmp_vec_target_schlitten[0] * tmp_vec_target_schlitten[0] + tmp_vec_target_schlitten[1] * tmp_vec_target_schlitten[1]);
-	if( !(norm_vec_target_schlitten < (target_zone_radius_ * factor_tolerance_7DoF_position_) + 0.6) || (norm_vec_target_schlitten < 0.1) )
+	if( !(norm_vec_target_schlitten < (target_zone_radius_ * factor_tolerance_7DoF_position_) + 0.5) || (norm_vec_target_schlitten < 0.1) )
 	{
 		tmp_vec_target_schlitten_norm[0] = tmp_vec_target_schlitten[0]/norm_vec_target_schlitten;
 		tmp_vec_target_schlitten_norm[1] = tmp_vec_target_schlitten[1]/norm_vec_target_schlitten;

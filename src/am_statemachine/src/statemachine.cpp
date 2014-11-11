@@ -2964,7 +2964,7 @@ int Statemachine::new_object_t6()
 
 				v_speed_cur = m_speed*(obj_counter_t6_+1);
 				T6_t_next_obj_ = l/v_speed_cur + now;
-				ros::Duration(0.5).sleep();
+				ros::Duration(1).sleep();
 			}
 
 
@@ -2978,7 +2978,7 @@ int Statemachine::new_object_t6()
 				new_object_t6_state_=FINISHEDWITHERROR;
 
 				T6_t_next_obj_ = l/v_speed_cur + now;
-				ros::Duration(0.5).sleep();
+				ros::Duration(0.7).sleep();
 			}
 			else
 			{
@@ -2988,7 +2988,7 @@ int Statemachine::new_object_t6()
 				obj_counter_t6_++;
 				//and publish it to the parameter server
 				node_.setParam("object_counter_",obj_counter_t6_);
-
+				ros::Duration(0.7).sleep();
 				T6_t_next_obj_ = l/v_speed_cur + now;
 
 			}
