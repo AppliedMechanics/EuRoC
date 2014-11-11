@@ -323,6 +323,12 @@ bool MotionPlanning::executeGoalPoseStd()
 		}
 		break;
 		//------------------------------------------------------------------------------------------------
+	case (SWING_IN):
+
+				swing_in_motion();
+
+
+	break;
 	case (MOVE_IT_2DOF):
 	case (MOVE_IT_7DOF):
 	case (MOVE_IT_9DOF):
@@ -3360,3 +3366,67 @@ bool MotionPlanning::pose_check_isnan(geometry_msgs::Pose* msg_ptr)
 		return false;
 }
 
+void MotionPlanning::swing_in_motion()
+{
+	move_along_joint_path_srv_.request.joint_names.resize(2);
+	move_along_joint_path_srv_.request.joint_names[0] = "axis_x";
+	move_along_joint_path_srv_.request.joint_names[1] = "axis_y";
+
+	move_along_joint_path_srv_.request.joint_limits.resize(2);
+	move_along_joint_path_srv_.request.joint_limits[0].max_acceleration = table_axis1_limit_.max_acceleration;
+	move_along_joint_path_srv_.request.joint_limits[1].max_acceleration = table_axis2_limit_.max_acceleration;
+	move_along_joint_path_srv_.request.joint_limits[0].max_velocity = table_axis1_limit_.max_velocity;
+	move_along_joint_path_srv_.request.joint_limits[1].max_velocity = table_axis2_limit_.max_velocity;
+	move_along_joint_path_srv_.request.path.clear();
+	move_along_joint_path_srv_.request.path.resize(10);
+	std::string debug;
+	tf::Vector3 x_0,x_1,x_start,tmp_vect,tmp_vec_res;
+	tf::TransformListener tf_listener;
+	tf::StampedTransform current_GP_TCP;
+	tf::Matrix3x3 dcm;
+	std::vector<double> idx;
+
+	double num_idx, freq_swing, a_swing;
+	num_idx=10;
+	freq_swing = 10;
+	a_swing = 0.01;
+	for (int i=0;i<=num_idx;i++)
+		idx.push_back((double)idx[i]*(1.0/num_idx));
+
+	euroc_c2_msgs::Configuration tmp_cfg;
+	tmp_cfg.q.resize(2);
+
+	double alpha;
+	//! Transformation from GP TCP frame to LWR TCP frame
+	try{
+		if (tf_listener.waitForTransform(ORIGIN,GP_TCP,ros::Time(0),ros::Duration(1.0),ros::Duration(3.0)))
+			tf_listener.lookupTransform(ORIGIN,GP_TCP,ros::Time(0),current_GP_TCP);
+		else{
+			msg_error("Could not get LWRTCP GPTCP tf.");
+		}
+	}
+	catch(...){
+		ROS_ERROR("Listening to transform was not successful");
+	}
+	double x,y,z;
+	x = _telemetry.measured.position[0];
+	y = _telemetry.measured.position[1];
+
+	x_start.setValue(x,y,0.0);
+	x_0 = current_GP_TCP.getOrigin();
+	x_0.setZ(0.0);
+	x_1.setValue(goal_pose_GPTCP_.position.x, goal_pose_GPTCP_.position.y, goal_pose_GPTCP_.position.z);
+
+	alpha = atan2(x_1.y()-x_0.y(),x_1.x()-x_0.y());
+	dcm.setRPY(0,0,alpha);
+	for (int i=0;i<num_idx;i++)
+	{
+		tmp_vect.setValue(idx[i],a_swing*sin(freq_swing*idx[i]),0);
+		tmp_vec_res = dcm*tmp_vect + x_start;
+		tmp_cfg.q[0] = tmp_vec_res.x();
+		tmp_cfg.q[1] = tmp_vec_res.y();
+		move_along_joint_path_srv_.request.path.push_back(tmp_cfg);
+	}
+
+
+}

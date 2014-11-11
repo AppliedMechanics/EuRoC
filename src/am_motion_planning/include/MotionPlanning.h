@@ -11,6 +11,8 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Transform.h>
+#include <tf/LinearMath/Vector3.h>
+#include <tf/LinearMath/Matrix3x3.h>
 #include <string>
 #include <boost/thread.hpp>
 #include <std_msgs/Bool.h>
@@ -324,7 +326,7 @@ protected:
 	uint8_t mtt_;
 
 	bool pose_check_isnan(geometry_msgs::Pose* msg_ptr);
-
+	void swing_in_motion();
 };
 
 #endif /* MOTIONPLANNING_H_ */
