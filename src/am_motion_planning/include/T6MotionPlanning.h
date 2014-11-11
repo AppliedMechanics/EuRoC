@@ -137,7 +137,6 @@ private:
 	double height_over_belt_;
 	double height_over_belt_tuning_;
 	//! values for intermediate goal position
-	double standard_distance_dcp_;//start distance
 	double standard_distance_dcp_schlitten_;//start distance schlitten
 	double gradient_distance_dcp_;//gradient of distance
 	double standard_distance_dcp_planar_axis_;//standard distance for linear axis

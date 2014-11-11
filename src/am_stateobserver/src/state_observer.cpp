@@ -46,6 +46,7 @@ StateObserver::StateObserver()
 		force_limits[i] = force_limits_max[i]*security[i]; //TODO limits from urdf file? state_observer/src/am_robot_model/kuka_lwr/kuka_lwr_mod.urdf (rosinterface.cpp)
 	}                          //-> Array erstellen (StopConditionWidget.cpp)
 
+	first=true;
 }
 
 StateObserver::~StateObserver()
@@ -119,6 +120,29 @@ bool StateObserver::CallSetStopCondition(am_msgs::CallSetStopConditions::Request
 	const unsigned int lwr_nr = 7;  // TODO auf 8 setzen
 	std::vector<std::string> lwr_names(lwr_nr);
 	std::stringstream name;
+
+	if(first)
+	{
+		first=false;
+
+		std::string key;
+		if (nh.searchParam("active_task_number_", key)) {
+			nh.getParam(key, task_nr);
+			//std::cout<<"[VISION]active task number: "<<task_nr<<std::endl;
+		} else {
+			ROS_WARN("search for parameter failed!");
+		}
+		if(task_nr==6)
+		{
+			for(int i = 0; i < 8; i++)
+			{
+				max_torques[i] = 0.0;
+				security[i] = max_force_limit + 0.05;
+				force_limits[i] = force_limits_max[i]*security[i];
+			}
+		}
+	} //if(first)
+
 
 	ROS_INFO("CallSetStopCondition service called");
 

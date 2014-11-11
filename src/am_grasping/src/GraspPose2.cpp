@@ -3272,13 +3272,38 @@ void GraspPose2::compute_relative_vectors_()
 	geometry_msgs::Vector3 tmpvec;
 	object_grip_r_tcp_com.clear();
 
+
 	for(int ii=0; ii<LWRTCP_object_grip_pose.size();ii++)
 	{
-		//calculate relative vector (LWR-TCP -> Object-CoM)
-	  tmpvec.x=-o_object_com_.x()+LWRTCP_object_grip_pose[ii].position.x;
-          tmpvec.y=-o_object_com_.y()+LWRTCP_object_grip_pose[ii].position.y;
-          tmpvec.z=-o_object_com_.z()+LWRTCP_object_grip_pose[ii].position.z;
-          object_grip_r_tcp_com.push_back(tmpvec);
+
+		//test
+//		if(task_number_==6)
+//		{
+//			tf::Transform lwr;
+//			lwr=pose_to_transform(LWRTCP_object_grip_pose[ii]);
+//
+//			tmpvec.x=-o_object_com_.x()+LWRTCP_object_grip_pose[ii].position.x;
+//			tmpvec.y=-o_object_com_.y()+LWRTCP_object_grip_pose[ii].position.y;
+//			tmpvec.z=-o_object_com_.z()+LWRTCP_object_grip_pose[ii].position.z;
+//
+//			tf::Vector3 tmp_vec3(tmpvec.x,tmpvec.y,tmpvec.z);
+//			tmp_vec3 = lwr * tmp_vec3;
+//
+//			tmpvec.x = tmp_vec3.x();
+//			tmpvec.y = tmp_vec3.y();
+//			tmpvec.z = tmp_vec3.z();
+//
+//			object_grip_r_tcp_com.push_back(tmpvec);
+//
+//		}
+//		else
+//		{
+			//calculate relative vector (LWR-TCP -> Object-CoM)
+			tmpvec.x=-o_object_com_.x()+LWRTCP_object_grip_pose[ii].position.x;
+			tmpvec.y=-o_object_com_.y()+LWRTCP_object_grip_pose[ii].position.y;
+			tmpvec.z=-o_object_com_.z()+LWRTCP_object_grip_pose[ii].position.z;
+			object_grip_r_tcp_com.push_back(tmpvec);
+//}
 	}
 }
 

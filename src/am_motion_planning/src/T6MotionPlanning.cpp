@@ -22,10 +22,9 @@ T5MotionPlanning::T5MotionPlanning()
 	height_over_belt_tuning_ = 0.0;//only for gripping position
 	target_zone_radius_security_ = 0.6;//multipliert mit radius
 	target_distance_ = 0.7;
-	standard_distance_dcp_ = 0.2;
 	standard_distance_dcp_schlitten_ = 0.5;
 	gradient_distance_dcp_ = 0.15;
-	standard_distance_dcp_planar_axis_ = 0.6;
+	standard_distance_dcp_planar_axis_ = 0.5;//0.6;
 	n_objects_ = 0;
 	n_obj_ges_ = 10;
 	home_faktor_ =1.8;
@@ -73,10 +72,6 @@ bool T6MotionPlanning::executeGoalPoseT6()
 	switch (goal_pose_goal_->planning_algorithm)
 	{
 	case T6_MOVE_IT_9DOF_BELTHOMING:
-
-		//besser in statemachine:
-#warning SHIFT INTO STATEMACHINE
-		speed_percentage_ = 60;
 		getLimits();
 
 		//counter of object
@@ -111,58 +106,60 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		//--------------------------------------------------------------------------------------
 
 	case (T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT)		:
+		{
 
-	ROS_WARN("T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT");
+		ROS_WARN("T6_STANDARD_IK_7DOF_MOVE_TO_OBJECT");
 
-	getLimits();
-	goal_pose_GPTCP_.position.z = goal_pose_GPTCP_.position.z - height_over_belt_tuning_;
+		getLimits();
+		goal_pose_GPTCP_.position.z = goal_pose_GPTCP_.position.z - height_over_belt_tuning_;
 
-	// move to new pose
-	ROS_WARN("Move to object");
-	if(!T6_MoveIt_move_to_object())
-	{
-		msg_error("move to finale pose failed!");
-		return false;
-	}
+		// move to new pose
+		ROS_WARN("Move to object");
+		if(!T6_MoveIt_move_to_object())
+		{
+			msg_error("move to finale pose failed!");
+			return false;
+		}
 
 
-	//wait time until rdv
-	t_security_ = t_security_ - 0.01;
-	//ROS_WARN_STREAM(t_rdv);
-	//ROS_WARN_STREAM(ros::Time::now().sec);
-	boost::this_thread::sleep( boost::posix_time::seconds(t_security_));
+		//wait time until rdv
+		t_security_ = t_security_ - 0.01;
+		//ROS_WARN_STREAM(t_rdv);
+		//ROS_WARN_STREAM(ros::Time::now().sec);
+		boost::this_thread::sleep( boost::posix_time::seconds(t_security_));
 
-	ROS_WARN("Grab object");
-	//grap object
-	if(!T6_grap_object())
-	{
-		msg_error("grap object failed");
-		return false;
-	}
+		ROS_WARN("Grab object");
+		//grap object
+		if(!T6_grap_object())
+		{
+			msg_error("grap object failed");
+			return false;
+		}
 
-	// Berechne Pose über Belt und STANDARD IK
-	ROS_WARN("Move to object safe");
-	if(!T6_MoveIt_move_object_safe())
-	{
-		msg_error("move to pose above belt failed!");
-		return false;
-	}
+		// Berechne Pose über Belt und STANDARD IK
+		ROS_WARN("Move to object safe");
+		if(!T6_MoveIt_move_object_safe())
+		{
+			msg_error("move to pose above belt failed!");
+			return false;
+		}
 
-	//execute Motion über Belt
-	if(!executeStd())
-	{
-		msg_error("Execute motion failed");
-		return false;
-	}
-	ROS_WARN("Move to object finished");
+		//execute Motion über Belt
+		if(!executeStd())
+		{
+			msg_error("Execute motion failed");
+			return false;
+		}
+		ROS_WARN("Move to object finished");
 
-	ros::Duration(1).sleep();
+		double warte_zeit = 1 - n_objects_ * 0.1;
+		ros::Duration(warte_zeit).sleep();
 
-	return true;
+		return true;
 
-	break;
+		break;
 	//--------------------------------------------------------------------------------------
-
+	}
 	case T6_MOVE_TARGET:
 
 #if 0
@@ -296,6 +293,7 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 	ROS_WARN("Goal Pose from Vision:");
 	ROS_INFO_STREAM(goal_pose_GPTCP_.position);
 
+
 	//get current endeffector position
 	tf::TransformListener tf_listener;
 	tf::StampedTransform transform_ORIGIN_2_GPTCP;
@@ -311,12 +309,13 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 	ROS_INFO_STREAM(save_goal_pose_GPTCP_.position);
 	// is gripper in right position over belt?
 	double delta_z = current_pose.position.z - save_goal_pose_GPTCP_.position.z;
-	if(delta_z > 0.001)
+	if(delta_z > 0.01)
 	{
 		//for homing position
+		ROS_INFO_STREAM("Current Position: z position is to height! old height "<<height_over_belt_);
 		height_over_belt_ = height_over_belt_ - delta_z;
+		ROS_INFO_STREAM("new height "<<height_over_belt_);
 
-		ROS_INFO_STREAM("Current Position: z position is to height!");
 		goal_pose_LWRTCP_ = current_pose_lwr;
 		goal_pose_LWRTCP_.position.z = goal_pose_LWRTCP_.position.z - delta_z;
 
@@ -1260,7 +1259,8 @@ void T6MotionPlanning::T6_initializeConveyorBelt()
 	con_belt.type = con_belt.BOX;
 	con_belt.dimensions.resize(3);
 
-	con_belt.dimensions[0] = 2 * drop_deviation.y;
+
+	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.08;
 	con_belt.dimensions[1] = 2 * sqrt(pow(mdl_norm.x,2) + pow(mdl_norm.y,2)) + 0.1;
 	con_belt.dimensions[2] = drop_center_point.z * 0.75 ; // TODO TEST then take out scalar and make it to variable
 

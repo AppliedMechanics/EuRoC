@@ -5049,7 +5049,7 @@ int Statemachine::move_to_object_t6()
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
 		goal_queue[0].inter_steps = 0;
-		goal_queue[0].speed_percentage = fast_moving_speed;
+		goal_queue[0].speed_percentage = super_fast_moving_speed;
 		goal_queue[0].allowed_time = 60.0;
 		goal_queue[0].stamp = ein_->get_active_object_stamp();
 
@@ -5643,7 +5643,7 @@ int Statemachine::homing()
 		goal_queue[0].planning_algorithm = planning_mode_.homing;
 		goal_queue[0].inter_steps = 0;
 		if(active_task_number_==6)
-			goal_queue[0].speed_percentage = fast_moving_speed*(1-speed_mod_);
+			goal_queue[0].speed_percentage = super_fast_moving_speed*(1-speed_mod_);
 		else
 			goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;

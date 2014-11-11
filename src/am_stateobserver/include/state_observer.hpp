@@ -82,6 +82,9 @@ private:
         float force_limits_max[8];
 	float security[8]; // security limit for all joints + gripper
 
+	bool first;
+	int task_nr;
+
 };
 
 #endif
