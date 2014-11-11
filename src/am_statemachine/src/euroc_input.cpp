@@ -1385,50 +1385,14 @@ geometry_msgs::Pose EurocInput::get_active_target_pose()
 		{
 			geometry_msgs::Pose tmp=puzzle_target_poses_[puzzle_order_[obj_queue_[0].obj_idx].part_index]; //obj_queue_[0].obj_idx];
 
-		  //add offsets
-//		  if(puzzle_order_[obj_queue_[0].obj_idx].push)
-//		  {
-			  //if(puzzle_order_[obj_queue_[0].obj_idx].x_first)
-			  tmp.position.x+=place_x_offset;
-			  //else
-			  tmp.position.y+=place_y_offset;
-//		  }
-		  tmp.position.z+=place_z_offset;
+			tmp.position.x+=place_x_offset;
+			tmp.position.y+=place_y_offset;
+			tmp.position.z+=place_z_offset;
 
-//		  tf::Transform fixture;
-//		  fixture.setOrigin(tf::Vector3(fixture_pose_.position.x,
-//				  fixture_pose_.position.y,fixture_pose_.position.z));
-//		  fixture.setRotation(tf::Quaternion(fixture_pose_.orientation.x,
-//				  fixture_pose_.orientation.y,fixture_pose_.orientation.z,
-//				  fixture_pose_.orientation.w));
-
-//		  tf::Transform puzzlepart;
-//		  puzzlepart.setOrigin(tf::Vector3(tmp.position.x,
-//				  tmp.position.y,tmp.position.z));
-//		  puzzlepart.setRotation(tf::Quaternion(tmp.orientation.x,
-//				  tmp.orientation.y,tmp.orientation.z,
-//				  tmp.orientation.w));
-
-//		  tf::Transform gp_obj_orig;
-//		  gp_obj_orig.mult(fixture,puzzlepart);
-
-//		  geometry_msgs::Pose ret_pose;
-//		  ret_pose.position.x=gp_obj_orig.getOrigin().getX();
-//		  ret_pose.position.y=gp_obj_orig.getOrigin().getY();
-//		  ret_pose.position.z=gp_obj_orig.getOrigin().getZ();
-//		  ret_pose.orientation.x=gp_obj_orig.getRotation().getX();
-//		  ret_pose.orientation.y=gp_obj_orig.getRotation().getY();
-//		  ret_pose.orientation.z=gp_obj_orig.getRotation().getZ();
-//		  ret_pose.orientation.w=gp_obj_orig.getRotation().getW();
-		  //ROS_INFO("target pose position: x=%4.3f y=%4.3f z=%4.3f",ret_pose.position.x,ret_pose.position.y,ret_pose.position.z);
-		  //ROS_INFO("target pose orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",ret_pose.orientation.x,ret_pose.orientation.y,ret_pose.orientation.z,ret_pose.orientation.w);
-
-//		  return ret_pose;
-
-		  return tmp;
-	  }
-	  else
-	  {
+			return tmp;
+		}
+		else
+		{
 			msg_error("EurocInput: get_active_target_pose() failed. Index out of range (puzzle_target_poses_).");
 			return empty_Pose;
 		}

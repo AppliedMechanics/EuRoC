@@ -235,7 +235,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::removeShape(pcl::PointCloud<p
 	}
 
 
-	float radius = 0.03;
+	float radius = 0.07;
 
 	//  --> search for the neighbor points in baseCloud based on points in shapeCloud
 	//  --> remove the points found in baseCloud

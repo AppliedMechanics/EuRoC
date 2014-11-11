@@ -393,7 +393,7 @@ void GraspPose2::correct_object_alignment()
 	x_obj = tmp_Transform.getBasis().getColumn(0);
 	y_obj = tmp_Transform.getBasis().getColumn(1);
 	z_obj = tmp_Transform.getBasis().getColumn(2);
-	double dot_product;
+	double dot_product, tmp_height, z_height_in_boxes;
 
 	//check upward pointing axis and correct the alignment
 	dot_product = x_obj.dot(z_axis);
@@ -442,17 +442,21 @@ void GraspPose2::correct_object_alignment()
 	object_.abs_pose=tmp_Pose;
 
 	//correct z-height:
-	if(object_.abs_pose.position.z<object_.shape[0].size[0])
-	{
-		object_.abs_pose.position.z=0.5*object_.shape[0].size[0];
-		msg_info("-- corrected object_.abs_pose.position.z to 0.5*size");
-	}
-	else if(object_.abs_pose.position.z<2*object_.shape[0].size[0])
-	{
-		object_.abs_pose.position.z=1.5*object_.shape[0].size[0];
-		msg_info("-- corrected object_.abs_pose.position.z to 1.5*size");
-	}
+	tmp_height=object_.abs_pose.position.z;
+	z_height_in_boxes=round((tmp_height+0.5*object_.shape[0].size[0])/object_.shape[0].size[0]);
+	object_.abs_pose.position.z=(z_height_in_boxes-0.5)*object_.shape[0].size[0];
+	ROS_INFO("z-height corrected from %4.3f to %4.3f",tmp_height,object_.abs_pose.position.z);
 
+//	if(object_.abs_pose.position.z<object_.shape[0].size[0])
+//	{
+//		object_.abs_pose.position.z=0.5*object_.shape[0].size[0];
+//		msg_info("-- corrected object_.abs_pose.position.z to 0.5*size");
+//	}
+//	else if(object_.abs_pose.position.z<2*object_.shape[0].size[0])
+//	{
+//		object_.abs_pose.position.z=1.5*object_.shape[0].size[0];
+//		msg_info("-- corrected object_.abs_pose.position.z to 1.5*size");
+//	}
 }
 void GraspPose2::compute_abs_shape_poses_()
 {

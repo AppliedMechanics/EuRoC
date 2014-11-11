@@ -2795,8 +2795,8 @@ int Statemachine::check_object_gripped()
 		check_object_gripped_state_=RUNNING;
 
 		//Wait to let the robot finish its movement (vibrations)
-		ROS_INFO("waiting for 1 second to ensure a static robot...");
-		ros::Duration waittime = ros::Duration(1, 0);
+		ROS_INFO("waiting for 0.5 second to ensure a static robot...");
+		ros::Duration waittime = ros::Duration(0.5, 0);
 		waittime.sleep();
 		lsc_ = boost::thread(&Statemachine::check_object_gripped_cb,this);
 		//check_object_gripped_cb();
@@ -4920,9 +4920,9 @@ int Statemachine::move_to_object()
 		remove_object_srv_.request.obj_index=ein_->get_active_object_idx();
 		remove_object_srv_.request.obj_state=OBJ_GRIPPING;
 
-		//remove_object_state_=RUNNING;
-		//lsc_=boost::thread(&Statemachine::remove_object_cb,this);
-		remove_object_state_=FINISHED;
+		remove_object_state_=RUNNING;
+		lsc_=boost::thread(&Statemachine::remove_object_cb,this);
+		//remove_object_state_=FINISHED;
 	}
 	else if((move_to_object_state_==OPEN) && (remove_object_state_==FINISHED))
 	{
@@ -4930,18 +4930,18 @@ int Statemachine::move_to_object()
 
 		lsc_.detach();
 //#warning remove area from octomap
-		if (!skip_vision_){
-			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.05;
-			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.05;
-			rm_grasping_area_collision_srv_.request.max.z = 1.0;
-			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.05;
-			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.05;
-			rm_grasping_area_collision_srv_.request.min.z = 0.0;
-			try{
-				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-					msg_warn("Grasping area clearing failed.");
-			}catch (...){msg_error("Grasping area clearing failed.");}
-		}
+//		if (!skip_vision_){
+//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + 0.05;
+//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + 0.05;
+//			rm_grasping_area_collision_srv_.request.max.z = 1.0;
+//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - 0.05;
+//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - 0.05;
+//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+//			try{
+//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+//					msg_warn("Grasping area clearing failed.");
+//			}catch (...){msg_error("Grasping area clearing failed.");}
+//		}
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;

@@ -240,14 +240,12 @@ inline std::vector<bool> EurocInput::get_push_info()
 			}
 			else if(puzzle_order_[obj_queue_[0].obj_idx].only_x)
 			{
-
 				ret[0]=true;
 			}
 			else
 			{
 				ret[1]=true;
 			}
-
 		}
 	}
 
@@ -256,7 +254,7 @@ inline std::vector<bool> EurocInput::get_push_info()
 
 inline void EurocInput::reset_push_info()
 {
-	for(uint16_t ii=0;ii<obj_queue_.size();ii++)
+	for(uint16_t ii=0;ii<(obj_queue_.size())-1;ii++)
 	{
 		puzzle_order_[obj_queue_[ii].obj_idx].push=false;
 	}
