@@ -87,7 +87,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		// calculate factor for homing
 		//home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
 
-		home_faktor_ = 0.5 + 0.8*(l_belt-0.5/0.8)*n_objects_/n_obj_ges_;
+		home_faktor_ = 0.6 + 0.8*(l_belt-0.6/0.8)*n_objects_/n_obj_ges_;
 
 
 		// get solution
@@ -136,10 +136,10 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		double warte_zeit = 1 - n_objects_ * 0.1;
 		ROS_WARN_STREAM("object "<<n_objects_);
 		if(n_objects_ == 1)
-			warte_zeit = 10;
+			warte_zeit = 15;
 		else
 		{
-			warte_zeit = 1;
+			warte_zeit = 1.5;
 		}
 		//boost::this_thread::sleep( boost::posix_time::seconds(warte_zeit));
 		ROS_WARN_STREAM("warte zeit "<<warte_zeit);
@@ -168,7 +168,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 			return false;
 		}
 		ROS_WARN("Move to object finished");
-		ros::Duration(1).sleep();
+		//ros::Duration(1).sleep();
 
 		return true;
 
@@ -1597,9 +1597,9 @@ void T6MotionPlanning::T6_initializeConveyorBelt()
 	con_belt.dimensions.resize(3);
 
 
-	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.08;
+	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.1;
 	con_belt.dimensions[1] = 2 * sqrt(pow(mdl_norm.x,2) + pow(mdl_norm.y,2)) + 0.1;
-	con_belt.dimensions[2] = drop_center_point.z * 0.75 ; // TODO TEST then take out scalar and make it to variable
+	con_belt.dimensions[2] = drop_center_point.z * 0.8 ; // TODO TEST then take out scalar and make it to variable
 
 	geometry_msgs::Pose con_belt_pose;
 	con_belt_pose.position.x = drop_center_point.x + mdl_norm.x;
