@@ -3240,10 +3240,10 @@ void MotionPlanning::swing_in_motion()
 	move_along_joint_path_srv_.request.joint_names[1] = "axis_y";
 
 	move_along_joint_path_srv_.request.joint_limits.resize(2);
-	move_along_joint_path_srv_.request.joint_limits[0].max_acceleration = 0.1*table_axis1_limit_.max_acceleration;
-	move_along_joint_path_srv_.request.joint_limits[1].max_acceleration = 0.1*table_axis2_limit_.max_acceleration;
-	move_along_joint_path_srv_.request.joint_limits[0].max_velocity = 0.1*table_axis1_limit_.max_velocity;
-	move_along_joint_path_srv_.request.joint_limits[1].max_velocity = 0.1*table_axis2_limit_.max_velocity;
+	move_along_joint_path_srv_.request.joint_limits[0].max_acceleration = 0.5*table_axis1_limit_.max_acceleration;
+	move_along_joint_path_srv_.request.joint_limits[1].max_acceleration = 0.5*table_axis2_limit_.max_acceleration;
+	move_along_joint_path_srv_.request.joint_limits[0].max_velocity = 0.2*table_axis1_limit_.max_velocity;
+	move_along_joint_path_srv_.request.joint_limits[1].max_velocity = 0.2*table_axis2_limit_.max_velocity;
 	move_along_joint_path_srv_.request.path.clear();
 	//	move_along_joint_path_srv_.request.path.resize(10);
 
@@ -3254,9 +3254,9 @@ void MotionPlanning::swing_in_motion()
 	std::vector<double> idx;
 
 	double num_idx, freq_swing, a_swing;
-	num_idx=10;
+	num_idx=50;
 	freq_swing = 20;
-	a_swing = 0.02;
+	a_swing = 0.01;
 	euroc_c2_msgs::Configuration tmp_cfg;
 	tmp_cfg.q.resize(2);
 
