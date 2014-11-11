@@ -4047,9 +4047,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 	int index_cloud = 0;
 	vector<int> cluster_counter;
 
-	for (std::vector<pcl::PointIndices>::const_iterator it =
-			initial_cluster_indices.begin();
-			it != initial_cluster_indices.end(); ++it) {
+	for (std::vector<pcl::PointIndices>::const_iterator it =initial_cluster_indices.begin();it != initial_cluster_indices.end(); ++it)
+	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
 				new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -4130,10 +4129,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 			*targetPC += *cloud_cluster3;
 
 			cout << "Size of cluster:" << targetPC->points.size() << std::endl;
+
+#ifdef SEND_POINT_CLOUDS
 			pcl::toROSMsg(*targetPC, msg);
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
+#endif
 
 			removal_object_index_temp = index_list[min_dist_obj_index];
 			cout << "object number of shapes" << goal->object.nr_shapes
