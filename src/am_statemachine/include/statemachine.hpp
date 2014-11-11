@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
+#include <std_msgs/Int16.h>
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_listener.h>
@@ -191,6 +192,8 @@ private:
 
 	ros::Publisher reset_pub_;
 
+	ros::Publisher nr_obj_pub_;
+
 
 
 	//!internal counter for while loop in execute()
@@ -219,6 +222,8 @@ private:
 
 	//!object counter for task 6
 	uint16_t obj_counter_t6_;
+	//!time until next object is called
+	double T6_t_next_obj_;
 
 	//grasping poses
 	uint16_t selected_object_pose_;

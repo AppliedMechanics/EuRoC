@@ -13,6 +13,8 @@
 #include <am_msgs/GripperControl.h>
 #include <tf/transform_broadcaster.h>
 
+#include <std_msgs/Int16.h>
+
 class T6MotionPlanning: public T5MotionPlanning {
 public:
 	T6MotionPlanning();
@@ -23,6 +25,9 @@ private:
 	ros::ServiceClient gripper_control_client_;
 	am_msgs::GripperControl gripper_control_srv_;
 	uint8_t gripper_close_state_;
+
+	ros::Subscriber nr_obj_sub_;
+	void get_nr_obj_cb(const std_msgs::Int16::ConstPtr &msg){n_objects_=msg->data;ROS_INFO("got nr_obj: %d",n_objects_);};
 
 	bool executeGoalPoseT6();
 	bool T6_executeStd();
@@ -36,6 +41,8 @@ private:
 	bool T6_moveSchlitten();
 	bool T6_moveToTarget();
 	bool T6_MoveIt_homing();
+	bool T6_euroc_getIKSolution7DOF();//kombination mit moveit homing
+	bool T6_transformToLWRTCPFrame(const geometry_msgs::Pose tmp_goal_pose_GPTCP, geometry_msgs::Pose &tmp_goal_pose_LWRTCP);
 
 	void T6_initializeConveyorBelt();
 	bool T6_open_gripper();
@@ -107,8 +114,6 @@ private:
 	double home_faktor_;
 
 	double T6_puffer_pose_;
-	double t_security_;
-
 	// time stamp
 	double time_stamp_in_;
 	// rendez-vous time

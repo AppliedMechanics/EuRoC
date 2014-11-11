@@ -25,11 +25,10 @@ T5MotionPlanning::T5MotionPlanning()
 	standard_distance_dcp_schlitten_ = 0.5;
 	gradient_distance_dcp_ = 0.15;
 	standard_distance_dcp_planar_axis_ = 0.5;//0.6;
-	n_objects_ = 0;
+	n_objects_ = 1;
 	n_obj_ges_ = 10;
 	home_faktor_ =1.8;
 	t_rdv = 0;
-	t_security_ = 8;
 	conveyor_belt_move_direction_and_length.setValue(0,0,0);
 	gripping_angle_deg_ = gripping_angleT6_deg_config;
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(M_PI);
@@ -37,6 +36,8 @@ T5MotionPlanning::T5MotionPlanning()
 	// gripper client
 	gripper_control_client_ = nh_.serviceClient<am_msgs::GripperControl>("GripperInterface");
 	pose_counter = 0;
+
+	nr_obj_sub_ = nh_.subscribe("nr_obj",1000,&T6MotionPlanning::get_nr_obj_cb,this);
 }
 
 T6MotionPlanning::~T6MotionPlanning() {
@@ -48,7 +49,8 @@ bool T6MotionPlanning::executeGoalPoseT6()
 	ROS_WARN("TASK 6. ");
 	planning_frame_ = "/Origin";
 
-	if(n_objects_ == 0)
+	ROS_WARN("Object number %d",n_objects_);
+	if(n_objects_ == 1)
 	{
 		T6_getParam();
 		T6_initializeConveyorBelt();
@@ -75,7 +77,9 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		getLimits();
 
 		//counter of object
-		n_objects_ = n_objects_ + 1;
+		//ros::param::get("/object_counter_", n_objects_);
+
+		//n_objects_ = n_objects_ + 1;
 
 		ROS_WARN("MOVE_T6: 2 DOF + EUROC");
 		ROS_WARN("Object number %d",n_objects_);
@@ -122,11 +126,20 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		}
 
 
-		//wait time until rdv
-		t_security_ = t_security_ - 0.01;
+
 		//ROS_WARN_STREAM(t_rdv);
 		//ROS_WARN_STREAM(ros::Time::now().sec);
-		boost::this_thread::sleep( boost::posix_time::seconds(t_security_));
+		double warte_zeit = 1 - n_objects_ * 0.1;
+		ROS_WARN_STREAM("object "<<n_objects_);
+		if(n_objects_ == 1)
+			warte_zeit = 10;
+		else
+		{
+			warte_zeit = 1;
+		}
+		//boost::this_thread::sleep( boost::posix_time::seconds(warte_zeit));
+		ROS_WARN_STREAM("warte zeit "<<warte_zeit);
+		ros::Duration(warte_zeit).sleep();
 
 		ROS_WARN("Grab object");
 		//grap object
@@ -151,9 +164,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 			return false;
 		}
 		ROS_WARN("Move to object finished");
-
-		double warte_zeit = 1 - n_objects_ * 0.1;
-		ros::Duration(warte_zeit).sleep();
+		ros::Duration(1).sleep();
 
 		return true;
 
@@ -797,6 +808,8 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 	std::vector<double> tmp_pos_schlitten;
 	tmp_pos_schlitten.resize(2);
 
+#if 1
+
 	//-------------------------------------------------------------------------------------------------
 	// get moveit solution
 	group = group_7DOF;
@@ -806,8 +819,114 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 	max_setTarget_attempts_ = 7;
 	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
 
+	T6_getSchlittenPosition(tmp_pos_schlitten);
 
-#if 1
+	ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
+	group = group_7DOF;
+	joint_model_group_ = joint_model_group_7DOF_;
+	if(!T6_MoveIt_homing())
+	{
+		msg_error("No Solution found for homing moveit.");
+		// STANDARD IK HOMING
+		ROS_INFO("HOMING 7DOF");
+		if (!euroc_setReset7DOF())
+		{
+			msg_error("No IK Solution found.");
+			goalPose_result_.reached_goal = false;
+			goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+			return false;
+		}
+	}
+
+	//hier eigentlich Fehler -> transform in lwr frame
+	goal_pose_GPTCP_ = homing_belt_euroc_pose_transformed_;
+	T6_transformToLWRTCPFrame(goal_pose_GPTCP_, goal_pose_LWRTCP_);
+	//! Find IK solution
+	if (!T6_euroc_getIKSolution7DOF())
+	{
+		msg_error("No T6 IK Solution found.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"No IK Solution found.");
+		return false;
+	}
+
+
+	//execute motion 2DOF
+	if(!T6_executeStd())
+	{
+		msg_error("Execute motion 2 DOF Schlitten failed!");
+		return false;
+	}
+
+
+	//! get moveit solution for 2DoF
+
+	//! Try 2 DOF + EUROC solution
+	ROS_INFO("2 DOF SChlitten");
+	group = group_2DOF;
+	group->setGoalTolerance(0.0);
+	joint_model_group_ = joint_model_group_2DOF_;
+
+	//! set target algorithm
+	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
+
+	//! Set goal pose for 2DoF movement
+	// Schlitten pose Target homing_belt_schlitten_pose_
+	goal_pose_GPTCP_= homing_belt_schlitten_pose_;
+
+	//if (!T6_MoveIt_getSolution())
+	if(!T6_MoveIt_getSolution_2DOF())
+	{
+		msg_error("No MoveIT 2 DOF Schlitten Solution found.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+		return false;
+	}
+
+
+#elif 0
+	//! get moveit solution for 2DoF
+
+	//! Try 2 DOF + EUROC solution
+	ROS_INFO("2 DOF SChlitten");
+	group = group_2DOF;
+	group->setGoalTolerance(0.0);
+	joint_model_group_ = joint_model_group_2DOF_;
+
+	//! set target algorithm
+	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
+
+	//! Set goal pose for 2DoF movement
+	// Schlitten pose Target homing_belt_schlitten_pose_
+	goal_pose_GPTCP_= homing_belt_schlitten_pose_;
+
+	//if (!T6_MoveIt_getSolution())
+	if(!T6_MoveIt_getSolution_2DOF())
+	{
+		msg_error("No MoveIT 2 DOF Schlitten Solution found.");
+		goalPose_result_.reached_goal = false;
+		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
+		return false;
+	}
+
+	//execute motion 2DOF
+	if(!T6_executeStd())
+	{
+		msg_error("Execute motion 2 DOF Schlitten failed!");
+		return false;
+	}
+
+	//-------------------------------------------------------------------------------------------------
+	// get moveit solution
+	group = group_7DOF;
+	joint_model_group_ = joint_model_group_7DOF_;
+	// in case of unsuccessful planning
+	// the planning target is set as a joint state goal via the searchIKSolution srv
+	max_setTarget_attempts_ = 7;
+	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
+
 	T6_getSchlittenPosition(tmp_pos_schlitten);
 
 	goal_pose_GPTCP_ = homing_belt_euroc_pose_transformed_;
@@ -868,6 +987,8 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 			return false;
 		}
 	}
+	geometry_msgs::Pose current_pose;
+	T6_getCurrentGPTCP_ORIGIN(current_pose);
 #else
 
 	ROS_INFO("HOMING MOVEIT 7DOF planning mode chosen.");
@@ -924,39 +1045,7 @@ bool T6MotionPlanning::T6_move_2DoF_Euroc()
 		msg_error("Execute motion EUROC failed!");
 		return false;
 	}
-	//---------------------------------------------------------------------------------
 
-	//! get moveit solution for 2DoF
-
-	//! Try 2 DOF + EUROC solution
-	ROS_INFO("2 DOF SChlitten");
-	group = group_2DOF;
-	group->setGoalTolerance(0.0);
-	joint_model_group_ = joint_model_group_2DOF_;
-
-	//! set target algorithm
-	current_setTarget_algorithm_ = SINGLE_POSE_TARGET;
-
-
-	//! Set goal pose for 2DoF movement
-	// Schlitten pose Target homing_belt_schlitten_pose_
-	goal_pose_GPTCP_= homing_belt_schlitten_pose_;
-
-	//if (!T6_MoveIt_getSolution())
-	if(!T6_MoveIt_getSolution_2DOF())
-	{
-		msg_error("No MoveIT 2 DOF Schlitten Solution found.");
-		goalPose_result_.reached_goal = false;
-		goalPose_server_.setPreempted(goalPose_result_,"No MoveIT Solution found.");
-		return false;
-	}
-
-	//execute motion 2DOF
-	if(!T6_executeStd())
-	{
-		msg_error("Execute motion 2 DOF Schlitten failed!");
-		return false;
-	}
 
 	goalPose_result_.reached_goal = true;
 	goalPose_server_.setSucceeded(goalPose_result_, "Goal configuration has been reached");
@@ -1023,6 +1112,135 @@ bool T6MotionPlanning::T6_moveSchlitten()
 	}
 	else
 		ROS_WARN("Service move to target configuration has not been advertised yet.");
+}
+
+bool T6MotionPlanning::T6_euroc_getIKSolution7DOF()
+{
+	try
+	{
+		if (ros::service::waitForService(move_along_joint_path_,ros::Duration(10.0)) &&
+				ros::service::waitForService(search_ik_solution_,ros::Duration(10.0)))
+		{
+			// Populate a vector with all the lwr joint names
+			const unsigned int nr_lwr_joints = 7;
+			std::vector<std::string> lwr_joints(nr_lwr_joints);
+			std::stringstream name;
+			for(unsigned int i = 0; i < nr_lwr_joints; ++i){
+				name.str("lwr_joint_");
+				name.seekp(0, std::ios_base::end);
+				name << (i + 1);
+				lwr_joints[i] = name.str();
+			}
+
+			// last way point
+			current_configuration_.q = move_along_joint_path_srv_.request.path[move_along_joint_path_srv_.request.path.size()-1].q;
+
+
+			if(inter_steps_==0)
+			{
+
+				// Select the next desired position of the tcp from the target zone poses and fill
+				// the search inverse kinematic solution request with the current configuration as
+				// start configuration and the desired position
+				search_ik_solution_srv_.request.start = current_configuration_;
+				search_ik_solution_srv_.request.tcp_frame = goal_pose_LWRTCP_;
+
+				// Call the search inverse kinematic solution service and check for errors
+				if(!search_ik_solution_client_.call(search_ik_solution_srv_))
+				{
+					msg_error("Search IK Solution call failed");
+
+					goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+					return false;
+				}
+				std::string &search_error_message = search_ik_solution_srv_.response.error_message;
+				if(!search_error_message.empty()){
+					msg_error("Search IK Solution failed: %s", search_error_message.c_str());
+
+					goalPose_result_.error_reason = fsm::NO_IK_SOL;
+					return false;
+				}
+
+				// Extract the solution configuration from the response and fill it into the path of the move request
+				euroc_c2_msgs::Configuration &solution_configuration = search_ik_solution_srv_.response.solution;
+				std::vector<euroc_c2_msgs::Configuration> &path = move_along_joint_path_srv_.request.path;
+				path.push_back(solution_configuration);
+			}
+			else
+			{
+				msg_error("inter_steps_!=0?");
+				return false;
+			}
+
+			return true;
+		}
+		else
+		{
+			goalPose_result_.error_reason = fsm::SIM_SRV_NA;
+			return false;
+		}
+	}
+	catch (...)
+	{
+		msg_error("T6MotionPlanning::Error at searchforIK function.");
+		goalPose_result_.error_reason = fsm::MOTION_PLANNING_ERROR;
+		return false;
+	}
+	return true;
+}
+
+bool T6MotionPlanning::T6_transformToLWRTCPFrame(const geometry_msgs::Pose tmp_goal_pose_GPTCP, geometry_msgs::Pose &tmp_goal_pose_LWRTCP)
+{
+
+	//! This function transforms the goal pose given for the gripper TCP frme in world coordinates to a goal pose in the LWR TCP frame in the LWR0 System
+	tf::TransformListener tf_listener;
+	tf::StampedTransform transform_GPTCP_2_LWRTCP;
+	tf::Transform tf_tmp,tf_tmp2;
+
+	ros::Time now = ros::Time(0);
+	//! TODO remove debug_tf
+	std::string debug_tf;
+
+	//! Transformation from GP TCP frame to LWR TCP frame
+	try{
+		if (tf_listener.waitForTransform(LWR_TCP,GP_TCP,now,ros::Duration(1.0),ros::Duration(3.0),&debug_tf))
+			tf_listener.lookupTransform(LWR_TCP,GP_TCP,now,transform_GPTCP_2_LWRTCP);
+		else{
+			msg_error("Could not get LWRTCP GPTCP tf.");
+			std::cout<<debug_tf<<std::endl;
+			return false;
+		}
+	}
+	catch(...){
+		ROS_ERROR("Listening to transform was not successful");
+		return false;
+	}
+
+	tf_tmp.setOrigin(tf::Vector3(tmp_goal_pose_GPTCP.position.x,
+			tmp_goal_pose_GPTCP.position.y,
+			tmp_goal_pose_GPTCP.position.z));
+	tf_tmp.setRotation(tf::Quaternion(tmp_goal_pose_GPTCP.orientation.x,
+			tmp_goal_pose_GPTCP.orientation.y,
+			tmp_goal_pose_GPTCP.orientation.z,
+			tmp_goal_pose_GPTCP.orientation.w));
+
+		tf_tmp2.mult(tf_tmp,transform_GPTCP_2_LWRTCP.inverse());
+
+		tmp_goal_pose_LWRTCP.position.x = tf_tmp2.getOrigin().getX();
+		tmp_goal_pose_LWRTCP.position.y = tf_tmp2.getOrigin().getY();
+		tmp_goal_pose_LWRTCP.position.z = tf_tmp2.getOrigin().getZ();
+
+		tmp_goal_pose_LWRTCP.orientation.x = tf_tmp2.getRotation().getX();
+		tmp_goal_pose_LWRTCP.orientation.y = tf_tmp2.getRotation().getY();
+		tmp_goal_pose_LWRTCP.orientation.z = tf_tmp2.getRotation().getZ();
+		tmp_goal_pose_LWRTCP.orientation.w = tf_tmp2.getRotation().getW();
+
+		//          ROS_INFO("LWRTCP Pose in MotionPlanning: [%f %f %f .. %f %f %f %f]" , goal_pose_LWRTCP_.position.x,
+		//                          goal_pose_LWRTCP_.position.y,goal_pose_LWRTCP_.position.z,goal_pose_LWRTCP_.orientation.x,
+		//                          goal_pose_LWRTCP_.orientation.y,goal_pose_LWRTCP_.orientation.z,goal_pose_LWRTCP_.orientation.w);
+
+
+	return true;
 }
 
 bool T6MotionPlanning::T6_executeStd()

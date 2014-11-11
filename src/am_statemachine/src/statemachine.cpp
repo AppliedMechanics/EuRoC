@@ -20,6 +20,7 @@ nr_goals_(0),
 nr_exp_poses_(0),
 explore_pose_type_(EXPLORE_STD_1),
 obj_counter_t6_(1),
+T6_t_next_obj_(0),
 skip_vision_(false),
 skip_motion_(false),
 pause_in_loop_(0),
@@ -121,6 +122,8 @@ remove_object_state_(OPEN)
 
 	obj_state_ = node_.advertise<am_msgs::ObjState>("obj_state", 1000);
 	reset_pub_ = node_.advertise<std_msgs::Bool>("kill", 1000);
+
+	nr_obj_pub_ = node_.advertise<std_msgs::Int16>("nr_obj",1000);
 }
 
 Statemachine::~Statemachine()
@@ -438,6 +441,8 @@ void Statemachine::scheduler_schedule()
 				temp_state.sub.one=fsm::EXPLORE_ENVIRONMENT;
 				temp_state.sub.two=fsm::EXPLORE_ENVIRONMENT_CHECK;			state_queue.push_back(temp_state);
 				temp_state.sub.two=fsm::HOMING;								state_queue.push_back(temp_state);
+				temp_state.sub.one=fsm::SOLVE_TASK;
+				temp_state.sub.two=fsm::WAIT;								state_queue.push_back(temp_state);
 			}
 		}
 		else
@@ -611,7 +616,7 @@ void Statemachine::scheduler_schedule()
 				}
 				else //task_number 6
 				{
-					temp_state.sub.two=fsm::WAIT;						state_queue.push_back(temp_state);
+					//temp_state.sub.two=fsm::WAIT;						state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::LOCATE_OBJECT_GLOBAL;		state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::GET_GRASPING_POSE_T6;       state_queue.push_back(temp_state);
 					temp_state.sub.two=fsm::MOVE_TO_OBJECT_T6;			state_queue.push_back(temp_state);
@@ -2864,26 +2869,106 @@ int Statemachine::check_object_gripped()
 
 int Statemachine::new_object_t6()
 {
+
 	if(new_object_t6_state_==OPEN)
 	{
 		ROS_INFO("new_object_t6() called: OPEN");
 
-		new_object_t6_state_=RUNNING;
-		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
-		if(!next_object_client_.call(next_object_srv_))
-		{
-			std::string &ls_error_message = next_object_srv_.response.error_message;
-			msg_error("failed to call next object client: %s ",ls_error_message.c_str());
+		double speed_start = 0;
+		double speed_end = 0;
 
-			new_object_t6_state_=FINISHEDWITHERROR;
+		node_.getParam("/conveyorbelt_conveyorbelt_end_speed_",speed_end);
+		node_.getParam("/conveyorbelt_conveyorbelt_start_speed_",speed_start);
+
+
+
+		double m_speed = ((double)speed_end-(double)speed_start)/(9.0);
+		double v_speed_cur = (double)speed_start + m_speed*(obj_counter_t6_-1);
+
+		double l0 = 0.1;
+		double l = 0;
+		double lx = 0;
+		double ly = 0;
+		double lz = 0;
+
+		node_.getParam("/conveyorbelt_move_direction_and_length_x_",lx);
+		node_.getParam("/conveyorbelt_move_direction_and_length_y_",ly);
+		node_.getParam("/conveyorbelt_move_direction_and_length_z_",lz);
+
+		l = sqrt(pow((double)lx,2) + pow((double)ly,2) + pow((double)lz,2)) + l0;
+
+		//first call
+		if(obj_counter_t6_ == 1)
+		{
+			T6_t_next_obj_ = l/(double)speed_start+6;
 		}
-		else
+
+
+		new_object_t6_state_=RUNNING;
+		double now = ros::Time().now().sec;
+		//lsc_ = boost::thread(&Statemachine::new_object_cb,this);
+		if( (now > T6_t_next_obj_ + 1) && ( now < T6_t_next_obj_ + l0/v_speed_cur) )
 		{
 			new_object_t6_state_=FINISHED;
 			//increase global object counter
 			obj_counter_t6_++;
-			//and publish it to the parameter server
-			node_.setParam("object_counter_",obj_counter_t6_);
+
+			T6_t_next_obj_ = l/v_speed_cur + T6_t_next_obj_;
+		}
+		else if((now > T6_t_next_obj_ + l0/v_speed_cur))
+		{
+			obj_counter_t6_++;
+
+			T6_t_next_obj_ = l/v_speed_cur + T6_t_next_obj_;
+
+			if(!next_object_client_.call(next_object_srv_))
+			{
+				std::string &ls_error_message = next_object_srv_.response.error_message;
+				msg_error("failed to call next object client: %s ",ls_error_message.c_str());
+
+				new_object_t6_state_=FINISHEDWITHERROR;
+
+				T6_t_next_obj_ = l/v_speed_cur + now;
+			}
+			else
+			{
+
+				new_object_t6_state_=FINISHED;
+				//increase global object counter
+				obj_counter_t6_++;
+				//and publish it to the parameter server
+				node_.setParam("object_counter_",obj_counter_t6_);
+
+				v_speed_cur = m_speed*(obj_counter_t6_+1);
+				T6_t_next_obj_ = l/v_speed_cur + now;
+				ros::Duration(1).sleep();
+			}
+
+
+		}
+		else{
+			if(!next_object_client_.call(next_object_srv_))
+			{
+				std::string &ls_error_message = next_object_srv_.response.error_message;
+				msg_error("failed to call next object client: %s ",ls_error_message.c_str());
+
+				new_object_t6_state_=FINISHEDWITHERROR;
+
+				T6_t_next_obj_ = l/v_speed_cur + now;
+				ros::Duration(1).sleep();
+			}
+			else
+			{
+
+				new_object_t6_state_=FINISHED;
+				//increase global object counter
+				obj_counter_t6_++;
+				//and publish it to the parameter server
+				node_.setParam("object_counter_",obj_counter_t6_);
+
+				T6_t_next_obj_ = l/v_speed_cur + now;
+
+			}
 		}
 	}
 	else if(new_object_t6_state_==FINISHED)
@@ -2906,6 +2991,14 @@ int Statemachine::new_object_t6()
 		ROS_INFO("new_object_t6() called: FINISHEDWITHERROR");
 		scheduler_schedule(); //Call for Error-Handling
 	}
+
+	//and publish it to the parameter server
+	node_.setParam("object_counter_",obj_counter_t6_);
+
+	std_msgs::Int16 msg;
+	msg.data=obj_counter_t6_;
+	nr_obj_pub_.publish(msg);
+
 	return 0;
 }
 
