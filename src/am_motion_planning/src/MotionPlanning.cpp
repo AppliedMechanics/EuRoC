@@ -372,7 +372,7 @@ bool MotionPlanning::executeGoalPoseStd()
 
 	case (MOVE_IT_JT_9DOF):
 
-    		ROS_WARN("Given JT based on MoveIt! chosen.");
+    				ROS_WARN("Given JT based on MoveIt! chosen.");
 	current_setTarget_algorithm_ = JOINT_VALUE_TARGET_9DOF;
 	group = group_9DOF;
 	joint_model_group_ = joint_model_group_9DOF_;
@@ -1270,18 +1270,18 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 		planning_scene_.world.octomap.header.stamp = ros::Time::now();
 	}
 
-	 Robot link padding
-		planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
-		for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
-		{
-			planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
-			if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
-				planning_scene_.link_padding[i].padding = 0.0;
-			else if (!planning_scene_.link_padding[i].link_name.compare("base"))
-				planning_scene_.link_padding[i].padding = 0.01;
-			else
-				planning_scene_.link_padding[i].padding = 0.00;
-		}
+	//	 Robot link padding
+	planning_scene_.link_padding.resize(planning_scene_monitor->getRobotModel()->getLinkModelNames().size());
+	for (unsigned i = 0; i < planning_scene_monitor->getRobotModel()->getLinkModelNames().size(); ++i)
+	{
+		planning_scene_.link_padding[i].link_name = planning_scene_monitor->getRobotModel()->getLinkModelNames()[i];
+		if (!planning_scene_.link_padding[i].link_name.compare("finger1") || !planning_scene_.link_padding[i].link_name.compare("finger2"))
+			planning_scene_.link_padding[i].padding = 0.0;
+		else if (!planning_scene_.link_padding[i].link_name.compare("base"))
+			planning_scene_.link_padding[i].padding = 0.01;
+		else
+			planning_scene_.link_padding[i].padding = 0.00;
+	}
 
 	// setting planning scene message to type diff
 	planning_scene_.is_diff = true;
