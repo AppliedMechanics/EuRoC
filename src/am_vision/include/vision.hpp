@@ -113,6 +113,9 @@ private:
 	std::vector<int> cluster_index_list_T5;
 	std::vector<int> cluster_size_list_T5;
 	std::vector<int> cluster_size_full_list_T5;
+	int removal_object_index;
+
+
 	int goal_size;
 	int nr_same_size;
 	int nr_bigger_size;
@@ -219,7 +222,7 @@ public:
 	bool on_take_image_CB(am_msgs::TakeImage::Request &, am_msgs::TakeImage::Response &);
 	bool on_check_zones_CB(am_msgs::CheckZones::Request &req, am_msgs::CheckZones::Response &res);
 	virtual void handle(const am_msgs::VisionGoal::ConstPtr &);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creater(bool);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_object_creator(int, int);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr reduced_object_input(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input,pcl::PointCloud<pcl::PointXYZ>::Ptr scene_input,bool box, bool cylinder);
 	Eigen::Matrix4f align_PointClouds(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, bool, bool, bool);
 	bool same_colored_objects(const am_msgs::VisionGoal::ConstPtr &);
@@ -228,10 +231,12 @@ public:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr removeInliers(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input);
     pcl::PointCloud<pcl::PointXYZ>::Ptr fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	void Fill_Parameter_Vectors();
 	bool are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr find_clusters_task5(
 			pcl::PointCloud<pcl::PointXYZ>::Ptr,
-			const am_msgs::VisionGoal::ConstPtr &goal);
+			const am_msgs::VisionGoal::ConstPtr &goal,
+			pcl::PointCloud<pcl::PointXYZ>::Ptr goal_model);
 
 	//void Vision::Octomap_Update(OcTree* tree);
 
