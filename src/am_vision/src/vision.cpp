@@ -921,6 +921,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 		if (_currentGoal->object.shape.size() == 1) {
 
+			int alignment_counter = 0;
 			bool havewealigned=false;
 			while (havewealigned == false)
 			{
@@ -958,7 +959,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 						"Alignment failed.");
 				vision_result_.error_reason = fsm::POSE_NOT_FOUND;
 				havewealigned=false;
+				alignment_counter++;
+				if(alignment_counter>100)
+					return;
 			}
+
 
 			// get Quaternion values from rotation-matrix
 			tf::Matrix3x3 rotation;
@@ -1232,26 +1237,26 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 		}
 
-		if (same_color_problem) {
+		if (same_color_problem)
 
-			pcl::PointCloud<pcl::PointXYZ>::Ptr filteredClusterPC_5(
-					new pcl::PointCloud<pcl::PointXYZ>);
-			std::cout << "There are objects with the same color -> BEWARE!!!!"
-					<< std::endl;
-			std::cout << "Removal object index = " << removal_object_index
-					<< std::endl;
-			if (removal_object_index != -1) {
+		{
+
+			pcl::PointCloud<pcl::PointXYZ>::Ptr filteredClusterPC_5(new pcl::PointCloud<pcl::PointXYZ>);
+
+			std::cout << "There are objects with the same color -> BEWARE!!!!" << std::endl;
+			std::cout << "Removal object index = " << removal_object_index << std::endl;
+
+			if (removal_object_index != -1)
+			{
 				Color_String_List[removal_object_index] = "#000000";
-				std::cout << "VISION: Color String List: "
-						<< Color_String_List[removal_object_index] << std::endl;
+				std::cout << "VISION: Color String List: "	<< Color_String_List[removal_object_index] << std::endl;
 				removal_object_index = -1;
 				removal_object_index_temp = -1;
 			}
-			filteredClusterPC_5 = find_clusters_task5(targetPC, goal,
-					object_model);
 
-			std::cout << "filteredClusterPC_5:"
-					<< filteredClusterPC_5->points.size() << std::endl;
+			filteredClusterPC_5 = find_clusters_task5(targetPC, goal, object_model);
+
+			std::cout << "filteredClusterPC_5:"	<< filteredClusterPC_5->points.size() << std::endl;
 
 			// pass filteredClusterPC to targetPC
 			targetPC->clear();
@@ -1265,10 +1270,13 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 
 			cout << "The latest TargetPC!!!!!" << std::endl;
 			//publish final thresholded point cloud
+
+#ifdef SEND_POINT_CLOUDS
 			pcl::toROSMsg(*targetPC, msg);
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub.publish(msg);
+#endif
 
 		}
 
@@ -3874,6 +3882,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr goal_model)
 
 		{
+
 	std::cout << "[VISION]Entered find_clusters_task5." << std::endl;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr targetPC(
@@ -3934,11 +3943,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 			cout << "[Vision]Created object size: :"
 					<< shape_model->points.size() << std::endl;
 
+#ifdef SEND_POINT_CLOUDS
 			ROS_INFO("[VISION]show Fake Object!");
 			pcl::toROSMsg(*shape_model, msg);
 			msg.header.frame_id = "/Origin";
 			msg.header.stamp = ros::Time::now();
 			pub_2.publish(msg);
+#endif
 
 			pcl::PointXYZ pMin2, pMax2;
 			pcl::getMinMax3D(*shape_model, pMin2, pMax2);
