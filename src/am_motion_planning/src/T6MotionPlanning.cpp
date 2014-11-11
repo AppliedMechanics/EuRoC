@@ -129,6 +129,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 
 		//ROS_WARN_STREAM(t_rdv);
 		//ROS_WARN_STREAM(ros::Time::now().sec);
+
 		double warte_zeit = 1 - n_objects_ * 0.1;
 		ROS_WARN_STREAM("object "<<n_objects_);
 		if(n_objects_ == 1)
@@ -367,30 +368,98 @@ bool T6MotionPlanning::T6_MoveIt_move_to_object()
 
 	// Aufteilung der diff Bewegung in senkrecht belt und gegen belt
 	// neue pose senkrecht
-	if((drop_center_point.x * mdl_norm.y - drop_center_point.y * mdl_norm.x) < 0) // uhrzeiger
-	{
-		//PARAMETER senk und parllel belt
-		par_ = (tmp_goal_pose_GPTCP_diff.position.x * (-mdl_norm.x) - tmp_goal_pose_GPTCP_diff.position.y * mdl_norm.y)/((-mdl_norm.x) * (-mdl_norm.x) - (-mdl_norm.y) * mdl_norm.y);
-		senk_ = (tmp_goal_pose_GPTCP_diff.position.x - par_ * (-mdl_norm.x))/(mdl_norm.y);
 
 
-		// neue pose senkrecht
-		goal_pose_GPTCP_.position.x = tmp_pos[0] + senk_ * mdl_norm.y;
-		goal_pose_GPTCP_.position.y = tmp_pos[1] - senk_ * mdl_norm.x;
-	}
-	else
-	{
-		//PARAMETER senk und parllel belt
-		par_ = (tmp_goal_pose_GPTCP_diff.position.x * (mdl_norm.x) - tmp_goal_pose_GPTCP_diff.position.y * (-mdl_norm.y))/((-mdl_norm.x) * (mdl_norm.x) - (-mdl_norm.y) * (-mdl_norm.y));
-		senk_ = (tmp_goal_pose_GPTCP_diff.position.x - par_ * (-mdl_norm.x))/(-mdl_norm.y);
 
 
-		// neue pose senkrecht
-		goal_pose_GPTCP_.position.x = tmp_pos[0] - senk_ * mdl_norm.y;
-		goal_pose_GPTCP_.position.y = tmp_pos[1] + senk_ * mdl_norm.x;
-	}
+	////////////////////////////////////////////
+	std::vector<double> par;
+	par.resize(2);
+	std::vector<double> senk;
+	senk.resize(2);
 
-	ROS_WARN("2 DOF Schlitten parallel");
+
+	double par_temp = (tmp_goal_pose_GPTCP_diff.position.x * (-mdl_norm.x)
+			+ tmp_goal_pose_GPTCP_diff.position.y * (-mdl_norm.y)) / ((-mdl_norm.x) * (-mdl_norm.x) + (-mdl_norm.y) * (-mdl_norm.y));
+
+	par[0] = par_temp * (-mdl_norm.x);
+	par[1] = par_temp * (-mdl_norm.y);
+
+
+	senk[0] = tmp_goal_pose_GPTCP_diff.position.x - par[0];
+	senk[1] = tmp_goal_pose_GPTCP_diff.position.y - par[1];
+
+	goal_pose_GPTCP_.position.x = tmp_pos[0] + senk[0];
+//	goal_pose_GPTCP_.position.x = current_pose.position.x + senk[0];
+	goal_pose_GPTCP_.position.y = tmp_pos[1] + senk[1];
+//	goal_pose_GPTCP_.position.y = current_pose.position.x + senk[1];
+	////////////////////////////////////////////
+
+
+
+
+
+
+//	if((drop_center_point.x * mdl_norm.y - drop_center_point.y * mdl_norm.x) < 0) // uhrzeiger
+//	{
+//
+//		if (mdl_norm.x == 0.0)
+//		{
+//			ROS_WARN("BELT DIRECTION X = 0");
+//			senk_ = tmp_goal_pose_GPTCP_diff.position.x;
+//			par_ = tmp_goal_pose_GPTCP_diff.position.y;
+//		}
+//		else if (mdl_norm.y == 0.0)
+//		{
+//			ROS_WARN("BELT DIRECTION Y = 0");
+//			senk_ = tmp_goal_pose_GPTCP_diff.position.y;
+//			par_ = tmp_goal_pose_GPTCP_diff.position.x;
+//		}
+//		else
+//		{
+//			//PARAMETER senk und parllel belt
+//			par_ = (tmp_goal_pose_GPTCP_diff.position.x * (-mdl_norm.x) - tmp_goal_pose_GPTCP_diff.position.y * mdl_norm.y)/((-mdl_norm.x) * (-mdl_norm.x) - (-mdl_norm.y) * mdl_norm.y);
+//			senk_ = (tmp_goal_pose_GPTCP_diff.position.x - par_ * (-mdl_norm.x))/(mdl_norm.y);
+//		}
+//
+//
+//		// neue pose senkrecht
+//		goal_pose_GPTCP_.position.x = tmp_pos[0] + senk_ * mdl_norm.y;
+//		goal_pose_GPTCP_.position.y = tmp_pos[1] - senk_ * mdl_norm.x;
+//
+//		ROS_WARN("UHRZEIGER");
+//		ROS_INFO_STREAM("par_: " << par_);
+//		ROS_INFO_STREAM("senk_: " << senk_);
+//		ROS_INFO_STREAM("goal_pose_GPTCP: " << goal_pose_GPTCP_.position);
+//	}
+//	else
+//	{
+//		if (mdl_norm.x == 0.0)
+//		{
+//			ROS_WARN("BELT DIRECTION X = 0");
+//			senk_ = tmp_goal_pose_GPTCP_diff.position.x;
+//			par_ = tmp_goal_pose_GPTCP_diff.position.y;
+//		}
+//		else if (mdl_norm.y == 0.0)
+//		{
+//			ROS_WARN("BELT DIRECTION Y = 0");
+//			senk_ = tmp_goal_pose_GPTCP_diff.position.y;
+//			par_ = tmp_goal_pose_GPTCP_diff.position.x;
+//		}
+//		else
+//		{
+//			// PARAMETER senk und parllel belt
+//			par_ = (tmp_goal_pose_GPTCP_diff.position.x * (mdl_norm.x) - tmp_goal_pose_GPTCP_diff.position.y * (-mdl_norm.y))/((-mdl_norm.x) * (mdl_norm.x) - (-mdl_norm.y) * (-mdl_norm.y));
+//			if (mdl_norm.y == 0.0)
+//				senk_ = tmp_goal_pose_GPTCP_diff.position.x;
+//		}
+//
+//		// neue pose senkrecht
+//		goal_pose_GPTCP_.position.x = tmp_pos[0] - senk_ * mdl_norm.y;
+//		goal_pose_GPTCP_.position.y = tmp_pos[1] + senk_ * mdl_norm.x;
+//	}
+
+	ROS_WARN("2 DOF Schlitten senkrecht");
 	//ROS_INFO_STREAM(goal_pose_GPTCP_.position);
 	// Save pose
 	senkrecht_belt_pose_ = goal_pose_GPTCP_;
@@ -426,8 +495,20 @@ if(0)
 
 	//	save Pose antiparallel
 
-	gripping_pose_.position.x = goal_pose_GPTCP_.position.x - par_ * mdl_norm.x;
-	gripping_pose_.position.y = goal_pose_GPTCP_.position.y - par_ * mdl_norm.y;
+//	gripping_pose_.position.x = goal_pose_GPTCP_.position.x - par_ * mdl_norm.x;
+//	gripping_pose_.position.y = goal_pose_GPTCP_.position.y - par_ * mdl_norm.y;
+
+
+	///////////////////////////////////////////////////
+//	gripping_pose_.position.x = tmp_pos[0] + senk[0] + par[0];
+//	gripping_pose_.position.y = tmp_pos[1] + senk[1] + par[1];
+
+	if (!T6_setTargetForParallelMotion(tmp_pos, senk, par))
+	{
+		msg_error("Computing a target during the motion parallel to the belt failed to find a solution inside the range of the table!");
+		return false;
+	}
+	///////////////////////////////////////////////////
 
 	// Set goal pose
 	goal_pose_GPTCP_ = gripping_pose_;
@@ -464,6 +545,41 @@ if(0)
 	return true;
 }
 
+
+bool T6MotionPlanning::T6_setTargetForParallelMotion(std::vector<double> tmp_pos, std::vector<double>senk, std::vector<double>par)
+{
+	double percentage = 1.0;
+	double step_size = 0.05;
+	// hard coded bounds of the table
+	double x_max = 0.92;
+	double y_max = 0.92;
+
+	bool showReductionOfTheRange = false;
+
+	do
+	{
+		if (showReductionOfTheRange)
+		{
+			ROS_WARN("Base pose lies outside the table!");
+			ROS_INFO_STREAM("Range reduced to " << percentage*100.0 << "%.");
+		}
+		gripping_pose_.position.x = tmp_pos[0] + senk[0] + percentage * par[0];
+		gripping_pose_.position.y = tmp_pos[1] + senk[1] + percentage * par[1];
+
+		percentage -= step_size;
+		showReductionOfTheRange = true;
+
+	} while ((gripping_pose_.position.x < -x_max
+			|| gripping_pose_.position.x > x_max
+			|| gripping_pose_.position.y < -y_max
+			|| gripping_pose_.position.y > y_max)
+			&& percentage >= 0.0);
+
+	if (percentage < 0.0)
+		return false;
+	else
+		return true;
+}
 
 
 bool T6MotionPlanning::T6_MoveIt_move_object_safe()

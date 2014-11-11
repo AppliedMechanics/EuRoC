@@ -76,6 +76,11 @@ private:
 	tf::Matrix3x3 T6_get_rotationmatrixfromaxis(tf::Vector3 axis, double angle_rad);
 	void T6_set_orientation_from_axes(geometry_msgs::Pose &tmp_pose, tf::Vector3 x_axis, tf::Vector3 y_axis, tf::Vector3 z_axis);
 
+	//! compute the target of the LWR base for moving parallel along the belt for grabbing the object
+	/*!
+	 * if the base lies outside the table, the distance is reduced incrementally
+	*/
+	bool T6_setTargetForParallelMotion(std::vector<double> tmp_pos, std::vector<double>senk, std::vector<double>par);
 
 	geometry_msgs::Point target_pos;
 	geometry_msgs::Point drop_center_point;
