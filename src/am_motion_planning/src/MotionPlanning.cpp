@@ -126,6 +126,8 @@ void MotionPlanning::executeGoalPose_CB(const am_msgs::goalPoseGoal::ConstPtr &g
 	ros::param::get("/skip_vision", skip_vision_);
 	ros::param::get("/active_task_number_", active_task_nr_);
 
+	switch_algorithm_=false;
+
 	static bool first=true;
 	if (first){
 		// initialize Planning Scene -> add ground + pan tilt to environment
@@ -218,7 +220,14 @@ bool MotionPlanning::executeGoalPoseStd()
 {
 	//--------------------------------------------------------------------------------------
 	//! Plan
-	switch (goal_pose_goal_->planning_algorithm)
+	int planning_alg;
+
+	if (!switch_algorithm_)
+		planning_alg = goal_pose_goal_->planning_algorithm;
+	else
+		planning_alg = MOVE_IT_9DOF;
+
+	switch (planning_alg)
 	{
 
 	case HOMING_7DOF:
@@ -3300,7 +3309,6 @@ void MotionPlanning::swing_in_motion()
 		if (std::abs(tmp_cfg.q[0])>0.92 || std::abs(tmp_cfg.q[1])>0.92)
 		{
 			msg_warn("Path outside limits. Retrying with MoveIT 9DOF");
-			goal_pose_goal_->planning_algorithm = MOVE_IT_9DOF;
 			switch_algorithm_=true;
 		}
 
