@@ -1065,8 +1065,6 @@ bool MotionPlanning::MoveIt_initializeMoveGroup()
 	planning_scene_.robot_state.is_diff = true;
 
 
-
-
 	//	get_planning_scene_srv_.request.components.components = get_planning_scene_srv_.request.components.ROBOT_STATE_ATTACHED_OBJECTS;
 	//	get_planning_scene_srv_.request.components.components = get_planning_scene_srv_.request.components.ROBOT_STATE;
 	get_planning_scene_srv_.request.components.components
@@ -3234,6 +3232,9 @@ bool MotionPlanning::pose_check_isnan(geometry_msgs::Pose* msg_ptr)
 
 void MotionPlanning::swing_in_motion()
 {
+	switch_algorithm_=false;
+
+
 	move_along_joint_path_srv_.request.joint_names.clear();
 	move_along_joint_path_srv_.request.joint_names.resize(2);
 	move_along_joint_path_srv_.request.joint_names[0] = "axis_x";
@@ -3295,10 +3296,22 @@ void MotionPlanning::swing_in_motion()
 		tmp_vec_res = dcm*tmp_vect + x_start;
 		tmp_cfg.q[0] = tmp_vec_res.x();
 		tmp_cfg.q[1] = tmp_vec_res.y();
+
+		if (std::abs(tmp_cfg.q[0])>0.92 || std::abs(tmp_cfg.q[1])>0.92)
+		{
+			msg_warn("Path outside limits. Retrying with MoveIT 9DOF");
+			goal_pose_goal_->planning_algorithm = MOVE_IT_9DOF;
+			switch_algorithm_=true;
+		}
+
 		ROS_WARN("idx %f q %f %f",idx[i],tmp_cfg.q[0],tmp_cfg.q[1]);
 		move_along_joint_path_srv_.request.path.push_back(tmp_cfg);
 	}
 	ROS_WARN("x_start %f %f %f",x_start.x(),x_start.y(),x_start.z());
 	ROS_WARN("x_0 %f %f %f",x_0.x(),x_0.y(),x_0.z());
 	ROS_WARN("x_1 %f %f %f",x_1.x(),x_1.y(),x_1.z());
+
+	if (switch_algorithm_)
+		if (executeGoalPoseStd())
+			msg_info("Success.");
 }

@@ -327,6 +327,8 @@ protected:
 
 	bool pose_check_isnan(geometry_msgs::Pose* msg_ptr);
 	void swing_in_motion();
+
+	bool switch_algorithm_;
 };
 
 #endif /* MOTIONPLANNING_H_ */
