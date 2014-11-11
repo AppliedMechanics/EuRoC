@@ -3932,6 +3932,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 
 	int loop_size = Color_String_List.size();
 
+	if( (Color_String_List.size()==0)  || (Color_String_List.size()!=Number_of_Shapes_List.size()) )
+	{
+		*targetPC += *input_cloud;
+		return targetPC;
+	}
+
 	for (int i = 0; i < loop_size; i++) {
 		if (Color_String_List[i] == goal->object.color) {
 			int object_number = i;
@@ -3967,6 +3973,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 	}
 
 	cout << "[Vision] Number of created objects:" << obj_c << std::endl;
+
+	if( (max_distance_list.size()==0)  || (max_distance_list.size()!=index_list.size()) )
+	{
+		*targetPC += *input_cloud;
+		return targetPC;
+	}
+
 
 	if (counter > 1)
 		same_size_problem = true;
@@ -4086,6 +4099,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 		//*intermediateClusterPC += *cloud_cluster;
 	}
 
+	if( (max_distance_list_cloud_cluster.size()==0)  || (max_distance_list_cloud_cluster.size()!=cluster_counter.size()) )
+	{
+		*targetPC += *input_cloud;
+		return targetPC;
+	}
+
+
+
 	for (int m = 0; m < list_size - 1; m++) {
 		for (int n = 0; n < list_size - m - 1; n++) {
 			if (max_distance_list_cloud_cluster[n]
@@ -4108,7 +4129,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 				<< std::endl;
 	}
 
+
+	if( cluster_counter.size() < (min_dist_obj_index+1) )
+	{
+		*targetPC += *input_cloud;
+		return targetPC;
+	}
+
 	int cluster_index = 0;
+	bool cluster_found = false;
 
 	for (std::vector<pcl::PointIndices>::const_iterator it =
 			initial_cluster_indices.begin();
@@ -4127,6 +4156,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 			cloud_cluster3->is_dense = true;
 
 			*targetPC += *cloud_cluster3;
+			cluster_found=true;
 
 			cout << "Size of cluster:" << targetPC->points.size() << std::endl;
 
@@ -4146,6 +4176,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::find_clusters_task5(
 		}
 
 		++cluster_index;
+	}
+
+	if(!cluster_found)
+	{
+		*targetPC += *input_cloud;
 	}
 
 	return targetPC;
