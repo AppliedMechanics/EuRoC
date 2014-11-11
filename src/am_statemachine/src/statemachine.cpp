@@ -1695,7 +1695,9 @@ void Statemachine::scheduler_error_check_object_gripped()
 		}
 		else
 		{
-			scheduler_next();
+			if(active_task_number_!=5)
+				scheduler_next();
+
 			scheduler_grasp_object(EXECUTE_NOW);
 
 			check_object_gripped_state_ = OPEN;
