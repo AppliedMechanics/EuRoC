@@ -404,8 +404,8 @@ void Statemachine::scheduler_schedule()
 		temp_state.sub.one=fsm::REQUEST_TASK;		state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::START_SIM;			state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::PARSE_YAML;			state_queue.push_back(temp_state);
-		//temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::STOP_SIM;			state_queue.push_back(temp_state);
+		temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+		//temp_state.sub.one=fsm::STOP_SIM;			state_queue.push_back(temp_state);
 		scheduler_printqueue(); //print queue to console for debugging purposes
 		break;
 
@@ -2303,42 +2303,42 @@ int Statemachine::request_task()
 		else
 		{
 			//old:searching for yaml name
-//			//find scene for task_name
-//			std::string task_name_;
-//			ros::param::get("/task_name",task_name_);
-//			ROS_INFO("got task_name: %s",task_name_.c_str());
-//
-//			for(uint16_t ii=0;ii<nr_scenes_;ii++)
-//			{
-//				if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
-//				{
-//					active_scene_=ii;
-//					break;
-//				}
-//			}
-//			ROS_INFO("Scene number: %d",active_scene_);
-
-			//new: searching for task name
-			YAML::Node task_description_node;
+			//find scene for task_name
 			std::string task_name_;
-			for(uint16_t ii=0;ii<scenes_.size();ii++)
-			{
-				std::stringstream yaml_stream(scenes_[ii].description_yaml);
-				YAML::Parser parser(yaml_stream);
-				if(!parser.GetNextDocument(task_description_node))
-				{
-				  msg_error("failed to get next document!");
-				  return -1;
-				}
-				task_description_node["task_name"] >> task_name_;
+			ros::param::get("/task_name",task_name_);
+			ROS_INFO("got task_name: %s",task_name_.c_str());
 
-				if(strcmp(task_name_.c_str(),task_name_req.c_str())==0)
+			for(uint16_t ii=0;ii<nr_scenes_;ii++)
+			{
+				if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
 				{
-					ROS_INFO("scene[%d]: task_name = %s",ii,task_name_.c_str());
 					active_scene_=ii;
 					break;
 				}
 			}
+			ROS_INFO("Scene number: %d",active_scene_);
+
+//			//new: searching for task name
+//			YAML::Node task_description_node;
+//			std::string task_name_;
+//			for(uint16_t ii=0;ii<scenes_.size();ii++)
+//			{
+//				std::stringstream yaml_stream(scenes_[ii].description_yaml);
+//				YAML::Parser parser(yaml_stream);
+//				if(!parser.GetNextDocument(task_description_node))
+//				{
+//				  msg_error("failed to get next document!");
+//				  return -1;
+//				}
+//				task_description_node["task_name"] >> task_name_;
+//
+//				if(strcmp(task_name_.c_str(),task_name_req.c_str())==0)
+//				{
+//					ROS_INFO("scene[%d]: task_name = %s",ii,task_name_.c_str());
+//					active_scene_=ii;
+//					break;
+//				}
+//			}
 		}
 
 		//check which task has been chosen
