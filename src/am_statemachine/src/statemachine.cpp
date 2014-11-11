@@ -2,6 +2,7 @@
 #include <cmath>
 #include <StaticTFBroadcaster.h>
 #include <explore_poses.h>
+#include <yaml-cpp/yaml.h>
 
 #define FORCE_STOP_SIM//run only one task and then quit
 
@@ -403,7 +404,8 @@ void Statemachine::scheduler_schedule()
 		temp_state.sub.one=fsm::REQUEST_TASK;		state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::START_SIM;			state_queue.push_back(temp_state);
 		temp_state.sub.one=fsm::PARSE_YAML;			state_queue.push_back(temp_state);
-		temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+		//temp_state.sub.one=fsm::SCHEDULER;			state_queue.push_back(temp_state);
+		temp_state.sub.one=fsm::STOP_SIM;			state_queue.push_back(temp_state);
 		scheduler_printqueue(); //print queue to console for debugging purposes
 		break;
 
@@ -2285,9 +2287,13 @@ int Statemachine::request_task()
 		//destroy thread
 		//lsc_.detach();
 
-		std::string task_name_;
-		ros::param::get("/task_name",task_name_);
-		if(strcmp(task_name_.c_str(),"00")==0)
+
+		std::string task_name_req,key;
+		if(node_.searchParam("task_name", key))
+		{
+			node_.getParam(key, task_name_req);
+		}
+		if(strcmp(task_name_req.c_str(),"00")==0)
 		{
 			std::cout<<"choose task: ";
 			int blub=8;
@@ -2296,20 +2302,43 @@ int Statemachine::request_task()
 		}
 		else
 		{
-			//find scene for task_name
-			std::string task_name_;
-			ros::param::get("/task_name",task_name_);
-			ROS_INFO("got task_name: %s",task_name_.c_str());
+			//old:searching for yaml name
+//			//find scene for task_name
+//			std::string task_name_;
+//			ros::param::get("/task_name",task_name_);
+//			ROS_INFO("got task_name: %s",task_name_.c_str());
+//
+//			for(uint16_t ii=0;ii<nr_scenes_;ii++)
+//			{
+//				if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
+//				{
+//					active_scene_=ii;
+//					break;
+//				}
+//			}
+//			ROS_INFO("Scene number: %d",active_scene_);
 
-			for(uint16_t ii=0;ii<nr_scenes_;ii++)
+			//new: searching for task name
+			YAML::Node task_description_node;
+			std::string task_name_;
+			for(uint16_t ii=0;ii<scenes_.size();ii++)
 			{
-				if(strcmp(scenes_[ii].name.c_str(),task_name_.c_str())==0)
+				std::stringstream yaml_stream(scenes_[ii].description_yaml);
+				YAML::Parser parser(yaml_stream);
+				if(!parser.GetNextDocument(task_description_node))
 				{
+				  msg_error("failed to get next document!");
+				  return -1;
+				}
+				task_description_node["task_name"] >> task_name_;
+
+				if(strcmp(task_name_.c_str(),task_name_req.c_str())==0)
+				{
+					ROS_INFO("scene[%d]: task_name = %s",ii,task_name_.c_str());
 					active_scene_=ii;
 					break;
 				}
 			}
-			ROS_INFO("Scene number: %d",active_scene_);
 		}
 
 		//check which task has been chosen
@@ -4918,7 +4947,6 @@ int Statemachine::move_to_object()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 
-#warning TO_DISCUSS
 		if (active_task_number_==5 && move_to_object_counter_==3)
 			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		else
@@ -5017,7 +5045,6 @@ int Statemachine::move_to_object_t6()
 
 		goal_queue[0].goal_pose = object_grip_pose[selected_object_pose_];
 
-#warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_object;
 		goal_queue[0].planning_frame = GP_TCP;
@@ -5133,7 +5160,6 @@ int Statemachine::move_to_target_zone_safe()
 		goal_queue[0].speed_percentage = std_moving_speed*(1-speed_mod_);
 		goal_queue[0].allowed_time = 60.0;
 #else
-#warning Fuer task 3 eigentlich nicht noetig -> nur fuer test zwecke
 		if((active_task_number_ == 3 || active_task_number_ == 4) && (cur_obj_gripped_==true))
 		{
 			//send goals to motion-planning
@@ -5405,7 +5431,6 @@ int Statemachine::move_to_target_zone()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
-#warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		if (active_task_number_==5 && move_to_target_zone_counter_==10)
 			goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
@@ -5512,7 +5537,6 @@ int Statemachine::move_to_target_zone_t6()
 		goal_queue.resize(nr_goals_);
 
 		goal_queue[0].goal_pose = target_place_pose[selected_target_pose_];
-#warning TO_DISCUSS
 		//goal_queue[0].planning_algorithm = STANDARD_IK_7DOF;
 		goal_queue[0].planning_algorithm = planning_mode_.move_to_target_zone;
 		goal_queue[0].planning_frame = GP_TCP;

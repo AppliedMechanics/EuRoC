@@ -1746,13 +1746,13 @@ void EurocInput::puzzle_get_push_position() // Only provides the push pose point
 			temp_push_target_pose_B = transform_to_pose(puzzlepart*pose_to_transform(rel_push_target_pose_B));
 
 			//-----------------------------------------------------------------------------------------------
-						ROS_INFO("relative push pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_A.position.x,temp_push_pose_A.position.y,temp_push_pose_A.position.z);
-						ROS_INFO("relative push target pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_A.position.x,temp_push_target_pose_A.position.y,temp_push_target_pose_A.position.z);
-						ROS_INFO("relative push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
+			ROS_INFO("relative push pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_A.position.x,temp_push_pose_A.position.y,temp_push_pose_A.position.z);
+			ROS_INFO("relative push target pose A position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_A.position.x,temp_push_target_pose_A.position.y,temp_push_target_pose_A.position.z);
+			ROS_INFO("relative push pose A orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_A.orientation.x,abs_push_pose_A.orientation.y,abs_push_pose_A.orientation.z,abs_push_pose_A.orientation.w);
 
-						ROS_INFO("relative push pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_B.position.x,temp_push_pose_B.position.y,temp_push_pose_B.position.z);
-						ROS_INFO("relative push target pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_B.position.x,temp_push_target_pose_B.position.y,temp_push_target_pose_B.position.z);
-						ROS_INFO("relative push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
+			ROS_INFO("relative push pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_pose_B.position.x,temp_push_pose_B.position.y,temp_push_pose_B.position.z);
+			ROS_INFO("relative push target pose B position: x=%4.3f y=%4.3f z=%4.3f",temp_push_target_pose_B.position.x,temp_push_target_pose_B.position.y,temp_push_target_pose_B.position.z);
+			ROS_INFO("relative push pose B orientation: x=%4.3f y=%4.3f z=%4.3f w=%4.3f",abs_push_pose_B.orientation.x,abs_push_pose_B.orientation.y,abs_push_pose_B.orientation.z,abs_push_pose_B.orientation.w);
 			//-----------------------------------------------------------------------------------------------
 
 			// push poses in the global coordinate system
@@ -2650,6 +2650,7 @@ void EurocInput::puzzle_order_of_pieces()
 	{
 		only_x = true;
 		only_y = true;
+		puzzle_order_[fix_object].wurscht=true;  //Set default here
 
 		for (int i = 0; i < nr_objects_; i++)
 		{
@@ -2696,6 +2697,20 @@ void EurocInput::puzzle_order_of_pieces()
 								puzzle_order_[fix_object].push = true;
 								puzzle_order_[fix_object].x_first = false;
 							}
+							//							ROS_INFO("fix object %d, organised object %d:", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
+							//							ROS_INFO("%d, %d", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005)));
+
+							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
+									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+									&& fabs(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y
+											- (puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y))
+											< 0.06)
+							{
+								puzzle_order_[fix_object].wurscht = false;  //if any shape of fix object has another object right above --> only to be pushed in y
+								puzzle_order_[fix_object].only_x = true;
+							}
 						}
 					}
 				}
@@ -2707,6 +2722,8 @@ void EurocInput::puzzle_order_of_pieces()
 		{
 			for(int organised_object = 0; organised_object < search_until; organised_object++)
 			{
+				ROS_INFO("fix object %d, organised object %d:", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
+
 				if (puzzle_order_[organised_object].part_index != puzzle_order_[fix_object].part_index)
 				{
 					for (int fix_shape = 0; fix_shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; fix_shape++)
@@ -2725,6 +2742,22 @@ void EurocInput::puzzle_order_of_pieces()
 								puzzle_order_[fix_object].push = true;
 								puzzle_order_[fix_object].x_first = true;
 							}
+
+							//							ROS_INFO("fix object %d, organised object %d:", puzzle_order_[fix_object].part_index, puzzle_order_[organised_object].part_index);
+							//							ROS_INFO("%d, %d", int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005)), int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005)));
+
+							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
+									&& fabs(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x
+											- (puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x))
+											< 0.06)
+							{
+
+								puzzle_order_[fix_object].only_x = false;
+								puzzle_order_[fix_object].wurscht = false;
+							}
 						}
 					}
 				}
@@ -2733,12 +2766,14 @@ void EurocInput::puzzle_order_of_pieces()
 		}
 		else if (!only_x && !only_y)  //touches both
 		{
+			ROS_INFO("fix object %d:", puzzle_order_[fix_object].part_index);
 			puzzle_order_[fix_object].x_first = true;
 			puzzle_order_[fix_object].push = true;
-			puzzle_order_[fix_object].wurscht=true;
+			//			puzzle_order_[fix_object].wurscht=true;
 		}
 		else // fix_object does not touch either axis
 		{
+			ROS_INFO("fix object %d:", puzzle_order_[fix_object].part_index);
 			bool touch_object_in_x = false;
 			bool touch_object_in_y = false;
 
@@ -2760,84 +2795,117 @@ void EurocInput::puzzle_order_of_pieces()
 							{
 								touch_object_in_x = true;
 							}
-						}
-					}
-				}
-			}
 
-			for(int organised_object = 0; organised_object < search_until; organised_object++)
-			{
-				if (puzzle_order_[organised_object].part_index != puzzle_order_[fix_object].part_index)
-				{
-					for (int fix_shape = 0; fix_shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; fix_shape++)
-					{
-						for (int organised_shape = 0; organised_shape < objects_[puzzle_order_[organised_object].part_index].nr_shapes; organised_shape++)
-						{
 							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
-									> int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
+									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
 									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
 									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
 									&& fabs(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y
 											- (puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y))
 											< 0.06)
 							{
-							touch_object_in_y = true;
+								puzzle_order_[fix_object].wurscht = false;  //if any shape of fix object has another object right above --> only to be pushed in y
+								puzzle_order_[fix_object].only_x = true; //only_x == false  --> only_y
+							}
+
+
+							if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+									< int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+									&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+									== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
+									&& fabs(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x
+											- (puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x))
+											< 0.06)
+							{
+
+								puzzle_order_[fix_object].only_x = false;
+								puzzle_order_[fix_object].wurscht = false;
 							}
 						}
+
 					}
 				}
 			}
 
-			if (touch_object_in_x && touch_object_in_y)  // fix_object touches an organised object to its right and beneath itself
-			{
-				puzzle_order_[fix_object].push = true;
-				puzzle_order_[fix_object].x_first = true;
-				puzzle_order_[fix_object].wurscht=true;
-			}
-			else  // fix_object DOES NOT touch an organised object to its right and beneath itself
-			{
-				puzzle_order_[fix_object].push = false;
-			}
 
-			//			bool no_blocks_x = true; // no blocks x = other objects don't have shapes with greater x value and equal y value
-			//			bool no_blocks_y = true;
-			//
-			for (int i = 0; i < nr_objects_; i++)
+		for(int organised_object = 0; organised_object < search_until; organised_object++)
+		{
+			if (puzzle_order_[organised_object].part_index != puzzle_order_[fix_object].part_index)
 			{
-				// search where in puzzle_order_ fix_object is located
-				// --> only the objects placed before fix_object matter when placing it
-				if (puzzle_order_[i].part_index == puzzle_order_[fix_object].part_index)
+				for (int fix_shape = 0; fix_shape < objects_[puzzle_order_[fix_object].part_index].nr_shapes; fix_shape++)
 				{
-					search_until = i;
+					for (int organised_shape = 0; organised_shape < objects_[puzzle_order_[organised_object].part_index].nr_shapes; organised_shape++)
+					{
+						if(int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y+0.000005))
+								> int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y+0.000005))
+								&& int(100*(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.x + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.x+0.000005))
+								== int(100*(puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.x + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.x+0.000005))
+								&& fabs(puzzle_target_poses_[puzzle_order_[fix_object].part_index].position.y + objects_[puzzle_order_[fix_object].part_index].shape[fix_shape].pose.position.y
+										- (puzzle_target_poses_[puzzle_order_[organised_object].part_index].position.y + objects_[puzzle_order_[organised_object].part_index].shape[organised_shape].pose.position.y))
+										< 0.06)
+						{
+							touch_object_in_y = true;
+						}
+					}
 				}
 			}
 		}
-	}
 
-	//---------------------------------------------------------------------------------
-
-	for(int i = 0; i < nr_objects_; i++)
-	{
-		if(puzzle_order_[i].push)
+		if (touch_object_in_x && touch_object_in_y)  // fix_object touches an organised object to its right and beneath itself
 		{
-			if(puzzle_order_[i].x_first)
-			{
-				ROS_INFO("Piece %d to be pushed first in x direction", puzzle_order_[i].part_index);
-			}
-			else
-			{
-				ROS_INFO("Piece %d to be pushed first in y direction", puzzle_order_[i].part_index);
-			}
+			puzzle_order_[fix_object].push = true;
+			puzzle_order_[fix_object].x_first = true;
+			//				puzzle_order_[fix_object].wurscht=true;
+		}
+		else  // fix_object DOES NOT touch an organised object to its right and beneath itself
+		{
+			puzzle_order_[fix_object].push = false;
+		}
+
+	}
+}
+
+//---------------------------------------------------------------------------------
+
+for(int i = 0; i < nr_objects_; i++)
+{
+	if(puzzle_order_[i].push)
+	{
+		if(puzzle_order_[i].x_first)
+		{
+			ROS_INFO("Piece %d to be pushed first in x direction", puzzle_order_[i].part_index);
 		}
 		else
 		{
-			ROS_INFO("Piece %d to be picked up an placed into the fixture", puzzle_order_[i].part_index);
+			ROS_INFO("Piece %d to be pushed first in y direction", puzzle_order_[i].part_index);
+		}
+		if(puzzle_order_[i].wurscht)
+		{
+			ROS_INFO("Piece %d wurscht", puzzle_order_[i].part_index);
+		}
+		else
+		{
+			ROS_INFO("Piece %d nicht wurscht", puzzle_order_[i].part_index);
+			if(puzzle_order_[i].only_x)
+			{
+				ROS_INFO("Piece %d only in x", puzzle_order_[i].part_index);
+			}
+			else
+			{
+				ROS_INFO("Piece %d only in y", puzzle_order_[i].part_index);
+			}
+
 		}
 	}
+	else
+	{
+		ROS_INFO("Piece %d to be picked up an placed into the fixture", puzzle_order_[i].part_index);
+	}
+}
 
-	//---------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 
-	ROS_INFO("EurocInput: The right order for puzzle pieces found.");
+ROS_INFO("EurocInput: The right order for puzzle pieces found.");
 }
 
 

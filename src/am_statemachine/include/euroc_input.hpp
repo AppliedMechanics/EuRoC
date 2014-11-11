@@ -198,12 +198,13 @@ private:
 
 	struct puzzle_piece_
 	{
-	  int part_index;
-	  bool push;
-	  bool x_first;
-	  bool wurscht;
-	  am_msgs::PushPose push_pose_A;
-	  am_msgs::PushPose push_pose_B;
+		int part_index;
+		bool push;
+		bool x_first;
+		bool wurscht;
+		bool only_x;
+		am_msgs::PushPose push_pose_A;
+		am_msgs::PushPose push_pose_B;
 	};
 
 	//!the final order for puzzle peace placement & info on how to place them
@@ -237,10 +238,16 @@ inline std::vector<bool> EurocInput::get_push_info()
 			{
 				ret[0]=ret[1]=true;
 			}
-			else if(puzzle_order_[obj_queue_[0].obj_idx].x_first)
+			else if(puzzle_order_[obj_queue_[0].obj_idx].only_x)
+			{
+
 				ret[0]=true;
+			}
 			else
+			{
 				ret[1]=true;
+			}
+
 		}
 	}
 

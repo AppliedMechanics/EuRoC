@@ -1,6 +1,8 @@
 #include "statemachine.hpp"
 #include <signal.h>
 #include <stdlib.h>
+#include <fstream>
+#include <cstdio>
 
 //Variables
 Statemachine* sm; 	//global pointer to statemachine object
@@ -96,10 +98,16 @@ int main(int argc, char **argv)
 	}
 	ROS_INFO("Main: while-loop finished.");
 
-	if(sm->finished())
+	if(!sm->finished())
 	{
-		ROS_INFO("clearing RELAUNCH environment variable");
-		unsetenv("RELAUNCH");
+		ROS_INFO("creating relaunch file");
+
+		std::ofstream outfile("/tmp/euroc_c2s1/relaunch.txt");
+		outfile << "relaunch" << std::endl;
+		outfile.flush();
+		outfile.close();
+
+		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 	}
 
 	//quit properly
