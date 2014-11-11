@@ -701,18 +701,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(	pcl::PointCloud<
 
 			if(	cloud->at(j,i).x == 0 && cloud->at(j,i).y == 0 && cloud->at(j,i).z == 0)
 			{
-				worldPointCloud->at(j,i).x = std::numeric_limits<float>::quiet_NaN();
-				worldPointCloud->at(j,i).y = std::numeric_limits<float>::quiet_NaN();
-				worldPointCloud->at(j,i).z = std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).x = 0;//std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).y = 0;//std::numeric_limits<float>::quiet_NaN();
+				worldPointCloud->at(j,i).z = 0;//std::numeric_limits<float>::quiet_NaN();
 			}
 			else
 			{
 				int value = threshold.data[threshold.channels()*(cloud->width * i + j) + 0];
 				if (value != 255)
 				{
-					worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
-					worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
-					worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).x =	0;//std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).y =	0;//std::numeric_limits<float>::quiet_NaN();
+					worldPointCloud->at(j, i).z =	0;//std::numeric_limits<float>::quiet_NaN();
 				}
 				else
 				{
@@ -734,9 +734,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr am_pointcloud::snapCloudT6(	pcl::PointCloud<
 					}
 					else
 					{
-						worldPointCloud->at(j, i).x =	std::numeric_limits<float>::quiet_NaN();
-						worldPointCloud->at(j, i).y =	std::numeric_limits<float>::quiet_NaN();
-						worldPointCloud->at(j, i).z =	std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).x =	0;//std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).y =	0;//std::numeric_limits<float>::quiet_NaN();
+						worldPointCloud->at(j, i).z =	0;//std::numeric_limits<float>::quiet_NaN();
 					}
 
 				}
