@@ -920,6 +920,11 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 		ROS_INFO("[VISION]now working on task: %d", task_nr);
 
 		if (_currentGoal->object.shape.size() == 1) {
+
+			bool havewealigned=false;
+			while (havewealigned == false)
+			{
+				havewealigned=true;
 			ROS_INFO("wait for the cube to be dropped");
 			// --> move the pan tilt
 			// create point cloud
@@ -952,7 +957,7 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 				vision_server_.setPreempted(vision_result_,
 						"Alignment failed.");
 				vision_result_.error_reason = fsm::POSE_NOT_FOUND;
-				return;
+				havewealigned=false;
 			}
 
 			// get Quaternion values from rotation-matrix
@@ -985,6 +990,8 @@ void Vision::handle(const am_msgs::VisionGoal::ConstPtr &goal) {
 					"Goal configuration has been reached");
 
 			targetPC->clear(); // Get ready for the next round
+
+		}
 			return;
 		} else {
 			ROS_ERROR("Object description does not match a single Cube");
@@ -2990,6 +2997,7 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 	fest.setInputNormals(scene);
 	fest.compute(*scene_features);
 
+
 	// Perform alignment
 	pcl::console::print_highlight("Performing 10,000 iterations\n");
 	pcl::console::print_highlight("Starting alignment...\n");
@@ -3009,6 +3017,7 @@ Eigen::Matrix4f Vision::fast_cube_alignment(
 
 	pcl::ScopeTime t("Alignment");
 	align.align(*object_aligned);
+
 
 	if (align.hasConverged()) {
 		// Print results
