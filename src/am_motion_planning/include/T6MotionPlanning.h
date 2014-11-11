@@ -157,6 +157,7 @@ private:
 
 	//new solution based on grasping node
 	tf::Vector3 conveyor_belt_move_direction_and_length;
+	double l_belt;
 	double gripping_angle_deg_;
 	double gripping_angle_rad_;
 

@@ -29,6 +29,7 @@ T5MotionPlanning::T5MotionPlanning()
 	n_obj_ges_ = 10;
 	home_faktor_ =1.8;
 	t_rdv = 0;
+	l_belt=0;
 	conveyor_belt_move_direction_and_length.setValue(0,0,0);
 	gripping_angle_deg_ = gripping_angleT6_deg_config;
 	gripping_angle_rad_=gripping_angle_deg_/180.0*(M_PI);
@@ -84,7 +85,9 @@ bool T6MotionPlanning::executeGoalPoseT6()
 		ROS_WARN("MOVE_T6: 2 DOF + EUROC");
 		ROS_WARN("Object number %d",n_objects_);
 		// calculate factor for homing
-		home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
+		//home_faktor_ = 0.5 +  ((-1/81)* n_objects_*n_objects_ +(20/81)*n_objects_ + (-19/81))*(1.8-0.5);
+
+		home_faktor_ = 0.5 + 0.8*(l_belt-0.5/0.8)*n_objects_/n_obj_ges_;
 
 
 		// get solution
@@ -1547,7 +1550,7 @@ bool T6MotionPlanning::T6_getNewPose(geometry_msgs::Pose& pose)
 		//		ros::param::get("/object_counter_", n_objects_);
 
 		// TODO adaptiv T6_puffer_pose
-		T6_puffer_pose_ = 0;//1 + n_objects_ * 0.1;
+		T6_puffer_pose_ = 0 + (n_objects_-1) * 0.1;
 
 		geometry_msgs::Pose old_pose; // ziel position
 		old_pose = pose;
@@ -2045,10 +2048,11 @@ void T6MotionPlanning::T6_getParam()
 	ros::param::get("/conveyorbelt_move_direction_and_length_y_", mdl.y);
 	ros::param::get("/conveyorbelt_move_direction_and_length_z_", mdl.z);
 
+	l_belt=sqrt(pow(mdl.x,2) + pow(mdl.y,2) + pow(mdl.z,2))+0.1;
 	//normieren
-	mdl_norm.x = mdl.x / sqrt(pow(mdl.x,2) + pow(mdl.y,2) + pow(mdl.z,2));
-	mdl_norm.y = mdl.y / sqrt(pow(mdl.x,2) + pow(mdl.y,2) + pow(mdl.z,2));
-	mdl_norm.z = mdl.z / sqrt(pow(mdl.x,2) + pow(mdl.y,2) + pow(mdl.z,2));
+	mdl_norm.x = mdl.x / l_belt;
+	mdl_norm.y = mdl.y / l_belt;
+	mdl_norm.z = mdl.z / l_belt;
 
 	ros::param::get("/conveyorbelt_drop_deviation_x_", drop_deviation.x);
 	ros::param::get("/conveyorbelt_drop_deviation_y_", drop_deviation.y);
