@@ -257,7 +257,7 @@ protected:
 	void object_manager_readObjectDataFromParamServer(int obj_index, ObjectInformation& obj_info);
 	void object_manager_addObjectToWorld(int obj_index);
 	void object_manager_removeObjectFromWorld(int obj_index);
-	void object_manager_attachObject(int obj_index);
+	void object_manager_attachObject(const am_msgs::ObjState::ConstPtr& msg);
 	void object_manager_detachObject(int obj_index);
 	void object_manager_addObjectToTargetZone(int obj_index);
 
