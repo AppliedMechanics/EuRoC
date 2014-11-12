@@ -333,8 +333,14 @@ bool MotionPlanning::executeGoalPoseStd()
 		break;
 		//------------------------------------------------------------------------------------------------
 	case (SWING_IN):
-
-				swing_in_motion();
+		if (!swing_in_motion())
+		{
+			msg_error("error in swing in motion.");
+			goalPose_result_.reached_goal = false;
+			goalPose_result_.error_reason = fsm::RETRY_SWING;
+			goalPose_server_.setPreempted(goalPose_result_,"No Solution found.");
+			return false;
+		}
 	break;
 	case (MOVE_IT_2DOF):
 	case (MOVE_IT_7DOF):
@@ -3239,7 +3245,7 @@ bool MotionPlanning::pose_check_isnan(geometry_msgs::Pose* msg_ptr)
 		return false;
 }
 
-void MotionPlanning::swing_in_motion()
+bool MotionPlanning::swing_in_motion()
 {
 	switch_algorithm_=false;
 
@@ -3310,6 +3316,7 @@ void MotionPlanning::swing_in_motion()
 		{
 			msg_warn("Path outside limits. Retrying with MoveIT 9DOF");
 			switch_algorithm_=true;
+			return false;
 		}
 
 		ROS_WARN("idx %f q %f %f",idx[i],tmp_cfg.q[0],tmp_cfg.q[1]);
@@ -3319,7 +3326,9 @@ void MotionPlanning::swing_in_motion()
 	ROS_WARN("x_0 %f %f %f",x_0.x(),x_0.y(),x_0.z());
 	ROS_WARN("x_1 %f %f %f",x_1.x(),x_1.y(),x_1.z());
 
-	if (switch_algorithm_)
-		if (executeGoalPoseStd())
-			msg_info("Success.");
+//	if (switch_algorithm_)
+//		if (executeGoalPoseStd())
+//			msg_info("Success.");
+
+	return true;
 }

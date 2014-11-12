@@ -75,6 +75,7 @@ typedef enum {
 	MAX_LIMIT_REACHED,
 	STOP_COND,
 	RESTART_SIM, //needs to be tested -> restart sim necessary due to emergency stop
+	RETRY_SWING,
 
 	//gripper error events:
 	GRIPPING_ERROR,

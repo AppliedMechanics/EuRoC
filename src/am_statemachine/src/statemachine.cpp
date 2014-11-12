@@ -1653,11 +1653,11 @@ void Statemachine::scheduler_error_move_to_target_zone()
 
 	case fsm::SIM_SRV_NA:
 		msg_warn("Statemachine-Errorhandler: received service n.a. from motion planning!");
-		explore_environment_motion_state_=OPEN;
+		move_to_target_zone_state_=OPEN;
 		break;
 	case fsm::RESTART_SIM:
 		msg_warn("Statemachine-Errorhandler: received restart sim from motion planning");
-		explore_environment_motion_state_=OPEN;
+		move_to_target_zone_state_=OPEN;
 
 		state_queue.clear();
 		fsm::fsm_state_t temp_state;
@@ -1666,6 +1666,12 @@ void Statemachine::scheduler_error_move_to_target_zone()
 		state_queue.push_back(temp_state);
 
 		scheduler_next();
+		break;
+
+	case fsm::RETRY_SWING:
+		msg_warn("Statemachine-Errorhandler: retrying swing with moveit 9dof");
+		planning_mode_.move_to_target_zone=MOVE_IT_9DOF;
+		move_to_target_zone_state_=OPEN;
 		break;
 
 	default:
@@ -5638,6 +5644,9 @@ int Statemachine::move_to_target_zone()
 		ein_->set_object_pose(tmp_pose, ros::Time::now());
 
 		cur_obj_gripped_=false;
+
+		if(active_task_number_==5)
+			planning_mode_.move_to_target_zone=SWING_IN;
 
 		//==============================================
 		scheduler_next();
