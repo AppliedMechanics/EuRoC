@@ -125,6 +125,7 @@ critical_error_counter_(0)
 	reset_pub_ = node_.advertise<std_msgs::Bool>("kill", 1000);
 
 	nr_obj_pub_ = node_.advertise<std_msgs::Int16>("nr_obj",1000);
+	T6_obj_mass_pub_ = node_.advertise<std_msgs::Float64>("T6_obj_mass",1000);
 }
 
 Statemachine::~Statemachine()
@@ -1947,9 +1948,17 @@ void Statemachine::scheduler_error_locate_object_global()
 		break;
 
 	default:
-		msg_error("Statemachine Errorhandler: Unknown error!");
-		locate_object_global_state_=OPEN;
-		scheduler_skip_object();
+		if(active_task_number_==6)
+		{
+			msg_error("Statemachine Errorhandler: task 6 object not found, trying again!");
+			locate_object_global_state_=OPEN;
+		}
+		else
+		{
+			msg_error("Statemachine Errorhandler: Unknown error!");
+			locate_object_global_state_=OPEN;
+			scheduler_skip_object();
+		}
 		break;
 	}
 }
@@ -2914,7 +2923,7 @@ int Statemachine::new_object_t6()
 		ROS_INFO_STREAM("now "<<now);
 		ROS_INFO_STREAM("T6_t_next_obj_ "<<T6_t_next_obj_);
 
-		if(obj_counter_t6_>2)
+		if(obj_counter_t6_>1)
 		{
 			new_object_t6_state_=FINISHED;
 			//increase global object counter
@@ -3889,6 +3898,7 @@ int Statemachine::get_grasping_pose()
 		lsc_.detach();
 
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+
 		if(get_grasp_pose_get_vectors()==false)
 		{
 			get_grasping_pose_state_=FINISHEDWITHERROR;
@@ -4242,6 +4252,14 @@ int Statemachine::get_grasping_poseT6()
 		lsc_.detach();
 
 		cur_obj_mass_=get_grasp_pose_srv_.response.object_mass;
+		//send object mass to parameter server
+		//		node_.setParam("cur_obj_mass_", cur_obj_mass_);
+
+		std_msgs::Float64 T6_msg_obj_mass;
+		T6_msg_obj_mass.data = cur_obj_mass_;
+		T6_obj_mass_pub_.publish(T6_msg_obj_mass);
+
+
 		if(get_grasp_pose_get_vectors()==false)
 		{
 			get_grasping_poseT6_state_=FINISHEDWITHERROR;

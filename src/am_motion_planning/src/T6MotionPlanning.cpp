@@ -14,8 +14,8 @@ T6MotionPlanning::T6MotionPlanning():
 T5MotionPlanning::T5MotionPlanning()
 {
 	target_zone_radius_ = 0.0;
-	tolerance_7DoF_position_ = 0.1;
-	factor_tolerance_7DoF_position_=0.7;//changes tolerance_7DoF_position_based on radius of target_zone
+	tolerance_7DoF_position_ = 0.3;
+	factor_tolerance_7DoF_position_=0.6;//changes tolerance_7DoF_position_based on radius of target_zone
 	tolerance_7DoF_orientation_ = 0.01;
 	tolerance_height_ = 0.2;
 	height_over_belt_ = 0.2;
@@ -27,6 +27,7 @@ T5MotionPlanning::T5MotionPlanning()
 	standard_distance_dcp_planar_axis_ = 0.5;//0.6;
 	n_objects_ = 1;
 	n_obj_ges_ = 10;
+	obj_mass_ = 0;
 	home_faktor_ =1.8;
 	t_rdv = 0;
 	l_belt=0;
@@ -39,6 +40,7 @@ T5MotionPlanning::T5MotionPlanning()
 	pose_counter = 0;
 
 	nr_obj_sub_ = nh_.subscribe("nr_obj",1000,&T6MotionPlanning::get_nr_obj_cb,this);
+	obj_mass_sub_ = nh_.subscribe("T6_obj_mass",1000,&T6MotionPlanning::get_obj_mass_cb,this);
 }
 
 T6MotionPlanning::~T6MotionPlanning() {
@@ -145,11 +147,11 @@ bool T6MotionPlanning::executeGoalPoseT6()
 			warte_zeit = 17;
 		else
 		{
-			warte_zeit = t_rdv - ros::Time::now().sec + 0.5;
+			warte_zeit = t_rdv - ros::Time::now().sec;
 			if(warte_zeit<0)
 			{
 				ROS_WARN("Wartezeit < 0 ");
-				warte_zeit = 1;
+				warte_zeit = 2;
 			}
 		}
 		//boost::this_thread::sleep( boost::posix_time::seconds(warte_zeit));
@@ -179,7 +181,7 @@ bool T6MotionPlanning::executeGoalPoseT6()
 			return false;
 		}
 		ROS_WARN("Move to object finished");
-		//ros::Duration(1).sleep();
+		ros::Duration(2).sleep();
 
 		return true;
 
@@ -246,12 +248,33 @@ bool T6MotionPlanning::executeGoalPoseT6()
 
 bool T6MotionPlanning::T6_grap_object()
 {
+
 	ROS_INFO("gripper_close_cb() running");
-	double tmp_size;
+	double tmp_size, object_mass;
 	ros::param::get("/object_0_shape_0_size_0_",tmp_size);
-	//gripper control
-	gripper_control_srv_.request.gripping_mode = POSITION;
-	gripper_control_srv_.request.gripper_position = tmp_size*0.8;
+
+	//gripper_control_srv_.request.gripping_mode = POSITION;
+	//gripper_control_srv_.request.gripper_position = tmp_size*0.8;
+	ROS_INFO_STREAM("tmp_size "<<tmp_size<<" obj_mass_ "<<obj_mass_);
+
+	gripper_control_srv_.request.gripping_force = 1.5*(obj_mass_*9.81)/(2*1);
+	if (gripper_control_srv_.request.gripping_force>100)
+	{
+		gripper_control_srv_.request.gripping_force=100;
+	}
+	if(gripper_control_srv_.request.gripping_force<10)
+	{
+		gripper_control_srv_.request.gripping_force=10;
+	}
+
+	ROS_INFO("gripper force set to %3.2fN",gripper_control_srv_.request.gripping_force);
+	gripper_control_srv_.request.object_width = tmp_size;
+	gripper_control_srv_.request.gripper_position = 0.0;
+	gripper_control_srv_.request.gripping_mode = FF_FORCE;
+
+
+
+
 
 	if(gripper_control_client_.exists())
 	{
@@ -279,6 +302,9 @@ bool T6MotionPlanning::T6_grap_object()
 
 	ROS_INFO("gripper_close_cb() finished");
 	return false;
+
+
+
 }
 
 bool T6MotionPlanning::T6_open_gripper()
@@ -750,8 +776,7 @@ bool T6MotionPlanning::T6_moveToTarget()
 	ROS_WARN("MoveIT 7DOF Solution!");
 	group = group_7DOF;
 	joint_model_group_ = joint_model_group_7DOF_;
-	group->setGoalPositionTolerance(tolerance_7DoF_position_);
-	group->setGoalOrientationTolerance(tolerance_7DoF_orientation_);
+
 	// in case of unsuccessful planning,
 	// the planning target is set as a joint state goal via the searchIKSolution srv
 	max_setTarget_attempts_ = 7;
@@ -1611,12 +1636,12 @@ void T6MotionPlanning::T6_initializeConveyorBelt()
 
 	con_belt.dimensions[0] = 2 * drop_deviation.y + 0.12;
 	con_belt.dimensions[1] = 2 * sqrt(pow(mdl_norm.x,2) + pow(mdl_norm.y,2)) + 0.1;
-	con_belt.dimensions[2] = drop_center_point.z * 0.8 ; // TODO TEST then take out scalar and make it to variable
+	con_belt.dimensions[2] = drop_center_point.z * 0.9 ; // TODO TEST then take out scalar and make it to variable
 
 	geometry_msgs::Pose con_belt_pose;
 	con_belt_pose.position.x = drop_center_point.x + mdl_norm.x;
 	con_belt_pose.position.y = drop_center_point.y + mdl_norm.y;
-	con_belt_pose.position.z = 0.05;//-0.01;
+	con_belt_pose.position.z = drop_center_point.z * 0.5;//-0.01;
 	con_belt_pose.orientation.x = q_belt.x();
 	con_belt_pose.orientation.y = q_belt.y();
 	con_belt_pose.orientation.z = q_belt.z();
@@ -1695,6 +1720,13 @@ bool T6MotionPlanning::T6_MoveIt_getSolution()
 			{
 				setTarget_successful = false;
 				setTarget_successful = setPlanningTarget(current_setTarget_algorithm_);
+
+				if(goal_pose_goal_->planning_algorithm == T6_MOVE_TARGET)
+				{
+					group->setGoalPositionTolerance(tolerance_7DoF_position_);
+					group->setGoalOrientationTolerance(tolerance_7DoF_orientation_);
+				}
+
 				if (setTarget_successful)
 				{
 					//					ROS_INFO("Planning!");

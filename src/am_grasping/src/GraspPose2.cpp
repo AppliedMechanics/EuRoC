@@ -442,11 +442,13 @@ void GraspPose2::correct_object_alignment()
 	object_.abs_pose=tmp_Pose;
 
 	//correct z-height:
-	tmp_height=object_.abs_pose.position.z;
-	z_height_in_boxes=round((tmp_height+0.5*object_.shape[0].size[0])/object_.shape[0].size[0]);
-	object_.abs_pose.position.z=(z_height_in_boxes-0.5)*object_.shape[0].size[0];
-	ROS_INFO("z-height corrected from %4.3f to %4.3f",tmp_height,object_.abs_pose.position.z);
-
+	if(task_number_==5)
+	{
+		tmp_height=object_.abs_pose.position.z;
+		z_height_in_boxes=round((tmp_height+0.5*object_.shape[0].size[0])/object_.shape[0].size[0]);
+		object_.abs_pose.position.z=(z_height_in_boxes-0.5)*object_.shape[0].size[0];
+		ROS_INFO("z-height corrected from %4.3f to %4.3f",tmp_height,object_.abs_pose.position.z);
+	}
 //	if(object_.abs_pose.position.z<object_.shape[0].size[0])
 //	{
 //		object_.abs_pose.position.z=0.5*object_.shape[0].size[0];

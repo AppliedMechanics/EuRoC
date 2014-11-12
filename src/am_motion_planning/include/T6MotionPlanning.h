@@ -14,6 +14,8 @@
 #include <tf/transform_broadcaster.h>
 
 #include <std_msgs/Int16.h>
+#include <std_msgs/Float64.h>
+
 
 class T6MotionPlanning: public T5MotionPlanning {
 public:
@@ -28,6 +30,10 @@ private:
 
 	ros::Subscriber nr_obj_sub_;
 	void get_nr_obj_cb(const std_msgs::Int16::ConstPtr &msg){n_objects_=msg->data;ROS_INFO("got nr_obj: %d",n_objects_);};
+
+	ros::Subscriber obj_mass_sub_;
+	void get_obj_mass_cb(const std_msgs::Float64::ConstPtr &msg){obj_mass_=msg->data;ROS_INFO("got obj mass: %f",obj_mass_);};
+
 
 	bool executeGoalPoseT6();
 	bool T6_executeStd();
@@ -109,6 +115,8 @@ private:
 	int n_obj_ges_;
 	// number of dropped objects
 	int n_objects_;
+	// obj mass
+	double obj_mass_;
 	// start speed belt
 	float start_speed_;
 	// end speed

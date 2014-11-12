@@ -7,6 +7,8 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
 #include <std_msgs/Int16.h>
+#include <std_msgs/Float64.h>
+
 #include <actionlib/client/simple_action_client.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_listener.h>
@@ -196,6 +198,7 @@ private:
 	ros::Publisher reset_pub_;
 
 	ros::Publisher nr_obj_pub_;
+	ros::Publisher T6_obj_mass_pub_;
 
 
 
