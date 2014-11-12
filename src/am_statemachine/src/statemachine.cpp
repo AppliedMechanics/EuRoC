@@ -3387,14 +3387,22 @@ void Statemachine::explore_environment_check_cb()
 
 	ein_->get_all_zones(&check_zones_srv_.request.target_zones);
 
-	if(check_zones_client_.call(check_zones_srv_))
+	if(check_zones_client_.exists())
 	{
-		explore_environment_check_state_=FINISHED;
+		if(check_zones_client_.call(check_zones_srv_))
+		{
+			explore_environment_check_state_=FINISHED;
+		}
+		else
+		{
+			msg_error("Error. call of check_zones_client_ failed");
+			explore_environment_check_state_=FINISHEDWITHERROR;
+		}
 	}
 	else
 	{
-		msg_error("Error. call of check_zones_client_ failed");
-		explore_environment_check_state_=FINISHEDWITHERROR;
+		msg_error("Error. check_zones is not available");
+		critical_error_counter_++;
 	}
 
 	ROS_INFO("explore_environment_check_cb() finished");
@@ -6097,13 +6105,10 @@ int Statemachine::check_time()
 		//state_queue.push_back(temp_state);
 #endif
 	}
-	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= (ein_->get_time_limit()+30))
+	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= (ein_->get_time_limit()+60))
 	{
 #ifdef FORCE_STOP_SIM
-		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",(ein_->get_time_limit()+30));
-		//hard shutdown of current task
-		state_queue.clear();
-
+		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",(ein_->get_time_limit()+60));
 		//hard shutdown of current task
 		state_queue.clear();
 
