@@ -1926,6 +1926,12 @@ void Statemachine::scheduler_error_explore_environment_image()
 }
 void Statemachine::scheduler_error_locate_object_global()
 {
+	if(active_task_number_==6)
+	{
+		msg_error("Statemachine Errorhandler: task 6 object not found, trying again!");
+		locate_object_global_state_=OPEN;
+		return;
+	}
 	switch(state_.sub.event_two)
 	{
 	case fsm::SKIP_OBJECT:
@@ -1948,17 +1954,10 @@ void Statemachine::scheduler_error_locate_object_global()
 		break;
 
 	default:
-		if(active_task_number_==6)
-		{
-			msg_error("Statemachine Errorhandler: task 6 object not found, trying again!");
-			locate_object_global_state_=OPEN;
-		}
-		else
-		{
-			msg_error("Statemachine Errorhandler: Unknown error!");
-			locate_object_global_state_=OPEN;
-			scheduler_skip_object();
-		}
+		msg_error("Statemachine Errorhandler: Unknown error!");
+		locate_object_global_state_=OPEN;
+		scheduler_skip_object();
+
 		break;
 	}
 }
