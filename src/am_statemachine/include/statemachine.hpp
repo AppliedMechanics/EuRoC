@@ -79,6 +79,9 @@ public:
 
 	bool finished();
 
+	//whaaaaaaaaaaaaaaaaaaaa!!!!
+	uint16_t critical_error_counter_;
+
 private:
 	//!Static TF Broadcaster
 	StaticTFBroadcaster* broadcaster_;

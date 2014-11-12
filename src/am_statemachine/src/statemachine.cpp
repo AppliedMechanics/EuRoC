@@ -78,7 +78,8 @@ push_object_t5_state_(OPEN),
 push_object_t5_counter_(0),
 reset_state_(OPEN),
 reset_counter_(0),
-remove_object_state_(OPEN)
+remove_object_state_(OPEN),
+critical_error_counter_(0)
 {
 	ein_=new EurocInput();
 	broadcaster_ = new StaticTFBroadcaster();
@@ -3230,6 +3231,7 @@ void Statemachine::explore_environment_image_cb()
 		msg_error("Error. take_image_client_ is not available");
 		explore_environment_image_state_=FINISHEDWITHERROR;
 		state_.sub.event_one=fsm::SIM_SRV_NA;
+		critical_error_counter_++;
 	}
 
 //	explore_success_count_++;
@@ -3853,8 +3855,8 @@ void Statemachine::get_grasping_pose_cb()
 	{
 		msg_error("Error. get_grasp_pose_client_ is not available");
 		get_grasping_pose_state_=FINISHEDWITHERROR;
+		critical_error_counter_++;
 	}
-
 
 
 	ROS_INFO("get_grasping_pose_cb() finished");
@@ -4099,6 +4101,7 @@ void Statemachine::get_grasping_poseT5_cb()
 	{
 		msg_error("Error. get_grasp_pose_client_ is not available");
 		get_grasping_poseT5_state_=FINISHEDWITHERROR;
+		critical_error_counter_++;
 	}
 	ROS_INFO("get_grasping_poseT5_cb() finished");
 }
@@ -4207,6 +4210,7 @@ void Statemachine::get_grasping_poseT6_cb()
 	{
 		msg_error("Error. get_grasp_pose_client_ is not available");
 		get_grasping_poseT6_state_=FINISHEDWITHERROR;
+		critical_error_counter_++;
 	}
 	ROS_INFO("get_grasping_poseT6_cb() finished");
 }
@@ -4481,6 +4485,7 @@ void Statemachine::gripper_release_cb()
 		msg_error("Error. gripper_control_client_ is not available");
 		gripper_release_state_=FINISHEDWITHERROR;
 		state_.sub.event_three=fsm::SIM_SRV_NA;
+		critical_error_counter_++;
 	}
 
 	ROS_INFO("gripper_release_cb() finished");
@@ -4588,6 +4593,7 @@ void Statemachine::gripper_close_cb()
 		msg_error("Error. gripper_control_client_ is not available");
 		gripper_close_state_=FINISHEDWITHERROR;
 		state_.sub.event_three=fsm::SIM_SRV_NA;
+		critical_error_counter_++;
 	}
 
 	ROS_INFO("gripper_close_cb() finished");
@@ -6071,7 +6077,8 @@ int Statemachine::check_time()
 	//
 	static bool first=true;
 
-	bool stop_needed=(sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM));
+	bool stop_needed=((sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM))
+			|| (critical_error_counter_>100));
 	if(stop_needed && t_act >= ein_->get_time_limit())
 	{
 		if(first)
@@ -6174,6 +6181,7 @@ int Statemachine::reset()
 		push_object_t5_state_=OPEN;
 		push_object_t5_counter_=0;
 		remove_object_state_=OPEN;
+		critical_error_counter_=0;
 
 		ein_->reset();
 		lsc_.detach();
