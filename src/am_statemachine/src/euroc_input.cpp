@@ -972,7 +972,8 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 			temp_obj.target_zone_idx=0;
 			temp_obj.target_zone_occupied=0;
 
-			obj_queue_.push_back(temp_obj);
+			if(temp_obj.data->nr_shapes>1)
+				obj_queue_.push_back(temp_obj);
 		}
 
 		//check for two objects with the same color

@@ -3,8 +3,8 @@
 
 #array=(task1_v1 task1_v2 task1_v3 task2_v1_1 task2_v1_2 task2_v1_3 task2_v2_1 task2_v2_2 task2_v2_v3 task3_v1 task3_v2 task4_v1_1 task4_v1_2 task4_v1_3 task4_v2_1 task4_v2_2 task4_v2_3)
 
-array=(task2_v1_1 task2_v1_2 task2_v1_3 task2_v2_1 task2_v2_2 task2_v2_v3 task3_v1 task3_v2 task4_v1_1 task4_v1_2 task4_v1_3 task4_v2_1 task4_v2_2 task4_v2_3)
-
+#array=(task2_v1_1 task2_v1_2 task2_v1_3 task2_v2_1 task2_v2_2 task2_v2_v3 task3_v1 task3_v2 task4_v1_1 task4_v1_2 task4_v1_3 task4_v2_1 task4_v2_2 task4_v2_3)
+array=(task5_v1 task5_v2)
 #end version:
 #array=("task 1" "task 2/1" "task 2/2" "task 2/3" "task 3") # "task 4/1" "task 4/2" "task 4/3" "task 5" "task 6")
 
