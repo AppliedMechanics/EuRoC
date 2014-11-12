@@ -29,8 +29,8 @@ GraspPose2::GraspPose2()
 	gripping_angleT6_deg_=gripping_angleT6_deg_config;//60; // angle with which objects are awaited; default = 45
 	gripping_angleT6_rad_=gripping_angleT6_deg_/180.0*(pi);
 	gripping_finger_overlapT5_=0.6;
-	puzzle_push_in_x_distance_=0.1;//0.03;
-	puzzle_push_in_y_distance_=0.1;//0.03;
+	puzzle_push_in_x_distance_=0.07;//0.03;
+	puzzle_push_in_y_distance_=0.07;//0.03;
 }
 
 GraspPose2::~GraspPose2() {
