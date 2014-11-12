@@ -23,26 +23,26 @@ Demo program for the AM EUROC Code. Starts the state machine and its peripherals
 		
 <!-- Grasping  -->
      <!-- Grasp Planning  -->
-	<node pkg="am_grasping" type="am_grasping" name="am_grasping" respawn="true" />
+	<node pkg="am_grasping" type="am_grasping" name="am_grasping" respawn="false" />
      <!-- Gripper  -->
-	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface" respawn="true" />
+	<node pkg="am_grasping" type="am_gripper_interface" name="am_gripper_interface" respawn="false" />
 
 
 <!-- Vision  -->
-	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="true" />
+	<node pkg="am_vision" type="am_vision" name="am_vision" respawn="false" />
 
 <!-- Motion Planning  -->
 	<node pkg="am_motion_planning" type="am_motion_planning" name="am_motion_planning" />
 	
 <!-- State Observer  -->
-	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" respawn="true" />
+	<node pkg="am_stateobserver" type="am_stateobserver" name="am_stateobserver" respawn="false" />
 
 <!-- State Machine -->
  <!-- <node pkg="am_statemachine" type="am_statemachine" name="am_statemachine" required="true" /> -->
   <node pkg="am_statemachine" type="am_statemachine" name="am_statemachine" required="true"/> 
 
 <!-- Dynamic TF Broadcaster  -->
-	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" respawn="true" />
+	<node pkg="am_dyn_tf_broadcaster" type="am_dyn_tf_broadcaster" name="am_dyn_tf_broadcaster" respawn="false" />
 <!-- GUI  -->
 	<!--node pkg="am_gui" type="am_gui" name="am_gui" respawn="true" /-->
 

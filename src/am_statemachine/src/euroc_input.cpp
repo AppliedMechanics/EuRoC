@@ -976,50 +976,50 @@ int EurocInput::sort_objects(std::vector<uint16_t> target_zone_occupied)
 		}
 
 		//check for two objects with the same color
-		for(uint16_t ii=0;ii<(obj_queue_.size())-1;ii++)
-		{
-			std::string col=obj_queue_[ii].data->color;
-			for(uint16_t jj=ii+1;jj<obj_queue_.size();jj++)
-			{
-				if((strcmp(obj_queue_[jj].data->color.c_str(),col.c_str())==0) && (ii!=jj))
-				{
-					ROS_INFO("Objects %s and %s have same color", obj_queue_[ii].data->name.c_str(),
-							obj_queue_[jj].data->name.c_str());
-
-					//find larger object and queue it first
-					if(obj_queue_[jj].data->nr_shapes > obj_queue_[ii].data->nr_shapes)
-					{
-						ROS_INFO("inserting Object %s to locate it first",obj_queue_[jj].data->name.c_str());
-						temp_obj=obj_queue_[jj];
-						same_color_counter_++;
-						break;
-					}
-					else if(obj_queue_[jj].data->nr_shapes < obj_queue_[ii].data->nr_shapes)
-					{
-						ROS_INFO("inserting Object %s to locate it first",obj_queue_[ii].data->name.c_str());
-						temp_obj=obj_queue_[ii];
-						same_color_counter_++;
-						break;
-					}
-				}
-			}
-		}
-
-		//return 1 to let statemachine know that an additional locate object global is necessary
-		if(same_color_counter_>0)
-		{
-			temp_obj.action=EIN_PARKING;
-			obj_queue_.insert(obj_queue_.begin(),temp_obj);//print object queue
-			ROS_INFO("Object queue:");
-			for(unsigned ii=0;ii<obj_queue_.size();ii++)
-			{
-				uint16_t obj_idx=obj_queue_[ii].obj_idx;
-				ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
-			}
-			return 1;
-		}
-		else
-			return 0;
+//		for(uint16_t ii=0;ii<(obj_queue_.size())-1;ii++)
+//		{
+//			std::string col=obj_queue_[ii].data->color;
+//			for(uint16_t jj=ii+1;jj<obj_queue_.size();jj++)
+//			{
+//				if((strcmp(obj_queue_[jj].data->color.c_str(),col.c_str())==0) && (ii!=jj))
+//				{
+//					ROS_INFO("Objects %s and %s have same color", obj_queue_[ii].data->name.c_str(),
+//							obj_queue_[jj].data->name.c_str());
+//
+//					//find larger object and queue it first
+//					if(obj_queue_[jj].data->nr_shapes > obj_queue_[ii].data->nr_shapes)
+//					{
+//						ROS_INFO("inserting Object %s to locate it first",obj_queue_[jj].data->name.c_str());
+//						temp_obj=obj_queue_[jj];
+//						same_color_counter_++;
+//						break;
+//					}
+//					else if(obj_queue_[jj].data->nr_shapes < obj_queue_[ii].data->nr_shapes)
+//					{
+//						ROS_INFO("inserting Object %s to locate it first",obj_queue_[ii].data->name.c_str());
+//						temp_obj=obj_queue_[ii];
+//						same_color_counter_++;
+//						break;
+//					}
+//				}
+//			}
+//		}
+//
+//		//return 1 to let statemachine know that an additional locate object global is necessary
+//		if(same_color_counter_>0)
+//		{
+//			temp_obj.action=EIN_PARKING;
+//			obj_queue_.insert(obj_queue_.begin(),temp_obj);//print object queue
+//			ROS_INFO("Object queue:");
+//			for(unsigned ii=0;ii<obj_queue_.size();ii++)
+//			{
+//				uint16_t obj_idx=obj_queue_[ii].obj_idx;
+//				ROS_INFO("# %d : Object %s",obj_idx,objects_[obj_idx].name.c_str());
+//			}
+//			return 1;
+//		}
+//		else
+//			return 0;
 
 	} //else if(task_nr==5)
 	else

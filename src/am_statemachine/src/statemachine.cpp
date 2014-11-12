@@ -6091,10 +6091,10 @@ int Statemachine::check_time()
 		//state_queue.push_back(temp_state);
 #endif
 	}
-	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= 1.1*ein_->get_time_limit())
+	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= (ein_->get_time_limit()+15))
 	{
 #ifdef FORCE_STOP_SIM
-		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",1.1*ein_->get_time_limit());
+		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",(ein_->get_time_limit()+15));
 		//hard shutdown of current task
 		state_queue.clear();
 
