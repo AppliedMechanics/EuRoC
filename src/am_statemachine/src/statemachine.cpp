@@ -1746,7 +1746,7 @@ void Statemachine::scheduler_error_gripper_close()
 	case fsm::GRIPPING_ERROR:
 		msg_warn("Statemachine-Errorhandler: gripping error -> retry");
 		gripper_close_counter_++;
-		if(gripper_close_counter_ > 1)
+		if(gripper_close_counter_ > 2)
 		{
 			gripper_close_counter_=0;
 			gripper_close_state_=OPEN;
@@ -1776,7 +1776,7 @@ void Statemachine::scheduler_error_gripper_release()
 	{
 		gripper_close_counter_++;
 		gripper_release_state_=OPEN;
-		if(gripper_close_counter_ > 1)
+		if(gripper_close_counter_ > 2)
 		{
 			gripper_close_counter_=0;
 			gripper_release_state_=FINISHED;
@@ -2502,7 +2502,7 @@ int Statemachine::start_sim()
 	{
 		ROS_INFO("start_sim() called: OPEN");
 
-		start_simulator_srv_.request.user_id = "oxofrmbl"; //"C2T14#4547344";
+		start_simulator_srv_.request.user_id = "C2T14#4547344";
 		start_simulator_srv_.request.scene_name = scenes_[active_scene_].name;
 		start_sim_state_=RUNNING;
 		//lsc_ = boost::thread(&Statemachine::start_sim_cb,this);
@@ -6077,9 +6077,8 @@ int Statemachine::check_time()
 	//
 	static bool first=true;
 
-	bool stop_needed=((sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM))
-			|| (critical_error_counter_>100));
-	if(stop_needed && t_act >= ein_->get_time_limit())
+	bool stop_needed=(sim_running_ && !(state_.sub.one==fsm::STOP_SIM || state_queue[0].sub.one==fsm::STOP_SIM));
+	if((stop_needed && t_act >= ein_->get_time_limit())||(critical_error_counter_>10))
 	{
 		if(first)
 		{
@@ -6098,10 +6097,10 @@ int Statemachine::check_time()
 		//state_queue.push_back(temp_state);
 #endif
 	}
-	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= (ein_->get_time_limit()+15))
+	else if(sim_running_ && state_queue[0].sub.one==fsm::STOP_SIM && t_act >= (ein_->get_time_limit()+30))
 	{
 #ifdef FORCE_STOP_SIM
-		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",(ein_->get_time_limit()+15));
+		msg_warn("%f seconds are over! -> hard reset, next state is STOP_SIM",(ein_->get_time_limit()+30));
 		//hard shutdown of current task
 		state_queue.clear();
 
@@ -6192,6 +6191,7 @@ int Statemachine::reset()
 		rst.data=true;
 		//reset_pub_.publish(rst);
 
+		vision_action_client_->cancelAllGoals();
 		delete vision_action_client_;
 		vision_action_client_=0x0;
 		delete motion_planning_action_client_;
