@@ -5059,23 +5059,23 @@ int Statemachine::move_to_object()
 
 		lsc_.detach();
 //#warning remove area from octomap
-		if (!skip_vision_){
-			if (cur_obj_.nr_shapes == 3 && active_task_number_!=5)
-				remove_radius = remove_large_radius;
-			else
-				remove_radius = remove_small_radius;
-
-			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + remove_radius;
-			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + remove_radius;
-			rm_grasping_area_collision_srv_.request.max.z = 0.2;
-			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - remove_radius;
-			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - remove_radius;
-			rm_grasping_area_collision_srv_.request.min.z = 0.0;
-			try{
-				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
-					msg_warn("Grasping area clearing failed.");
-			}catch (...){msg_error("Grasping area clearing failed.");}
-		}
+//		if (!skip_vision_){
+//			if (cur_obj_.nr_shapes == 3 && active_task_number_!=5)
+//				remove_radius = remove_large_radius;
+//			else
+//				remove_radius = remove_small_radius;
+//
+//			rm_grasping_area_collision_srv_.request.max.x = object_grip_pose[selected_object_pose_].position.x + remove_radius;
+//			rm_grasping_area_collision_srv_.request.max.y = object_grip_pose[selected_object_pose_].position.y + remove_radius;
+//			rm_grasping_area_collision_srv_.request.max.z = 0.2;
+//			rm_grasping_area_collision_srv_.request.min.x = object_grip_pose[selected_object_pose_].position.x - remove_radius;
+//			rm_grasping_area_collision_srv_.request.min.y = object_grip_pose[selected_object_pose_].position.y - remove_radius;
+//			rm_grasping_area_collision_srv_.request.min.z = 0.0;
+//			try{
+//				if (!rm_grasping_area_collision_client_.call(rm_grasping_area_collision_srv_))
+//					msg_warn("Grasping area clearing failed.");
+//			}catch (...){msg_error("Grasping area clearing failed.");}
+//		}
 		//send goals to motion-planning
 		active_goal_=0;
 		nr_goals_=1;

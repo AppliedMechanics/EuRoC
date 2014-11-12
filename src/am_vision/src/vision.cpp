@@ -99,8 +99,10 @@ Vision::Vision() :
 	check_zones_service_ = nh_.advertiseService("CheckZonesService",
 			&Vision::on_check_zones_CB, this);
 	// Reset Octomap Service
-	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>(
-			"/octomap_server/reset");
+//	reset_octomap_client_ = nh_.serviceClient<std_srvs::Empty>(
+//			"/octomap_server/reset");
+
+	reset_octomap_client_ = nh_.serviceClient<octomap_msgs::BoundingBoxQuery>("/octomap_server/clear_bbx");
 
 	remove_object_service_ = nh_.advertiseService("RemoveObjectService",
 			&Vision::remove_object_cb, this);
@@ -310,191 +312,209 @@ bool Vision::remove_object_cb(am_msgs::RemoveObject::Request &req,
 	// At this point, we are safe to remove that object from the point cloud.
 	if (req.obj_state == OBJ_GRIPPING) {
 
-//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempFilledPC;
-//		tempFilledPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//		tempFilledPC = fillPointCloud(lastShapeToRemovePC);
-//
-//		ROS_INFO("[VISION]Obj state: GRIPPING");
-//
-//		// remove the aligned shape from the
-//		// 1. complete point cloud
-//		// 2. respective color point cloud
-//		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
-//		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//		tempPC = am_pointcloud::removeShape(finalPC, tempFilledPC);
-//		if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//		{
-//			return false;
-//		}
-//		finalPC->clear();
-//		finalPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//		*finalPC += *tempPC;
-//
-//		finalVoxelizedPC->clear();
-//		finalVoxelizedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//		msg_info("[VISION]Voxelization: global point cloud...");
-//		vg.setInputCloud(finalPC);
-//		vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//		vg.filter(*finalVoxelizedPC);
-//
-//		msg_info("Object removed from complete point cloud");
-//
-//		tempPC->clear();
-//		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//
-//		// find and update the respective color point cloud
-//		if (!_currentGoal->object.color.compare("ff0000")) {
-//			// Goal: Red object
-//			tempPC = am_pointcloud::removeShape(finalRedPC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalRedPC->clear();
-//			finalRedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalRedPC += *tempPC;
-//
-//			finalVoxelizedRedPC->clear();
-//			finalVoxelizedRedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the red point cloud");
-//			vg.setInputCloud(finalRedPC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedRedPC);
-//		} else if (!_currentGoal->object.color.compare("00ff00")) {
-//			// Goal: Green object
-//			tempPC = am_pointcloud::removeShape(finalGreenPC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalGreenPC->clear();
-//			finalGreenPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalGreenPC += *tempPC;
-//
-//			finalVoxelizedGreenPC->clear();
-//			finalVoxelizedGreenPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the green point cloud");
-//			vg.setInputCloud(finalGreenPC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedGreenPC);
-//
-//		} else if (!_currentGoal->object.color.compare("0000ff")) {
-//			// Goal: Blue object
-//			tempPC = am_pointcloud::removeShape(finalBluePC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalBluePC->clear();
-//			finalBluePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalBluePC += *tempPC;
-//
-//			finalVoxelizedBluePC->clear();
-//			finalVoxelizedBluePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the blue point cloud");
-//			vg.setInputCloud(finalBluePC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedBluePC);
-//		} else if (!_currentGoal->object.color.compare("00ffff")) {
-//			// Goal: Cyan object
-//			tempPC = am_pointcloud::removeShape(finalCyanPC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalCyanPC->clear();
-//			finalCyanPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalCyanPC += *tempPC;
-//
-//			finalVoxelizedCyanPC->clear();
-//			finalVoxelizedCyanPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the cyan point cloud");
-//			vg.setInputCloud(finalCyanPC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedCyanPC);
-//
-//		} else if (!_currentGoal->object.color.compare("ff00ff")) {
-//			// Goal: Magenta object
-//			tempPC = am_pointcloud::removeShape(finalMagentaPC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalMagentaPC->clear();
-//			finalMagentaPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalMagentaPC += *tempPC;
-//
-//			finalVoxelizedMagentaPC->clear();
-//			finalVoxelizedMagentaPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the cyan point cloud");
-//			vg.setInputCloud(finalMagentaPC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedMagentaPC);
-//
-//		} else if (!_currentGoal->object.color.compare("ffff00")) {
-//			// Goal: Yellow object
-//			tempPC = am_pointcloud::removeShape(finalYellowPC, tempFilledPC);
-//			if (emptyCloudCritical) // Error handling: check if the cloud is empty (memory issues)
-//			{
-//				return false;
-//			}
-//			finalYellowPC->clear();
-//			finalYellowPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			*finalYellowPC += *tempPC;
-//
-//			finalVoxelizedYellowPC->clear();
-//			finalVoxelizedYellowPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
-//			ROS_INFO("Object removed from the cyan point cloud");
-//			vg.setInputCloud(finalYellowPC);
-//			vg.setLeafSize(leaf_size, leaf_size, leaf_size);
-//			vg.filter(*finalVoxelizedYellowPC);
-//
-//		}
-//
-//		ROS_INFO("All point clouds have been updated");
-//
-//#ifdef SEND_POINT_CLOUDS
-//		// Publish the new updated Pointcloud
-//		pcl::toROSMsg(*finalVoxelizedPC, msg);
-//		msg.header.frame_id = "/Origin";
-//		msg.header.stamp = ros::Time::now();
-//		pub.publish(msg);
-//#endif
-//		if (!emptyCloudCritical) {
-//			try {
-//				if (ros::service::waitForService("/octomap_server/reset",
-//						ros::Duration(3.0))) {
-//					if (!(reset_octomap_client_.call(reset_octomap_srv_))) {
-//						msg_error("reset octomap service failed!");
-//					} else
-//						msg_info("octomap successfully resetted.");
-//				} else
-//					msg_info(
-//							"wait for reset octomap service was not successful.");
-//			} catch (...) {
-//				msg_error("reset octomap service failed! TRYCATCH");
-//			}
-//
-//			ros::spinOnce();
-//
-//#ifdef OCTOMAP_SERVER
-//			//ros::Duration(2.0).sleep();
-//			pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
-//			filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
-//
-//			pcl::toROSMsg(*filledForOctomapPC, msg);
-//			msg.header.frame_id = "/Origin";
-//			msg.header.stamp = ros::Time::now();
-//			pub_3.publish(msg);
-//			ROS_INFO("Octomap updated");
-//			ros::spinOnce();
-//			ros::Duration(2).sleep();
-//#endif
-//		}
-//
-//		else {
-//			msg_error("Octomap server not resetted, emptypointcloudcritical == true.");
-//		}
+		pcl::PointCloud<pcl::PointXYZ>::Ptr tempFilledPC;
+		tempFilledPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		tempFilledPC = fillPointCloud(lastShapeToRemovePC);
+
+		ROS_INFO("[VISION]Obj state: GRIPPING");
+
+		// remove the aligned shape from the
+		// 1. complete point cloud
+		// 2. respective color point cloud
+		pcl::PointCloud<pcl::PointXYZ>::Ptr tempPC;
+		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		tempPC = removeShape(finalPC, tempFilledPC);
+
+		finalPC->clear();
+		finalPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		*finalPC += *tempPC;
+
+		tempPC->clear();
+		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		tempPC = removeShape(finalVoxelizedPC, tempFilledPC);
+		finalVoxelizedPC->clear();
+		finalVoxelizedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+		*finalVoxelizedPC += *tempPC;
+
+		msg_info("Object removed from complete point cloud");
+
+		tempPC->clear();
+		tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+
+		// find and update the respective color point cloud
+		if (!_currentGoal->object.color.compare("ff0000")) {
+			// Goal: Red object
+
+			tempPC = removeShape(finalRedPC, tempFilledPC);
+
+			finalRedPC->clear();
+			finalRedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalRedPC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedRedPC, tempFilledPC);
+			finalVoxelizedRedPC->clear();
+			finalVoxelizedRedPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedRedPC += *tempPC;
+
+			ROS_INFO("Object removed from the red point cloud");
+
+
+
+		} else if (!_currentGoal->object.color.compare("00ff00")) {
+			// Goal: Green object
+			tempPC = removeShape(finalGreenPC, tempFilledPC);
+
+			finalGreenPC->clear();
+			finalGreenPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalGreenPC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedGreenPC, tempFilledPC);
+			finalVoxelizedGreenPC->clear();
+			finalVoxelizedGreenPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedGreenPC += *tempPC;
+
+			ROS_INFO("Object removed from the green point cloud");
+
+		} else if (!_currentGoal->object.color.compare("0000ff")) {
+			// Goal: Blue object
+			tempPC = removeShape(finalBluePC, tempFilledPC);
+
+			finalBluePC->clear();
+			finalBluePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalBluePC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedBluePC, tempFilledPC);
+			finalVoxelizedBluePC->clear();
+			finalVoxelizedBluePC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedBluePC += *tempPC;
+
+			ROS_INFO("Object removed from the blue point cloud");
+
+
+		} else if (!_currentGoal->object.color.compare("00ffff")) {
+			// Goal: Cyan object
+
+			tempPC = removeShape(finalCyanPC, tempFilledPC);
+
+			finalCyanPC->clear();
+			finalCyanPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalCyanPC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedCyanPC, tempFilledPC);
+			finalVoxelizedCyanPC->clear();
+			finalVoxelizedCyanPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedCyanPC += *tempPC;
+
+			ROS_INFO("Object removed from the cyan point cloud");
+
+		} else if (!_currentGoal->object.color.compare("ff00ff")) {
+			// Goal: Magenta object
+
+			tempPC = removeShape(finalMagentaPC, tempFilledPC);
+
+			finalMagentaPC->clear();
+			finalMagentaPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalMagentaPC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedMagentaPC, tempFilledPC);
+			finalVoxelizedMagentaPC->clear();
+			finalVoxelizedMagentaPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedMagentaPC += *tempPC;
+
+			ROS_INFO("Object removed from the magenta point cloud");
+
+
+		} else if (!_currentGoal->object.color.compare("ffff00")) {
+			// Goal: Yellow object
+			tempPC = removeShape(finalYellowPC, tempFilledPC);
+
+			finalYellowPC->clear();
+			finalYellowPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalYellowPC += *tempPC;
+
+			tempPC->clear();
+			tempPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			tempPC = removeShape(finalVoxelizedYellowPC, tempFilledPC);
+			finalVoxelizedYellowPC->clear();
+			finalVoxelizedYellowPC.reset(new pcl::PointCloud<pcl::PointXYZ>);
+			*finalVoxelizedYellowPC += *tempPC;
+
+			ROS_INFO("Object removed from the yellow point cloud");
+
+		}
+
+		ROS_INFO("All point clouds have been updated");
+
+#ifdef SEND_POINT_CLOUDS
+		// Publish the new updated Pointcloud
+		pcl::toROSMsg(*finalVoxelizedPC, msg);
+		msg.header.frame_id = "/Origin";
+		msg.header.stamp = ros::Time::now();
+		pub.publish(msg);
+#endif
+
+		float radius = 0.03;
+
+		pcl::PointXYZ pMin, pMax;
+		//std::cout<<"cluster size: "<<cloud_cluster->points.size()<<std::endl;
+		try
+		{
+			pcl::getMinMax3D(*tempFilledPC, pMin, pMax);
+		}
+		catch (...)
+		{
+			msg_error("Error setting empty input cloud (global PC).");
+			emptyCloudCritical = true;
+			return false;
+		}
+
+		pMax.x+=radius;
+		pMax.y+=radius;
+		pMax.z+=radius;
+		pMin.x-=radius;
+		pMin.y-=radius;
+		pMin.z-=radius;
+
+
+		rm_grasping_area_collision_srv_.request.max.x = (double)pMax.x;
+		rm_grasping_area_collision_srv_.request.max.y = (double)pMax.y;
+		rm_grasping_area_collision_srv_.request.max.z = (double)pMax.z;
+		rm_grasping_area_collision_srv_.request.min.x = (double)pMin.x;
+		rm_grasping_area_collision_srv_.request.min.y = (double)pMin.y;
+		rm_grasping_area_collision_srv_.request.min.z = (double)pMin.z;
+		try{
+			if (!reset_octomap_client_.call(rm_grasping_area_collision_srv_))
+				msg_warn("Grasping area clearing failed.");
+		}catch (...){msg_error("Grasping area clearing failed.");}
+
+
+			ros::spinOnce();
+
+#ifdef OCTOMAP_SERVER
+			//ros::Duration(2.0).sleep();
+			pcl::PointCloud<pcl::PointXYZ>::Ptr filledForOctomapPC;
+			filledForOctomapPC = fillPointCloud(finalVoxelizedPC);
+
+			pcl::toROSMsg(*filledForOctomapPC, msg);
+			msg.header.frame_id = "/Origin";
+			msg.header.stamp = ros::Time::now();
+			pub_3.publish(msg);
+			ROS_INFO("Octomap updated");
+			ros::spinOnce();
+			ros::Duration(2).sleep();
+#endif
+
+
 	}
 
 	removal_object_index = removal_object_index_temp;
@@ -3608,8 +3628,7 @@ int Vision::verify_object_inside_zone(string color, pcl::PointXYZ zone_center,
  * This function receives a point cloud, a center point and a radius as reference. It then looks for any point inside that
  * point cloud within a rectangular region, centered at "center point", which has a Z value greater than 0.01
  */
-pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fillPointCloud(
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::fillPointCloud(	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filledPC;
 	pcl::PointXYZ p;
 
@@ -4325,6 +4344,79 @@ bool Vision::compare_cluster_differences(
 
 	return false;
 }
+
+
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud)
+{
+	float radius = 0.03;
+
+	msg_info("Shape has been removed!");
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr substractedPC;
+	substractedPC.reset(new pcl::PointCloud<pcl::PointXYZ>());
+
+	// find the min & max point in the cloud (cluster)
+	pcl::PointXYZ pMin, pMax;
+	//std::cout<<"cluster size: "<<cloud_cluster->points.size()<<std::endl;
+	try
+	{
+		pcl::getMinMax3D(*shapeCloud, pMin, pMax);
+	}
+	catch (...)
+	{
+		msg_error("Error setting empty input cloud (global PC).");
+		emptyCloudCritical = true;
+		return substractedPC;
+	}
+
+
+	pMax.x+=radius;
+	pMax.y+=radius;
+	pMax.z+=radius;
+	pMin.x-=radius;
+	pMin.y-=radius;
+	pMin.z-=radius;
+
+	bool notempty = false;
+	pcl::PointXYZ p;
+
+		for (int i = 0; i < baseCloud->points.size(); i++)
+		{
+			if (pcl_isfinite(baseCloud->points[i].x) || pcl_isfinite(baseCloud->points[i].y)
+					|| pcl_isfinite(baseCloud->points[i].z))
+
+			{
+				if( (baseCloud->points[i].x<pMin.x) || (baseCloud->points[i].y<pMin.y) || (baseCloud->points[i].z<pMin.z) || (baseCloud->points[i].x>pMax.x) || (baseCloud->points[i].y>pMax.y) || (baseCloud->points[i].z>pMax.z) )
+				{
+					p.x = baseCloud->points[i].x;
+					p.y = baseCloud->points[i].y;
+					p.z = baseCloud->points[i].z;
+					substractedPC->points.push_back(p);
+					notempty=true;
+				}
+
+			}
+
+
+		}
+
+		if (notempty)
+		{
+			substractedPC->width = substractedPC->points.size();
+			substractedPC->height = 1;
+			substractedPC->is_dense = true;
+		}
+		else
+		{
+			emptyCloudCritical = true;
+		}
+		msg_info("Shape has been removed!");
+		return substractedPC;
+
+}
+
+
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr Vision::get_task6_cloud() {
 	ROS_INFO("entered get_task6_cloud()...");

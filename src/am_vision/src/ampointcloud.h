@@ -64,7 +64,6 @@ public:
 	float triangleArea(pcl::PointXYZ,pcl::PointXYZ,pcl::PointXYZ);
 	static pcl::PointXYZ calculateCenterOfMass(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>);
-	static pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	octomath::Vector3 getSensorOriginScene (int cameraType);
 
 

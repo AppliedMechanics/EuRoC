@@ -188,6 +188,8 @@ private:
 	bool isZThresholdSet;
 	bool isZThresholdSetT6;
 
+	octomap_msgs::BoundingBoxQuery rm_grasping_area_collision_srv_;
+
 protected:
 	actionlib::SimpleActionServer<am_msgs::VisionAction> vision_server_;
 	void set_fov(am_msgs::TakeImage::Request &);
@@ -230,9 +232,9 @@ public:
 	bool same_colored_objects(const am_msgs::VisionGoal::ConstPtr &);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr fake_puzzle_fixture();
 	void fake_puzzle_fixture_param();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr baseCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr shapeCloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr removeInliers(pcl::PointCloud<pcl::PointXYZ>::Ptr object_input);
     pcl::PointCloud<pcl::PointXYZ>::Ptr fillPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr removeShape(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 	void Fill_Parameter_Vectors();
 	bool are_objects_same_color(const am_msgs::VisionGoal::ConstPtr &goal);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr find_clusters_task5(
