@@ -6197,6 +6197,7 @@ int Statemachine::reset()
 		//reset_pub_.publish(rst);
 
 		vision_action_client_->cancelAllGoals();
+		motion_planning_action_client_->cancelAllGoals();
 		delete vision_action_client_;
 		vision_action_client_=0x0;
 		delete motion_planning_action_client_;
